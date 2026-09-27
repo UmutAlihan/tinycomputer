@@ -7,11 +7,13 @@
 //! text delivery — depend on nothing but the trait.
 
 mod delivery;
+mod groups;
 mod screen;
 
 use tinydesktop_bus::{DesktopResponse, JevOperation};
 
 pub use delivery::{deliver_text, holds, tokenized};
+pub use groups::{Group, result_groups};
 pub use screen::{
     Candidate, Depth, MAX_CANDIDATES, Screen, change_note, describe, difference, exact_named_match,
     fingerprint, label, signature, target_payload, untrusted_context,

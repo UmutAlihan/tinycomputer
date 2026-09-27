@@ -12,8 +12,8 @@ use serde_json::json;
 use tinydesktop_bus::{DesktopResponse, JevOperation};
 
 use super::{
-    Candidate, Depth, Screen, Surface, change_note, deliver_text, exact_named_match, fingerprint,
-    holds, target_payload, tokenized,
+    Candidate, Depth, Group, Screen, Surface, change_note, deliver_text, exact_named_match,
+    fingerprint, holds, result_groups, target_payload, tokenized,
 };
 
 fn clickable_screen() -> Screen {
@@ -289,4 +289,145 @@ fn a_surface_settles_instantly_and_has_no_addresses_unless_it_says_otherwise() {
     Surface::settle(&TextBackend::default());
     let refused = Surface::navigate(&TextBackend::default(), "https://example.com");
     assert_eq!(refused.error.unwrap().code, "ACTION_NOT_SUPPORTED");
+}
+
+fn card(text: &[&str], button: &str, container: &str, order: usize) -> Vec<(Candidate, bool)> {
+    let path = vec!["main".to_owned(), "list".to_owned(), container.to_owned()];
+    let mut nodes = text
+        .iter()
+        .enumerate()
+        .map(|(index, line)| {
+            (
+                Candidate {
+                    role: "text".to_owned(),
+                    value: Some(json!(line)),
+                    path: path.clone(),
+                    order: order + index,
+                    ..Candidate::default()
+                },
+                false,
+            )
+        })
+        .collect::<Vec<_>>();
+    nodes.push((
+        Candidate {
+            ref_id: format!("e{order}"),
+            role: "button".to_owned(),
+            name: Some(button.to_owned()),
+            available_actions: vec!["Click".to_owned()],
+            path: path.clone(),
+            order: order + 9,
+            ..Candidate::default()
+        },
+        true,
+    ));
+    nodes
+}
+
+fn results(cards: Vec<Vec<(Candidate, bool)>>) -> Screen {
+    let mut screen = clickable_screen();
+    screen.candidates.clear();
+    for (node, actionable) in cards.into_iter().flatten() {
+        if actionable {
+            screen.candidates.push(node);
+        } else {
+            screen.text_nodes.push(node);
+        }
+    }
+    screen
+}
+
+#[test]
+fn repeated_cards_become_records_with_their_opening_control() {
+    let mut screen = results(vec![
+        card(&["IndiGo", "₹6,840", "₹6,840"], "Select", "listitem #1", 0),
+        card(
+            &["Vistara", "  ₹7,210 "],
+            "Select flight",
+            "listitem #2",
+            20,
+        ),
+        card(&["Air India", "₹8,050"], "Details", "listitem #3", 40),
+    ]);
+    // A second, heart-shaped control in the first card does not displace
+    // the one that opens it.
+    screen.candidates.push(Candidate {
+        ref_id: "fav".to_owned(),
+        role: "button".to_owned(),
+        name: Some("Save to favourites".to_owned()),
+        path: vec![
+            "main".to_owned(),
+            "list".to_owned(),
+            "listitem #1".to_owned(),
+        ],
+        order: 5,
+        ..Candidate::default()
+    });
+    let groups = result_groups(&screen);
+    assert_eq!(groups.len(), 3);
+    assert_eq!(groups[0].label, "listitem #1");
+    assert_eq!(
+        groups[0].fields[..2],
+        ["IndiGo", "₹6,840"],
+        "repeats are dropped"
+    );
+    assert_eq!(groups[0].primary.as_ref().unwrap().ref_id, "e0");
+    assert_eq!(groups[1].fields[1], "₹7,210");
+    assert_eq!(
+        groups[2].primary.as_ref().unwrap().name.as_deref(),
+        Some("Details")
+    );
+}
+
+#[test]
+fn nothing_repeating_is_no_records() {
+    assert_eq!(result_groups(&clickable_screen()), Vec::<Group>::new());
+    let single = results(vec![card(&["Only one"], "Select", "listitem #1", 0)]);
+    assert!(result_groups(&single).is_empty());
+    let mut unlabeled = results(vec![
+        card(&["a"], "Select", "listitem", 0),
+        card(&["b"], "Select", "listitem", 10),
+    ]);
+    assert!(result_groups(&unlabeled).is_empty());
+    // Empty cards are dropped rather than offered as records.
+    unlabeled = results(vec![
+        card(&[], "", "row #1", 0),
+        card(&[], "", "row #2", 10),
+    ]);
+    for node in &mut unlabeled.candidates {
+        node.name = None;
+    }
+    assert!(result_groups(&unlabeled).is_empty());
+}
+
+#[test]
+fn the_list_is_where_the_most_cards_repeat() {
+    // Two filter chips repeat under a toolbar; five results repeat in the
+    // list. The results win, and named ordinal labels are understood.
+    let mut cards = (0..2)
+        .map(|index| {
+            card(
+                &[&format!("chip {index}")],
+                "Toggle",
+                &format!("button \"Chip\" #{}", index + 1),
+                index * 10,
+            )
+        })
+        .collect::<Vec<_>>();
+    for card_nodes in &mut cards {
+        for (node, _) in card_nodes.iter_mut() {
+            node.path[1] = "toolbar".to_owned();
+        }
+    }
+    cards.extend((0..5).map(|index| {
+        card(
+            &[&format!("result {index}")],
+            "Select",
+            &format!("listitem #{}", index + 1),
+            100 + index * 10,
+        )
+    }));
+    let groups = result_groups(&results(cards));
+    assert_eq!(groups.len(), 5);
+    assert_eq!(groups[4].fields[0], "result 4");
 }
