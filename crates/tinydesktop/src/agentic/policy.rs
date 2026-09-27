@@ -39,7 +39,7 @@ pub(super) fn action_space(screen: &Screen, has_text: bool) -> ActionSpace {
             operations.push("COLLAPSE");
         }
         if actions.contains("Scroll") {
-            operations.push("SCROLL");
+            operations.extend(["SCROLL", "SCROLL_UP"]);
         }
         if screen.root.is_none() && node.children_count.unwrap_or_default() > 0 {
             operations.push("DRILL");
@@ -138,10 +138,25 @@ pub(super) fn request(
             "app": screen.app,
             "window": screen.window,
             "surface": screen.surface,
+            "visible_text": untrusted_context(screen),
+            "offered_elements": offered(screen),
             "recent_actions": history.iter().rev().take(8).rev().collect::<Vec<_>>(),
         }),
         model: model.to_owned(),
         questions,
+    }
+}
+
+/// The screen's static text, wrapped so Jev treats it as data.
+pub(super) fn untrusted_context(screen: &Screen) -> serde_json::Value {
+    json!({"untrusted_accessibility_data": screen.context})
+}
+
+/// How many elements were offered, and how many the observation dropped.
+pub(super) fn offered(screen: &Screen) -> serde_json::Value {
+    match screen.truncated {
+        Some((kept, total)) => json!({"offered": kept, "total": total, "truncated": true}),
+        None => json!({"offered": screen.candidates.len(), "truncated": false}),
     }
 }
 
@@ -221,6 +236,7 @@ fn operation_description(operation: &str) -> &'static str {
         "EXPAND" => "Open a disclosure or tree item.",
         "COLLAPSE" => "Close a disclosure or tree item.",
         "SCROLL" => "Scroll a container downward to reveal more content.",
+        "SCROLL_UP" => "Scroll a container upward to reveal earlier content.",
         "DRILL" => "Inspect one truncated container without changing the application.",
         _ => "Advance the goal.",
     }
@@ -256,6 +272,7 @@ pub(super) fn parse_operation(value: &str) -> Option<JevOperation> {
         "EXPAND" => JevOperation::Expand,
         "COLLAPSE" => JevOperation::Collapse,
         "SCROLL" => JevOperation::Scroll,
+        "SCROLL_UP" => JevOperation::ScrollUp,
         "DRILL" => JevOperation::Drill,
         "WIDEN" => JevOperation::Widen,
         "WAIT" => JevOperation::Wait,
@@ -332,24 +349,34 @@ pub(super) fn exact_named_match(goal: &str, candidate: Option<&Candidate>) -> bo
     })
 }
 
+/// Whether the element an operation lands on is itself hard to undo.
+///
+/// This reads the target's label only. Reading the goal as well made every
+/// click in a goal that merely mentioned "send" require confirmation, including
+/// the clicks that open the compose window.
 pub(super) fn deterministic_destructive(
-    goal: &str,
     operation: JevOperation,
     candidate: Option<&Candidate>,
 ) -> bool {
-    if !matches!(operation, JevOperation::Click | JevOperation::TypeText) {
+    if operation != JevOperation::Click {
         return false;
     }
-    let mut evidence = goal.to_ascii_lowercase();
-    if let Some(label) = candidate.and_then(|candidate| {
-        candidate
-            .name
-            .as_deref()
-            .or(candidate.description.as_deref())
-    }) {
-        evidence.push(' ');
-        evidence.push_str(&label.to_ascii_lowercase());
-    }
+    let Some(evidence) = candidate
+        .and_then(|candidate| {
+            candidate
+                .name
+                .as_deref()
+                .or(candidate.description.as_deref())
+        })
+        .map(str::to_ascii_lowercase)
+    else {
+        return false;
+    };
+    destructive_label(&evidence)
+}
+
+/// Whether a lower-cased label names an action that is hard to undo.
+pub(super) fn destructive_label(evidence: &str) -> bool {
     [
         "delete",
         "remove",
@@ -366,92 +393,6 @@ pub(super) fn deterministic_destructive(
     ]
     .iter()
     .any(|term| evidence.contains(term))
-}
-
-pub(super) fn positional_match(
-    goal: &str,
-    candidate: Option<&Candidate>,
-    peers: Option<&BTreeMap<String, Candidate>>,
-) -> bool {
-    let goal = goal.to_ascii_lowercase();
-    if !(goal.contains("topmost") || goal.contains("first")) {
-        return false;
-    }
-    let Some(candidate) = candidate else {
-        return false;
-    };
-    let Some(name) = candidate.name.as_deref() else {
-        return false;
-    };
-    let name = name.to_ascii_lowercase();
-    if !(name.starts_with("play ") && name.contains(" by ")) {
-        return false;
-    }
-    let Some(y) = candidate
-        .bounds
-        .as_ref()
-        .and_then(|bounds| bounds.get("y"))
-        .and_then(serde_json::Value::as_f64)
-    else {
-        return false;
-    };
-    peers.is_some_and(|peers| {
-        peers
-            .values()
-            .filter(|peer| {
-                peer.name.as_deref().is_some_and(|name| {
-                    let name = name.to_ascii_lowercase();
-                    name.starts_with("play ") && name.contains(" by ")
-                })
-            })
-            .filter_map(|peer| {
-                peer.bounds
-                    .as_ref()
-                    .and_then(|bounds| bounds.get("y"))
-                    .and_then(serde_json::Value::as_f64)
-            })
-            .all(|peer_y| y <= peer_y)
-    })
-}
-
-pub(super) fn playing_goal_satisfied(goal: &str, screen: &Screen) -> bool {
-    let goal = goal.to_ascii_lowercase();
-    if !goal.contains("playing") {
-        return false;
-    }
-    if !(goal.contains("topmost") || goal.contains("first")) {
-        return screen.candidates.iter().any(|candidate| {
-            candidate
-                .name
-                .as_deref()
-                .is_some_and(|name| name.eq_ignore_ascii_case("Pause"))
-        });
-    }
-    let mut tracks = screen
-        .candidates
-        .iter()
-        .filter(|candidate| {
-            candidate.name.as_deref().is_some_and(|name| {
-                let name = name.to_ascii_lowercase();
-                name.contains(" by ") && (name.starts_with("play ") || name.starts_with("pause "))
-            })
-        })
-        .filter_map(|candidate| {
-            candidate
-                .bounds
-                .as_ref()
-                .and_then(|bounds| bounds.get("y"))
-                .and_then(serde_json::Value::as_f64)
-                .map(|y| (y, candidate))
-        })
-        .collect::<Vec<_>>();
-    tracks.sort_by(|left, right| left.0.total_cmp(&right.0));
-    tracks.first().is_some_and(|(_, candidate)| {
-        candidate
-            .name
-            .as_deref()
-            .is_some_and(|name| name.to_ascii_lowercase().starts_with("pause "))
-    })
 }
 
 pub(super) fn target<'a>(
