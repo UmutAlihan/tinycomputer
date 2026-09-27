@@ -1966,7 +1966,7 @@ async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
     let error = fact_in_condition.error.unwrap();
     assert_eq!(error.code, "FLOW_INVALID");
     assert!(
-        error.message.contains("is a fact"),
+        error.message.contains("is a secret"),
         "a fact referenced outside an enter step never starts running: {error:?}"
     );
 }
@@ -2217,7 +2217,7 @@ fn validation_treats_a_flow_definition_naming_a_fact_as_a_fact() {
     assert_eq!(
         validation.errors,
         vec![
-            "step 1: `${recipient}` is a fact; use an enter step to type it — Jev only sees slot names"
+            "step 1: `${recipient}` is a secret; only an enter step may type it — Jev only ever sees it as a name"
                 .to_owned()
         ],
         "only the model-facing use of the fact-bearing definition is rejected"
@@ -2258,7 +2258,7 @@ fn validation_rejects_a_fact_referenced_in_every_model_facing_position() {
     let hits = validation
         .errors
         .iter()
-        .filter(|error| error.contains("`${email}` is a fact"))
+        .filter(|error| error.contains("`${email}` is a secret"))
         .count();
     assert_eq!(
         hits,
@@ -2267,8 +2267,8 @@ fn validation_rejects_a_fact_referenced_in_every_model_facing_position() {
         validation.errors.join("\n")
     );
     for error in &validation.errors {
-        if error.contains("`${email}` is a fact") {
-            assert!(error.contains("use an enter step to type it"), "{error}");
+        if error.contains("`${email}` is a secret") {
+            assert!(error.contains("only an enter step may type it"), "{error}");
         }
     }
 }
@@ -2301,7 +2301,7 @@ fn validation_rejects_a_fact_reached_by_open_or_browse() {
     assert!(
         open.errors
             .iter()
-            .any(|error| error.contains("`${app_name}` is a fact"))
+            .any(|error| error.contains("`${app_name}` is a secret"))
     );
 
     let browse = validate::check(
@@ -2314,7 +2314,7 @@ fn validation_rejects_a_fact_reached_by_open_or_browse() {
         browse
             .errors
             .iter()
-            .any(|error| error.contains("`${site}` is a fact"))
+            .any(|error| error.contains("`${site}` is a secret"))
     );
 }
 
