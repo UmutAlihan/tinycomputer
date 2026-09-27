@@ -17,8 +17,8 @@ pub(super) const MAX_REPEAT: u32 = 20;
 /// `known` are variable names the caller will supply at run time on top of the
 /// flow's own `vars`. `facts` are the names among them that are the task's
 /// facts: a `${name}` for one of those is rejected everywhere except an
-/// `enter` step's typed value, a `browse` address, or an `open` application
-/// name, so a decision model never sees a fact's value.
+/// `enter` step's typed value, so a decision model never sees a fact's value,
+/// directly or in the state it is shown on a later step.
 pub(super) fn validate(
     flow: &Value,
     known: &BTreeSet<String>,
