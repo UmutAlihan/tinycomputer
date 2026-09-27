@@ -159,9 +159,9 @@ impl Digest {
         let mut shown = Vec::new();
         let mut collapsed = Vec::new();
         for region in self.ordered(rendering) {
-            let lines = self.lines(screen, region, rendering.include_values);
+            let lines = Self::lines(screen, region, rendering.include_values);
             let cost = lines.iter().map(|line| line.len() + 4).sum::<usize>() + 40;
-            let muted = self.muted(region, rendering);
+            let muted = Self::muted(region, rendering);
             if muted || spent + cost > rendering.budget {
                 let summary = summary(screen, region);
                 spent += summary.len() + 4;
@@ -200,7 +200,7 @@ impl Digest {
             let key = |region: &Region| {
                 (
                     region.kind != RegionKind::Front,
-                    self.muted(region, rendering),
+                    Self::muted(region, rendering),
                 )
             };
             key(left)
@@ -215,7 +215,7 @@ impl Digest {
 
     /// Whether `region` is collapsed whatever the budget: noise or a
     /// distraction that no relevance answer rescued.
-    fn muted(&self, region: &Region, rendering: &Rendering<'_>) -> bool {
+    fn muted(region: &Region, rendering: &Rendering<'_>) -> bool {
         if region.kind == RegionKind::Front {
             return false;
         }
@@ -232,7 +232,7 @@ impl Digest {
 
     /// The lines a region is shown as: one per element, or one per card of
     /// a list.
-    fn lines(&self, screen: &Screen, region: &Region, include_values: bool) -> Vec<String> {
+    fn lines(screen: &Screen, region: &Region, include_values: bool) -> Vec<String> {
         if let Some((depth, parent)) = &region.list {
             return card_lines(screen, *depth, parent);
         }
