@@ -236,7 +236,7 @@ pub(super) fn substitute(text: &str, vars: &BTreeMap<String, String>) -> String 
         let name = &after[..end];
         match vars.get(name) {
             Some(value) => out.push_str(value),
-            None => out.push_str(&rest[start..start + 2 + end + 1]),
+            None => out.push_str(&rest[start..=start + 2 + end]),
         }
         rest = &after[end + 1..];
     }
