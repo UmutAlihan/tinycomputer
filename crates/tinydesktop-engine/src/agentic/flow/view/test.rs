@@ -74,3 +74,18 @@ fn is_destructive_covers_the_denylist_stop_before_phrases_and_unnamed_sheet_butt
         "a named, non-denylisted control in a sheet is still safe"
     );
 }
+
+#[test]
+fn is_destructive_gates_a_generic_control_on_a_payment_screen() {
+    let mut screen = clickable_screen();
+    let continue_button = Candidate {
+        name: Some("Continue".to_owned()),
+        ..Candidate::default()
+    };
+    // No payment evidence yet: an unremarkable control is not gated.
+    assert!(!is_destructive(&continue_button, &screen, &[]));
+    // A card field on the same screen makes it a payment step, so even a
+    // control worded only "Continue" must not be pressed by an ordinary step.
+    screen.context = vec!["Card number".to_owned()];
+    assert!(is_destructive(&continue_button, &screen, &[]));
+}
