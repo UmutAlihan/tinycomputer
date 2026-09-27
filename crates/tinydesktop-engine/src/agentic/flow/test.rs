@@ -1885,8 +1885,11 @@ async fn browse_opens_the_address_and_moves_the_flow_onto_the_page() {
     )
     .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
-    assert_eq!(run.app.sim().launched, ["browser"]);
-    assert_eq!(run.app.sim().navigated, ["https://flights.test/to/Srinagar"]);
+    assert_eq!(run.app.sim().launched, ["Mail", "browser"]);
+    assert_eq!(
+        run.app.sim().navigated,
+        ["https://flights.test/to/Srinagar"]
+    );
     assert_eq!(
         run.result.steps[0].note,
         "https://flights.test/to/Srinagar is open (Flights)"
@@ -1905,12 +1908,20 @@ async fn browse_fails_the_flow_where_there_is_no_browser_or_no_page() {
         )
         .await;
         assert_eq!(run.result.stop, FlowStopReason::StepFailed, "{quirk:?}");
-        assert!(run.result.steps[0].note.contains(code), "{}", run.result.steps[0].note);
+        assert!(
+            run.result.steps[0].note.contains(code),
+            "{}",
+            run.result.steps[0].note
+        );
     }
     let unreadable = run(
         App::quirky(Quirk::FailObserve),
         json!({"app": "browser", "steps": [{"browse": "https://flights.test"}]}),
     )
     .await;
-    assert!(unreadable.result.steps[0].note.contains("no readable page yet"));
+    assert!(
+        unreadable.result.steps[0]
+            .note
+            .contains("no readable page yet")
+    );
 }
