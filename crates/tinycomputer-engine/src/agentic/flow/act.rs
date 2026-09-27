@@ -10,7 +10,10 @@
 //! picked from things every application offers — pressing a visible control,
 //! a standard shortcut, scrolling, waiting.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Instant,
+};
 
 use serde_json::json;
 use tinycomputer_bus::{FlowLoop, JevOperation, StepOutcome};
@@ -116,6 +119,9 @@ struct LastAction {
 /// Bookkeeping across the turns of one `do` step.
 #[derive(Debug, Default)]
 struct DoState {
+    /// The turn under way, when it began, and how many decisions the run
+    /// had made by then: the journal's `turn` event.
+    turn: Option<(u32, Instant, u32)>,
     last: Option<LastAction>,
     banned: BTreeSet<String>,
     unchanged: u32,
@@ -240,10 +246,40 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         max_turns: u32,
     ) -> Result<Ended, Halt> {
         let mut state = DoState::default();
+        let ended = self.turns(log, &mut state, intent, max_turns).await;
+        self.end_turn(&mut state);
+        ended
+    }
+
+    /// Journals the turn under way, if any: how many decisions it took and
+    /// how long it ran.
+    fn end_turn(&self, state: &mut DoState) {
+        let Some((turn, started, before)) = state.turn.take() else {
+            return;
+        };
+        self.runtime.journal.record("turn", || {
+            json!({
+                "step": self.step,
+                "turn": turn,
+                "decisions": self.decisions.saturating_sub(before),
+                "wall_ms": crate::agentic::journal::millis(started.elapsed()),
+            })
+        });
+    }
+
+    async fn turns(
+        &mut self,
+        log: &mut StepLog,
+        state: &mut DoState,
+        intent: &str,
+        max_turns: u32,
+    ) -> Result<Ended, Halt> {
         for turn in 0..max_turns {
+            self.end_turn(state);
+            state.turn = Some((turn, Instant::now(), self.decisions));
             log.turns = log.turns.saturating_add(1);
             let screen = self.look().await?;
-            self.note_change(&mut state, &screen)?;
+            self.note_change(state, &screen)?;
             if let Some(ended) = state
                 .last
                 .as_ref()
@@ -256,7 +292,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .as_ref()
                 .and_then(|last| last.target.as_ref())
                 .map(label);
-            let mut judged = self.judge(log, &screen, intent, last.as_deref()).await?;
+            let mut judged = if self.wide() {
+                self.judge_wide(log, &screen, intent, last.as_deref(), &state.banned)
+                    .await?
+            } else {
+                self.judge(log, &screen, intent, last.as_deref()).await?
+            };
             if judged.next == "finished"
                 && judged.done.is_some_and(|done| done < finish_floor(turn))
             {
@@ -279,9 +320,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         .to_owned(),
                 );
             }
-            if self
-                .recover(log, &mut state, &screen, intent, &judged)
-                .await?
+            if self.recover(log, state, &screen, intent, &judged).await?
             {
                 continue;
             }
@@ -359,6 +398,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             state.unchanged = state.unchanged.saturating_add(1);
             if let Some(target) = &previous.target {
                 state.banned.insert(signature(target));
+                self.ledger
+                    .tried(format!("pressed {}: nothing on screen changed", label(target)));
             }
         }
         self.history.push(format!("after the last action: {note}"));
@@ -382,7 +423,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if judged.blocked.unwrap_or_default() >= BLOCKED && state.obstacles < MAX_OBSTACLES {
             state.obstacles += 1;
             log.used(FlowLoop::Obstacles);
-            self.clear_obstacle(log, screen, intent).await?;
+            match &judged.dismissal {
+                Some(dismissal) => self.dismiss(log, dismissal.clone()).await?,
+                None => self.clear_obstacle(log, screen, intent).await?,
+            }
             state.last = None;
             return Ok(true);
         }
@@ -419,6 +463,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         log.used(FlowLoop::Undo);
         if let Some(target) = &target {
             state.banned.insert(signature(target));
+            self.ledger
+                .tried(format!("pressed {}: it made things worse ({why})", label(target)));
         }
         let app = self.app.clone();
         self.act(log, "press escape (undo)", None, move |backend| {
@@ -493,9 +539,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 Ok(Move::Acted(None))
             }
             operation @ ("activate" | "expand" | "scroll") => Ok(Move::Acted(
-                self.activate(log, screen, intent, operation, banned)
-                    .await?
-                    .map(Box::new),
+                self.activate(
+                    log,
+                    screen,
+                    intent,
+                    operation,
+                    banned,
+                    judged.prepared.get(operation),
+                )
+                .await?
+                .map(Box::new),
             )),
             other => {
                 // A malformed or prompt-injected answer must fail closed
@@ -517,6 +570,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         intent: &str,
         operation: &str,
         banned: &BTreeSet<String>,
+        prepared: Option<&Prepared>,
     ) -> Result<Option<Candidate>, Halt> {
         let (capability, jev_operation, verb) = match operation {
             "expand" => ("Expand", JevOperation::Expand, "expand"),
@@ -536,7 +590,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .cloned()
             .collect::<Vec<_>>();
         let purpose = format!("{verb} to accomplish: {intent}");
-        let Some(grounded) = self.ground(log, screen, &purpose, intent, pool).await? else {
+        let grounded = match prepared {
+            Some(prepared) => self.resolve(log, screen, &purpose, prepared).await?,
+            None => self.ground(log, screen, &purpose, intent, pool).await?,
+        };
+        let Some(grounded) = grounded else {
             self.history.push(format!(
                 "no element clearly serves {verb} for this step; consider a shortcut or another move"
             ));
