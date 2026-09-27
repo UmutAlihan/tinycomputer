@@ -171,7 +171,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let purpose = format!("pick the option {option:?} in {what}");
         for attempt in 0..2 {
             let screen = self.look().await?;
-            let pool = clickable(&screen.candidates);
+            let pool = clickable(&screen.candidates)
+                .into_iter()
+                .filter(|candidate| !destructive_label(&label(candidate).to_ascii_lowercase()))
+                .collect::<Vec<_>>();
             if let Some(grounded) = self.ground(log, &screen, &purpose, &purpose, pool).await? {
                 log.confidence = Some(grounded.confidence);
                 let target = grounded.candidate;
