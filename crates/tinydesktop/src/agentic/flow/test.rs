@@ -1393,9 +1393,15 @@ fn editable_fields_are_found_by_action_or_role_in_reading_order() {
         name: Some("From".to_owned()),
         ..Candidate::default()
     });
+    screen.candidates.push(Candidate {
+        role: "webarea".to_owned(),
+        name: Some("message body".to_owned()),
+        available_actions: vec!["SetFocus".to_owned()],
+        ..Candidate::default()
+    });
     let names = enter::editable(&screen)
         .into_iter()
         .map(|field| field.name.unwrap())
         .collect::<Vec<_>>();
-    assert_eq!(names, ["To", "Subject", "Body", "From"]);
+    assert_eq!(names, ["To", "Subject", "Body", "From", "message body"]);
 }

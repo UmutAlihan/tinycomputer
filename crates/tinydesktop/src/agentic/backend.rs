@@ -40,8 +40,12 @@ pub(super) trait AgentBackend: Clone + Send + 'static {
     /// Reads an element's current value, when the platform exposes one.
     fn read_value(&self, target: &Candidate) -> Option<String>;
 
-    /// Focuses `target`, replaces its content through the pasteboard, and
+    /// Focuses `target`, puts `text` into it through the pasteboard, and
     /// restores whatever the pasteboard held before.
+    ///
+    /// A field that supports set-value is replaced (select all, then paste).
+    /// One that does not — a rich-text body such as a mail message — has the
+    /// text pasted at the caret, so a reply keeps the message it quotes.
     fn paste(&self, app: &str, target: &Candidate, text: &str) -> DesktopResponse;
 
     /// Presses a key combination at `app`.
@@ -102,7 +106,15 @@ impl AgentBackend for Desktop {
         if !staged.ok {
             return staged;
         }
-        let selected = self.press(press_at(app, "cmd+a"));
+        let replaces = target
+            .available_actions
+            .iter()
+            .any(|action| action == "SetValue");
+        let selected = if replaces {
+            self.press(press_at(app, "cmd+a"))
+        } else {
+            DesktopResponse::ok("press", json!({}))
+        };
         let pasted = self.press(press_at(app, "cmd+v"));
         let _settled = self.wait(WaitRequest::sleep(150));
         if let Some(previous) = previous {

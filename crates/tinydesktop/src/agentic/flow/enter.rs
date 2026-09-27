@@ -263,6 +263,8 @@ pub(super) fn editable(screen: &Screen) -> Vec<Candidate> {
                     "text area",
                     "combobox",
                     "searchfield",
+                    "webarea",
+                    "document",
                 ]
                 .iter()
                 .any(|role| candidate.role.eq_ignore_ascii_case(role))
