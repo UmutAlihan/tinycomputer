@@ -1,6 +1,6 @@
 //! Wire types for high-level intent flows.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
