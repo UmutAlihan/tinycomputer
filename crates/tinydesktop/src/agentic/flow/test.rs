@@ -1254,7 +1254,11 @@ async fn the_implicit_launch_is_charged_to_the_action_budget() {
         "a starved run must never launch the application"
     );
 
-    let launched = run(App::default(), mail_flow()).await;
+    let launched = run(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+    )
+    .await;
     assert_eq!(launched.app.sim().launched, ["Mail"]);
     assert!(
         launched.result.actions >= 1,
