@@ -3414,3 +3414,26 @@ async fn waits_that_change_nothing_are_not_a_stall_and_stop_being_offered() {
     });
     assert!(told, "Jev is told the page has settled");
 }
+
+#[test]
+fn a_variable_named_without_its_braces_is_rejected() {
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "browser",
+        "steps": [
+            {"pick": {"from": "the flights", "by": "lowest price", "into": "cheapest_flight"}},
+            {"verify": "cheapest_flight shows a price"},
+            {"verify": "${cheapest_flight} shows a price"},
+            {"pick": {"from": "the fares", "by": "lowest price", "into": "fare"}},
+            {"verify": "the fare is shown"}
+        ]
+    }))
+    .unwrap();
+    let validation = validate::check(&flow, &BTreeSet::new(), &BTreeSet::new());
+    assert_eq!(
+        validation.errors,
+        [
+            "step 2: `cheapest_flight` names a variable; write it as `${cheapest_flight}` so its value is shown"
+        ],
+        "only the bare identifier is an error; a plain word naming a variable is not"
+    );
+}
