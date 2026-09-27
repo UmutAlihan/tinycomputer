@@ -255,6 +255,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         };
         for attempt in 0..4 {
             let screen = self.look().await?;
+            if !private && let Some(chosen) = already_chosen(&screen, option) {
+                self.history
+                    .push(format!("{} is already chosen", label(&chosen)));
+                self.remember_choice(&format!("chose {option:?} in {what}"));
+                return Ok(Ended::new(
+                    StepOutcome::AlreadyDone,
+                    format!("{option:?} was already chosen"),
+                ));
+            }
             let pool = clickable(&screen.candidates)
                 .into_iter()
                 .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
@@ -310,12 +319,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
             match attempt {
                 0 => {
-                    self.accomplish(
-                        log,
-                        &format!("open {what} so its options show"),
-                        REVEAL_TURNS,
-                    )
-                    .await?;
+                    // Revealing is one way among several; when it fails the
+                    // next attempt tries another rather than giving up.
+                    let revealed = self
+                        .accomplish(
+                            log,
+                            &format!("open {what} so its options show"),
+                            REVEAL_TURNS,
+                        )
+                        .await;
+                    match revealed {
+                        Err(Halt::Failed(note)) => self
+                            .history
+                            .push(format!("could not open {what} ({note}); trying another way")),
+                        other => {
+                            other?;
+                        }
+                    }
                 }
                 1 if looks_like_date(option) => self.page_to(log, option).await?,
                 // An opened autocomplete holds the focus in its search input,
@@ -849,10 +869,55 @@ fn records_of(groups: &[Group]) -> Vec<Record> {
 /// option ("Srinagar, SXR Srinagar International Airport").
 const OPTION_EXTRA_WORDS: usize = 12;
 
+/// Roles of a control that is one option however much its label says: a
+/// fare card's radio names its price, baggage, and rules, and is still just
+/// "Saver".
+const ONE_OPTION_ROLES: &[&str] = &[
+    "radio",
+    "radiobutton",
+    "option",
+    "menuitemradio",
+    "checkbox",
+];
+
+fn is_one_option(candidate: &Candidate) -> bool {
+    ONE_OPTION_ROLES
+        .iter()
+        .any(|role| candidate.role.eq_ignore_ascii_case(role))
+}
+
+/// The option control on `screen` that is already checked or selected and
+/// whose label starts with `option`: there is nothing to choose.
+fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate> {
+    let wanted = plain(option);
+    if wanted.is_empty() {
+        return None;
+    }
+    screen
+        .candidates
+        .iter()
+        .find(|candidate| {
+            is_one_option(candidate)
+                && candidate
+                    .states
+                    .iter()
+                    .any(|state| state == "checked" || state == "selected")
+                && candidate
+                    .name
+                    .as_deref()
+                    .is_some_and(|name| plain(name).starts_with(&wanted))
+        })
+        .cloned()
+}
+
 /// Whether a label says far more than the option: a control whose name
 /// strings together a whole list (recent searches, every day of a month)
-/// mentions the option without being it.
+/// mentions the option without being it. An option control is never such a
+/// list, however long its label.
 fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
+    if is_one_option(candidate) {
+        return false;
+    }
     let words = |text: &str| {
         plain(text)
             .split(' ')
