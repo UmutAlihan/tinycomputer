@@ -21,4 +21,5 @@ After the specification is accepted, create a linked implementation plan in
 the contract; production code still belongs under `src/`.
 
 See [`desktop-module-contract.md`](desktop-module-contract.md) for a complete
-example, and [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime.
+example, [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime, and
+[`unified-agent.md`](unified-agent.md) for browser and desktop behind one task API.
