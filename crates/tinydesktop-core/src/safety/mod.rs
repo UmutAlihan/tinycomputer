@@ -201,10 +201,11 @@ pub fn payment_evidence(
     let pay_control = controls
         .iter()
         .find(|label| consequence(label) == Consequence::Payment);
-    if reasons.is_empty() {
-        if let (true, Some(control)) = (payment_url, pay_control) {
-            reasons.push(format!("a payment address with a {control:?} control"));
-        }
+    if reasons.is_empty()
+        && payment_url
+        && let Some(control) = pay_control
+    {
+        reasons.push(format!("a payment address with a {control:?} control"));
     }
     (!reasons.is_empty()).then_some(PaymentEvidence { reasons })
 }
