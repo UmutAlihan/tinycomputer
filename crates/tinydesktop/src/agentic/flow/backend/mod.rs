@@ -7,9 +7,9 @@
 
 use serde_json::{Value, json};
 use tinydesktop_bus::{
-    ClipboardGetRequest, ClipboardSetRequest, DesktopResponse, Direction, ElementProperty,
-    GetRequest, JevOperation, LaunchRequest, PressRequest, RefRequest, ScrollRequest,
-    SetValueRequest, WaitRequest,
+    ClipboardFormat, ClipboardGetRequest, ClipboardSetRequest, DesktopResponse, Direction,
+    ElementProperty, GetRequest, JevOperation, LaunchRequest, PressRequest, RefRequest,
+    ScrollRequest, SetValueRequest, WaitRequest,
 };
 
 use super::{
