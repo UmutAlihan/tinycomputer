@@ -19,7 +19,7 @@ use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
     memory::{learn, remember},
-    view::{Candidate, Screen, change_note, destructive_label, fingerprint, label, signature},
+    view::{Candidate, Screen, change_note, fingerprint, is_destructive, label, signature},
 };
 
 /// Completion probability that ends a step after acting.
