@@ -3921,6 +3921,16 @@ async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
     );
     assert_eq!(of("action").len(), usize::try_from(result.actions).unwrap());
     assert!(of("action").iter().all(|action| action["wall_ms"].is_u64()));
+    assert!(
+        of("decision")
+            .iter()
+            .all(|decision| decision["request_bytes"].as_u64().unwrap() > 0)
+    );
+    let turns = of("turn");
+    assert!(!turns.is_empty(), "every do turn is journaled");
+    assert!(turns.iter().all(|turn| {
+        turn["step"] == "2" && turn["decisions"].is_u64() && turn["wall_ms"].is_u64()
+    }));
     assert!(!of("observe").is_empty());
     let steps = of("step");
     assert_eq!(
