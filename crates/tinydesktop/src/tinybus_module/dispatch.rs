@@ -145,12 +145,28 @@ impl DesktopService {
 
     /// Everything a model needs to drive the task members, in one reply.
     async fn describe(&self) -> TinyBusResult<Capabilities> {
+        let permissions = self
+            .run(|desktop| desktop.permissions(PermissionsRequest::default()))
+            .await?;
+        let denied = permissions
+            .data
+            .as_ref()
+            .filter(|_| permissions.ok)
+            .and_then(|data| data.get("accessibility"))
+            .and_then(|state| state.get("granted").or(Some(state)))
+            .and_then(serde_json::Value::as_bool)
+            == Some(false);
         Ok(agentic::capabilities(
             vec![
                 SurfaceAvailability {
                     kind: SurfaceKind::Desktop,
-                    available: true,
-                    reason: None,
+                    available: permissions.ok && !denied,
+                    reason: (!permissions.ok || denied).then(|| {
+                        permissions.error.as_ref().map_or_else(
+                            || "the accessibility permission is not granted".to_owned(),
+                            |error| error.message.clone(),
+                        )
+                    }),
                 },
                 SurfaceAvailability {
                     kind: SurfaceKind::Browser,
@@ -163,6 +179,10 @@ impl DesktopService {
     }
 
     /// Drafts a flow for a plain-language task; needs a planner.
+    #[expect(
+        clippy::unused_async,
+        reason = "tinybus interface members must be `async fn`; this one answers from memory"
+    )]
     async fn plan_task(&self, _request: PlanTaskRequest) -> TinyBusResult<AgentResponse<TaskPlan>> {
         Ok(AgentResponse::err(AgentError::new(
             "PLANNER_NOT_CONFIGURED",
@@ -174,6 +194,10 @@ impl DesktopService {
 
     /// Starts a task and returns at once with its first view.
     #[tinybus(confidential)]
+    #[expect(
+        clippy::unused_async,
+        reason = "tinybus interface members must be `async fn`; this one answers from memory"
+    )]
     async fn start_task(
         &self,
         request: StartTaskRequest,
@@ -191,6 +215,10 @@ impl DesktopService {
 
     /// Answers what a paused task asked for, and resumes it.
     #[tinybus(confidential)]
+    #[expect(
+        clippy::unused_async,
+        reason = "tinybus interface members must be `async fn`; this one answers from memory"
+    )]
     async fn continue_task(
         &self,
         request: ContinueTaskRequest,
@@ -199,17 +227,29 @@ impl DesktopService {
     }
 
     /// Stops a task.
+    #[expect(
+        clippy::unused_async,
+        reason = "tinybus interface members must be `async fn`; this one answers from memory"
+    )]
     async fn cancel_task(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskView>> {
         Ok(self.tasks.cancel(&request.id))
     }
 
     /// Everything a task did.
     #[tinybus(confidential)]
+    #[expect(
+        clippy::unused_async,
+        reason = "tinybus interface members must be `async fn`; this one answers from memory"
+    )]
     async fn task_report(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskReport>> {
         Ok(self.tasks.report(&request.id))
     }
 
     /// The tasks this module holds, newest first.
+    #[expect(
+        clippy::unused_async,
+        reason = "tinybus interface members must be `async fn`; this one answers from memory"
+    )]
     async fn list_tasks(&self) -> TinyBusResult<AgentResponse<Vec<TaskView>>> {
         Ok(self.tasks.list())
     }

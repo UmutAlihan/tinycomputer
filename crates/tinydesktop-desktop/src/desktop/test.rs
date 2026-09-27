@@ -531,9 +531,9 @@ fn sweep() -> Vec<tinydesktop_bus::DesktopResponse> {
 
 #[test]
 fn the_sweep_covers_every_member_the_contract_names() {
-    // The five agentic members compose the others; they have no engine
-    // command of their own to sweep.
-    assert_eq!(sweep().len() + 5, bus::METHODS.len());
+    // The five agentic members compose the others, and the eight task
+    // members run on the engine; neither has an engine command to sweep.
+    assert_eq!(sweep().len() + 5 + 8, bus::METHODS.len());
 }
 
 #[test]
