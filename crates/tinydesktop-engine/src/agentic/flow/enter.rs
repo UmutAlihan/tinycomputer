@@ -16,7 +16,7 @@ use super::{
     ask::{self, CAP, Questions, chosen, elements, numbered},
     backend::deliver_text,
     memory::{learn, recall, remember},
-    validate::substitute,
+    validate::{substitute, substitute_safe},
     view::{Candidate, Screen, label, signature},
 };
 
@@ -40,7 +40,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let slots = slots
             .iter()
             .map(|slot| Slot {
-                slot: substitute(&slot.slot, &self.vars),
+                // The label names a field for Jev, so it must never carry a
+                // fact's value; the text is typed into the field locally and
+                // never shown, so it may.
+                slot: substitute_safe(&slot.slot, &self.vars, &self.facts),
                 text: substitute(&slot.text, &self.vars),
             })
             .collect::<Vec<_>>();

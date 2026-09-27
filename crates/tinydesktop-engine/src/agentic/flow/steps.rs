@@ -15,7 +15,7 @@ use super::{
     act::DONE,
     ask::{self, Questions, chosen, condition, numbered},
     memory::{learn, remember},
-    validate::{MAX_REPEAT, substitute},
+    validate::{MAX_REPEAT, substitute_safe},
     view::{Candidate, is_destructive, label, target_payload},
 };
 
@@ -59,7 +59,11 @@ pub(super) async fn run<B: AgentBackend + Sync>(
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     async fn open(&mut self, log: &mut StepLog, app: &str) -> Result<Ended, Halt> {
-        let app = substitute(app, &self.vars);
+        // The launched application becomes `self.app`, and this step's note
+        // joins `history` — both reach Jev on a later step — so a fact here
+        // is rejected by validation and never expanded, same as everywhere
+        // else but an `enter` value.
+        let app = substitute_safe(app, &self.vars, &self.facts);
         self.app.clone_from(&app);
         let launched = app.clone();
         let reply = self
@@ -90,7 +94,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Opens `url` in the browser and moves the flow onto the page.
     async fn browse(&mut self, log: &mut StepLog, url: &str) -> Result<Ended, Halt> {
-        let url = substitute(url, &self.vars);
+        // Same reasoning as `open`: the address ends up in this step's note
+        // in `history`, so it goes through the fact-safe substitution too.
+        let url = substitute_safe(url, &self.vars, &self.facts);
         BROWSER.clone_into(&mut self.app);
         let address = url.clone();
         let reply = self
@@ -217,8 +223,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
-        let what = substitute(&choose.what, &self.vars);
-        let option = substitute(&choose.option, &self.vars);
+        let what = substitute_safe(&choose.what, &self.vars, &self.facts);
+        let option = substitute_safe(&choose.option, &self.vars, &self.facts);
         let purpose = format!("pick the option {option:?} in {what}");
         for attempt in 0..2 {
             let screen = self.look().await?;
@@ -255,7 +261,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
-        let what = substitute(&read.what, &self.vars);
+        let what = substitute_safe(&read.what, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
         let ordered = ask::ordered_nodes(&screen);
@@ -350,8 +356,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// and opens it. A criterion over prices, times, durations, or stops is
     /// ranked exactly; anything else is judged by Jev among the records.
     async fn pick(&mut self, log: &mut StepLog, pick: &PickStep) -> Result<Ended, Halt> {
-        let from = substitute(&pick.from, &self.vars);
-        let by = substitute(&pick.by, &self.vars);
+        let from = substitute_safe(&pick.from, &self.vars, &self.facts);
+        let by = substitute_safe(&pick.by, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
         let groups = result_groups(&screen);
@@ -419,7 +425,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Stores every item of the list showing as JSON rows of their text.
     async fn extract(&mut self, read: &ReadStep) -> Result<Ended, Halt> {
-        let what = substitute(&read.what, &self.vars);
+        let what = substitute_safe(&read.what, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
         let groups = result_groups(&screen);
@@ -549,7 +555,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         repeat: &RepeatStep,
         path: &str,
     ) -> Result<Ended, Halt> {
-        let condition_text = substitute(&repeat.condition, &self.vars);
+        let condition_text = substitute_safe(&repeat.condition, &self.vars, &self.facts);
         for round in 0..repeat.max.min(MAX_REPEAT) {
             if self.holds(log, &condition_text).await? >= DONE {
                 return Ok(Ended::new(
@@ -580,7 +586,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         branch: &IfStep,
         path: &str,
     ) -> Result<Ended, Halt> {
-        let condition_text = substitute(&branch.condition, &self.vars);
+        let condition_text = substitute_safe(&branch.condition, &self.vars, &self.facts);
         let held = self.holds(log, &condition_text).await?;
         let (steps, taken) = if held >= DONE {
             (&branch.then, "then")

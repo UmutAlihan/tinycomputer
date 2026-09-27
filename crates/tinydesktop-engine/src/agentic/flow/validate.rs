@@ -15,8 +15,15 @@ pub(super) const MAX_REPEAT: u32 = 20;
 /// Parses and checks a candidate flow.
 ///
 /// `known` are variable names the caller will supply at run time on top of the
-/// flow's own `vars`.
-pub(super) fn validate(flow: &Value, known: &BTreeSet<String>) -> (Option<Flow>, FlowValidation) {
+/// flow's own `vars`. `facts` are the names among them that are the task's
+/// facts: a `${name}` for one of those is rejected everywhere except an
+/// `enter` step's typed value, so a decision model never sees a fact's value,
+/// directly or in the state it is shown on a later step.
+pub(super) fn validate(
+    flow: &Value,
+    known: &BTreeSet<String>,
+    facts: &BTreeSet<String>,
+) -> (Option<Flow>, FlowValidation) {
     let parsed: Flow = match serde_json::from_value(flow.clone()) {
         Ok(parsed) => parsed,
         Err(error) => {
@@ -30,12 +37,16 @@ pub(super) fn validate(flow: &Value, known: &BTreeSet<String>) -> (Option<Flow>,
             );
         }
     };
-    let validation = check(&parsed, known);
+    let validation = check(&parsed, known, facts);
     (validation.valid.then_some(parsed), validation)
 }
 
 /// Checks an already-parsed flow.
-pub(crate) fn check(flow: &Flow, known: &BTreeSet<String>) -> FlowValidation {
+pub(crate) fn check(
+    flow: &Flow,
+    known: &BTreeSet<String>,
+    facts: &BTreeSet<String>,
+) -> FlowValidation {
     let mut errors = Vec::new();
     if flow.app.trim().is_empty() {
         errors.push("`app` must name the application the flow drives".to_owned());
@@ -46,7 +57,15 @@ pub(crate) fn check(flow: &Flow, known: &BTreeSet<String>) -> FlowValidation {
     let mut defined = known.clone();
     defined.extend(flow.vars.keys().cloned());
     let mut count = 0;
-    walk(&flow.steps, "", 0, &mut defined, &mut count, &mut errors);
+    walk(
+        &flow.steps,
+        "",
+        0,
+        &mut defined,
+        facts,
+        &mut count,
+        &mut errors,
+    );
     if count > MAX_STEPS {
         errors.push(format!(
             "the flow has {count} steps; at most {MAX_STEPS} are allowed"
@@ -72,6 +91,7 @@ fn walk(
     prefix: &str,
     depth: usize,
     defined: &mut BTreeSet<String>,
+    facts: &BTreeSet<String>,
     count: &mut usize,
     errors: &mut Vec<String>,
 ) {
@@ -84,84 +104,135 @@ fn walk(
     for (index, step) in steps.iter().enumerate() {
         *count += 1;
         let path = step_path(prefix, index);
-        let text = |errors: &mut Vec<String>, label: &str, value: &str| {
-            check_text(errors, &path, label, value, defined);
-        };
-        match step.action() {
-            FlowAction::Open(value) => text(errors, "the application", &value),
-            FlowAction::Browse(value) => text(errors, "the address", &value),
-            FlowAction::Do(value) => text(errors, "the intent", &value),
-            FlowAction::Verify(value) | FlowAction::WaitFor(value) => {
-                text(errors, "the condition", &value);
+        check_step(&step.action(), &path, depth, defined, facts, count, errors);
+    }
+}
+
+/// Checks one step's action, recursing into `walk` for `if` and
+/// `repeat_until` bodies.
+///
+/// `model` is every text a Jev evaluation may end up seeing — directly, in a
+/// question, or later in `recent_actions` once the step it drove is
+/// reported — so a fact there is rejected outright rather than silently
+/// expanded at run time. That includes `open` and `browse`: the launched
+/// application becomes `screen.app`, and both leave a note in the run's
+/// history, so even though the value they act on never reaches Jev as
+/// *input*, letting a fact through would still surface it as *state* on
+/// every later step. Only an `enter` step's typed value is delivered without
+/// ever being echoed back this way, so it alone may carry one.
+fn check_step(
+    action: &FlowAction,
+    path: &str,
+    depth: usize,
+    defined: &mut BTreeSet<String>,
+    facts: &BTreeSet<String>,
+    count: &mut usize,
+    errors: &mut Vec<String>,
+) {
+    let model = |errors: &mut Vec<String>, label: &str, value: &str| {
+        check_text(errors, path, label, value, defined);
+        forbid_facts(errors, path, value, facts);
+    };
+    match action {
+        FlowAction::Open(value) => model(errors, "the application", value),
+        FlowAction::Browse(value) => model(errors, "the address", value),
+        FlowAction::Do(value) => model(errors, "the intent", value),
+        FlowAction::Verify(value) | FlowAction::WaitFor(value) => {
+            model(errors, "the condition", value);
+        }
+        FlowAction::StopBefore(value) => model(errors, "the irreversible action", value),
+        FlowAction::Enter(slots) => {
+            if slots.0.is_empty() {
+                errors.push(format!("step {path}: `enter` needs at least one slot"));
             }
-            FlowAction::StopBefore(value) => text(errors, "the irreversible action", &value),
-            FlowAction::Enter(slots) => {
-                if slots.0.is_empty() {
-                    errors.push(format!("step {path}: `enter` needs at least one slot"));
-                }
-                for slot in &slots.0 {
-                    text(errors, "a slot name", &slot.slot);
-                    undefined(errors, &path, &slot.text, defined);
-                }
+            for slot in &slots.0 {
+                // The slot name labels a field for Jev; the text is typed
+                // into it locally and never shown, so only the name is
+                // checked against `facts`.
+                model(errors, "a slot name", &slot.slot);
+                undefined(errors, path, &slot.text, defined);
             }
-            FlowAction::Choose(choose) => {
-                text(errors, "`what`", &choose.what);
-                text(errors, "`option`", &choose.option);
+        }
+        FlowAction::Choose(choose) => {
+            model(errors, "`what`", &choose.what);
+            model(errors, "`option`", &choose.option);
+        }
+        FlowAction::Read(read) | FlowAction::Extract(read) => {
+            model(errors, "`what`", &read.what);
+            define(errors, path, read.into.clone(), defined);
+        }
+        FlowAction::Pick(pick) => {
+            model(errors, "`from`", &pick.from);
+            model(errors, "`by`", &pick.by);
+            if let Some(into) = pick.into.clone() {
+                define(errors, path, into, defined);
             }
-            FlowAction::Read(read) | FlowAction::Extract(read) => {
-                text(errors, "`what`", &read.what);
-                define(errors, &path, read.into, defined);
+        }
+        FlowAction::RepeatUntil(repeat) => {
+            model(errors, "the condition", &repeat.condition);
+            if !(1..=MAX_REPEAT).contains(&repeat.max) {
+                errors.push(format!(
+                    "step {path}: `max` must be between 1 and {MAX_REPEAT}"
+                ));
             }
-            FlowAction::Pick(pick) => {
-                text(errors, "`from`", &pick.from);
-                text(errors, "`by`", &pick.by);
-                if let Some(into) = pick.into {
-                    define(errors, &path, into, defined);
-                }
+            if repeat.steps.is_empty() {
+                errors.push(format!(
+                    "step {path}: `repeat_until` needs at least one step"
+                ));
             }
-            FlowAction::RepeatUntil(repeat) => {
-                text(errors, "the condition", &repeat.condition);
-                if !(1..=MAX_REPEAT).contains(&repeat.max) {
-                    errors.push(format!(
-                        "step {path}: `max` must be between 1 and {MAX_REPEAT}"
-                    ));
-                }
-                if repeat.steps.is_empty() {
-                    errors.push(format!(
-                        "step {path}: `repeat_until` needs at least one step"
-                    ));
-                }
-                // A round may never run, so what it defines does not survive it.
-                let mut inner = defined.clone();
-                walk(&repeat.steps, &path, depth + 1, &mut inner, count, errors);
+            // A round may never run, so what it defines does not survive it.
+            let mut inner = defined.clone();
+            walk(
+                &repeat.steps,
+                path,
+                depth + 1,
+                &mut inner,
+                facts,
+                count,
+                errors,
+            );
+        }
+        FlowAction::If(branch) => {
+            model(errors, "the condition", &branch.condition);
+            if branch.then.is_empty() && branch.otherwise.is_empty() {
+                errors.push(format!(
+                    "step {path}: `if` needs a `then` or an `else` branch"
+                ));
             }
-            FlowAction::If(branch) => {
-                text(errors, "the condition", &branch.condition);
-                if branch.then.is_empty() && branch.otherwise.is_empty() {
-                    errors.push(format!(
-                        "step {path}: `if` needs a `then` or an `else` branch"
-                    ));
-                }
-                // Only one branch runs, so neither one's variables survive it.
-                let mut then_defined = defined.clone();
-                walk(
-                    &branch.then,
-                    &path,
-                    depth + 1,
-                    &mut then_defined,
-                    count,
-                    errors,
-                );
-                let mut else_defined = defined.clone();
-                walk(
-                    &branch.otherwise,
-                    &path,
-                    depth + 1,
-                    &mut else_defined,
-                    count,
-                    errors,
-                );
-            }
+            // Only one branch runs, so neither one's variables survive it.
+            let mut then_defined = defined.clone();
+            walk(
+                &branch.then,
+                path,
+                depth + 1,
+                &mut then_defined,
+                facts,
+                count,
+                errors,
+            );
+            let mut else_defined = defined.clone();
+            walk(
+                &branch.otherwise,
+                path,
+                depth + 1,
+                &mut else_defined,
+                facts,
+                count,
+                errors,
+            );
+        }
+    }
+}
+
+/// Rejects every `${name}` in `value` that names a fact: that text is what
+/// Jev is asked to reason about, or state it is later shown, and a fact
+/// belongs only where an `enter` step types it.
+fn forbid_facts(errors: &mut Vec<String>, path: &str, value: &str, facts: &BTreeSet<String>) {
+    for name in references(value) {
+        if facts.contains(&name) {
+            errors.push(format!(
+                "step {path}: `${{{name}}}` is a fact; use an enter step to type it — Jev only sees slot names"
+            ));
         }
     }
 }
@@ -207,9 +278,13 @@ fn undefined(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeS
 
 /// The variables `flow` uses before anything defines them, in first-use
 /// order: what a caller must still supply beyond `known`.
-pub(crate) fn missing_inputs(flow: &Flow, known: &BTreeSet<String>) -> Vec<String> {
+pub(crate) fn missing_inputs(
+    flow: &Flow,
+    known: &BTreeSet<String>,
+    facts: &BTreeSet<String>,
+) -> Vec<String> {
     let mut missing = Vec::new();
-    for error in check(flow, known).errors {
+    for error in check(flow, known, facts).errors {
         let Some(start) = error.find("`${") else {
             continue;
         };
@@ -255,6 +330,31 @@ pub(super) fn references(text: &str) -> Vec<String> {
 /// value that itself looks like `${other}` must stand as literal text rather
 /// than expand into `other`'s value.
 pub(super) fn substitute(text: &str, vars: &BTreeMap<String, String>) -> String {
+    substitute_with(text, |name| vars.get(name).map(String::as_str))
+}
+
+/// [`substitute`], but a name in `facts` is treated as undefined and left as
+/// literal `${name}` rather than expanded.
+///
+/// This is the substitution every step goes through except an `enter` step's
+/// typed value: the runtime's backstop against a fact's value ever reaching
+/// Jev — directly, or later as state on a subsequent step — even if
+/// validation somehow let a `${fact}` reference through.
+pub(super) fn substitute_safe(
+    text: &str,
+    vars: &BTreeMap<String, String>,
+    facts: &BTreeSet<String>,
+) -> String {
+    substitute_with(text, |name| {
+        if facts.contains(name) {
+            None
+        } else {
+            vars.get(name).map(String::as_str)
+        }
+    })
+}
+
+fn substitute_with<'a>(text: &'a str, resolve: impl Fn(&str) -> Option<&'a str>) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(start) = rest.find("${") {
@@ -265,7 +365,7 @@ pub(super) fn substitute(text: &str, vars: &BTreeMap<String, String>) -> String 
             return out;
         };
         let name = &after[..end];
-        match vars.get(name) {
+        match resolve(name) {
             Some(value) => out.push_str(value),
             None => out.push_str(&rest[start..=start + 2 + end]),
         }
