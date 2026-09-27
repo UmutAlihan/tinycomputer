@@ -173,7 +173,8 @@ fn harness(name: &str, fake: Fake) -> Harness {
         Arc::new(browser),
         SessionOptions::default(),
         runtime.handle().clone(),
-    );
+    )
+    .without_waiting();
     Harness {
         fake,
         surface,

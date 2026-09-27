@@ -267,7 +267,7 @@ impl Surface for BrowserSurface {
                 },
             )
         };
-        if let (Some(reference), true) = (&reference, operation.is_pointer()) {
+        if let (Some(reference), true) = (&reference, is_pointer(operation)) {
             self.approach(reference);
         }
         match operation {
@@ -302,7 +302,9 @@ impl Surface for BrowserSurface {
             JevOperation::TypeText => reference
                 .as_deref()
                 .filter(|_| self.types(text.as_deref()))
-                .and_then(|reference| self.type_into(reference, text.as_deref().unwrap_or_default()))
+                .and_then(|reference| {
+                    self.type_into(reference, text.as_deref().unwrap_or_default())
+                })
                 .unwrap_or_else(|| {
                     targeted("type-text", |target, text| Action::Fill {
                         target,
@@ -460,19 +462,17 @@ impl BrowserSurface {
     }
 }
 
-/// Whether the operation is carried out with the pointer, so the virtual
+/// Whether `operation` is carried out with the pointer, so the virtual
 /// mouse approaches its target first.
-trait PointerOperation {
-    fn is_pointer(self) -> bool;
-}
-
-impl PointerOperation for JevOperation {
-    fn is_pointer(self) -> bool {
-        matches!(
-            self,
-            Self::Click | Self::Expand | Self::Collapse | Self::Check | Self::Uncheck
-        )
-    }
+fn is_pointer(operation: JevOperation) -> bool {
+    matches!(
+        operation,
+        JevOperation::Click
+            | JevOperation::Expand
+            | JevOperation::Collapse
+            | JevOperation::Check
+            | JevOperation::Uncheck
+    )
 }
 
 fn pause(ms: u64) -> Action {
