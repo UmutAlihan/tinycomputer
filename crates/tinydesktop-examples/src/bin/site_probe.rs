@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_bus::JevOperation;
-use tinydesktop_core::human_needed;
+use tinydesktop_core::{human_needed, screen_payment_evidence};
 use tinydesktop_core::surface::{Depth, Surface, result_groups};
 
 /// How many controls to print per page.
@@ -110,6 +110,7 @@ fn show(surface: &BrowserSurface) {
         .chain(screen.candidates.iter().filter_map(|node| node.name.clone()))
         .collect();
     println!("human needed: {:?}", human_needed(&texts));
+    println!("payment page: {:?}", screen_payment_evidence(&screen));
     for node in screen.candidates.iter().take(SHOWN) {
         println!(
             "  {} {} {:?} {}",
