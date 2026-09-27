@@ -61,6 +61,7 @@ impl WorkspaceRunner {
                     },
                     tokio::runtime::Handle::current(),
                 )
+                .with_motion(self.desktop.motion())
             });
             (Workspace::new(desktop, browser.clone()), browser)
         };
