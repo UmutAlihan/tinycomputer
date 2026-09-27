@@ -38,13 +38,25 @@ const NETWORK_IDLE_MS: u64 = 2_000;
 /// element that was meant: the card around the covering element names it.
 /// Many result lists lay a transparent click layer over each card, so the
 /// card's own controls are always "covered" — by the card itself.
+///
+/// A card-level substring match alone is not enough: a short target name
+/// such as "Select" matches almost any card, so `elementsFromPoint` — the
+/// full stack of every element stacked at the click point, topmost first —
+/// is used instead of the single topmost element, and the target's name is
+/// required to *exactly* match one of its own attributes (not merely appear
+/// somewhere inside the card's aggregated text), so a duplicate label
+/// elsewhere in the card can no longer stand in for the actual target.
 const SAME_CARD_JS: &str = r#"((x, y, name) => {
-  const top = document.elementFromPoint(x, y);
+  if (!name) return false;
+  const stack = document.elementsFromPoint(x, y);
+  const top = stack[0];
   const card = top && top.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
-  if (!card || !name) return false;
-  const named = (element) => (element.getAttribute('aria-label') || '').includes(name);
-  return named(card) || (card.innerText || '').includes(name)
-    || Array.from(card.querySelectorAll('[aria-label]')).some(named);
+  if (!top || !card) return false;
+  const shown = (element) => (element.getAttribute('aria-label') || element.innerText || '').trim();
+  // The exact target must itself be part of the stack of elements at this
+  // point (so `top` genuinely overlaps it), and that element must sit
+  // inside the same card `top` does.
+  return stack.some((element) => shown(element) === name && card.contains(element));
 })"#;
 
 /// How much of a target's name identifies it inside its card.
