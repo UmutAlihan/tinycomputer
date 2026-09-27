@@ -111,6 +111,18 @@ struct State {
     reads: BTreeMap<String, String>,
     finished: usize,
     resume: Option<Resume>,
+    /// What every run of this task has spent so far, so an approval or a
+    /// human intervention that splits a task into several runs still cannot
+    /// exceed its declared budget by starting each run with a fresh one.
+    spent: Spent,
+}
+
+/// A task's cumulative spend against its [`TaskBudget`], across every run.
+#[derive(Debug, Default, Clone, Copy)]
+struct Spent {
+    actions: u32,
+    model_calls: u32,
+    elapsed_ms: u64,
 }
 
 /// One flow run in a task's sequence.
