@@ -79,9 +79,7 @@ pub(super) async fn run_goal_with<B: AgentBackend>(
             Ok(outcome) => outcome,
             Err(error) => return *error,
         };
-        for evaluation in &outcome.evaluations {
-            merge_metrics(&mut run.metrics, evaluation);
-        }
+        run.charge(&outcome.evaluations);
         let decision = outcome.decision;
         let target_label = outcome
             .selected
@@ -114,28 +112,17 @@ pub(super) async fn run_goal_with<B: AgentBackend>(
         } else if decision.operation == JevOperation::Widen {
             root = None;
         }
-        let Ok(after) = observe_async(
+        let observed = observe_async(
             backend.clone(),
             request.app.clone(),
             root.clone(),
             run.depth,
         )
-        .await
-        else {
-            run.record_failure(&decision, "the screen could not be read after acting");
-            return run.finish(JevStopReason::ActionFailed, Some(decision));
-        };
-        let navigated = matches!(
-            decision.operation,
-            JevOperation::Drill | JevOperation::Widen
-        );
-        let changed = navigated || fingerprint(&after) != fingerprint(&before);
-        let note = change_note(&before, &after, changed);
-        run.record(&decision, changed, &target_label, note);
-        if run.unchanged >= STALL_TURNS {
-            return run.finish(JevStopReason::Stalled, None);
+        .await;
+        match run.settle(&before, observed, decision, &target_label) {
+            Ok(after) => current = Some(after),
+            Err(stopped) => return stopped,
         }
-        current = Some(after);
     }
 }
 
@@ -173,6 +160,38 @@ impl GoalRun {
             strikes: BTreeMap::new(),
             banned: BTreeSet::new(),
         }
+    }
+
+    fn charge(&mut self, evaluations: &[tinyjevclient::EvaluationResult]) {
+        for evaluation in evaluations {
+            merge_metrics(&mut self.metrics, evaluation);
+        }
+    }
+
+    /// Records a completed action against the screen it produced, or ends
+    /// the run when that screen is unreadable or the run has stalled.
+    fn settle(
+        &mut self,
+        before: &Screen,
+        observed: Result<Screen, Box<DesktopResponse>>,
+        decision: JevDecision,
+        target_label: &str,
+    ) -> Result<Screen, DesktopResponse> {
+        let Ok(after) = observed else {
+            self.record_failure(&decision, "the screen could not be read after acting");
+            return Err(self.finish_ref(JevStopReason::ActionFailed, Some(decision)));
+        };
+        let navigated = matches!(
+            decision.operation,
+            JevOperation::Drill | JevOperation::Widen
+        );
+        let changed = navigated || fingerprint(&after) != fingerprint(before);
+        let note = change_note(before, &after, changed);
+        self.record(&decision, changed, target_label, note);
+        if self.unchanged >= STALL_TURNS {
+            return Err(self.finish_ref(JevStopReason::Stalled, None));
+        }
+        Ok(after)
     }
 
     fn budget_exhausted(&self) -> Option<JevStopReason> {
@@ -275,13 +294,17 @@ impl GoalRun {
     }
 
     fn finish(self, stop: JevStopReason, pending: Option<JevDecision>) -> DesktopResponse {
+        self.finish_ref(stop, pending)
+    }
+
+    fn finish_ref(&self, stop: JevStopReason, pending: Option<JevDecision>) -> DesktopResponse {
         response(
             "run-goal",
             &JevRunResult {
                 stop,
-                turns: self.turns,
+                turns: self.turns.clone(),
                 pending,
-                metrics: self.metrics,
+                metrics: self.metrics.clone(),
             },
         )
     }
