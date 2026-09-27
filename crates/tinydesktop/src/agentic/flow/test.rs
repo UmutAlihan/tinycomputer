@@ -348,16 +348,31 @@ impl Oracle {
     ) -> Answer {
         let twin = match id {
             "not_done" => Some("done"),
-            "negated" => Some("holds"),
+            "negated" | "coverage" => Some("holds"),
             _ => None,
         };
         if let Some(twin) = twin
             && let Some(positive) = request.questions.get(twin)
             && let Answer::Noul(answer) = self.answer(request, twin, positive, sim)
         {
-            return noul(1.0 - answer.noul);
+            return if id == "coverage" {
+                level(if answer.noul >= 0.5 { 4 } else { 0 })
+            } else {
+                noul(1.0 - answer.noul)
+            };
         }
-        (self.hook)(id, question, sim).unwrap_or_else(|| default_answer(id, question, sim))
+        if let Some(hooked) = (self.hook)(id, question, sim) {
+            return hooked;
+        }
+        // Unhooked progress follows the completion answer, so a test that
+        // scripts only "done" gets a consistent pair.
+        if id == "progress"
+            && let Some(done) = request.questions.get("done")
+            && let Answer::Noul(answer) = self.answer(request, "done", done, sim)
+        {
+            return level(if answer.noul >= 0.5 { 4 } else { 2 });
+        }
+        default_answer(id, question, sim)
     }
 }
 

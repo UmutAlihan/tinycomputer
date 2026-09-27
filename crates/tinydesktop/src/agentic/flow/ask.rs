@@ -254,6 +254,46 @@ pub(super) fn progress(intent: &str) -> Question {
     })
 }
 
+/// The five coverage levels, lowest first.
+const COVERAGE_LEVELS: [&str; 5] = [
+    "None of the condition holds.",
+    "A small part of the condition holds.",
+    "About half of the condition holds.",
+    "Most of the condition holds.",
+    "All of the condition holds.",
+];
+
+/// "How much of `condition` holds?" — asked beside [`condition`] because a
+/// condition listing several things ("the recipient, the subject, and the
+/// body") is hedged as a yes/no but answered crisply as coverage.
+pub(super) fn coverage(condition: &str) -> Question {
+    Question::Score(Score {
+        instructions: json!({
+            "dimension": "How much of this condition is true on the current screen",
+            "condition": condition,
+        }),
+        criteria: COVERAGE_LEVELS.iter().map(|level| json!(level)).collect(),
+    })
+}
+
+/// The probability a Score answer puts on its highest level: "fully
+/// accomplished", "all of it holds".
+pub(super) fn top_level(answers: &BTreeMap<String, Answer>, id: &str) -> Option<f64> {
+    let Some(Answer::Score(answer)) = answers.get(id) else {
+        return None;
+    };
+    let top = answer.probabilities.len().checked_sub(1)?;
+    answer.probabilities.get(&top.to_string()).copied()
+}
+
+/// Combines a calibrated yes/no with a scale's top-level probability.
+pub(super) fn combined(yes_no: Option<f64>, top: Option<f64>) -> Option<f64> {
+    match (yes_no, top) {
+        (Some(yes_no), Some(top)) => Some(f64::midpoint(yes_no, top)),
+        (one, other) => one.or(other),
+    }
+}
+
 /// "Is something unrelated blocking the step?"
 pub(super) fn obstacle(intent: &str) -> Question {
     Question::Noul(Noul {

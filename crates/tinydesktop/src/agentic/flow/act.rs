@@ -554,7 +554,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .map(|(name, combo, _)| (*combo, *name))
             });
         Ok(Judgement {
-            done: ask::calibrated(&answers, "done", "not_done"),
+            done: ask::calibrated(&answers, "done", "not_done").map(|done| {
+                ask::combined(Some(done), ask::top_level(&answers, "progress")).unwrap_or(done)
+            }),
             progress: level(&answers, "progress"),
             blocked: probability(&answers, "blocked"),
             next,

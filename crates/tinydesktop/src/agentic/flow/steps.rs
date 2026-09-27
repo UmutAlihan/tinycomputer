@@ -88,11 +88,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     self.state(&screen, condition_text),
                     Questions::default()
                         .with("holds", condition(condition_text))
-                        .with("negated", ask::negated(condition_text)),
+                        .with("negated", ask::negated(condition_text))
+                        .with("coverage", ask::coverage(condition_text)),
                 ),
             )
             .await?;
-        let held = ask::calibrated(&answers, "holds", "negated").unwrap_or_default();
+        let held = ask::combined(
+            ask::calibrated(&answers, "holds", "negated"),
+            ask::top_level(&answers, "coverage"),
+        )
+        .unwrap_or_default();
         log.confidence = Some(held);
         Ok(held)
     }
