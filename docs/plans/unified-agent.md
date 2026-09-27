@@ -74,7 +74,9 @@ contract commands and the per-file coverage gate green.
       when it ends (not at a payment checkpoint, which the person finishes).
 - [x] A static travel fixture (`crates/tinydesktop-examples/fixtures/travel`)
       for end-to-end runs in the Docker lab.
-- [ ] `extract` and `in` steps; `tinydesktop-skills`.
+- [x] `extract {what, into}`: every card of a list as JSON rows, surfaced as
+      structured records in the task report.
+- [ ] `in` step; `tinydesktop-skills`.
 
 ## Phase 6 — planner
 
