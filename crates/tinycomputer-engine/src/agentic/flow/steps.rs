@@ -660,15 +660,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 label(&primary)
             )));
         }
-        let clicked = primary.clone();
         let reply = self
-            .act(log, "click", Some(&primary), move |backend| {
-                backend.execute(JevOperation::Click, Some(clicked), None)
-            })
+            .press_uncovering(log, "click", &primary, JevOperation::Click)
             .await?;
         if !reply.ok {
+            let why = reply.error.as_ref().map_or_else(
+                || "no reason given".to_owned(),
+                |error| error.message.clone(),
+            );
             return Err(Halt::Failed(format!(
-                "could not open the picked item: {summary}"
+                "could not open the picked item ({why}): {summary}"
             )));
         }
         self.history

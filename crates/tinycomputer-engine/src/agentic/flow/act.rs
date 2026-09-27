@@ -617,37 +617,51 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 label(&target)
             )));
         }
-        let chosen_target = target.clone();
-        let mut reply = self
-            .act(log, verb, Some(&target), move |backend| {
-                backend.execute(jev_operation, Some(chosen_target), None)
-            })
+        let reply = self
+            .press_uncovering(log, verb, &target, jev_operation)
             .await?;
-        if covered(&reply) {
-            // A drawer, menu, or popover lies over the target; Escape closes
-            // one without doing anything, so press it and try once more.
-            let app = self.app.clone();
-            self.act(log, "press escape (uncover)", None, move |backend| {
-                backend.press(&app, "escape")
-            })
-            .await?;
-            self.history.push(format!(
-                "{} was covered by something; pressed escape to close it",
-                label(&target)
-            ));
-            let retried = target.clone();
-            reply = self
-                .act(log, verb, Some(&target), move |backend| {
-                    backend.execute(jev_operation, Some(retried), None)
-                })
-                .await?;
-        }
         self.history
             .push(format!("{verb} {} ok={}", label(&target), reply.ok));
         if reply.ok {
             learn(&mut self.learned, remember(&self.app, intent, &target));
         }
         Ok(Some(target))
+    }
+
+    /// Performs `operation` on an already-vetted `target`. When the click
+    /// is refused because something covers it — a drawer, a menu, or a
+    /// result card's own click layer — presses Escape once and tries the
+    /// same target again. Escape never chooses a new element.
+    pub(super) async fn press_uncovering(
+        &mut self,
+        log: &mut StepLog,
+        verb: &str,
+        target: &Candidate,
+        operation: JevOperation,
+    ) -> Result<tinycomputer_bus::DesktopResponse, Halt> {
+        let chosen = target.clone();
+        let reply = self
+            .act(log, verb, Some(target), move |backend| {
+                backend.execute(operation, Some(chosen), None)
+            })
+            .await?;
+        if !covered(&reply) {
+            return Ok(reply);
+        }
+        let app = self.app.clone();
+        self.act(log, "press escape (uncover)", None, move |backend| {
+            backend.press(&app, "escape")
+        })
+        .await?;
+        self.history.push(format!(
+            "{} was covered by something; pressed escape to close it",
+            label(target)
+        ));
+        let retried = target.clone();
+        self.act(log, verb, Some(target), move |backend| {
+            backend.execute(operation, Some(retried), None)
+        })
+        .await
     }
 
     /// Dismisses whatever is blocking the step, choosing only safe controls.
