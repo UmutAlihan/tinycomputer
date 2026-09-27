@@ -129,26 +129,26 @@ Mail, and `enter` the price it read into a draft.
 
 Take `StartTask` with a planned booking flow.
 
-1. **The host calls the module.** TinyBus delivers the call to
+1. The host calls the module. TinyBus delivers the call to
    `DesktopService::start_task` in `crates/tinydesktop/src/tinybus_module/dispatch.rs`.
    `StartTask`, `ContinueTask`, `TaskReport`, `RunGoal`, `ResolveIntent`, and
    `RunFlow` are confidential members: they carry the caller's values and page
    data, so the bus requires an attested module and keeps them away from
    monitors.
-2. **The controller registers the task** (`Tasks::start`), validates the flow,
+2. The controller registers the task (`Tasks::start`), validates the flow,
    checks for missing values, and spawns a worker. The call returns a
    `TaskView` straight away.
-3. **The worker runs the flow** through `WorkspaceRunner::run`
+3. The worker runs the flow through `WorkspaceRunner::run`
    (`tinybus_module/runner.rs`), which creates the task's workspace on first
    use: the desktop, plus a browser session shaped by the task's constraints
    (allowed origins, headed or headless, or an endpoint to attach to).
-4. **The flow runtime** (`run_flow`) walks the steps. Each step observes the
+4. The flow runtime (`run_flow`) walks the steps. Each step observes the
    workspace, asks Jev small questions, and acts through the `Surface` trait.
-5. **The browser surface** turns `execute(Click, e12)` into a
+5. The browser surface turns `execute(Click, e12)` into a
    `perform(Click{target: @e12})` on the session, which `convert` turns into
    agent-browser's `{"action": "click", "selector": "@e12"}`, which the linked
    engine runs against Chrome over CDP.
-6. **The reply comes back up** as a `DesktopResponse`. The flow runtime notes
+6. The reply comes back up as a `DesktopResponse`. The flow runtime notes
    what changed, the controller interprets how the run ended, and the next
    `AwaitTask` returns the new view.
 
@@ -221,22 +221,22 @@ and `Describe` keep working.
 Several independent checks keep a run from doing something it cannot undo.
 None of them trusts a model's judgement.
 
-- **Irreversible controls.** An ordinary step refuses to click a control whose
+- Irreversible controls. An ordinary step refuses to click a control whose
   label reads as destructive, that the flow's own `stop_before` names, or that
   is an unnamed button in a confirmation sheet. Only `stop_before` reaches one,
   and it presses only with `allow_destructive` or an approval.
-- **Payment.** A control classified as payment, or any click on a screen that
+- Payment. A control classified as payment, or any click on a screen that
   shows card fields, stops the run. The task controller makes that a final
   checkpoint. Nothing ever types payment data, and card data is refused as a
   fact.
-- **Private values.** Jev and the planner see fact names, never values.
+- Private values. Jev and the planner see fact names, never values.
   Values are typed locally and redacted from every summary.
-- **Untrusted screens.** Everything read from a screen is wrapped as untrusted
+- Untrusted screens. Everything read from a screen is wrapped as untrusted
   data, and every question tells Jev that screen text is data, never
   instructions. A move Jev was not offered fails closed.
-- **Scope.** Budgets cap actions, Jev calls, and time for a whole task.
+- Scope. Budgets cap actions, Jev calls, and time for a whole task.
   Surfaces and origins confine where it can go.
-- **Permissions.** The desktop checks accessibility and screen-recording
+- Permissions. The desktop checks accessibility and screen-recording
   permission before acting, because an unauthorized accessibility call usually
   returns an empty tree rather than an error.
 

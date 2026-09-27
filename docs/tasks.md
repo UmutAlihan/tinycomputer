@@ -169,18 +169,18 @@ Facts are the caller's own details: names, email, phone, date of birth. The
 controller keeps them in a `Facts` store (`tinydesktop-core/src/facts/`) and
 follows three rules:
 
-1. **Values stay local.** Jev and the planner see fact names only. A value is
+1. Values stay local. Jev and the planner see fact names only. A value is
    looked up at the moment it is typed into a field. Summaries, step intents
    in the view, and the final answer go through `Facts::redact`, which
    replaces each value with `‹name›`.
-2. **Facts are only typed.** A flow may use `${fact}` only as an `enter` step's
+2. Facts are only typed. A flow may use `${fact}` only as an `enter` step's
    value. In any other position (step text, a condition, a slot's name, an
    `open` app, a `browse` address) validation rejects the flow before anything
    runs. `open` and `browse` count because the app or address stays visible to
    every later question. When `ContinueTask` supplies a new value, the flow is
    checked again, since a name that looked undefined at the start may now be a
    fact used somewhere it must not be.
-3. **Card data is refused.** A fact whose name labels card data (card number,
+3. Card data is refused. A fact whose name labels card data (card number,
    credit or debit card, CVV, CVC, security code, card expiry, card PIN, UPI
    PIN), or any value of 13 to 19 digits that passes the Luhn check, is refused
    with `CARD_DATA_REFUSED`, both at `StartTask` and at `ContinueTask`. No task can be handed a card to
