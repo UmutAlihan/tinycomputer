@@ -79,6 +79,7 @@ fn walk(
     prefix: &str,
     depth: usize,
     defined: &mut BTreeSet<String>,
+    facts: &BTreeSet<String>,
     count: &mut usize,
     errors: &mut Vec<String>,
 ) {
@@ -91,43 +92,54 @@ fn walk(
     for (index, step) in steps.iter().enumerate() {
         *count += 1;
         let path = step_path(prefix, index);
-        let text = |errors: &mut Vec<String>, label: &str, value: &str| {
+        // `local` allows a fact's value: it is only ever used to launch an
+        // application or navigate the browser, never shown to Jev. `model`
+        // is everything Jev is asked to reason about, so a fact there is
+        // rejected outright rather than silently expanded at run time.
+        let local = |errors: &mut Vec<String>, label: &str, value: &str| {
             check_text(errors, &path, label, value, defined);
         };
+        let model = |errors: &mut Vec<String>, label: &str, value: &str| {
+            check_text(errors, &path, label, value, defined);
+            forbid_facts(errors, &path, value, facts);
+        };
         match step.action() {
-            FlowAction::Open(value) => text(errors, "the application", &value),
-            FlowAction::Browse(value) => text(errors, "the address", &value),
-            FlowAction::Do(value) => text(errors, "the intent", &value),
+            FlowAction::Open(value) => local(errors, "the application", &value),
+            FlowAction::Browse(value) => local(errors, "the address", &value),
+            FlowAction::Do(value) => model(errors, "the intent", &value),
             FlowAction::Verify(value) | FlowAction::WaitFor(value) => {
-                text(errors, "the condition", &value);
+                model(errors, "the condition", &value);
             }
-            FlowAction::StopBefore(value) => text(errors, "the irreversible action", &value),
+            FlowAction::StopBefore(value) => model(errors, "the irreversible action", &value),
             FlowAction::Enter(slots) => {
                 if slots.0.is_empty() {
                     errors.push(format!("step {path}: `enter` needs at least one slot"));
                 }
                 for slot in &slots.0 {
-                    text(errors, "a slot name", &slot.slot);
+                    // The slot name labels a field for Jev; the text is typed
+                    // into it locally and never shown, so only the name is
+                    // checked against `facts`.
+                    model(errors, "a slot name", &slot.slot);
                     undefined(errors, &path, &slot.text, defined);
                 }
             }
             FlowAction::Choose(choose) => {
-                text(errors, "`what`", &choose.what);
-                text(errors, "`option`", &choose.option);
+                model(errors, "`what`", &choose.what);
+                model(errors, "`option`", &choose.option);
             }
             FlowAction::Read(read) | FlowAction::Extract(read) => {
-                text(errors, "`what`", &read.what);
+                model(errors, "`what`", &read.what);
                 define(errors, &path, read.into, defined);
             }
             FlowAction::Pick(pick) => {
-                text(errors, "`from`", &pick.from);
-                text(errors, "`by`", &pick.by);
+                model(errors, "`from`", &pick.from);
+                model(errors, "`by`", &pick.by);
                 if let Some(into) = pick.into {
                     define(errors, &path, into, defined);
                 }
             }
             FlowAction::RepeatUntil(repeat) => {
-                text(errors, "the condition", &repeat.condition);
+                model(errors, "the condition", &repeat.condition);
                 if !(1..=MAX_REPEAT).contains(&repeat.max) {
                     errors.push(format!(
                         "step {path}: `max` must be between 1 and {MAX_REPEAT}"
@@ -140,10 +152,18 @@ fn walk(
                 }
                 // A round may never run, so what it defines does not survive it.
                 let mut inner = defined.clone();
-                walk(&repeat.steps, &path, depth + 1, &mut inner, count, errors);
+                walk(
+                    &repeat.steps,
+                    &path,
+                    depth + 1,
+                    &mut inner,
+                    facts,
+                    count,
+                    errors,
+                );
             }
             FlowAction::If(branch) => {
-                text(errors, "the condition", &branch.condition);
+                model(errors, "the condition", &branch.condition);
                 if branch.then.is_empty() && branch.otherwise.is_empty() {
                     errors.push(format!(
                         "step {path}: `if` needs a `then` or an `else` branch"
@@ -156,6 +176,7 @@ fn walk(
                     &path,
                     depth + 1,
                     &mut then_defined,
+                    facts,
                     count,
                     errors,
                 );
@@ -165,10 +186,24 @@ fn walk(
                     &path,
                     depth + 1,
                     &mut else_defined,
+                    facts,
                     count,
                     errors,
                 );
             }
+        }
+    }
+}
+
+/// Rejects every `${name}` in `value` that names a fact: that text is what
+/// Jev is asked to reason about, and a fact belongs only where a step types
+/// it locally or uses it to reach an address or an application.
+fn forbid_facts(errors: &mut Vec<String>, path: &str, value: &str, facts: &BTreeSet<String>) {
+    for name in references(value) {
+        if facts.contains(&name) {
+            errors.push(format!(
+                "step {path}: `${{{name}}}` is a fact; use an enter step to type it — Jev only sees slot names"
+            ));
         }
     }
 }
