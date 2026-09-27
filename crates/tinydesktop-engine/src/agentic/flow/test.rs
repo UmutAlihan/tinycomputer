@@ -1491,9 +1491,7 @@ async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
                 },
             )),
             _ if !matches!(question, Question::Choice(_)) => None,
-            _ if purpose_of(question).contains("search box") => {
-                Some(pick(question, "Mumbai", 0.9))
-            }
+            _ if purpose_of(question).contains("search box") => Some(pick(question, "Mumbai", 0.9)),
             _ if purpose_of(question).contains("open the destination") => {
                 Some(pick(question, "Going to?", 0.9))
             }
