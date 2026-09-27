@@ -1667,6 +1667,15 @@ fn a_rich_text_area_reports_the_text_inside_it_as_its_contents() {
             .get("field_contents")
             .is_none()
     );
+    // The body's text must never appear in `visible_text`, which every
+    // request shares regardless of `include_values`; only the gated
+    // `field_contents` above may carry it.
+    for include_values in [false, true] {
+        let visible_text =
+            ask::state(&screen, "x", &[], include_values)["visible_text"].to_string();
+        assert!(!visible_text.contains("Hi Sam,"));
+        assert!(!visible_text.contains("sam@example.com"));
+    }
 }
 
 #[test]
