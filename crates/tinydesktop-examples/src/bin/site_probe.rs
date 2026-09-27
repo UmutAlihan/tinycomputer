@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_bus::JevOperation;
+use tinydesktop_bus::browser::SnapshotRequest;
 use tinydesktop_core::surface::{Depth, Surface, result_groups};
 use tinydesktop_core::{human_needed, screen_payment_evidence};
 
@@ -24,6 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("usage: site_probe <url>...".into());
     }
     let runtime = tokio::runtime::Runtime::new()?;
+    let browser = Arc::new(Browser::new(Arc::new(AgentBrowser)));
     let mut surface: Option<BrowserSurface> = None;
     for argument in &urls {
         if let Some(name) = argument.strip_prefix("click=") {
@@ -38,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             previous.close();
         }
         let fresh = BrowserSurface::new(
-            Arc::new(Browser::new(Arc::new(AgentBrowser))),
+            browser.clone(),
             SessionOptions {
                 executable: std::env::var("TINYDESKTOP_BROWSER_EXECUTABLE").ok(),
                 user_agent: std::env::var("PROBE_USER_AGENT").ok(),
@@ -59,6 +61,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         surface = Some(fresh);
     }
     if let Some(surface) = surface {
+        if let (Ok(script), Some(session)) = (std::env::var("PROBE_JS"), surface.session()) {
+            let value = runtime.block_on(browser.command(
+                &session,
+                serde_json::json!({"action": "evaluate", "script": script}),
+            ));
+            println!("=== PROBE_JS -> {value:?}");
+        }
+        if let (Ok(pattern), Some(session)) = (std::env::var("PROBE_GREP"), surface.session()) {
+            let snapshot = runtime.block_on(browser.snapshot(&session, SnapshotRequest::default()));
+            for line in snapshot.map(|snapshot| snapshot.tree).unwrap_or_default().lines() {
+                if line.to_lowercase().contains(&pattern.to_lowercase()) {
+                    println!("  raw: {line}");
+                }
+            }
+        }
         surface.close();
     }
     drop(runtime);
