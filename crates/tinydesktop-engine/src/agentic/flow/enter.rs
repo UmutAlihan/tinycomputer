@@ -224,7 +224,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 } else {
                     format!("show the fields for: {}", names(slots, pending))
                 };
-                self.accomplish(log, &reveal, REVEAL_TURNS).await?;
+                // A field that cannot be revealed is looked for another way
+                // below, or found not to be asked for; it is not a failure.
+                match self.accomplish(log, &reveal, REVEAL_TURNS).await {
+                    Err(Halt::Failed(note)) => self
+                        .history
+                        .push(format!("could not reveal the fields ({note})")),
+                    other => {
+                        other?;
+                    }
+                }
                 continue;
             }
             for assignment in assignments {
