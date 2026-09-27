@@ -51,6 +51,32 @@ fn a_written_out_currency_reads_the_amount_before_it() {
 }
 
 #[test]
+fn a_written_out_currency_reads_in_the_singular_too() {
+    assert_eq!(price("1 euro"), (1.0, Some("EUR")));
+    assert_eq!(price("1 dollar"), (1.0, Some("USD")));
+    assert_eq!(price("1 US dollar"), (1.0, Some("USD")));
+    assert_eq!(price("1 pound"), (1.0, Some("GBP")));
+    assert_eq!(price("20 pounds"), (20.0, Some("GBP")));
+    assert_eq!(price("1 British pound"), (1.0, Some("GBP")));
+    assert_eq!(price("1 pound sterling"), (1.0, Some("GBP")));
+    assert_eq!(price("1 yen"), (1.0, Some("JPY")));
+    assert_eq!(price("1 dirham"), (1.0, Some("AED")));
+    assert_eq!(price("1 Indian rupee"), (1.0, Some("INR")));
+    assert_eq!(price("1 rupee"), (1.0, Some("INR")));
+}
+
+#[test]
+fn of_several_written_out_prices_the_first_in_the_text_wins() {
+    assert_eq!(price("100 euros, then 90 dollars"), (100.0, Some("EUR")));
+    assert_eq!(price("90 dollars, then 100 euros"), (90.0, Some("USD")));
+    assert_eq!(
+        price("dirhams first, then 50 rupees and 40 dirhams"),
+        (50.0, Some("INR")),
+        "a name with no amount before it is passed over"
+    );
+}
+
+#[test]
 fn cards_priced_in_words_rank_by_price() {
     let cards = [
         "From 8588 Indian rupees. Nonstop flight with Air India.",

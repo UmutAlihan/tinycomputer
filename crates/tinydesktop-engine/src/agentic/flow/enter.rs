@@ -254,15 +254,22 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
         }
         // A value with no field to type into is picked instead, as a date
-        // from a calendar or a city from a list of suggestions.
+        // from a calendar or a city from a list of suggestions. Only a "the
+        // value was not found" failure is safe to shrug off and move to the
+        // next slot; a budget stop or a backend error means acting further
+        // is unsafe or pointless, and must end the step instead of being
+        // read as "this slot has no picker".
         for index in pending.clone() {
             let slot = &slots[index];
-            if self
+            match self
                 .pick_option(log, &slot.slot, &slot.text, private[index], false)
                 .await
-                .is_ok()
             {
-                pending.remove(&index);
+                Ok(_) => {
+                    pending.remove(&index);
+                }
+                Err(Halt::Failed(_)) => {}
+                Err(halt) => return Err(halt),
             }
         }
         Ok(())

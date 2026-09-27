@@ -307,6 +307,18 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
         }
         let screen = self.look().await?;
+        // A dismissal on the very last permitted turn leaves no other
+        // evidence once the loop stops: the overlay is gone, but the
+        // completion judge sees only the screen after the fact. Apply the
+        // same check here that runs at the top of every earlier turn, or a
+        // dismissal that succeeded on the last turn is reported as failed.
+        if let Some(ended) = state
+            .last
+            .as_ref()
+            .and_then(|last| closed_the_overlay(last, &screen, intent))
+        {
+            return Ok(ended);
+        }
         let judged = self.judge(log, &screen, intent, None).await?;
         if judged.done.unwrap_or_default() >= DONE {
             return Ok(Ended::new(

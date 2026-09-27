@@ -285,6 +285,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     })
                     .collect(),
             );
+            let pool = within(pool, what);
             // Matches that all name one option leave nothing to judge; a
             // private option is never judged, since Jev is not told it. An
             // option no control names is a description ("the lowest fare"),
@@ -314,15 +315,29 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 log.confidence = Some(grounded.confidence);
                 let target = grounded.candidate;
                 let clicked = target.clone();
+                // A private option was matched because it already shows the
+                // value being entered; logging its label would write that
+                // value into history and the step's action record, exactly
+                // what picking privately is meant to avoid. The redacted
+                // copy still carries the real ref and role, so the click
+                // itself is unaffected.
+                let logged = if private {
+                    redacted(&target)
+                } else {
+                    target.clone()
+                };
                 let reply = self
-                    .act(log, "click", Some(&target), move |backend| {
+                    .act(log, "click", Some(&logged), move |backend| {
                         backend.execute(JevOperation::Click, Some(clicked), None)
                     })
                     .await?;
                 if reply.ok {
                     learn(&mut self.learned, remember(&self.app, &purpose, &target));
-                    self.history
-                        .push(format!("chose an option with {}", label(&target)));
+                    self.history.push(if private {
+                        format!("chose the value shown in {what}")
+                    } else {
+                        format!("chose an option with {}", label(&target))
+                    });
                     self.remember_choice(&if private {
                         format!("chose the value in {what}")
                     } else {
@@ -421,10 +436,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     async fn page_to(&mut self, log: &mut StepLog, date: &str) -> Result<(), Halt> {
         for _ in 0..MAX_MONTHS {
             let screen = self.look().await?;
-            if screen
-                .candidates
+            // Restricted to the same clickable, non-aggregating pool
+            // `pick_option` selects from: a non-clickable calendar container
+            // whose label lists every date in the month, or an unrelated
+            // result elsewhere on the page, both "mention" the date without
+            // being an actionable day, and stopping on either leaves the
+            // step with nothing to press.
+            if clickable(&screen.candidates)
                 .iter()
-                .any(|candidate| mentions(candidate, date))
+                .any(|candidate| mentions(candidate, date) && !lists_more_than(candidate, date))
             {
                 return Ok(());
             }
@@ -855,16 +875,52 @@ const MONTHS: &[&str] = &[
     "december",
 ];
 
-/// Whether `option` names a calendar day: a month name and a day number.
+/// Whether `option` names a calendar day: a month name and a day number that
+/// is a real day of that month (a year, when given, decides February's 28th
+/// against its 29th). `February 31` or `April 31` names no such day, and is
+/// read as ordinary autocomplete text instead of taking the calendar path.
 pub(super) fn looks_like_date(option: &str) -> bool {
     let lower = option.to_lowercase();
     let words = lower
         .split(|character: char| !character.is_alphanumeric())
         .collect::<Vec<_>>();
-    words.iter().any(|word| MONTHS.contains(word))
-        && words
-            .iter()
-            .any(|word| word.parse::<u8>().is_ok_and(|day| (1..=31).contains(&day)))
+    let Some(month) = MONTHS.iter().position(|month| words.contains(month)) else {
+        return false;
+    };
+    let Some(day) = words
+        .iter()
+        .find_map(|word| word.parse::<u8>().ok().filter(|day| (1..=31).contains(day)))
+    else {
+        return false;
+    };
+    let year = words.iter().find_map(|word| {
+        word.parse::<u16>()
+            .ok()
+            .filter(|year| (1900..=2100).contains(year))
+    });
+    day <= days_in_month(month, year)
+}
+
+/// How many days `month` (0 = January, from [`MONTHS`]) has; February is
+/// taken as 29 when no `year` narrows it, so a bare "29 February" is still
+/// treated as a date worth paging to.
+fn days_in_month(month: usize, year: Option<u16>) -> u8 {
+    match month {
+        0 | 2 | 4 | 6 | 7 | 9 | 11 => 31,
+        3 | 5 | 8 | 10 => 30,
+        _ => {
+            if year.is_none_or(is_leap_year) {
+                29
+            } else {
+                28
+            }
+        }
+    }
+}
+
+/// Whether `year` is a leap year in the Gregorian calendar.
+fn is_leap_year(year: u16) -> bool {
+    (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
 }
 
 /// Whether a control's label says only that it shows the next month; a
@@ -1074,6 +1130,51 @@ pub(super) fn search_text(option: &str) -> String {
         option.trim().to_owned()
     } else {
         name.to_owned()
+    }
+}
+
+/// The matches in `pool` inside the region `what` names, or all of them
+/// when the page places none there.
+///
+/// `what` names the control the option belongs to (a seat picker, a
+/// destination search); a page rarely echoes that description on the
+/// option's own label, so an unrelated control elsewhere that happens to
+/// share the option's text must not qualify. Some pages carry no region
+/// text at all, and narrowing then would drop every real option.
+fn within(pool: Vec<Candidate>, what: &str) -> Vec<Candidate> {
+    let regional = pool
+        .iter()
+        .filter(|candidate| in_region(candidate, what))
+        .cloned()
+        .collect::<Vec<_>>();
+    if regional.is_empty() { pool } else { regional }
+}
+
+/// Whether `candidate` sits inside — or itself names — the region `what`
+/// describes. A page rarely echoes a description such as "the outbound
+/// flight list" on an option's own label, so this also checks the option's
+/// ancestor labels (`path`), which the snapshot records outermost first.
+pub(super) fn in_region(candidate: &Candidate, what: &str) -> bool {
+    let wanted = plain(what);
+    if wanted.is_empty() {
+        return true;
+    }
+    let names = |text: &str| format!(" {} ", plain(text)).contains(&format!(" {wanted} "));
+    [candidate.name.as_deref(), candidate.description.as_deref()]
+        .into_iter()
+        .flatten()
+        .any(names)
+        || candidate.path.iter().any(|ancestor| names(ancestor))
+}
+
+/// A copy of `candidate` with its shown text stripped, for logging a private
+/// choice without writing the value it displayed into history.
+pub(super) fn redacted(candidate: &Candidate) -> Candidate {
+    Candidate {
+        name: None,
+        description: None,
+        value: None,
+        ..candidate.clone()
     }
 }
 
