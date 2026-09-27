@@ -30,9 +30,17 @@ pub struct Group {
 }
 
 /// The repeated cards on `screen`, in reading order; empty when nothing
-/// repeats.
+/// repeats. Where several lists repeat, the one with the most cards.
 #[must_use]
 pub fn result_groups(screen: &Screen) -> Vec<Group> {
+    result_families(screen).into_iter().next().unwrap_or_default()
+}
+
+/// Every list of repeated cards on `screen`, the longest first (the deeper
+/// on a tie): a results page often repeats more than one thing, such as a
+/// strip of dates above the flights themselves.
+#[must_use]
+pub fn result_families(screen: &Screen) -> Vec<Vec<Group>> {
     let mut nodes = screen
         .candidates
         .iter()
@@ -40,10 +48,15 @@ pub fn result_groups(screen: &Screen) -> Vec<Group> {
         .chain(screen.text_nodes.iter().map(|node| (node, false)))
         .collect::<Vec<_>>();
     nodes.sort_by_key(|(node, _)| node.order);
+    list_levels(&nodes)
+        .into_iter()
+        .map(|(depth, parent)| cards(&nodes, depth, &parent))
+        .filter(|groups| !groups.is_empty())
+        .collect()
+}
 
-    let Some((depth, parent)) = list_level(&nodes) else {
-        return Vec::new();
-    };
+/// The cards under `parent`, one per ordinal container at `depth`.
+fn cards(nodes: &[(&Candidate, bool)], depth: usize, parent: &[String]) -> Vec<Group> {
     let mut groups: Vec<Group> = Vec::new();
     for (node, actionable) in nodes {
         if node.path.len() <= depth || node.path[..depth] != parent[..] {
@@ -67,17 +80,17 @@ pub fn result_groups(screen: &Screen) -> Vec<Group> {
         if let Some(text) = text_of(node).filter(|text| !group.fields.contains(text)) {
             group.fields.push(text);
         }
-        if actionable && prefers(node, group.primary.as_ref()) {
-            group.primary = Some(node.clone());
+        if *actionable && prefers(node, group.primary.as_ref()) {
+            group.primary = Some((*node).clone());
         }
     }
     groups.retain(|group| !group.fields.is_empty());
     groups
 }
 
-/// The depth and parent path under which the most same-role ordinal
-/// containers repeat; the deeper wins a tie.
-fn list_level(nodes: &[(&Candidate, bool)]) -> Option<(usize, Vec<String>)> {
+/// Every depth and parent path under which two or more same-role ordinal
+/// containers repeat: the most containers first, the deeper on a tie.
+fn list_levels(nodes: &[(&Candidate, bool)]) -> Vec<(usize, Vec<String>)> {
     let mut children: BTreeMap<(usize, Vec<String>, String), Vec<&String>> = BTreeMap::new();
     for (node, _) in nodes {
         for (depth, label) in node.path.iter().enumerate() {
@@ -92,11 +105,16 @@ fn list_level(nodes: &[(&Candidate, bool)]) -> Option<(usize, Vec<String>)> {
             }
         }
     }
-    children
+    let mut levels = children
         .into_iter()
         .filter(|(_, labels)| labels.len() >= 2)
-        .max_by_key(|((depth, _, _), labels)| (labels.len(), *depth))
-        .map(|((depth, parent, _), _)| (depth, parent))
+        .map(|((depth, parent, _), labels)| (labels.len(), depth, parent))
+        .collect::<Vec<_>>();
+    levels.sort_by(|left, right| (right.0, right.1).cmp(&(left.0, left.1)));
+    levels
+        .into_iter()
+        .map(|(_, depth, parent)| (depth, parent))
+        .collect()
 }
 
 /// `("listitem", 3)` for `listitem #3`, or for `listitem "Name" #3`.
