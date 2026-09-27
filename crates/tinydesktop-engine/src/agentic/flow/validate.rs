@@ -42,7 +42,11 @@ pub(super) fn validate(
 }
 
 /// Checks an already-parsed flow.
-pub(crate) fn check(flow: &Flow, known: &BTreeSet<String>, facts: &BTreeSet<String>) -> FlowValidation {
+pub(crate) fn check(
+    flow: &Flow,
+    known: &BTreeSet<String>,
+    facts: &BTreeSet<String>,
+) -> FlowValidation {
     let mut errors = Vec::new();
     if flow.app.trim().is_empty() {
         errors.push("`app` must name the application the flow drives".to_owned());
@@ -53,7 +57,15 @@ pub(crate) fn check(flow: &Flow, known: &BTreeSet<String>, facts: &BTreeSet<Stri
     let mut defined = known.clone();
     defined.extend(flow.vars.keys().cloned());
     let mut count = 0;
-    walk(&flow.steps, "", 0, &mut defined, facts, &mut count, &mut errors);
+    walk(
+        &flow.steps,
+        "",
+        0,
+        &mut defined,
+        facts,
+        &mut count,
+        &mut errors,
+    );
     if count > MAX_STEPS {
         errors.push(format!(
             "the flow has {count} steps; at most {MAX_STEPS} are allowed"

@@ -1784,10 +1784,7 @@ fn validation_rejects_a_fact_referenced_in_every_model_facing_position() {
     );
     for error in &validation.errors {
         if error.contains("`${email}` is a fact") {
-            assert!(
-                error.contains("use an enter step to type it"),
-                "{error}"
-            );
+            assert!(error.contains("use an enter step to type it"), "{error}");
         }
     }
 }
@@ -1803,11 +1800,7 @@ fn validation_allows_a_fact_typed_locally_or_reached_by_open_or_browse() {
         ]
     }))
     .unwrap();
-    let facts = BTreeSet::from([
-        "app_name".to_owned(),
-        "site".to_owned(),
-        "email".to_owned(),
-    ]);
+    let facts = BTreeSet::from(["app_name".to_owned(), "site".to_owned(), "email".to_owned()]);
     let validation = validate::check(&flow, &facts, &facts);
     assert!(validation.valid, "{:?}", validation.errors);
 }
