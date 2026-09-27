@@ -3,7 +3,10 @@
 //! actionable controls, the repeated result cards, and whether a captcha or
 //! login wall blocks the page. An argument `click=<name>` after a URL clicks
 //! the first control whose name contains `<name>` and prints the page again;
-//! `type=<text>` types it with key presses wherever the focus is.
+//! `type=<text>` types it with key presses into the focused field — only once
+//! that field is verified to take text, and after naming it on stderr. The
+//! typed text is never printed, and neither is any control's value.
+//! `mouse=<x>,<y>` clicks at that point.
 //! It is the research step before pointing a live task at a site.
 //! `PROBE_ENDPOINT` attaches to a running Chrome, where the URL `current`
 //! reads the page it already shows.
@@ -16,11 +19,28 @@ use std::sync::Arc;
 use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_bus::JevOperation;
 use tinydesktop_bus::browser::SnapshotRequest;
-use tinydesktop_core::surface::{Depth, Surface, result_groups};
+use tinydesktop_core::surface::{Candidate, Depth, Surface, result_groups};
 use tinydesktop_core::{human_needed, screen_payment_evidence};
 
 /// How many controls to print per page.
 const SHOWN: usize = 400;
+
+/// Describes the focused element when it takes typed text — the same test
+/// `BrowserSurface` applies before typing without a target — and is `null`
+/// otherwise. It names the field; it never reads its value.
+const FOCUSED_FIELD: &str = r"(() => {
+  const element = document.activeElement;
+  if (!element) return null;
+  const tag = (element.tagName || '').toLowerCase();
+  const role = (element.getAttribute('role') || '').toLowerCase();
+  const editable = tag === 'input' || tag === 'textarea' || element.isContentEditable
+    || ['combobox', 'searchbox', 'textbox'].includes(role);
+  if (!editable) return null;
+  const type = element.getAttribute('type');
+  const label = element.getAttribute('aria-label') || element.getAttribute('name')
+    || element.getAttribute('placeholder') || element.id || '';
+  return tag + (type ? '[type=' + type + ']' : '') + (label ? ' ' + JSON.stringify(label) : '');
+})()";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let urls: Vec<String> = std::env::args().skip(1).collect();
@@ -100,43 +120,76 @@ impl Probe<'_> {
         surface
     }
 
-    fn command(&self, surface: &BrowserSurface, command: serde_json::Value) -> bool {
-        surface.session().is_some_and(|session| {
-            self.runtime
-                .block_on(self.browser.command(&session, command))
-                .is_ok()
-        })
+    /// Runs one raw engine command on the open session.
+    fn command(
+        &self,
+        surface: &BrowserSurface,
+        command: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let session = surface
+            .session()
+            .ok_or_else(|| "no browser session is open".to_owned())?;
+        self.runtime
+            .block_on(self.browser.command(&session, command))
+            .map_err(|error| error.to_string())
     }
 
-    /// Clicks the page at `x,y` with real mouse events.
+    /// Clicks the page at `x,y` with real mouse events, stopping at the
+    /// first event the browser refuses.
     fn mouse(&self, surface: &BrowserSurface, point: &str) {
-        let Some((x, y)) = point.split_once(',') else {
-            return;
+        let (x, y) = match parse_point(point) {
+            Ok(point) => point,
+            Err(error) => {
+                println!("=== mouse rejected: {error}");
+                return;
+            }
         };
-        let (x, y) = (
-            x.parse::<f64>().unwrap_or_default(),
-            y.parse::<f64>().unwrap_or_default(),
-        );
         for event in ["mouseMoved", "mousePressed", "mouseReleased"] {
             let pressed = event != "mouseMoved";
-            self.command(
+            let sent = self.command(
                 surface,
                 serde_json::json!({"action": "mouse", "eventType": event, "x": x, "y": y,
                     "button": if pressed { "left" } else { "none" },
                     "clickCount": i32::from(pressed)}),
             );
+            if let Err(error) = sent {
+                println!("=== mouse {point} failed at {event}: {error}");
+                return;
+            }
         }
         println!("=== mouse {point}");
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
 
-    /// Types `text` with key presses wherever the focus is.
+    /// Types `text` with key presses into the focused field, once that field
+    /// is verified to take typed text. The field is named on stderr before
+    /// anything is typed; the text itself is never printed.
     fn type_keys(&self, surface: &BrowserSurface, text: &str) {
+        let focus = self.command(
+            surface,
+            serde_json::json!({"action": "evaluate", "script": FOCUSED_FIELD}),
+        );
+        let field = match focus.map(|data| editable_focus(&data)) {
+            Ok(Some(field)) => field,
+            Ok(None) => {
+                println!("=== type refused: no editable field has focus");
+                return;
+            }
+            Err(error) => {
+                println!("=== type refused: the focus check failed: {error}");
+                return;
+            }
+        };
+        eprintln!("=== typing into {field}");
         let typed = self.command(
             surface,
             serde_json::json!({"action": "keyboard", "subaction": "type", "text": text}),
         );
-        println!("=== type {text:?} -> {typed}");
+        if let Err(error) = typed {
+            println!("=== type failed: {error}");
+            return;
+        }
+        println!("=== type -> ok");
         std::thread::sleep(std::time::Duration::from_secs(2));
         show(surface);
     }
@@ -158,12 +211,17 @@ impl Probe<'_> {
             let snapshot = self
                 .runtime
                 .block_on(self.browser.snapshot(&session, SnapshotRequest::default()));
-            let tree = snapshot.map(|snapshot| snapshot.tree).unwrap_or_default();
-            for line in tree
-                .lines()
-                .filter(|line| line.to_lowercase().contains(&pattern.to_lowercase()))
-            {
-                println!("  raw: {line}");
+            match snapshot {
+                Ok(snapshot) => {
+                    for line in snapshot
+                        .tree
+                        .lines()
+                        .filter(|line| line.to_lowercase().contains(&pattern.to_lowercase()))
+                    {
+                        println!("  raw: {line}");
+                    }
+                }
+                Err(error) => println!("=== PROBE_GREP failed: {error}"),
             }
         }
     }
@@ -226,16 +284,7 @@ fn show(surface: &BrowserSurface) {
     println!("human needed: {:?}", human_needed(&texts));
     println!("payment page: {:?}", screen_payment_evidence(&screen));
     for node in screen.candidates.iter().take(SHOWN) {
-        println!(
-            "  {} {} {:?} {}",
-            node.ref_id,
-            node.role,
-            node.name.as_deref().unwrap_or(""),
-            node.value
-                .as_ref()
-                .map(ToString::to_string)
-                .unwrap_or_default()
-        );
+        println!("{}", control_line(node));
     }
     for line in screen.context.iter().take(15) {
         println!("  | {line}");
@@ -250,5 +299,85 @@ fn show(surface: &BrowserSurface) {
                 .as_ref()
                 .map(|node| (&node.ref_id, &node.name))
         );
+    }
+}
+
+/// The `x,y` of a `mouse=` argument: two finite numbers, or an error naming
+/// what is wrong, so a typo never becomes a click somewhere real.
+fn parse_point(point: &str) -> Result<(f64, f64), String> {
+    let (x, y) = point
+        .split_once(',')
+        .ok_or_else(|| format!("expected x,y, got {point:?}"))?;
+    let coordinate = |text: &str| {
+        text.trim()
+            .parse::<f64>()
+            .ok()
+            .filter(|value| value.is_finite())
+            .ok_or_else(|| format!("{text:?} is not a coordinate"))
+    };
+    Ok((coordinate(x)?, coordinate(y)?))
+}
+
+/// One control as the page dump prints it. The value is left out: a field
+/// can hold a password or card number `type=` entered moments earlier.
+fn control_line(node: &Candidate) -> String {
+    format!(
+        "  {} {} {:?}",
+        node.ref_id,
+        node.role,
+        node.name.as_deref().unwrap_or("")
+    )
+}
+
+/// The focused element [`FOCUSED_FIELD`] described, when it takes typed text.
+fn editable_focus(data: &serde_json::Value) -> Option<String> {
+    data.get("result")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_owned)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+    use tinydesktop_core::surface::Candidate;
+
+    use super::{control_line, editable_focus, parse_point};
+
+    #[test]
+    fn parses_a_point_of_two_numbers() {
+        assert_eq!(parse_point("120,48.5"), Ok((120.0, 48.5)));
+        assert_eq!(parse_point(" 120 , 48 "), Ok((120.0, 48.0)));
+    }
+
+    #[test]
+    fn rejects_a_point_that_is_not_two_numbers() {
+        for point in ["120", "x,48", "120,y", ",48", "120,", "NaN,1", "1,inf"] {
+            assert!(parse_point(point).is_err(), "{point:?} parsed");
+        }
+    }
+
+    #[test]
+    fn control_line_leaves_the_value_out() {
+        let node = Candidate {
+            ref_id: "e7".to_owned(),
+            role: "textbox".to_owned(),
+            name: Some("Card number".to_owned()),
+            value: Some(json!("4111111111111111")),
+            ..Candidate::default()
+        };
+        let line = control_line(&node);
+        assert_eq!(line, r#"  e7 textbox "Card number""#);
+        assert!(!line.contains("4111"));
+    }
+
+    #[test]
+    fn names_the_focused_field_only_when_it_is_editable() {
+        assert_eq!(
+            editable_focus(&json!({"result": "input[type=password] \"Password\""})),
+            Some("input[type=password] \"Password\"".to_owned())
+        );
+        assert_eq!(editable_focus(&json!({"result": null})), None);
+        assert_eq!(editable_focus(&json!({"result": false})), None);
+        assert_eq!(editable_focus(&json!({})), None);
     }
 }

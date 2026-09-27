@@ -44,17 +44,26 @@ const NETWORK_IDLE_MS: u64 = 2_000;
 /// element that was meant: the card around the covering element names it.
 /// Many result lists lay a transparent click layer over each card, so the
 /// card's own controls are always "covered" — by the card itself.
+///
+/// A card-level substring match alone is not enough: a short target name
+/// such as "Select" matches almost any card, so `elementsFromPoint` — the
+/// full stack of every element stacked at the click point, topmost first —
+/// is used instead of the single topmost element, and the target's name is
+/// required to *exactly* match one of its own attributes (not merely appear
+/// somewhere inside the card's aggregated text), so a duplicate label
+/// elsewhere in the card can no longer stand in for the actual target.
 const SAME_CARD_JS: &str = r#"((x, y, name) => {
-  const top = document.elementFromPoint(x, y);
+  if (!name) return false;
+  const stack = document.elementsFromPoint(x, y);
+  const top = stack[0];
   const card = top && top.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
-  if (!card || !name) return false;
-  const named = (element) => (element.getAttribute('aria-label') || '').includes(name);
-  return named(card) || (card.innerText || '').includes(name)
-    || Array.from(card.querySelectorAll('[aria-label]')).some(named);
+  if (!top || !card) return false;
+  const shown = (element) => (element.getAttribute('aria-label') || element.innerText || '').trim();
+  // The exact target must itself be part of the stack of elements at this
+  // point (so `top` genuinely overlaps it), and that element must sit
+  // inside the same card `top` does.
+  return stack.some((element) => shown(element) === name && card.contains(element));
 })"#;
-
-/// How much of a target's name identifies it inside its card.
-const CARD_NAME_CHARS: usize = 80;
 
 /// One browser session, lazily opened, as a [`Surface`].
 #[derive(Clone)]
@@ -164,7 +173,11 @@ impl BrowserSurface {
             Some(bounds.get(start)?.as_f64()? + bounds.get(size)?.as_f64()? / 2.0)
         };
         let (x, y) = (middle("x", "width")?, middle("y", "height")?);
-        let name: String = name.trim().chars().take(CARD_NAME_CHARS).collect();
+        // The JS side now requires an exact match against the target's own
+        // shown text, so the name is passed through untruncated: cutting it
+        // short would make an exact match against the page's full text
+        // impossible for any control with a longer name.
+        let name = name.trim();
         let script = format!(
             "{SAME_CARD_JS}({x}, {y}, {})",
             serde_json::to_string(&name).ok()?
@@ -197,6 +210,34 @@ impl BrowserSurface {
             "click",
             json!({"clicked": selector, "through": "its own card's click layer"}),
         ))
+    }
+
+    /// Whether the page's currently focused element takes typed text: an
+    /// `<input>`, a `<textarea>`, a `contenteditable` region, or a control
+    /// whose ARIA role names a text box. Typing without a target sends keys
+    /// wherever the browser's own focus happens to be, so this is checked
+    /// first: a stale or unexpected focus — an unrelated field, or none at
+    /// all — must never silently receive text, including a private value.
+    fn focused_field_is_editable(&self) -> bool {
+        const SCRIPT: &str = r"(() => {
+  const element = document.activeElement;
+  if (!element) return false;
+  const tag = (element.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return true;
+  if (element.isContentEditable) return true;
+  const role = (element.getAttribute('role') || '').toLowerCase();
+  return ['combobox', 'searchbox', 'textbox'].includes(role);
+})()";
+        let Ok(id) = self.ensure_session() else {
+            return false;
+        };
+        self.block(
+            self.browser
+                .command(&id, json!({"action": "evaluate", "script": SCRIPT})),
+        )
+        .ok()
+        .and_then(|data| data.get("result").and_then(Value::as_bool))
+        .unwrap_or(false)
     }
 
     fn perform(&self, command: &str, action: Action) -> DesktopResponse {
@@ -275,15 +316,28 @@ impl Surface for BrowserSurface {
                 }
             }
             // Without a target the text goes where the focus is, as into an
-            // autocomplete's unnamed input once it has been opened.
-            JevOperation::TypeText if reference.is_none() => self.perform(
-                "type-text",
-                Action::Type {
-                    target: None,
-                    text: text.unwrap_or_default(),
-                    delay_ms: None,
-                },
-            ),
+            // autocomplete's unnamed input once it has been opened — but
+            // only once the focused element is verified to actually take
+            // typed text; a page that moved focus elsewhere (or nowhere)
+            // must refuse rather than silently deliver the text to whatever
+            // it finds, which could otherwise leak a private value into an
+            // unrelated field.
+            JevOperation::TypeText if reference.is_none() => {
+                if !self.focused_field_is_editable() {
+                    return DesktopResponse::err(
+                        "type-text",
+                        DesktopError::new("INVALID_TARGET", "no editable field has focus"),
+                    );
+                }
+                self.perform(
+                    "type-text",
+                    Action::Type {
+                        target: None,
+                        text: text.unwrap_or_default(),
+                        delay_ms: None,
+                    },
+                )
+            }
             JevOperation::TypeText => targeted("type-text", |target, text| Action::Fill {
                 target,
                 value: text.unwrap_or_default(),

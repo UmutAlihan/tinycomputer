@@ -187,10 +187,14 @@ follows three rules:
    with `CARD_DATA_REFUSED`, both at `StartTask` and at `ContinueTask`. No task can be handed a card to
    type.
 
-## Payment is always a checkpoint
+## Payment is a checkpoint, unless the caller opted out
 
 Two independent checks stop a task before money moves, whatever a model
-decided:
+decided — as long as the task has not set `allow_destructive` (see
+[Constraints](#constraints)). With `allow_destructive` on, `stop_before`
+clicks the control it finds instead of stopping in front of it, and neither
+check below gates that click: the caller has explicitly asked to press
+irreversible controls, payments included, without a checkpoint.
 
 - `consequence(label)` in `tinydesktop-core/src/safety/` classifies a control
   by its words. "Pay", "Pay now", "Place order", "Checkout", "Buy now",

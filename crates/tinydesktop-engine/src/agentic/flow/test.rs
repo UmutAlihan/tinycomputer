@@ -30,7 +30,9 @@ use super::{
     super::{Evaluator, JevRuntime},
     ask,
     backend::AgentBackend,
-    enter, flow_guide, ground, memory, run_flow_with, validate, validate_flow,
+    enter, flow_guide, ground, memory, run_flow_with,
+    steps::{in_region, looks_like_date, redacted},
+    validate, validate_flow,
     view::{Candidate, Depth, Screen},
 };
 
@@ -120,12 +122,30 @@ fn press_booking(sim: &mut Sim, name: &str) {
         "Going to?" => booking.searching = true,
         "Departure" => booking.calendar = Some(8),
         "Next Month" => booking.calendar = booking.calendar.map(|month| (month + 1) % 12),
-        day if booking.calendar.is_some() && day.ends_with(" 2026") => {
+        // The calendar's own aggregated-label container also ends with
+        // " 2026" (it lists every day of the open month), so this requires
+        // the exact "<day> <month> 2026" shape a single day button carries:
+        // a bug that let production code ground and press that container
+        // instead of a day must not be able to pass this simulated test.
+        day if booking.calendar.is_some() && is_single_day_label(day) => {
             booking.calendar = None;
             sim.fields.insert("Departure".to_owned(), day.to_owned());
         }
         _ => {}
     }
+}
+
+/// Whether `name` is exactly a single day button's label: `"<day> <month>
+/// 2026"`, nothing more. The calendar's own container control names every
+/// visible day, so a plain `ends_with(" 2026")` check would also treat
+/// pressing that container as picking a day.
+fn is_single_day_label(name: &str) -> bool {
+    let mut words = name.split(' ');
+    let day_is_a_number = words.next().is_some_and(|day| day.parse::<u8>().is_ok());
+    day_is_a_number
+        && words.next().is_some()
+        && words.next() == Some("2026")
+        && words.next().is_none()
 }
 
 /// The booking form's controls, as they stand.
@@ -2798,4 +2818,52 @@ async fn extract_stores_every_item_of_the_list() {
     )
     .await;
     assert!(nothing.result.steps[0].note.contains("no list of results"));
+}
+
+#[test]
+fn looks_like_date_rejects_a_day_the_named_month_never_has() {
+    assert!(looks_like_date("18 October 2026"));
+    // April has 30 days; without a year, February is taken generously (29).
+    assert!(!looks_like_date("31 April"));
+    assert!(looks_like_date("29 February"));
+    // 2026 is not a leap year; 2028 is.
+    assert!(!looks_like_date("29 February 2026"));
+    assert!(looks_like_date("29 February 2028"));
+}
+
+#[test]
+fn in_region_prefers_the_ancestor_named_region_but_keeps_every_match_when_none_is_named() {
+    let seat = node(
+        "Continue",
+        "button",
+        &["Click"],
+        &["root", "Seat picker"],
+        10.0,
+    );
+    let unrelated = node(
+        "Continue",
+        "button",
+        &["Click"],
+        &["root", "Newsletter"],
+        20.0,
+    );
+    assert!(in_region(&seat, "seat picker"));
+    assert!(!in_region(&unrelated, "seat picker"));
+    // An empty `what` names no region to narrow by, so everything matches:
+    // `pick_option` falls back to the unnarrowed pool when nothing on the
+    // page names the region at all.
+    assert!(in_region(&unrelated, ""));
+}
+
+#[test]
+fn redacted_strips_the_shown_text_but_keeps_the_ref_and_role() {
+    let mut target = node("4111 1111 1111 1111", "option", &["Click"], &["root"], 5.0);
+    target.description = Some("saved card".to_owned());
+    target.value = Some(json!("4111 1111 1111 1111"));
+    let logged = redacted(&target);
+    assert_eq!(logged.name, None);
+    assert_eq!(logged.description, None);
+    assert_eq!(logged.value, None);
+    assert_eq!(logged.ref_id, target.ref_id);
+    assert_eq!(logged.role, target.role);
 }

@@ -158,18 +158,85 @@ fn a_card_input_on_either_surface_marks_a_payment_screen() {
         control("spinbutton", "Expiry date", &[]),
     ] {
         let screen = screen_of(vec![field.clone()], &[]);
-        assert!(screen_payment_evidence(&screen).is_some(), "{field:?}");
+        let evidence = screen_payment_evidence(&screen).unwrap_or_else(|| panic!("{field:?}"));
+        assert_eq!(evidence.reasons.len(), 1, "one field, one reason");
     }
-    let unlabelled = Candidate {
-        role: "textbox".to_owned(),
-        ..Candidate::default()
-    };
-    let beside = screen_of(
-        vec![unlabelled],
-        &["Enter the CVV on the back of your card"],
-    );
+    let mut beside = screen_of(vec![unlabelled_input(11)], &[]);
+    beside.text_nodes = vec![text("Enter the CVV on the back of your card", 10)];
     let evidence = screen_payment_evidence(&beside).unwrap();
     assert!(evidence.reasons[0].contains("cvv"), "{evidence:?}");
+}
+
+fn unlabelled_input(order: usize) -> Candidate {
+    Candidate {
+        role: "textbox".to_owned(),
+        order,
+        ..Candidate::default()
+    }
+}
+
+fn text(name: &str, order: usize) -> Candidate {
+    Candidate {
+        role: "statictext".to_owned(),
+        name: Some(name.to_owned()),
+        order,
+        ..Candidate::default()
+    }
+}
+
+#[test]
+fn a_card_label_alone_marks_a_payment_screen_without_input_metadata() {
+    // Some engines report neither a role nor actions for a node; nothing
+    // then says it is not a field, so its card label is enough on its own.
+    let bare = Candidate {
+        name: Some("Card number".to_owned()),
+        ..Candidate::default()
+    };
+    let evidence = screen_payment_evidence(&screen_of(vec![bare], &[])).unwrap();
+    assert!(evidence.reasons[0].contains("card number"), "{evidence:?}");
+    // A label reported as ref-bearing static text still labels the
+    // unlabelled field next to it.
+    let label = Candidate {
+        ref_id: "e4".to_owned(),
+        ..text("Card number", 4)
+    };
+    let form = screen_of(vec![label, unlabelled_input(5)], &[]);
+    assert!(screen_payment_evidence(&form).is_some());
+}
+
+#[test]
+fn card_wording_counts_only_beside_a_field() {
+    let search = || control("textbox", "Search help", &["SetValue"]);
+    let mut faq = screen_of(vec![search()], &["Where do I find my CVV?"]);
+    assert!(
+        screen_payment_evidence(&faq).is_none(),
+        "unplaced text is no evidence a field collects a card"
+    );
+    faq.candidates[0].order = 2;
+    faq.text_nodes = vec![text("Where do I find my CVV?", 90)];
+    assert!(
+        screen_payment_evidence(&faq).is_none(),
+        "a footer far from the only field does not label it"
+    );
+    faq.text_nodes.push(text("CVV", 4));
+    assert!(screen_payment_evidence(&faq).is_some());
+}
+
+#[test]
+fn a_separately_labelled_upi_field_is_still_payment_evidence() {
+    // A UPI collect form: an unnamed input with its label as a nearby text
+    // node, exactly the shape `CARD_FIELDS` already recognizes when the
+    // label sits on the input itself — this proves the same wording is not
+    // lost when the label is a separate node beside an unnamed field.
+    let mut screen = screen_of(vec![unlabelled_input(4)], &[]);
+    screen.text_nodes = vec![text("UPI ID", 3)];
+    assert!(
+        screen_payment_evidence(&screen).is_some(),
+        "a UPI ID label beside a field is not a promotional phrase"
+    );
+    let mut vpa = screen_of(vec![unlabelled_input(4)], &[]);
+    vpa.text_nodes = vec![text("VPA", 3)];
+    assert!(screen_payment_evidence(&vpa).is_some());
 }
 
 #[test]
