@@ -1752,6 +1752,8 @@ fn validation_rejects_a_fact_referenced_in_every_model_facing_position() {
     let flow: Flow = serde_json::from_value(json!({
         "app": "Mail",
         "steps": [
+            {"open": "${email}"},
+            {"browse": "${email}"},
             {"do": "tell Jev ${email}"},
             {"verify": "shows ${email}"},
             {"wait_for": "shows ${email}"},
@@ -1778,7 +1780,7 @@ fn validation_rejects_a_fact_referenced_in_every_model_facing_position() {
         .count();
     assert_eq!(
         hits,
-        13,
+        15,
         "every model-facing position should reject the fact:\n{}",
         validation.errors.join("\n")
     );
