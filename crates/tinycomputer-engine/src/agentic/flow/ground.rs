@@ -24,11 +24,11 @@ use super::{
 };
 
 /// Least probability an exact-name match needs to be used without re-asking.
-const NAMED_FLOOR: f64 = 0.45;
+pub(super) const NAMED_FLOOR: f64 = 0.45;
 /// A corroboration this confident accepts a target on its own.
-const CORROBORATED: f64 = 0.8;
+pub(super) const CORROBORATED: f64 = 0.8;
 /// A corroboration this confident accepts a target the re-ask agreed on.
-const AGREED: f64 = 0.5;
+pub(super) const AGREED: f64 = 0.5;
 /// Deepest ancestor level narrowing splits on.
 const MAX_REGION_DEPTH: usize = 8;
 /// Region rounds before the knockout takes over.
@@ -97,8 +97,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         self.decide(log, screen, purpose, pool).await
     }
 
-    /// The shared question state for `purpose` on `screen`.
+    /// The shared question state for `purpose` on `screen`: under the wide
+    /// strategy, the screen as a digest and the run's working memory.
     pub(super) fn state(&self, screen: &Screen, purpose: &str) -> serde_json::Value {
+        if self.wide() {
+            return self.wide_state(screen, purpose);
+        }
         ask::state(screen, purpose, &self.history, self.include_values)
     }
 

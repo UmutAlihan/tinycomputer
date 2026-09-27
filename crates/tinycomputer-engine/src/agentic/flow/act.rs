@@ -844,7 +844,7 @@ impl Judgement {
     }
 
     /// The judgement when every judging loop is disabled: just press something.
-    fn activate() -> Self {
+    pub(super) fn activate() -> Self {
         Self {
             done: None,
             progress: None,

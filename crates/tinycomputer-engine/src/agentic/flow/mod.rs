@@ -16,6 +16,10 @@
 //! - `steps` implements the remaining step kinds.
 //! - `memory` remembers which element grounded which step.
 //! - `vote` asks each decision several ways at once and averages the answers.
+//! - `wide` is the wide strategy: one request per `do` turn over a digest of
+//!   the screen, carrying the judgement, the obstacle, and every move's
+//!   target; `survey` ranks a crowded screen's regions first, and `ledger`
+//!   is the working memory every wide question sees.
 //!
 //! Every request carries the run's brief — the goal, whom it is for, the
 //! plan and where the run is in it, what it has chosen so far, and what kind
@@ -30,11 +34,14 @@ mod ask;
 mod backend;
 mod enter;
 mod ground;
+mod ledger;
 mod memory;
 mod steps;
+mod survey;
 mod validate;
 mod view;
 mod vote;
+mod wide;
 
 pub(crate) use validate::{check as check_flow, missing_inputs};
 
@@ -51,7 +58,7 @@ use std::{
 use serde_json::{Value, json};
 use tinycomputer_bus::{
     DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowBrief,
-    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevExchange, JevMetrics,
+    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint, JevExchange, JevMetrics,
     JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
 use tinycomputer_core::Facts;
@@ -227,6 +234,16 @@ pub(super) struct FlowRun<'r, B> {
     /// so an ordinary step's destructive gate can recognize a control the
     /// flow has already named as irreversible, in its own words.
     pub(super) stop_before: Vec<String>,
+    /// How decisions are asked.
+    strategy: FlowStrategy,
+    /// The run's working memory, for the wide strategy's questions.
+    pub(super) ledger: ledger::Ledger,
+    /// The current step's survey of a crowded screen, if one was asked.
+    attention: Option<survey::Attention>,
+    /// Decisions made so far: each one request, whatever its framings.
+    pub(super) decisions: u32,
+    /// Variables read from the screen so far, by name.
+    read: Vec<String>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -322,6 +339,11 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             trace: Vec::new(),
             started: Instant::now(),
             step: String::new(),
+            strategy: request.strategy,
+            ledger: ledger::Ledger::default(),
+            attention: None,
+            decisions: 0,
+            read: Vec::new(),
         }
     }
 
@@ -354,6 +376,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let (kind, text) = describe_step(&action, &self.vars, &self.facts);
         let mut log = StepLog::default();
         self.step.clone_from(&path);
+        self.ledger.begin(self.history.len());
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let wall_ms = millis(started.elapsed());
@@ -399,10 +422,12 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 "wall_ms": wall_ms,
             })
         });
-        self.history.push(format!(
+        let finished = format!(
             "step {path} ({kind} {text:?}): {:?}, {}",
             ended.outcome, ended.note
-        ));
+        );
+        self.ledger.finish(finished.clone());
+        self.history.push(finished);
         if !matches!(&action, FlowAction::If(_) | FlowAction::RepeatUntil(_)) || halt.is_some() {
             self.reports.push(StepReport {
                 path,
@@ -486,6 +511,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             log.used(FlowLoop::Vote);
         }
         let framings = vote::framings(&request, votes);
+        self.decisions = self.decisions.saturating_add(1);
         let asked_at = Instant::now();
         let asked = framings
             .iter()
@@ -526,6 +552,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 "questions": request.questions.keys().collect::<Vec<_>>(),
                 "framings": votes,
                 "answered": answered.len(),
+                "request_bytes": serde_json::to_vec(&request).map_or(0, |bytes| bytes.len()),
                 "wall_ms": millis(asked_at.elapsed()),
             })
         });

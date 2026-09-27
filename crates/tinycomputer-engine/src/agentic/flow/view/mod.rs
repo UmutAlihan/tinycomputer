@@ -6,8 +6,9 @@
 //! confident enough to act on, and which controls a flow must not press.
 
 pub(in crate::agentic) use tinycomputer_core::surface::{
-    Candidate, Depth, MAX_CANDIDATES, Screen, change_note, describe, exact_named_match,
-    fingerprint, label, signature, target_payload, untrusted_context,
+    Candidate, Depth, Digest, MAX_CANDIDATES, RegionKind, Rendering, Screen, change_note,
+    describe, digest, element_line, exact_named_match, fingerprint, label, signature,
+    target_payload, untrusted_context,
 };
 
 /// Least probability a target choice needs to be used without re-asking.
