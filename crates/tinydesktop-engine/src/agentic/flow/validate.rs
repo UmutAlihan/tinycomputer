@@ -336,11 +336,10 @@ pub(super) fn substitute(text: &str, vars: &BTreeMap<String, String>) -> String 
 /// [`substitute`], but a name in `facts` is treated as undefined and left as
 /// literal `${name}` rather than expanded.
 ///
-/// This is the substitution every model-facing text goes through: the
-/// runtime's backstop against a fact's value ever reaching Jev, even if
-/// validation somehow let a `${fact}` reference through. It never runs on an
-/// `enter` step's typed value, or on a `browse` address or `open` application
-/// name, which is where a fact is actually delivered.
+/// This is the substitution every step goes through except an `enter` step's
+/// typed value: the runtime's backstop against a fact's value ever reaching
+/// Jev — directly, or later as state on a subsequent step — even if
+/// validation somehow let a `${fact}` reference through.
 pub(super) fn substitute_safe(
     text: &str,
     vars: &BTreeMap<String, String>,
