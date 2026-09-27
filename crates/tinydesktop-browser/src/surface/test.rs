@@ -10,6 +10,7 @@ use tinydesktop_bus::JevOperation;
 use tinydesktop_bus::browser::SessionOptions;
 use tinydesktop_core::Platform;
 use tinydesktop_core::surface::{Candidate, Depth, Surface};
+use tinydesktop_cursor::CursorPace;
 
 use super::tree::{parse_line, screen};
 use super::{BrowserSurface, browser_key};
@@ -161,6 +162,10 @@ struct Harness {
 }
 
 fn harness(name: &str, fake: Fake) -> Harness {
+    shown_harness(name, fake, SessionOptions::default(), CursorPace::default())
+}
+
+fn shown_harness(name: &str, fake: Fake, options: SessionOptions, pace: CursorPace) -> Harness {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let browser = Browser::with_scratch(
         Arc::new(fake.clone()),
@@ -169,11 +174,9 @@ fn harness(name: &str, fake: Fake) -> Harness {
             std::process::id()
         )),
     );
-    let surface = BrowserSurface::new(
-        Arc::new(browser),
-        SessionOptions::default(),
-        runtime.handle().clone(),
-    );
+    let surface = BrowserSurface::new(Arc::new(browser), options, runtime.handle().clone())
+        .with_cursor(pace)
+        .without_waiting();
     Harness {
         fake,
         surface,
@@ -498,4 +501,175 @@ fn closing_ends_the_session_and_is_harmless_twice() {
         }
         panic!("the session was never closed");
     });
+}
+
+fn headed() -> SessionOptions {
+    SessionOptions {
+        headless: false,
+        ..SessionOptions::default()
+    }
+}
+
+/// A page whose `e5` sits at a known box; `evaluate` fails when `refuse`.
+fn boxed_fake(refuse: bool) -> Fake {
+    Fake::scripted(move |command| match command["action"].as_str().unwrap() {
+        "boundingbox" => Some(ok(
+            &json!({"x": 400.0, "y": 300.0, "width": 120.0, "height": 32.0}),
+        )),
+        "evaluate" if refuse => Some(failure("Evaluation failed: CSP")),
+        _ => None,
+    })
+}
+
+fn cursor_scripts(fake: &Fake) -> Vec<String> {
+    fake.sent()
+        .iter()
+        .filter(|command| command["action"] == "evaluate")
+        .filter_map(|command| command["script"].as_str().map(str::to_owned))
+        .filter(|script| script.contains("__tinydesktopCursor"))
+        .collect()
+}
+
+/// The `[t, x, y]` path and the `appears` flag a cursor script was called
+/// with.
+fn cursor_call(script: &str) -> (Vec<(f64, f64, f64)>, bool) {
+    let arguments = &script[script.rfind("})(").unwrap() + 3..script.len() - 1];
+    let (path, appears) = arguments.rsplit_once(", ").unwrap();
+    let path: Vec<(f64, f64, f64)> = serde_json::from_str(path).unwrap();
+    (path, appears == "true")
+}
+
+#[test]
+fn a_visible_session_draws_the_cursor_onto_the_target_before_acting() {
+    let Harness { fake, surface, .. } = shown_harness(
+        "cursor-headed",
+        boxed_fake(false),
+        headed(),
+        CursorPace::Natural,
+    );
+    assert_eq!(surface.cursor_pace(), CursorPace::Natural);
+    let reply = surface.execute(JevOperation::Click, Some(node("e5", &["Click"])), None);
+    assert!(reply.ok, "{:?}", reply.error);
+
+    let actions = fake.actions();
+    let drawn = actions
+        .iter()
+        .position(|action| action == "evaluate")
+        .unwrap();
+    let clicked = actions.iter().position(|action| action == "click").unwrap();
+    assert!(
+        drawn < clicked,
+        "the cursor lands before the click: {actions:?}"
+    );
+    assert_eq!(
+        fake.last("click")["selector"],
+        "@e5",
+        "the click itself is unchanged"
+    );
+    assert!(
+        !actions.iter().any(|action| action.starts_with("mouse")),
+        "the cursor sends no input"
+    );
+
+    let scripts = cursor_scripts(&fake);
+    let (path, appears) = cursor_call(&scripts[0]);
+    assert!(appears, "the first glide fades the cursor in");
+    assert!(path.len() > 5);
+    assert!(path[0].0.abs() < f64::EPSILON);
+    assert!(path.windows(2).all(|pair| pair[1].0 > pair[0].0));
+    let (_, x, y) = *path.last().unwrap();
+    assert!((400.0..=520.0).contains(&x) && (300.0..=332.0).contains(&y));
+
+    // The next glide starts where this one landed.
+    surface.execute(
+        JevOperation::TypeText,
+        Some(node("e5", &["SetValue"])),
+        Some("SXR".to_owned()),
+    );
+    let (next, appears) = cursor_call(&cursor_scripts(&fake)[1]);
+    assert!(!appears);
+    assert_eq!((next[0].1, next[0].2), (x, y));
+    assert_eq!(fake.last("fill")["value"], "SXR");
+}
+
+#[test]
+fn a_headless_session_or_an_off_pace_draws_nothing() {
+    let Harness { fake, surface, .. } = harness("cursor-headless", boxed_fake(false));
+    assert!(
+        surface
+            .execute(JevOperation::Click, Some(node("e5", &["Click"])), None)
+            .ok
+    );
+    assert!(cursor_scripts(&fake).is_empty());
+    assert!(!fake.actions().iter().any(|action| action == "boundingbox"));
+
+    let Harness { fake, surface, .. } =
+        shown_harness("cursor-off", boxed_fake(false), headed(), CursorPace::Off);
+    assert!(
+        surface
+            .execute(JevOperation::Click, Some(node("e5", &["Click"])), None)
+            .ok
+    );
+    assert!(cursor_scripts(&fake).is_empty());
+}
+
+#[test]
+fn an_attached_browser_is_visible_even_when_marked_headless() {
+    let attached = SessionOptions {
+        endpoint: Some("ws://127.0.0.1:9222/devtools/browser/x".to_owned()),
+        ..SessionOptions::default()
+    };
+    let Harness { fake, surface, .. } = shown_harness(
+        "cursor-attached",
+        boxed_fake(false),
+        attached,
+        CursorPace::Brisk,
+    );
+    surface.execute(JevOperation::Check, Some(node("e5", &["Toggle"])), None);
+    assert_eq!(cursor_scripts(&fake).len(), 1);
+}
+
+#[test]
+fn operations_without_a_pointer_or_a_box_draw_nothing() {
+    let Harness { fake, surface, .. } =
+        shown_harness("cursor-no-box", page_fake(), headed(), CursorPace::Natural);
+    assert!(
+        surface
+            .execute(JevOperation::Click, Some(node("e5", &["Click"])), None)
+            .ok
+    );
+    assert!(cursor_scripts(&fake).is_empty(), "no box, no cursor");
+    assert_eq!(fake.last("click")["selector"], "@e5");
+
+    let Harness { fake, surface, .. } = shown_harness(
+        "cursor-scroll",
+        boxed_fake(false),
+        headed(),
+        CursorPace::Natural,
+    );
+    surface.execute(JevOperation::Scroll, Some(node("e5", &["Scroll"])), None);
+    surface.execute(JevOperation::TypeText, None, Some("x".to_owned()));
+    assert!(cursor_scripts(&fake).is_empty());
+}
+
+#[test]
+fn a_page_that_refuses_the_cursor_still_gets_its_action() {
+    let Harness { fake, surface, .. } = shown_harness(
+        "cursor-refused",
+        boxed_fake(true),
+        headed(),
+        CursorPace::Natural,
+    );
+    assert!(
+        surface
+            .execute(JevOperation::Click, Some(node("e5", &["Click"])), None)
+            .ok
+    );
+    assert_eq!(fake.last("click")["selector"], "@e5");
+    surface.execute(JevOperation::Click, Some(node("e5", &["Click"])), None);
+    let (_, appears) = cursor_call(&cursor_scripts(&fake)[1]);
+    assert!(
+        appears,
+        "an undrawn cursor is forgotten, so it fades in afresh"
+    );
 }
