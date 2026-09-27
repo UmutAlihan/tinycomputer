@@ -316,6 +316,12 @@ pub enum FlowLoop {
     Undo,
     /// Grounding memory.
     Memory,
+    /// Asking each decision several ways and averaging the answers.
+    Vote,
+    /// Naming the kind of page on screen for the brief.
+    PageKind,
+    /// Checking an entered form for validation errors.
+    Validation,
 }
 
 /// Where an element was found for one step, so a later run can try it first.
@@ -348,21 +354,23 @@ pub struct RunFlowRequest {
     pub flow: Flow,
     /// Values for `${name}` references, overriding the flow's own `vars`.
     pub vars: BTreeMap<String, String>,
-    /// Names among `vars` whose value is a caller-supplied fact rather than
-    /// an ordinary flow variable.
+    /// Names among `vars` whose value is a secret: a card number, a passport
+    /// number, a password.
     ///
-    /// A fact may be typed only as an `enter` step's value. Anywhere else
+    /// A secret may be typed only as an `enter` step's value. Anywhere else
     /// `${name}` may appear in a flow — an `open` application name, a
     /// `browse` address, a `do`, `verify`, `wait_for`, or `stop_before` text,
     /// a `choose`'s `what`/`option`, a `read`/`extract`'s `what`, a `pick`'s
     /// `from`/`by`, a `repeat_until`/`if` condition, or an `enter` slot's own
-    /// name — never sees a fact's value, because that text is what Jev is
-    /// asked to reason about, or state it is shown on a later step (`open`
-    /// and `browse` count too: the launched application or address becomes
-    /// `screen.app` and a line of run history from then on).
-    /// [`crate::FlowValidation`] rejects a flow that references a fact there,
-    /// and the flow runtime never expands one even if that check were
-    /// bypassed.
+    /// name — never sees a secret's value, because that text is what Jev is
+    /// asked to reason about, or state it is shown on a later step.
+    /// [`crate::FlowValidation`] rejects a flow that references a secret
+    /// there, the flow runtime never expands one even if that check were
+    /// bypassed, and every Jev request has each secret's value masked back
+    /// to `${name}` — including where the page itself shows it.
+    ///
+    /// Every other variable is shared: its value may appear in step text and
+    /// in [`RunFlowRequest::brief`].
     pub facts: BTreeSet<String>,
     /// Whether `stop_before` steps may perform their irreversible action.
     pub allow_destructive: bool,
@@ -370,8 +378,16 @@ pub struct RunFlowRequest {
     pub include_values: bool,
     /// Most desktop actions for the whole run; capped by the module at 120.
     pub max_actions: u32,
-    /// Most Jev evaluations for the whole run; capped by the module at 300.
+    /// Most Jev evaluations for the whole run; capped by the module at
+    /// 5000. Every framing of a voted decision counts as one.
     pub max_model_calls: u32,
+    /// How many ways each decision is asked, concurrently, before its
+    /// answers are averaged: 1 asks once. Jev calls are cheap, so accuracy
+    /// is bought with more of them. Capped by the module at 9.
+    pub votes: u32,
+    /// Who the run is for and what it is after, shown to Jev with every
+    /// question so each small decision is made knowing the whole task.
+    pub brief: FlowBrief,
     /// Decision loops to turn off. Empty in production; set to measure what
     /// one loop contributes. [`FlowLoop::Slots`] cannot be turned off.
     pub disabled_loops: Vec<FlowLoop>,
@@ -391,11 +407,46 @@ impl Default for RunFlowRequest {
             allow_destructive: false,
             include_values: false,
             max_actions: 60,
-            max_model_calls: 150,
+            max_model_calls: 1500,
+            votes: 5,
+            brief: FlowBrief::default(),
             disabled_loops: Vec::new(),
             memory: Vec::new(),
             trace: false,
         }
+    }
+}
+
+/// The task a flow run serves, as Jev is briefed on it.
+///
+/// Every Jev question carries it, so a decision about one control is made
+/// knowing who the task is for, what it is after, and what must not happen.
+/// It holds shared values only: a secret appears in `secrets` by name.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FlowBrief {
+    /// The whole goal in plain language, such as "book the cheapest flight
+    /// from Delhi to Srinagar on 18 October for one adult".
+    pub goal: String,
+    /// The shared details the task is carried out with, by name: whom it is
+    /// for, their date of birth, email, and so on.
+    pub details: BTreeMap<String, String>,
+    /// The names of the secrets the task holds, which Jev only ever sees as
+    /// `${name}`.
+    pub secrets: Vec<String>,
+    /// Standing rules, such as "stop before paying" or "decline paid
+    /// extras".
+    pub rules: Vec<String>,
+}
+
+impl FlowBrief {
+    /// Whether the brief says nothing at all.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.goal.is_empty()
+            && self.details.is_empty()
+            && self.secrets.is_empty()
+            && self.rules.is_empty()
     }
 }
 

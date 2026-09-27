@@ -3,6 +3,8 @@
 **Status:** Accepted. **Owner:** tinydesktop maintainers.
 **Plan:** [`../plans/unified-agent.md`](../plans/unified-agent.md).
 **Builds on:** [`jev-intent-flows.md`](jev-intent-flows.md).
+**Extended by:** [`jev-briefing.md`](jev-briefing.md) — briefs, secrets, votes,
+and filling payment forms.
 
 ## Problem
 
@@ -30,7 +32,9 @@ vocabularies and two loops, and stitch them together itself.
 
 ## Non-goals
 
-- Entering payment details. A payment page is always a checkpoint.
+- Paying on its own. Payment details are typed only from secret facts and only
+  under `payment: fill_then_approve`; the control that pays is always a
+  checkpoint or an approval ([`jev-briefing.md`](jev-briefing.md)).
 - Solving captchas, or bypassing logins or two-factor prompts. They become
   `needs_human`.
 - Vision models in the shipped module.
@@ -112,8 +116,10 @@ These are additive to the grammar in [`jev-intent-flows.md`](jev-intent-flows.md
   and dates, with deterministic ranking for parsed criteria.
 - **Form model:** `autocomplete`, `type` and `required`, with obvious slots
   pre-matched.
-- **Facts store:** values never leave the machine. Jev and the planner see slot
-  names only, and card data is refused.
+- **Facts store:** shared facts brief Jev by value; secret facts (cards,
+  passports, passwords, one-time codes) reach Jev and the planner only as
+  `${name}` and are masked out of every request
+  ([`jev-briefing.md`](jev-briefing.md)).
 - **Safety gate:** irreversible labels, plus a payment detector that looks for
   `cc-*` fields, card-number or CVV inputs, checkout URLs and pay labels.
 - **Task store:** state machine, TTL, cancellation and budgets.

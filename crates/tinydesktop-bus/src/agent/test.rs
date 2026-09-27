@@ -11,7 +11,7 @@ use serde_json::json;
 
 use super::{
     AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputField, InputKind,
-    StartTaskRequest, SurfaceKind, TaskId, TaskStatus, TaskView,
+    PaymentMode, StartTaskRequest, SurfaceKind, TaskId, TaskStatus, TaskView,
 };
 
 #[test]
@@ -23,6 +23,8 @@ fn a_bare_task_takes_safe_defaults() {
     assert!(!request.constraints.allow_destructive);
     assert!(!request.constraints.headed);
     assert!(request.constraints.surfaces.is_empty());
+    assert_eq!(request.constraints.payment, PaymentMode::StopAtPayment);
+    assert!(request.secret_facts.is_empty() && request.budget.votes.is_none());
     assert!(!request.trace);
     let round_trip: StartTaskRequest =
         serde_json::from_value(serde_json::to_value(&request).unwrap()).unwrap();
@@ -49,6 +51,25 @@ fn a_flow_and_constraints_are_accepted_as_written() {
     );
     assert_eq!(request.budget.max_actions, Some(80));
     assert_eq!(request.budget.max_model_calls, None);
+}
+
+#[test]
+fn secrets_and_the_payment_mode_pin_their_wire_form() {
+    let request: StartTaskRequest = serde_json::from_value(json!({
+        "task": "book and fill the card form",
+        "facts": {"first name": "Asha", "frequent flyer": "6E1234"},
+        "secret_facts": ["frequent flyer"],
+        "constraints": {"payment": "fill_then_approve", "origins": ["https://.goindigo.in"]},
+        "budget": {"votes": 7}
+    }))
+    .unwrap();
+    assert_eq!(request.secret_facts, ["frequent flyer"]);
+    assert_eq!(request.constraints.payment, PaymentMode::FillThenApprove);
+    assert_eq!(request.budget.votes, Some(7));
+    assert_eq!(
+        serde_json::to_value(PaymentMode::StopAtPayment).unwrap(),
+        json!("stop_at_payment")
+    );
 }
 
 #[test]

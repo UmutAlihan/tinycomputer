@@ -5,12 +5,12 @@
 use super::Error;
 
 #[test]
-fn a_refusal_names_the_fact_but_never_its_value() {
-    let error = Error::CardDataRefused {
-        name: "card".to_owned(),
+fn an_unknown_secret_names_the_secret() {
+    let error = Error::UnknownSecret {
+        name: "passport".to_owned(),
     };
     assert_eq!(
         error.to_string(),
-        "fact `card` looks like payment card data, which tasks never hold"
+        "`passport` is marked secret, but no fact is called that"
     );
 }

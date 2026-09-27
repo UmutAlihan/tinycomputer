@@ -10,13 +10,14 @@ use std::collections::BTreeSet;
 
 use serde_json::Value;
 use tinydesktop_bus::{FlowLoop, Slot, StepOutcome};
+use tinydesktop_core::reformat_date;
 
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
-    ask::{self, CAP, Questions, chosen, elements, numbered},
+    ask::{self, CAP, Questions, asks_for, chosen, elements, field_error, numbered, probability},
     backend::deliver_text,
     memory::{learn, recall, remember},
-    validate::{substitute, substitute_safe},
+    validate::{references, substitute, substitute_safe},
     view::{Candidate, Screen, label, signature},
 };
 
@@ -24,6 +25,11 @@ use super::{
 const SLOT_FLOOR: f64 = 0.4;
 /// Turns spent revealing fields that are not on screen yet.
 const REVEAL_TURNS: u32 = 4;
+/// Probability of an error shown about a field that makes it entered again.
+const FIELD_ERROR: f64 = 0.7;
+/// Probability that a form asks for a detail, under which a detail with no
+/// field is taken as not asked for rather than failing the step.
+const NOT_ASKED: f64 = 0.35;
 
 /// One slot matched to one field.
 #[derive(Debug, Clone)]
@@ -37,6 +43,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Runs an `enter` step.
     pub(super) async fn enter(&mut self, log: &mut StepLog, slots: &[Slot]) -> Result<Ended, Halt> {
         log.used(FlowLoop::Slots);
+        // A slot whose text names a secret is private: its value is never
+        // written into a question, even as the option to pick.
+        let private = slots
+            .iter()
+            .map(|slot| {
+                references(&slot.text)
+                    .iter()
+                    .any(|name| self.facts.contains(name))
+            })
+            .collect::<Vec<_>>();
         let slots = slots
             .iter()
             .map(|slot| Slot {
@@ -48,6 +64,141 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             })
             .collect::<Vec<_>>();
         let mut pending = (0..slots.len()).collect::<BTreeSet<_>>();
+        self.fill_pending(log, &slots, &private, &mut pending)
+            .await?;
+        // A detail the form never asks for — a title where it only asks for
+        // gender — has no field; that is not a failure.
+        let mut unasked = BTreeSet::new();
+        if !pending.is_empty() && self.enabled(FlowLoop::Validation) {
+            unasked = self.unasked(log, &slots, &pending).await?;
+            pending.retain(|index| !unasked.contains(index));
+            if !unasked.is_empty() {
+                self.history.push(format!(
+                    "the form does not ask for: {}",
+                    names(&slots, &unasked)
+                ));
+            }
+        }
+        if pending.is_empty() && self.enabled(FlowLoop::Validation) {
+            // A form that rejects a value says so next to its field; enter
+            // those once more, then give up naming them.
+            let flagged = self.flagged(log, &slots).await?;
+            if !flagged.is_empty() {
+                self.history.push(format!(
+                    "the form shows an error about: {}; entering those again",
+                    names(&slots, &flagged)
+                ));
+                pending = flagged;
+                self.fill_pending(log, &slots, &private, &mut pending)
+                    .await?;
+                let still = self.flagged(log, &slots).await?;
+                if !still.is_empty() {
+                    return Err(Halt::Failed(format!(
+                        "the form still shows an error about: {}",
+                        names(&slots, &still)
+                    )));
+                }
+            }
+        }
+        if pending.is_empty() {
+            self.remember_choice(&format!(
+                "entered: {}",
+                slots
+                    .iter()
+                    .map(|slot| slot.slot.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+            let entered = slots.len() - unasked.len();
+            Ok(Ended::new(
+                StepOutcome::Done,
+                if unasked.is_empty() {
+                    format!("entered {entered} value(s)")
+                } else {
+                    format!(
+                        "entered {entered} value(s); the form does not ask for: {}",
+                        names(&slots, &unasked)
+                    )
+                },
+            ))
+        } else {
+            Err(Halt::Failed(format!(
+                "no field was found for: {}",
+                names(&slots, &pending)
+            )))
+        }
+    }
+
+    /// The `pending` slots the form on screen does not ask for, by one Noul
+    /// each.
+    async fn unasked(
+        &mut self,
+        log: &mut StepLog,
+        slots: &[Slot],
+        pending: &BTreeSet<usize>,
+    ) -> Result<BTreeSet<usize>, Halt> {
+        let screen = self.look().await?;
+        let mut questions = Questions::default();
+        for index in pending {
+            questions = questions.with(&format!("asks_{index}"), asks_for(&slots[*index].slot));
+        }
+        let answers = self
+            .ask(
+                log,
+                ask::request(
+                    self.model(),
+                    self.state(&screen, "check which details the form asks for"),
+                    questions,
+                ),
+            )
+            .await?;
+        Ok(pending
+            .iter()
+            .copied()
+            .filter(|index| {
+                probability(&answers, &format!("asks_{index}")).is_some_and(|asks| asks < NOT_ASKED)
+            })
+            .collect())
+    }
+
+    /// The slots the screen shows an error about, by one Noul each.
+    async fn flagged(
+        &mut self,
+        log: &mut StepLog,
+        slots: &[Slot],
+    ) -> Result<BTreeSet<usize>, Halt> {
+        log.used(FlowLoop::Validation);
+        let screen = self.look().await?;
+        let mut questions = Questions::default();
+        for (index, slot) in slots.iter().enumerate() {
+            questions = questions.with(&format!("error_{index}"), field_error(&slot.slot));
+        }
+        let answers = self
+            .ask(
+                log,
+                ask::request(
+                    self.model(),
+                    self.state(&screen, "check the entered form for errors"),
+                    questions,
+                ),
+            )
+            .await?;
+        Ok((0..slots.len())
+            .filter(|index| {
+                probability(&answers, &format!("error_{index}")).unwrap_or_default() >= FIELD_ERROR
+            })
+            .collect())
+    }
+
+    /// Fills every slot in `pending` it can find a field or an option for,
+    /// removing each one that arrives.
+    async fn fill_pending(
+        &mut self,
+        log: &mut StepLog,
+        slots: &[Slot],
+        private: &[bool],
+        pending: &mut BTreeSet<usize>,
+    ) -> Result<(), Halt> {
         let mut revealed = false;
         for _ in 0..3 {
             if pending.is_empty() {
@@ -58,42 +209,39 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 self.explore(&mut screen).await;
             }
             let fields = editable(&screen);
-            if fields.is_empty() {
-                if revealed {
-                    break;
-                }
-                revealed = true;
-                let names = pending
-                    .iter()
-                    .map(|index| slots[*index].slot.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                self.accomplish(
-                    log,
-                    &format!("show the editable fields for: {names}"),
-                    REVEAL_TURNS,
-                )
-                .await?;
-                continue;
-            }
-            let assignments = self.assign(log, &screen, &slots, &pending, &fields).await?;
+            let assignments = if fields.is_empty() {
+                Vec::new()
+            } else {
+                self.assign(log, &screen, slots, pending, &fields).await?
+            };
             if assignments.is_empty() {
                 if revealed {
                     break;
                 }
                 revealed = true;
-                let names = pending
-                    .iter()
-                    .map(|index| slots[*index].slot.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                self.accomplish(log, &format!("show the fields for: {names}"), REVEAL_TURNS)
-                    .await?;
+                let reveal = if fields.is_empty() {
+                    format!("show the editable fields for: {}", names(slots, pending))
+                } else {
+                    format!("show the fields for: {}", names(slots, pending))
+                };
+                // A field that cannot be revealed is looked for another way
+                // below, or found not to be asked for; it is not a failure.
+                match self.accomplish(log, &reveal, REVEAL_TURNS).await {
+                    Err(Halt::Failed(note)) => self
+                        .history
+                        .push(format!("could not reveal the fields ({note})")),
+                    other => {
+                        other?;
+                    }
+                }
                 continue;
             }
             for assignment in assignments {
                 let slot = &slots[assignment.slot];
-                if self.fill(log, slot, &assignment.field).await? {
+                if self
+                    .fill(log, slot, &assignment.field, &screen.context)
+                    .await?
+                {
                     pending.remove(&assignment.slot);
                     learn(
                         &mut self.learned,
@@ -113,7 +261,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         // read as "this slot has no picker".
         for index in pending.clone() {
             let slot = &slots[index];
-            match self.pick_option(log, &slot.slot, &slot.text, true).await {
+            match self
+                .pick_option(log, &slot.slot, &slot.text, private[index], false)
+                .await
+            {
                 Ok(_) => {
                     pending.remove(&index);
                 }
@@ -121,21 +272,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 Err(halt) => return Err(halt),
             }
         }
-        if pending.is_empty() {
-            Ok(Ended::new(
-                StepOutcome::Done,
-                format!("entered {} value(s)", slots.len()),
-            ))
-        } else {
-            Err(Halt::Failed(format!(
-                "no field was found for: {}",
-                pending
-                    .iter()
-                    .map(|index| slots[*index].slot.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )))
-        }
+        Ok(())
     }
 
     /// Matches the pending slots to fields, one field per slot.
@@ -229,15 +366,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Delivers one slot's text and reports whether it verifiably arrived.
+    ///
+    /// A date is typed in the layout the field or the page around it asks
+    /// for ("DD-MM-YYYY"), so an input mask does not mangle it.
     async fn fill(
         &mut self,
         log: &mut StepLog,
         slot: &Slot,
         field: &Candidate,
+        context: &[String],
     ) -> Result<bool, Halt> {
         let app = self.app.clone();
         let target = field.clone();
-        let text = slot.text.clone();
+        let hints = [field.name.as_deref(), field.description.as_deref()]
+            .into_iter()
+            .flatten()
+            .chain(context.iter().map(String::as_str));
+        let text = reformat_date(&slot.text, hints).unwrap_or_else(|| slot.text.clone());
         let reply = self
             .act(
                 log,
@@ -260,6 +405,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         ));
         Ok(reply.ok)
     }
+}
+
+/// The names of the slots at `indices`, joined.
+fn names(slots: &[Slot], indices: &BTreeSet<usize>) -> String {
+    indices
+        .iter()
+        .map(|index| slots[*index].slot.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// Fields that accept text, top to bottom.

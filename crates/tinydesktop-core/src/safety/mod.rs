@@ -3,8 +3,8 @@
 //! Two deterministic checks every surface runs before it acts, independently
 //! of anything a model decided:
 //!
-//! - [`consequence`] classifies a control by its label. A payment is always
-//!   stopped at; an irreversible action (send, delete, publish, confirm a
+//! - [`consequence`] classifies a control by its label. A payment is never
+//!   made on its own — it is stopped at, or held for approval; an irreversible action (send, delete, publish, confirm a
 //!   booking) needs explicit approval; everything else proceeds. Stepping
 //!   through a booking — "Book", "Select", "Continue" — is deliberately
 //!   *reversible*: those lead to further forms, and the payment check stops
@@ -83,6 +83,53 @@ const IRREVERSIBLE: &[&str] = &[
     "deactivate",
 ];
 
+/// Verbs that lower a count.
+const DECREASE: &[&str] = &["remove", "decrease", "reduce", "minus", "subtract"];
+
+/// What a booking counts: a stepper lowering one of these changes a number.
+const COUNTED: &[&str] = &[
+    "adult",
+    "adults",
+    "child",
+    "children",
+    "infant",
+    "infants",
+    "passenger",
+    "passengers",
+    "traveller",
+    "travellers",
+    "traveler",
+    "travelers",
+    "guest",
+    "guests",
+    "room",
+    "rooms",
+];
+
+/// Whether `label` is a counter's minus button — "Remove Adult, 2 Adult
+/// Remaining", "Decrease adults" — which only changes a number that its plus
+/// button changes back, however it is worded.
+///
+/// ```
+/// use tinydesktop_core::adjusts_a_count;
+///
+/// assert!(adjusts_a_count("Remove Adult, 2 Adult Remaining"));
+/// assert!(!adjusts_a_count("Remove passenger details"));
+/// assert!(!adjusts_a_count("Remove"));
+/// ```
+#[must_use]
+pub fn adjusts_a_count(label: &str) -> bool {
+    let words = normalize(label);
+    let words = words.split_whitespace().collect::<Vec<_>>();
+    words.windows(2).any(|pair| {
+        DECREASE.contains(&pair[0])
+            && COUNTED.contains(&pair[1])
+            && !words
+                .iter()
+                .any(|word| matches!(*word, "details" | "information" | "info"))
+    })
+}
+
 /// Classifies a control by its visible label.
 ///
 /// An empty label is [`Consequence::Irreversible`]: a control that says
@@ -95,6 +142,7 @@ const IRREVERSIBLE: &[&str] = &[
 /// assert_eq!(consequence("Send"), Consequence::Irreversible);
 /// assert_eq!(consequence("Book"), Consequence::Reversible);
 /// assert_eq!(consequence("Continue to traveller details"), Consequence::Reversible);
+/// assert_eq!(consequence("Remove Adult"), Consequence::Reversible);
 /// ```
 #[must_use]
 pub fn consequence(label: &str) -> Consequence {
@@ -104,7 +152,7 @@ pub fn consequence(label: &str) -> Consequence {
     }
     if contains_any(&words, PAYMENT) {
         Consequence::Payment
-    } else if contains_any(&words, IRREVERSIBLE) {
+    } else if contains_any(&words, IRREVERSIBLE) && !adjusts_a_count(label) {
         Consequence::Irreversible
     } else {
         Consequence::Reversible

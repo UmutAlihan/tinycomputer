@@ -26,14 +26,20 @@ use super::{
 pub(super) const DONE: f64 = 0.75;
 /// Completion probability that skips a step before acting.
 const ALREADY_DONE: f64 = 0.85;
+/// Completion probability under which the judge leans "not done".
+const LEANS_DONE: f64 = 0.5;
 /// Obstacle probability that triggers dismissal.
 const BLOCKED: f64 = 0.7;
 /// A progress drop, as a fraction of the scale, that counts as a regression.
 const REGRESSION: f64 = 0.25;
+/// Probability that the last action helped below which it is undone.
+const UNHELPFUL: f64 = 0.2;
 /// Least probability a shortcut choice needs to be pressed.
 const SHORTCUT_FLOOR: f64 = 0.5;
 /// Unchanged turns after which a step gives up.
 const STALL_TURNS: u32 = 3;
+/// Waits in a row that changed nothing after which Jev is not let wait again.
+const MAX_IDLE_WAITS: u32 = 2;
 /// Obstacles dismissed per step at most.
 const MAX_OBSTACLES: u32 = 2;
 /// Undos per step at most.
@@ -101,6 +107,8 @@ struct LastAction {
     target: Option<Candidate>,
     before: Screen,
     progress: Option<f64>,
+    /// Whether the action was a wait rather than a press or a shortcut.
+    waited: bool,
 }
 
 /// Bookkeeping across the turns of one `do` step.
@@ -109,6 +117,8 @@ struct DoState {
     last: Option<LastAction>,
     banned: BTreeSet<String>,
     unchanged: u32,
+    /// Waits in a row that changed nothing.
+    idle_waits: u32,
     obstacles: u32,
     undos: u32,
 }
@@ -195,16 +205,28 @@ fn covered(reply: &tinydesktop_bus::DesktopResponse) -> bool {
         .is_some_and(|error| error.message.contains("is covered by"))
 }
 
+/// The completion a step needs on `turn`: more before acting, since
+/// skipping a step that was not done derails everything after it.
+fn threshold(turn: u32) -> f64 {
+    if turn == 0 { ALREADY_DONE } else { DONE }
+}
+
+/// The completion under which Jev's "finished" move is overruled on `turn`.
+fn finish_floor(turn: u32) -> f64 {
+    if turn == 0 { ALREADY_DONE } else { LEANS_DONE }
+}
+
 /// Ends the step when the completion judge is confident enough.
 fn finished(log: &mut StepLog, judged: &Judgement, turn: u32) -> Option<Ended> {
     let done = judged.done?;
     log.confidence = Some(done);
-    let (threshold, outcome) = if turn == 0 {
-        (ALREADY_DONE, StepOutcome::AlreadyDone)
+    let outcome = if turn == 0 {
+        StepOutcome::AlreadyDone
     } else {
-        (DONE, StepOutcome::Done)
+        StepOutcome::Done
     };
-    (done >= threshold).then(|| Ended::new(outcome, format!("accomplished (confidence {done:.2})")))
+    (done >= threshold(turn))
+        .then(|| Ended::new(outcome, format!("accomplished (confidence {done:.2})")))
 }
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
@@ -227,7 +249,24 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             {
                 return Ok(ended);
             }
-            let judged = self.judge(log, &screen, intent).await?;
+            let last = state
+                .last
+                .as_ref()
+                .and_then(|last| last.target.as_ref())
+                .map(label);
+            let mut judged = self.judge(log, &screen, intent, last.as_deref()).await?;
+            if judged.next == "finished"
+                && judged.done.is_some_and(|done| done < finish_floor(turn))
+            {
+                // The move chooser's "finished" is one vote. Before anything
+                // is done it needs the completion judge's full bar, since
+                // skipping a step derails the rest; after acting it stands
+                // unless the judge leans the other way.
+                self.history.push(
+                    "the screen does not yet clearly show this step done; act on it".to_owned(),
+                );
+                "activate".clone_into(&mut judged.next);
+            }
             let creating = creates_new(intent) && log.actions.is_empty();
             if !creating && let Some(ended) = finished(log, &judged, turn) {
                 return Ok(ended);
@@ -244,6 +283,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             {
                 continue;
             }
+            if judged.next == "wait" && state.idle_waits >= MAX_IDLE_WAITS {
+                self.history.push(
+                    "did not wait again: the page has settled, so judge it as it is or act on it"
+                        .to_owned(),
+                );
+                continue;
+            }
             match self
                 .make_move(log, &screen, intent, &judged, &state.banned)
                 .await?
@@ -254,6 +300,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         target: target.map(|target| *target),
                         before: screen,
                         progress: judged.progress,
+                        waited: judged.next == "wait",
                     });
                 }
                 Move::Skipped => {}
@@ -272,7 +319,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         {
             return Ok(ended);
         }
-        let judged = self.judge(log, &screen, intent).await?;
+        let judged = self.judge(log, &screen, intent, None).await?;
         if judged.done.unwrap_or_default() >= DONE {
             return Ok(Ended::new(
                 StepOutcome::Done,
@@ -286,6 +333,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Records what the last action changed, banning an element that changed
     /// nothing and failing the step after [`STALL_TURNS`] such turns.
+    ///
+    /// A wait that changes nothing is not a stall: the page has settled, and
+    /// Jev is told so. It is not let wait again after [`MAX_IDLE_WAITS`] of
+    /// them, which leaves it to judge or act on the page as it stands.
     fn note_change(&mut self, state: &mut DoState, screen: &Screen) -> Result<(), Halt> {
         let Some(previous) = &state.last else {
             return Ok(());
@@ -294,6 +345,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let note = change_note(&previous.before, screen, changed);
         if changed {
             state.unchanged = 0;
+            state.idle_waits = 0;
+        } else if previous.waited {
+            state.idle_waits = state.idle_waits.saturating_add(1);
+            self.history.push(
+                "waited: the page has finished loading and nothing changed, so waiting longer will not change it"
+                    .to_owned(),
+            );
+            return Ok(());
         } else {
             state.unchanged = state.unchanged.saturating_add(1);
             if let Some(target) = &previous.target {
@@ -329,10 +388,26 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             (Some(previous), Some(now)) => previous
                 .progress
                 .filter(|before| before - now >= REGRESSION)
-                .map(|before| (before, now, previous.target.clone())),
+                .map(|before| {
+                    (
+                        format!("progress {before:.2} -> {now:.2}"),
+                        previous.target.clone(),
+                    )
+                }),
             _ => None,
         };
-        let Some((before, now, target)) = regressed else {
+        let unhelpful = state
+            .last
+            .as_ref()
+            .filter(|previous| previous.target.is_some())
+            .zip(judged.helped.filter(|helped| *helped < UNHELPFUL))
+            .map(|(previous, helped)| {
+                (
+                    format!("it did not help (confidence {helped:.2})"),
+                    previous.target.clone(),
+                )
+            });
+        let Some((why, target)) = regressed.or(unhelpful) else {
             return Ok(false);
         };
         if !self.enabled(FlowLoop::Undo) || state.undos >= MAX_UNDOS {
@@ -349,7 +424,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         })
         .await?;
         self.history.push(format!(
-            "that made things worse (progress {before:.2} -> {now:.2}); undid it and will try something else"
+            "that made things worse ({why}); undid it and will try something else"
         ));
         state.last = None;
         Ok(true)
@@ -583,12 +658,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(())
     }
 
-    /// One request judging the screen against `intent` and proposing a move.
+    /// One request judging the screen against `intent` and proposing a move;
+    /// after pressing `last`, it also asks whether that helped.
     async fn judge(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
         intent: &str,
+        last: Option<&str>,
     ) -> Result<Judgement, Halt> {
         let mut questions = Questions::default();
         if self.enabled(FlowLoop::Completion) {
@@ -603,6 +680,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         if self.enabled(FlowLoop::Obstacles) {
             questions = questions.with("blocked", obstacle(intent));
+        }
+        if self.enabled(FlowLoop::Undo)
+            && let Some(last) = last
+        {
+            questions = questions.with("helped", ask::helped(intent, &format!("pressed {last}")));
         }
         if self.enabled(FlowLoop::Moves) {
             log.used(FlowLoop::Moves);
@@ -657,6 +739,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }),
             progress: level(&answers, "progress"),
             blocked: probability(&answers, "blocked"),
+            helped: probability(&answers, "helped"),
             next,
             shortcut,
         })
@@ -669,6 +752,7 @@ struct Judgement {
     done: Option<f64>,
     progress: Option<f64>,
     blocked: Option<f64>,
+    helped: Option<f64>,
     next: String,
     shortcut: Option<(&'static str, &'static str)>,
 }
@@ -680,6 +764,7 @@ impl Judgement {
             done: None,
             progress: None,
             blocked: None,
+            helped: None,
             next: "activate".to_owned(),
             shortcut: None,
         }

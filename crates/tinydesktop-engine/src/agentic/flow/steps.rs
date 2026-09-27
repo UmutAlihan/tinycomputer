@@ -225,11 +225,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
-        // `what` and `option` are shown to Jev, so a fact is never
+        // `what` and `option` are shown to Jev, so a secret is never
         // expanded into them; validation already rejects one there.
         let what = substitute_safe(&choose.what, &self.vars, &self.facts);
         let option = substitute_safe(&choose.option, &self.vars, &self.facts);
-        self.pick_option(log, &what, &option, false).await
+        self.pick_option(log, &what, &option, false, true).await
     }
 
     /// Picks `option` in `what` as a person works a list, an autocomplete
@@ -238,15 +238,21 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// filter it. Only an element that shows the option is ever pressed, so
     /// a list that never shows it fails the step rather than picking another.
     ///
-    /// A `private` option — a value `enter` could not type into a field — is
+    /// A `private` option — a secret `enter` could not type into a field — is
     /// never written into a question: only elements that already show it are
     /// offered, so Jev sees nothing the page does not.
+    ///
+    /// `into_focus` lets it type the option wherever the focus is, as an
+    /// opened autocomplete expects. `enter` turns that off for a slot with
+    /// no field: the focus there is the field it just filled for another
+    /// slot, and typing into it would spoil that value.
     pub(super) async fn pick_option(
         &mut self,
         log: &mut StepLog,
         what: &str,
         option: &str,
         private: bool,
+        into_focus: bool,
     ) -> Result<Ended, Halt> {
         let purpose = if private {
             format!("pick the option in {what} that shows the value being entered")
@@ -255,6 +261,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         };
         for attempt in 0..4 {
             let screen = self.look().await?;
+            if !private && let Some(chosen) = already_chosen(&screen, option) {
+                self.history
+                    .push(format!("{} is already chosen", label(&chosen)));
+                self.remember_choice(&format!("chose {option:?} in {what}"));
+                return Ok(Ended::new(
+                    StepOutcome::AlreadyDone,
+                    format!("{option:?} was already chosen"),
+                ));
+            }
             let pool = clickable(&screen.candidates)
                 .into_iter()
                 .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
@@ -270,23 +285,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     })
                     .collect(),
             );
-            // `what` names the control the option belongs to (a seat picker,
-            // a destination search); a page rarely echoes that description
-            // on the option's own label, so an unrelated control elsewhere
-            // that happens to share the option's text must not qualify.
-            // Prefer matches inside that region when the page's ancestor
-            // labels place any there; otherwise keep every match, since some
-            // pages carry no region text at all and narrowing then would
-            // drop every real option.
-            let regional = pool
-                .iter()
-                .filter(|candidate| in_region(candidate, what))
-                .cloned()
-                .collect::<Vec<_>>();
-            let pool = if regional.is_empty() { pool } else { regional };
+            let pool = within(pool, what);
             // Matches that all name one option leave nothing to judge; a
-            // private option is never judged, since Jev is not told it.
-            let grounded = if private || one_option(&pool) {
+            // private option is never judged, since Jev is not told it. An
+            // option no control names is a description ("the lowest fare"),
+            // matched by Jev among the page's option controls.
+            let grounded = if pool.is_empty() && !private {
+                self.described(log, &screen, what, option).await?
+            } else if private || one_option(&pool) {
                 plainest(pool).map(|candidate| Grounded {
                     candidate,
                     confidence: 1.0,
@@ -294,6 +300,17 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             } else {
                 self.ground(log, &screen, &purpose, &purpose, pool).await?
             };
+            if let Some(grounded) = &grounded
+                && is_checked(&grounded.candidate)
+            {
+                self.history
+                    .push(format!("{} is already chosen", label(&grounded.candidate)));
+                self.remember_choice(&format!("chose {option:?} in {what}"));
+                return Ok(Ended::new(
+                    StepOutcome::AlreadyDone,
+                    format!("{option:?} was already chosen"),
+                ));
+            }
             if let Some(grounded) = grounded {
                 log.confidence = Some(grounded.confidence);
                 let target = grounded.candidate;
@@ -321,6 +338,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     } else {
                         format!("chose an option with {}", label(&target))
                     });
+                    self.remember_choice(&if private {
+                        format!("chose the value in {what}")
+                    } else {
+                        format!("chose {option:?} in {what}")
+                    });
                     return Ok(Ended::new(
                         StepOutcome::Done,
                         if private {
@@ -331,30 +353,82 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     ));
                 }
             }
-            match attempt {
-                0 => {
-                    self.accomplish(
-                        log,
-                        &format!("open {what} so its options show"),
-                        REVEAL_TURNS,
-                    )
-                    .await?;
-                }
-                1 if looks_like_date(option) => self.page_to(log, option).await?,
-                // An opened autocomplete holds the focus in its search input,
-                // often unnamed; type there before anything moves the focus.
-                1 => self.type_into_focus(log, option).await?,
-                2 if !looks_like_date(option) => {
-                    self.type_to_filter(log, &screen, what, option).await?;
-                }
-                _ => {}
-            }
+            self.another_way(log, attempt, &screen, what, option, into_focus)
+                .await?;
         }
         Err(Halt::Failed(if private {
             format!("the value was not found in {what}")
         } else {
             format!("{option:?} was not found in {what}")
         }))
+    }
+
+    /// The next way to make `option` show after attempt `attempt` found
+    /// nothing: open `what`, page a calendar, or type the option to filter.
+    async fn another_way(
+        &mut self,
+        log: &mut StepLog,
+        attempt: usize,
+        screen: &Screen,
+        what: &str,
+        option: &str,
+        into_focus: bool,
+    ) -> Result<(), Halt> {
+        match attempt {
+            0 => {
+                // Revealing is one way among several; when it fails the
+                // next attempt tries another rather than giving up.
+                let revealed = self
+                    .accomplish(
+                        log,
+                        &format!("open {what} so its options show"),
+                        REVEAL_TURNS,
+                    )
+                    .await;
+                match revealed {
+                    Err(Halt::Failed(note)) => self.history.push(format!(
+                        "could not open {what} ({note}); trying another way"
+                    )),
+                    other => {
+                        other?;
+                    }
+                }
+            }
+            1 if looks_like_date(option) => self.page_to(log, option).await?,
+            // An opened autocomplete holds the focus in its search input,
+            // often unnamed; type there before anything moves the focus.
+            1 if into_focus => self.type_into_focus(log, option).await?,
+            2 if !looks_like_date(option) => {
+                self.type_to_filter(log, screen, what, option).await?;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// The option control on `screen` that fits `option` read as a
+    /// description, by Jev; `None` when no control fits well enough.
+    async fn described(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        what: &str,
+        option: &str,
+    ) -> Result<Option<Grounded>, Halt> {
+        let options = clickable(&screen.candidates)
+            .into_iter()
+            .filter(|candidate| {
+                is_one_option(candidate) && !is_destructive(candidate, screen, &self.stop_before)
+            })
+            .collect::<Vec<_>>();
+        if options.is_empty() {
+            return Ok(None);
+        }
+        let purpose = format!("pick the option in {what} that fits: {option}");
+        Ok(self
+            .ground(log, screen, &purpose, &purpose, options)
+            .await?
+            .filter(|grounded| grounded.confidence >= LOCATE_FLOOR))
     }
 
     /// Pages a calendar forward, one month at a time, until a control shows
@@ -395,7 +469,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Types `option` wherever the focus is.
     async fn type_into_focus(&mut self, log: &mut StepLog, option: &str) -> Result<(), Halt> {
-        let text = option.to_owned();
+        let text = search_text(option);
         self.act(log, "type to filter", None, move |backend| {
             backend.execute(JevOperation::TypeText, None, Some(text))
         })
@@ -430,7 +504,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let app = self.app.clone();
             let target = grounded.candidate;
             let field = target.clone();
-            let text = option.to_owned();
+            let text = search_text(option);
             let reply = self
                 .act(log, "type to filter", Some(&target), move |backend| {
                     deliver_text(&backend, &app, &field, &text)
@@ -597,6 +671,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         self.history
             .push(format!("picked {summary} ({how} by {by})"));
+        self.remember_choice(&format!("picked from {from} by {by}: {summary}"));
         Ok(Ended::new(
             StepOutcome::Done,
             format!("picked {summary} ({how} by {by}, out of {})", groups.len()),
@@ -912,10 +987,60 @@ fn records_of(groups: &[Group]) -> Vec<Record> {
 /// option ("Srinagar, SXR Srinagar International Airport").
 const OPTION_EXTRA_WORDS: usize = 12;
 
+/// Roles of a control that is one option however much its label says: a
+/// fare card's radio names its price, baggage, and rules, and is still just
+/// "Saver".
+const ONE_OPTION_ROLES: &[&str] = &[
+    "radio",
+    "radiobutton",
+    "option",
+    "menuitemradio",
+    "checkbox",
+];
+
+/// Whether a control is checked or selected already.
+fn is_checked(candidate: &Candidate) -> bool {
+    candidate
+        .states
+        .iter()
+        .any(|state| state == "checked" || state == "selected")
+}
+
+fn is_one_option(candidate: &Candidate) -> bool {
+    ONE_OPTION_ROLES
+        .iter()
+        .any(|role| candidate.role.eq_ignore_ascii_case(role))
+}
+
+/// The option control on `screen` that is already checked or selected and
+/// whose label starts with `option`: there is nothing to choose.
+pub(super) fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate> {
+    let wanted = plain(option);
+    if wanted.is_empty() {
+        return None;
+    }
+    screen
+        .candidates
+        .iter()
+        .find(|candidate| {
+            is_one_option(candidate)
+                && is_checked(candidate)
+                && candidate
+                    .name
+                    .as_deref()
+                    .is_some_and(|name| plain(name).starts_with(&wanted))
+        })
+        .cloned()
+}
+
 /// Whether a label says far more than the option: a control whose name
 /// strings together a whole list (recent searches, every day of a month)
-/// mentions the option without being it.
-fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
+/// mentions the option without being it. An option control is never such a
+/// list, however long its label.
+pub(super) fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
+    if is_one_option(candidate) {
+        return false;
+    }
     let words = |text: &str| {
         plain(text)
             .split(' ')
@@ -980,9 +1105,49 @@ fn mentions(candidate: &Candidate, option: &str) -> bool {
                 Some(words) => words
                     .iter()
                     .all(|word| shown.contains(&format!(" {word} "))),
-                None => shown.contains(&format!(" {wanted} ")),
+                // "Srinagar (SXR)" is the "Srinagar ... Airport SXR" row: the
+                // exact phrase, or else every one of its words.
+                None => {
+                    shown.contains(&format!(" {wanted} "))
+                        || wanted
+                            .split(' ')
+                            .all(|word| shown.contains(&format!(" {word} ")))
+                }
             }
         })
+}
+
+/// What to type to find `option` in a search box: its name before any
+/// qualifier, so "Srinagar (SXR)" searches for "Srinagar" — a box matching
+/// on the name would find nothing for the whole of it.
+pub(super) fn search_text(option: &str) -> String {
+    let name = option
+        .split(['(', ','])
+        .next()
+        .map(str::trim)
+        .unwrap_or_default();
+    if name.is_empty() {
+        option.trim().to_owned()
+    } else {
+        name.to_owned()
+    }
+}
+
+/// The matches in `pool` inside the region `what` names, or all of them
+/// when the page places none there.
+///
+/// `what` names the control the option belongs to (a seat picker, a
+/// destination search); a page rarely echoes that description on the
+/// option's own label, so an unrelated control elsewhere that happens to
+/// share the option's text must not qualify. Some pages carry no region
+/// text at all, and narrowing then would drop every real option.
+fn within(pool: Vec<Candidate>, what: &str) -> Vec<Candidate> {
+    let regional = pool
+        .iter()
+        .filter(|candidate| in_region(candidate, what))
+        .cloned()
+        .collect::<Vec<_>>();
+    if regional.is_empty() { pool } else { regional }
 }
 
 /// Whether `candidate` sits inside — or itself names — the region `what`

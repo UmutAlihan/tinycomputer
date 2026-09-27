@@ -1,8 +1,9 @@
-//! Tests for the facts store: lookup, redaction, and refusing card data.
+//! Tests for the facts store: lookup, shared and secret facts, redaction,
+//! and masking secrets back into templates.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::Facts;
+use super::{Facts, is_sensitive_name};
 use crate::error::Error;
 
 fn traveller() -> Facts {
@@ -13,11 +14,10 @@ fn traveller() -> Facts {
         ("phone", "+91 98765 43210"),
         ("empty", ""),
     ])
-    .unwrap()
 }
 
 #[test]
-fn values_are_looked_up_by_name_and_only_names_are_listed() {
+fn values_are_looked_up_by_name_and_debug_shows_names_only() {
     let facts = traveller();
     assert_eq!(facts.get("email"), Some("asha@example.com"));
     assert_eq!(facts.get("passport"), None);
@@ -45,27 +45,28 @@ fn redaction_replaces_values_with_their_names() {
         traveller().redact(text),
         "Booked for ‹first name› ‹last name› (‹email›), call ‹phone›."
     );
-    let nested = Facts::new([("short", "Ann"), ("long", "Annabel")]).unwrap();
+    let nested = Facts::new([("short", "Ann"), ("long", "Annabel")]);
     assert_eq!(nested.redact("Annabel and Ann"), "‹long› and ‹short›");
 }
 
 #[test]
-fn card_data_is_refused_by_name_and_by_value() {
-    for (name, value) in [
+fn ordinary_details_are_shared_and_sensitive_ones_secret() {
+    let facts = Facts::new([
+        ("first name", "Asha"),
+        ("date of birth", "2000-01-01"),
         ("Card Number", "anything"),
         ("cvv", "123"),
-        ("security_code", "999"),
+        ("passport_number", "Z1234567"),
         ("notes", "4111 1111 1111 1111"),
-        ("reference", "4111-1111-1111-1111"),
-    ] {
-        assert_eq!(
-            Facts::new([(name, value)]),
-            Err(Error::CardDataRefused {
-                name: name.to_owned()
-            }),
-            "{name}"
-        );
-    }
+    ]);
+    assert_eq!(
+        facts.secret_names(),
+        ["Card Number", "cvv", "notes", "passport_number"]
+    );
+    assert_eq!(
+        facts.shared().collect::<Vec<_>>(),
+        [("date of birth", "2000-01-01"), ("first name", "Asha")]
+    );
 }
 
 #[test]
@@ -77,6 +78,58 @@ fn ordinary_numbers_are_not_mistaken_for_cards() {
         "12345678901234567890",
         "2026-10-14",
     ] {
-        assert!(Facts::new([("reference", value)]).is_ok(), "{value}");
+        assert!(
+            !Facts::new([("reference", value)]).is_secret("reference"),
+            "{value}"
+        );
     }
+}
+
+#[test]
+fn a_caller_can_make_any_fact_secret_but_not_a_missing_one() {
+    let facts = Facts::with_secrets([("frequent flyer", "6E123456")], ["frequent flyer"]).unwrap();
+    assert!(facts.is_secret("frequent flyer"));
+    assert_eq!(facts.shared().count(), 0);
+    assert_eq!(
+        Facts::with_secrets([("frequent flyer", "6E123456")], ["frequent flier"]),
+        Err(Error::UnknownSecret {
+            name: "frequent flier".to_owned()
+        })
+    );
+}
+
+#[test]
+fn masking_turns_secrets_back_into_templates_and_leaves_shared_values() {
+    let facts = Facts::new([
+        ("first name", "Asha"),
+        ("card number", "4111111111111111"),
+        ("cvv", "123"),
+    ]);
+    assert_eq!(
+        facts.mask("Asha paid with 4111 1111 1111 1111 (cvv 123), ref 41111111"),
+        "Asha paid with ${card number} (cvv ${cvv}), ref 41111111"
+    );
+    assert_eq!(
+        facts.mask("card 4111-1111-1111-1111."),
+        "card ${card number}."
+    );
+    assert_eq!(facts.mask("no digits here"), "no digits here");
+}
+
+#[test]
+fn merged_facts_keep_every_secret() {
+    let first = Facts::with_secrets([("code", "7788")], ["code"]).unwrap();
+    let second = Facts::new([("email", "a@b.c"), ("code", "9900")]);
+    let merged = first.merged(&second);
+    assert_eq!(merged.get("code"), Some("9900"));
+    assert!(merged.is_secret("code") && !merged.is_secret("email"));
+}
+
+#[test]
+fn sensitive_names_match_whole_words_only() {
+    assert!(is_sensitive_name("One-Time Password"));
+    assert!(is_sensitive_name("PAN"));
+    assert!(!is_sensitive_name("company"));
+    assert!(!is_sensitive_name("spinach"));
+    assert!(!is_sensitive_name("mobile number"));
 }

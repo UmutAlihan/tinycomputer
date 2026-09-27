@@ -59,6 +59,7 @@ async fn a_valid_plan_comes_back_with_its_questions() {
         .plan(
             "book the cheapest flight to Srinagar",
             &["email".to_owned()],
+            &[],
             &[SurfaceKind::Browser],
         )
         .await
@@ -72,8 +73,56 @@ async fn a_valid_plan_comes_back_with_its_questions() {
     let seen = &model.seen.lock().unwrap()[0];
     assert_eq!(seen[0].role, Role::System);
     assert!(seen[0].text.contains("\"browse\""), "the guide is included");
-    assert!(seen[1].text.contains("Facts you may use: ${email}."));
+    assert!(seen[1].text.contains("Shared facts you may use: ${email}."));
+    assert!(seen[1].text.contains("only ever an `enter` value: none."));
     assert!(seen[1].text.contains("Available: the web browser."));
+}
+
+#[tokio::test]
+async fn a_shared_fact_may_be_named_in_steps_but_a_secret_only_typed() {
+    let shared = r#"{"app": "browser", "steps": [
+      {"browse": "https://airline.test"},
+      {"choose": {"what": "title", "option": "${title}"}},
+      {"enter": {"card number": "${card number}"}},
+      {"stop_before": "paying for the booking"}
+    ]}"#;
+    let leaky = r#"{"app": "browser", "steps": [
+      {"browse": "https://airline.test"},
+      "type ${card number} into the card field",
+      {"stop_before": "paying for the booking"}
+    ]}"#;
+    let (planner, model) = scripted(&[Ok(leaky), Ok(shared)]);
+    let names = ["title".to_owned(), "card number".to_owned()];
+    let plan = planner
+        .plan("pay for the booking", &names, &[], &[SurfaceKind::Browser])
+        .await
+        .unwrap();
+    assert_eq!(plan.flow.steps.len(), 4);
+    {
+        let seen = model.seen.lock().unwrap();
+        let brief = &seen[1][1].text;
+        assert!(
+            brief.contains("Shared facts you may use: ${title}."),
+            "{brief}"
+        );
+        assert!(
+            brief.contains("only ever an `enter` value: ${card number}."),
+            "{brief}"
+        );
+        assert!(
+            seen[1][3].text.contains("`${card number}` is a secret"),
+            "{}",
+            seen[1][3].text
+        );
+    }
+
+    let (planner, _) = scripted(&[Ok(shared)]);
+    let names = ["title".to_owned(), "frequent flyer".to_owned()];
+    let secret_title = planner.plan("x", &names, &["title".to_owned()], &[]).await;
+    assert!(
+        secret_title.is_err(),
+        "a caller's secret is kept out of step text"
+    );
 }
 
 #[tokio::test]
@@ -83,12 +132,12 @@ async fn an_invalid_answer_is_repaired_with_the_errors() {
         Ok(r#"{"app": "", "steps": []}"#),
         Ok(r#"{"app": "Mail", "steps": ["start a new email message"]}"#),
     ]);
-    let plan = planner.plan("write an email", &[], &[]).await.unwrap();
+    let plan = planner.plan("write an email", &[], &[], &[]).await.unwrap();
     assert_eq!(plan.flow.app, "Mail");
     assert!(plan.notes.is_empty());
     let seen = model.seen.lock().unwrap();
     assert_eq!(seen.len(), 3);
-    assert!(seen[0][1].text.contains("Facts you may use: none."));
+    assert!(seen[0][1].text.contains("Shared facts you may use: none."));
     assert!(
         seen[0][1]
             .text
@@ -108,20 +157,20 @@ async fn a_plan_that_never_validates_or_a_failed_model_is_an_error() {
     let never = [Ok(r#"{"app": "", "steps": []}"#); REPAIRS + 1];
     let (planner, _) = scripted(&never);
     let error = planner
-        .plan("x", &[], &[SurfaceKind::Desktop])
+        .plan("x", &[], &[], &[SurfaceKind::Desktop])
         .await
         .unwrap_err();
     assert!(error.contains("did not produce a valid flow"), "{error}");
 
     let (planner, _) = scripted(&[Err("rate limited")]);
     assert_eq!(
-        planner.plan("x", &[], &[]).await.unwrap_err(),
+        planner.plan("x", &[], &[], &[]).await.unwrap_err(),
         "rate limited"
     );
     assert!(format!("{planner:?}").contains("Planner"));
 
     let (planner, _) = scripted(&[Ok(r#"{"steps": "not a list"}"#), Ok("{"), Ok("{}")]);
-    assert!(planner.plan("x", &[], &[]).await.is_err());
+    assert!(planner.plan("x", &[], &[], &[]).await.is_err());
 }
 
 #[cfg(feature = "planner")]
@@ -143,6 +192,6 @@ async fn the_open_router_planner_needs_a_key_and_never_prints_it() {
     // No network in tests: the guard makes the model call fail fast, which
     // exercises the adapter without reaching OpenRouter.
     tinyinference_llm::deny_network_models();
-    let failed = planner.plan("x", &[], &[]).await.unwrap_err();
+    let failed = planner.plan("x", &[], &[], &[]).await.unwrap_err();
     assert!(!failed.contains("secret-key"));
 }
