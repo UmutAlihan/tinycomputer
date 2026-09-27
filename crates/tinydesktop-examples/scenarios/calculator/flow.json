@@ -1,0 +1,12 @@
+{
+  "app": "Calculator",
+  "steps": [
+    { "open": "Calculator" },
+    "clear the calculator",
+    "enter the number 128 on the keypad",
+    "choose multiplication",
+    "enter the number 37 on the keypad",
+    "show the result",
+    { "verify": "the display shows 4736" }
+  ]
+}

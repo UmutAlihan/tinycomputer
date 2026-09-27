@@ -1,0 +1,13 @@
+{
+  "app": "Mail",
+  "steps": [
+    { "open": "Mail" },
+    "show the Inbox",
+    "open the newest message in the list",
+    { "read": { "what": "the subject of the message being viewed", "into": "subject" } },
+    "start a reply to the message being viewed",
+    { "enter": { "message body": "Thanks for your note about \"${subject}\". I have read it and will follow up properly by tomorrow.\n\nBest,\nAlex" } },
+    { "verify": "a reply draft is open with a message body" },
+    { "stop_before": "sending the reply" }
+  ]
+}

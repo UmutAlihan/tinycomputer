@@ -1,0 +1,13 @@
+{
+  "app": "Spotify",
+  "steps": [
+    { "open": "Spotify" },
+    "open the Liked Songs playlist",
+    { "if": {
+        "condition": "a song is currently playing",
+        "then": [ { "verify": "a song is currently playing" } ],
+        "else": [ "play the first song in the Liked Songs list",
+                  { "wait_for": "a song is currently playing" } ]
+    } }
+  ]
+}
