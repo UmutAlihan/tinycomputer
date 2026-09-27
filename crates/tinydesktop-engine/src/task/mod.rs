@@ -209,7 +209,8 @@ impl Tasks {
             ));
         };
         let known = known_names(&flow, &facts);
-        let validation = crate::agentic::check_flow(&flow, &known);
+        let fact_names = fact_names(&facts);
+        let validation = crate::agentic::check_flow(&flow, &known, &fact_names);
         let problems = validation
             .errors
             .iter()
@@ -227,7 +228,7 @@ impl Tasks {
         let Some(cell) = self.register(&flow, facts, request) else {
             return too_many();
         };
-        let missing = crate::agentic::missing_inputs(&flow, &known);
+        let missing = crate::agentic::missing_inputs(&flow, &known, &fact_names);
         if missing.is_empty() {
             self.spawn(
                 &cell,
