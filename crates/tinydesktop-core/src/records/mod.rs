@@ -67,18 +67,30 @@ const CURRENCIES: &[(&str, &str)] = &[
 ];
 
 /// Currency names written out, as screen readers hear prices (`From 7339
-/// Indian rupees`); the amount always comes before them. Longest first.
+/// Indian rupees`); the amount always comes before them. Every name is listed
+/// in the singular and the plural, and longest first, so of two names starting
+/// at the same place the longer is read.
 const NAMED_CURRENCIES: &[(&str, &str)] = &[
     ("indian rupees", "INR"),
+    ("indian rupee", "INR"),
     ("rupees", "INR"),
     ("rupee", "INR"),
     ("us dollars", "USD"),
+    ("us dollar", "USD"),
     ("dollars", "USD"),
+    ("dollar", "USD"),
     ("euros", "EUR"),
+    ("euro", "EUR"),
     ("british pounds", "GBP"),
+    ("british pound", "GBP"),
     ("pounds sterling", "GBP"),
+    ("pound sterling", "GBP"),
+    ("pounds", "GBP"),
+    ("pound", "GBP"),
     ("japanese yen", "JPY"),
+    ("yen", "JPY"),
     ("dirhams", "AED"),
+    ("dirham", "AED"),
 ];
 
 /// Reads the first price in `text`, such as `₹6,840`, `$1,234.56`,
@@ -104,14 +116,19 @@ pub fn parse_price(text: &str) -> Option<Price> {
             .find(|(at, _)| standalone(&lower, *at, marker))
             .map(|(at, _)| (at, at + marker.len(), *code))
     });
+    // The earliest name in the text with an amount before it, whichever
+    // currency it is: the first price, not the first currency listed.
     let named = || {
-        NAMED_CURRENCIES.iter().find_map(|(name, code)| {
-            lower
-                .match_indices(name)
-                .filter(|(at, _)| standalone(&lower, *at, name))
-                .find_map(|(at, _)| number_before(&text[..at]))
-                .map(|number| (number, *code))
-        })
+        NAMED_CURRENCIES
+            .iter()
+            .flat_map(|(name, code)| {
+                lower
+                    .match_indices(name)
+                    .filter(|(at, _)| standalone(&lower, *at, name))
+                    .filter_map(|(at, _)| Some((at, number_before(&text[..at])?, *code)))
+            })
+            .min_by_key(|(at, _, _)| *at)
+            .map(|(_, number, code)| (number, code))
     };
     // The amount sits right after a marker (`₹6,840`), else right before it
     // (`1.234,50 €`); a written-out name always follows its amount.
