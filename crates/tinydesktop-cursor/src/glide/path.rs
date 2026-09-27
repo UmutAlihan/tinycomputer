@@ -35,7 +35,7 @@ const PRIMARY_SHARE: f64 = 0.8;
 /// zero-width point still gets a sensible travel time.
 const MIN_TARGET_WIDTH: f64 = 8.0;
 
-/// The shortest and longest a reach takes at the natural tempo.
+/// The shortest and longest a reach takes at the natural pace.
 pub(crate) const TRAVEL_MS: (f64, f64) = (160.0, 1_100.0);
 
 /// One reported pointer position, `t_ms` after the reach began.
@@ -68,7 +68,7 @@ fn bezier(start: Point, control: Point, end: Point, s: f64) -> Point {
 /// A reach from `from` to `to`, a target `width` wide, sampled at 60 Hz.
 ///
 /// The last sample is exactly `to`, and sample times strictly increase. The
-/// instant profile, and a reach too short to see, is a single sample at `to`.
+/// off pace, and a reach too short to see, is a single sample at `to`.
 #[must_use]
 pub fn human_path(
     from: Point,
@@ -84,7 +84,7 @@ pub fn human_path(
             point: to,
         }];
     }
-    let total = travel_ms(distance, width, profile, rng);
+    let total = travel_ms(distance, width, pace, rng);
     let (dx, dy) = ((to.x - from.x) / distance, (to.y - from.y) / distance);
     let (nx, ny) = (-dy, dx);
 
