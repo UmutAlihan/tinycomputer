@@ -63,6 +63,13 @@ pub(in crate::agentic) struct Screen {
     /// Refs of subtrees the engine cut short; observing one as a root reads
     /// what the budget left out.
     pub(in crate::agentic) unexplored: Vec<String>,
+    /// Ref-less nodes not already summarized in `context`: the static text
+    /// carrying a rich-text area's body or a token field's attachments. Kept
+    /// separately, and in document order via [`Candidate::order`], so field
+    /// content stays reachable to [`crate::agentic::flow::ask`]'s
+    /// `field_contents` — gated on `include_values` — without ever reaching
+    /// `context`, which every request shares unconditionally.
+    pub(in crate::agentic) text_nodes: Vec<Candidate>,
 }
 
 /// How much of the tree one observation reads.
