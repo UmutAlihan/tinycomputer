@@ -2,7 +2,8 @@
 //! the flow runtime would see there: the title, what is in front, the first
 //! actionable controls, the repeated result cards, and whether a captcha or
 //! login wall blocks the page. An argument `click=<name>` after a URL clicks
-//! the first control whose name contains `<name>` and prints the page again.
+//! the first control whose name contains `<name>` and prints the page again;
+//! `type=<text>` types it with key presses wherever the focus is.
 //! It is the research step before pointing a live task at a site.
 //!
 //! Run it in the Docker lab, never on the host:
@@ -28,6 +29,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let browser = Arc::new(Browser::new(Arc::new(AgentBrowser)));
     let mut surface: Option<BrowserSurface> = None;
     for argument in &urls {
+        if let Some(text) = argument.strip_prefix("type=") {
+            if let Some(session) = surface.as_ref().and_then(BrowserSurface::session) {
+                let typed = runtime.block_on(browser.command(
+                    &session,
+                    serde_json::json!({"action": "keyboard", "subaction": "type", "text": text}),
+                ));
+                println!("=== type {text:?} -> {:?}", typed.is_ok());
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                if let Some(surface) = &surface {
+                    show(surface);
+                }
+            }
+            continue;
+        }
         if let Some(name) = argument.strip_prefix("click=") {
             if let Some(surface) = &surface {
                 println!("=== click {name:?}");
