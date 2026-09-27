@@ -289,6 +289,26 @@ impl Browser {
         })
     }
 
+    /// Runs one raw agent-browser command, such as
+    /// `{"action": "inputvalue", "selector": "@e3"}`, and returns its `data`.
+    ///
+    /// This is the escape hatch for engine capabilities the typed calls do
+    /// not cover. It carries no policy of its own: a caller exposing it to a
+    /// model must decide which actions to allow.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::NoSuchSession`], [`Error::InvalidInput`] when `command` names
+    /// no `action`, and whatever the engine reports.
+    pub async fn command(&self, id: &SessionId, command: Value) -> Result<Value> {
+        if command.get("action").and_then(Value::as_str).is_none_or(str::is_empty) {
+            return Err(Error::invalid_input("a command needs an action"));
+        }
+        let session = self.session(id)?;
+        let mut session = session.lock().await;
+        session.run(command).await
+    }
+
     /// Evaluates JavaScript in the page and returns its value.
     ///
     /// # Errors

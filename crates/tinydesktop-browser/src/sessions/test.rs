@@ -500,3 +500,22 @@ fn the_default_scratch_space_is_private_to_the_process() {
     let browser = Browser::new(Arc::new(Fake::new()));
     assert!(format!("{browser:?}").contains(&std::process::id().to_string()));
 }
+
+#[tokio::test]
+async fn a_raw_command_needs_an_action_and_returns_its_data() {
+    let fake = Fake::scripted(|command| {
+        (command["action"] == "inputvalue").then(|| ok(&json!({"value": "Delhi"})))
+    });
+    let (browser, id) = open(&fake, "command").await;
+    assert_eq!(
+        browser
+            .command(&id, json!({"action": "inputvalue", "selector": "@e2"}))
+            .await
+            .unwrap(),
+        json!({"value": "Delhi"})
+    );
+    assert!(matches!(
+        browser.command(&id, json!({"selector": "@e2"})).await,
+        Err(Error::InvalidInput { .. })
+    ));
+}
