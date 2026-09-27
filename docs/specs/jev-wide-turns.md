@@ -52,7 +52,11 @@ Under `"wide"`:
      `{"untrusted_accessibility_data": {"in_front": [...], "regions": [...],
      "collapsed": [...]}}`, each element a line `eN role "name" [states]`,
      each list region one line per card, noise and distraction collapsed to
-     one summary line, within `DIGEST_BUDGET` (40,000 bytes);
+     one summary line, within `DIGEST_BUDGET` (24,000 bytes; at 40,000 a
+     live booking page reached 28,000 of Jev's 32,000 tokens);
+     an element with no name is shown with the nearest named container it
+     sits in (`combobox in button "destinationCity …"`), in the element
+     lines and in every element option (`near`);
    - `memory`: `steps_done` (one line per finished step), `now`,
      `recent_actions` (the last 24 history lines, across steps),
      `tried_and_failed`, `next_step`, `variables_read`, `budget_left`.
@@ -62,12 +66,15 @@ Under `"wide"`:
    actionable elements and at least two regions, one request asks, per
    region (up to 24), `relevance_<id>` (five levels) and `distraction_<id>`
    (a Noul; at `DISTRACTION`, 0.7, the region is collapsed and ranked last).
-   It is reused until the digest's layout changes or the step ends.
+   Answers are kept by region name for the rest of the step; the page is
+   surveyed again only about regions it has not seen, and only when they are
+   more than three tenths of it — opening a dropdown is not worth a survey.
 3. **The turn.** One request asks the judging questions and:
    `dismiss` over the safe controls of the region in front (plus
    `escape`), `dismiss_known` for a remembered control, and per move
-   (`activate`, `expand`, `scroll`) over up to 80 candidates ranked by
-   relevance with elements the purpose names first: `target_<move>` and
+   (`activate`, `expand`, `scroll`) over up to 40 candidates ranked by
+   relevance, with elements the purpose names first and the element pressed
+   last turn last (pressing a toggle again closes what it opened): `target_<move>` and
    `again_<move>`, or `group_<move>_<n>` knockout Choices, and
    `known_<move>` for a remembered element.
 4. **Acting on it.** A target at `ACT`, or at `NAMED_FLOOR` when named, is

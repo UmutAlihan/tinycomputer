@@ -27,7 +27,8 @@ Change a constant and its row together.
 | `MAX_VOTES` | 9 | `vote.rs` | most framings one decision is asked in |
 | `CROWDED` | 40 | `survey.rs` | actionable elements above which a wide turn surveys the screen first |
 | `DISTRACTION` | 0.70 | `survey.rs` | distraction probability that collapses a region and ranks it last |
-| `DIGEST_BUDGET` | 40,000 bytes | `wide.rs` | screen a wide request shows before regions are collapsed |
-| `WIDE_POOL` | 80 | `wide.rs` | candidates one move is offered in a wide turn: four Choices of `CAP` |
+| `DIGEST_BUDGET` | 24,000 bytes | `wide.rs` | screen a wide request shows before regions are collapsed (about 9,000 tokens of dense page text) |
+| `WIDE_POOL` | 40 | `wide.rs` | candidates one move is offered in a wide turn: two Choices of `CAP` |
+| `NEW_TENTHS` | 3 | `survey.rs` | tenths of a page's regions that must be new before a step surveys it again |
 | `REGION_SIZE` | 24 | `tinycomputer-core` `surface/digest/` | elements a region holds before it is split one level deeper |
 | `LIST_CARDS` | 12 | `tinycomputer-core` `surface/digest/` | cards of a list shown one line each |
