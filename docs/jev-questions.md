@@ -189,7 +189,7 @@ is `goal`, `app`, `window`, `surface`, and the last eight `recent_actions`.
 | `click_target`, `type_text_target`, … | Choice per operation | the elements that support it | the element for the chosen operation |
 | `target` (rerank) | Choice | a shortlist from a close first call | breaks a tie under 0.70 |
 
-The gate (`policy::gate`) turns the answers into one decision: `DONE` and
+The gate (`policy::gate_with_evidence`) turns the answers into one decision: `DONE` and
 `BLOCKED` need 0.70; any other operation abstains under 0.55 (0.45 when the
 target's name appears in the goal); a `destructive` of 0.50 or more asks for
 confirmation; and it acts at 0.70, or below that only on a named match.
