@@ -46,7 +46,6 @@ use tinydesktop_bus::{
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use super::{JevRuntime, merge_metrics, provider_error, response};
-use crate::Desktop;
 use backend::{AgentBackend, blocking, observe_async};
 use validate::{step_path, substitute};
 use view::{Candidate, Depth, Screen, target_payload};
@@ -60,13 +59,14 @@ const MAX_BLIND_LOOKS: u32 = 3;
 /// Truncated subtrees one exploration reads at most.
 const MAX_EXPLORED: usize = 4;
 
-/// Runs `request` against the live desktop.
-pub async fn run_flow(
-    desktop: Desktop,
+/// Runs `request` on `surface`: a `Desktop`, or a
+/// [`Workspace`](crate::Workspace) joining the desktop and the browser.
+pub async fn run_flow<S: AgentBackend + Sync>(
+    surface: S,
     runtime: JevRuntime,
     request: RunFlowRequest,
 ) -> DesktopResponse {
-    run_flow_with(desktop, &runtime, request).await
+    run_flow_with(surface, &runtime, request).await
 }
 
 /// Checks a flow without touching the desktop or Jev.
