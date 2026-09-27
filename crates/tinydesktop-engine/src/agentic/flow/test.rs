@@ -71,6 +71,9 @@ struct Sim {
     picked: Vec<String>,
     /// Days in a date strip above the results, a longer list than they are.
     date_strip: usize,
+    /// A side drawer lies over the page: every click is refused as covered
+    /// until Escape closes it.
+    drawer: bool,
     extra_buttons: usize,
     /// A booking form with an autocomplete destination and a calendar.
     booking: Option<Booking>,
@@ -415,6 +418,15 @@ impl AgentBackend for App {
             .as_ref()
             .and_then(|target| target.name.clone())
             .unwrap_or_default();
+        if sim.drawer && operation == JevOperation::Click {
+            return DesktopResponse::err(
+                "click",
+                tinydesktop_bus::DesktopError::new(
+                    "NOT_ACTIONABLE",
+                    format!("Element '@s:{name}' is covered by <div.drawer> at its click point"),
+                ),
+            );
+        }
         match operation {
             JevOperation::Click => {
                 if let Some(reference) = target
@@ -469,7 +481,10 @@ impl AgentBackend for App {
         }
         match combo {
             "cmd+n" => sim.compose_open = true,
-            "escape" => sim.obstacle = false,
+            "escape" => {
+                sim.obstacle = false;
+                sim.drawer = false;
+            }
             _ => {}
         }
         DesktopResponse::ok("press", json!({}))
@@ -1128,6 +1143,34 @@ async fn pressing_the_named_control_that_closes_an_overlay_ends_the_step() {
         unrelated.result.stop,
         FlowStopReason::Completed,
         "closing an overlay the step never mentions does not finish it"
+    );
+}
+
+#[tokio::test]
+async fn a_covered_click_closes_what_covers_it_and_tries_again() {
+    let run = run_with(
+        App::with(|sim| sim.drawer = true),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |_| {},
+        |id, question, _| (id == "move").then(|| pick(question, "activate", 0.9)),
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    let sim = run.app.sim();
+    assert!(sim.compose_open);
+    assert_eq!(sim.presses, ["escape"]);
+    let actions = &run.result.steps[0].actions;
+    assert_eq!(
+        actions
+            .iter()
+            .map(|action| action.action.as_str())
+            .collect::<Vec<_>>(),
+        ["click", "press escape (uncover)", "click"],
     );
 }
 
