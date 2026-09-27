@@ -4,7 +4,7 @@
 //! hand-written high-level flow (what a person would write, with no UI
 //! knowledge), a goal string for the single-loop `RunGoal` baseline, and a
 //! checker that reads the application's real state — through its accessibility
-//! snapshot, the filesystem, or AppleScript where no other reader exists —
+//! snapshot, the filesystem, or `AppleScript` where no other reader exists —
 //! rather than trusting the run's own report. Snapshot checks need no
 //! Automation permission beyond what the lab already uses.
 
@@ -40,7 +40,7 @@ pub struct Scenario {
 /// One step of putting an application back into a known state.
 #[derive(Debug, Clone, Copy)]
 pub enum Reset {
-    /// Run this AppleScript, ignoring failure.
+    /// Run this `AppleScript`, ignoring failure.
     AppleScript(&'static str),
     /// Press this key combination at the application.
     Press(&'static str),
@@ -51,7 +51,7 @@ pub enum Reset {
 /// How a scenario is checked against the application's real state.
 #[derive(Debug, Clone, Copy)]
 pub enum Check {
-    /// The front TextEdit document contains this text.
+    /// The front `TextEdit` document contains this text.
     TextEditContains(&'static str),
     /// The Calculator window shows this value somewhere.
     CalculatorShows(&'static str),
@@ -341,7 +341,7 @@ impl Scenario {
     }
 }
 
-/// Runs AppleScript and returns its output, or the error text on failure.
+/// Runs `AppleScript` and returns its output, or the error text on failure.
 #[must_use]
 pub fn osascript(script: &str) -> String {
     match Command::new("osascript").arg("-e").arg(script).output() {

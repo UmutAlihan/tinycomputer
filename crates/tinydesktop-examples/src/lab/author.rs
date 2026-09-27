@@ -21,7 +21,7 @@ use tinyinference_llm::{
 
 use super::host::{Host, LabError};
 
-/// The OpenRouter model used when `TINYDESKTOP_LAB_MODEL` is not set.
+/// The `OpenRouter` model used when `TINYDESKTOP_LAB_MODEL` is not set.
 pub const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-5";
 /// Validation repairs per authored flow.
 const REPAIRS: usize = 2;
@@ -61,7 +61,7 @@ pub enum Authored {
 }
 
 impl Author {
-    /// An author on OpenRouter using `OPENROUTER_API_KEY` and
+    /// An author on `OpenRouter` using `OPENROUTER_API_KEY` and
     /// `TINYDESKTOP_LAB_MODEL`, primed with `guide`.
     ///
     /// # Errors
