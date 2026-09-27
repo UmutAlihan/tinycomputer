@@ -457,7 +457,7 @@ async fn an_approval_nested_in_an_if_resumes_the_whole_branch_and_what_follows()
                 ))],
                 otherwise: Vec::new(),
             })),
-            FlowStep::Action(FlowAction::Do("finish another email message".to_owned())),
+            FlowStep::Intent("finish another email message".to_owned()),
         ]
     );
 }
