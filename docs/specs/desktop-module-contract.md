@@ -26,7 +26,8 @@ engine's argument types, the permission preflight, and the bus surface.
 - Every desktop and agentic member returns a `DesktopResponse`. The eight task
   members (`Describe`, `PlanTask`, `StartTask`, `AwaitTask`, `ContinueTask`,
   `CancelTask`, `TaskReport`, `ListTasks`, contract 1.7; briefs, votes,
-  secrets, and the payment mode 1.8) return an
+  secrets, and the payment mode 1.8; 2.0 renamed the interface and object
+  path from `tinydesktop` to `tinycomputer`) return an
   `AgentResponse` instead — see [`unified-agent.md`](unified-agent.md). They
   share this interface because a TinyBus module exports one interface.
 - Members are named in `PascalCase`, matching the engine's command names where
