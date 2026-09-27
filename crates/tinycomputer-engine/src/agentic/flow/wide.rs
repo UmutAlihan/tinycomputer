@@ -235,9 +235,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             judged.dismissal = dismissal(&answers, front.name, known_obstacle, &dismiss_pool);
         }
         for plan in plans {
-            let prepared = self
-                .prepare(&answers, &plan)
-                .unwrap_or(Prepared::Nothing);
+            let prepared = self.prepare(&answers, &plan).unwrap_or(Prepared::Nothing);
             judged.prepared.insert(plan.operation, prepared);
         }
         Ok(judged)

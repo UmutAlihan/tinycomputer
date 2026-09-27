@@ -4310,3 +4310,58 @@ async fn a_journaled_wide_run_records_its_survey_and_each_turns_decisions() {
         "the first turn: the survey and one wide request"
     );
 }
+
+#[tokio::test]
+async fn the_memory_keeps_the_last_steps_actions_as_evidence_for_the_next() {
+    // Live, a payment page was judged "seat selection skipped" at 0.48
+    // until the previous step's clicks were back in view (0.95): the click
+    // that left a page is the evidence it was dealt with.
+    let flow = json!({"app": "Mail", "steps": [
+        "start a new email message",
+        {"verify": "a new message is open"}
+    ]});
+    let run = run_with(App::default(), flow, wide, activate_moves).await;
+    let verifying = run
+        .result
+        .trace
+        .iter()
+        .find(|exchange| exchange.step == "2")
+        .unwrap();
+    let recent = verifying.state["memory"]["recent_actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|line| line.as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert!(
+        recent
+            .iter()
+            .any(|line| line.starts_with("click button \"New Message\"")),
+        "{recent:?}"
+    );
+    assert!(
+        recent
+            .iter()
+            .any(|line| line.starts_with("after the last action: window is now \"New Message\"")),
+        "{recent:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_target_answered_none_is_not_asked_again_the_same_turn() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        wide,
+        |id, question, sim| {
+            if id == "target_activate" {
+                return Some(pick(question, "none", 0.95));
+            }
+            activate_moves(id, question, sim)
+        },
+    )
+    .await;
+    assert_eq!(asked(&run.requests, "target"), 0, "no narrow re-ask");
+    assert!(run.app.sim().clicks.is_empty());
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Failed);
+}
