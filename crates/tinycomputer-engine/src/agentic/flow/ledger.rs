@@ -6,7 +6,11 @@
 //! mind instead:
 //!
 //! - every finished step, one line each, for the whole run;
-//! - everything that happened in the current step, turn by turn;
+//! - the most recent actions and what each changed, reaching back into the
+//!   steps before this one: the click that left a page is often the only
+//!   evidence that the page was dealt with (measured: a payment page judged
+//!   "seat selection skipped" at 0.95 with the previous step's clicks in
+//!   view, and at 0.48 without them);
 //! - what was **tried and failed** in this step — a control that changed
 //!   nothing, a move that made things worse, an overlay already dismissed —
 //!   so it is not tried again;
@@ -23,8 +27,8 @@ use serde_json::{Value, json};
 
 /// Finished steps the ledger shows, newest last.
 const MAX_FINISHED: usize = 40;
-/// Lines of the current step the ledger shows, newest last.
-const MAX_STEP_LINES: usize = 40;
+/// Recent history lines the ledger shows, newest last, across steps.
+const MAX_RECENT: usize = 24;
 /// Tried-and-failed notes kept for one step.
 const MAX_TRIED: usize = 12;
 /// Longest line the ledger shows, in characters.
@@ -35,8 +39,6 @@ const MAX_LINE: usize = 240;
 pub(super) struct Ledger {
     /// One line per finished step, newest last.
     finished: Vec<String>,
-    /// Where the current step's lines begin in the run's history.
-    step_start: usize,
     /// What this step tried that did not work.
     tried: Vec<String>,
 }
@@ -56,9 +58,8 @@ pub(super) struct Context<'a> {
 }
 
 impl Ledger {
-    /// Starts a step whose lines begin at `history_len`.
-    pub(super) fn begin(&mut self, history_len: usize) {
-        self.step_start = history_len;
+    /// Starts a step: what the last one tried no longer applies.
+    pub(super) fn begin(&mut self) {
         self.tried.clear();
     }
 
@@ -84,16 +85,15 @@ impl Ledger {
 
     /// The memory section of a request.
     pub(super) fn view(&self, context: &Context<'_>) -> Value {
-        let start = self.step_start.min(context.history.len());
-        let this_step = &context.history[start..];
-        let this_step = this_step[this_step.len().saturating_sub(MAX_STEP_LINES)..]
+        let history = context.history;
+        let recent = history[history.len().saturating_sub(MAX_RECENT)..]
             .iter()
             .map(|line| clip(line))
             .collect::<Vec<_>>();
         let mut memory = json!({
             "steps_done": self.finished,
             "now": context.now,
-            "this_step": this_step,
+            "recent_actions": recent,
             "budget_left": {
                 "actions": context.budget_left.0,
                 "jev_calls": context.budget_left.1,

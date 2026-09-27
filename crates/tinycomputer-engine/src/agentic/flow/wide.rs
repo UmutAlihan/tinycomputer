@@ -20,7 +20,8 @@
 //! The runtime then applies the narrow strategy's thresholds to answers it
 //! already holds. A second request is made only when the chosen target is
 //! not confident (one `confirm` Noul) or a knockout left several winners
-//! (one final Choice).
+//! (one final Choice). A move whose target Jev answered `none` is not
+//! re-asked that turn: the next turn looks again.
 //!
 //! Every wide question is asked against a state that shows the screen as a
 //! [digest](tinycomputer_core::surface::digest) — what is in front, regions
@@ -77,6 +78,8 @@ pub(super) enum Prepared {
     },
     /// A knockout's group winners, still to be chosen among.
     Finals(Vec<Candidate>),
+    /// Asked, and nothing fits: the move is not re-asked this turn.
+    Nothing,
 }
 
 /// How to clear what is in front.
@@ -232,9 +235,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             judged.dismissal = dismissal(&answers, front.name, known_obstacle, &dismiss_pool);
         }
         for plan in plans {
-            if let Some(prepared) = self.prepare(&answers, &plan) {
-                judged.prepared.insert(plan.operation, prepared);
-            }
+            let prepared = self
+                .prepare(&answers, &plan)
+                .unwrap_or(Prepared::Nothing);
+            judged.prepared.insert(plan.operation, prepared);
         }
         Ok(judged)
     }
@@ -434,6 +438,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ) -> Result<Option<Grounded>, Halt> {
         match prepared {
             Prepared::Chosen(grounded) => Ok(Some(grounded.clone())),
+            Prepared::Nothing => Ok(None),
             Prepared::Finals(winners) => self.decide(log, screen, purpose, winners.clone()).await,
             Prepared::Unsure {
                 candidate,

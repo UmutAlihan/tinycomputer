@@ -376,7 +376,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let (kind, text) = describe_step(&action, &self.vars, &self.facts);
         let mut log = StepLog::default();
         self.step.clone_from(&path);
-        self.ledger.begin(self.history.len());
+        self.ledger.begin();
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let wall_ms = millis(started.elapsed());
