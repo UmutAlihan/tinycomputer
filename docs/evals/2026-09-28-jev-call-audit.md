@@ -98,3 +98,13 @@ moved both strategies further:
 | step 10, "open the destination city search box" (wide) | the purpose names the destination button, so it led the options and was pressed again, closing the dropdown; its name grows once open | the element pressed last turn goes last, matched by a label one extends the other by |
 | step 10, a request at 28,362 tokens (88% of the window) | a 40,000-byte digest and an 80-candidate knockout on a dense page | 24,000 bytes and 40 candidates; the survey keeps answers by region name and is not re-asked when a dropdown opens |
 | step 11, `enter` "no field was found for: destination city search" (both) | nine unnamed, identical search boxes in the dropdown: the unnamed one could not be told apart from other dropdowns', and, once described, the voted framings each picked a different lookalike | an unnamed element is described by its nearest named container (`near`); lookalikes are offered once |
+
+After those fixes both strategies reach the same place: Google Flights
+compared, the ₹7,339 IndiGo fare picked and opened, goindigo.in open, the
+cookie banner dismissed, One Way and Delhi confirmed, the destination
+dropdown opened (wide 0.78, narrow 0.90 — the wide judge sits closer to the
+0.75 bar here). Step 11 then fails for both. With lookalikes collapsed Jev
+picks the destination search box at 0.99, but three fills do not land in
+IndiGo's search combobox: that is text delivery into the widget, not a
+decision, and is the next thing to take up (with the step-10 judgement, and
+the dropdown closing again before step 11 on one wide run).
