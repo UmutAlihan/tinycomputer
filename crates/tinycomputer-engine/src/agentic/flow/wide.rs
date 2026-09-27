@@ -254,7 +254,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             judged.dismissal = dismissal(&answers, front.name, known_obstacle, &dismiss_pool);
         }
         for plan in plans {
-            let prepared = self.prepare(&answers, &plan).unwrap_or(Prepared::Nothing);
+            let prepared = self
+                .prepare(&answers, &plan, pressed)
+                .unwrap_or(Prepared::Nothing);
             judged.prepared.insert(plan.operation, prepared);
         }
         Ok(judged)
@@ -388,7 +390,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// What `answers` say about one move's target.
-    fn prepare(&self, answers: &BTreeMap<String, Answer>, plan: &TargetPlan) -> Option<Prepared> {
+    fn prepare(
+        &self,
+        answers: &BTreeMap<String, Answer>,
+        plan: &TargetPlan,
+        pressed: Option<&Candidate>,
+    ) -> Option<Prepared> {
         let operation = plan.operation;
         if let Some(known) = &plan.known {
             let confirmed = if self.enabled(FlowLoop::Corroboration) {
@@ -404,7 +411,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
         }
         let [only] = plan.groups.as_slice() else {
-            let winners = plan
+            let mut winners = plan
                 .groups
                 .iter()
                 .enumerate()
@@ -413,6 +420,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         .map(|(candidate, _)| candidate)
                 })
                 .collect::<Vec<_>>();
+            pressed_last(&mut winners, pressed);
             return (!winners.is_empty()).then_some(Prepared::Finals(winners));
         };
         let (first, confidence) = pick(answers, &format!("target_{operation}"), only)?;
@@ -570,13 +578,28 @@ pub(super) fn pressed_last(pool: &mut Vec<Candidate>, pressed: Option<&Candidate
     }
 }
 
-/// Whether two snapshots' candidates are the same element: role, label, and
-/// place, ignoring the value and states pressing it changes.
+/// Whether two snapshots' candidates are the same element: role and place,
+/// and a label one extends the other by — a dropdown button's name often
+/// grows by the list it opened ("destinationCity Empty" becomes
+/// "destinationCity Empty POPULAR DESTINATIONS …") — ignoring the value
+/// and states pressing it changes.
 fn same_element(left: &Candidate, right: &Candidate) -> bool {
+    let name = |candidate: &Candidate| {
+        candidate
+            .name
+            .clone()
+            .or_else(|| candidate.description.clone())
+            .unwrap_or_default()
+    };
+    let (left_name, right_name) = (name(left), name(right));
+    let (short, long) = if left_name.len() <= right_name.len() {
+        (&left_name, &right_name)
+    } else {
+        (&right_name, &left_name)
+    };
     left.role == right.role
-        && left.name.as_ref().or(left.description.as_ref())
-            == right.name.as_ref().or(right.description.as_ref())
         && left.path == right.path
+        && (short == long || (short.chars().count() >= 3 && long.starts_with(short.as_str())))
 }
 
 /// Whether `candidate` supports the engine action `capability`.

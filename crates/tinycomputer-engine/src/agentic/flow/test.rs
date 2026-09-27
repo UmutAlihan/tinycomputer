@@ -4497,6 +4497,19 @@ fn the_control_pressed_last_turn_is_offered_last_even_with_new_states() {
     ];
     super::wide::pressed_last(&mut pool, Some(&toggle));
     assert_eq!(pool[0].name.as_deref(), Some("Srinagar"));
+    let mut grown = vec![
+        Candidate {
+            name: Some("Destination POPULAR DESTINATIONS Mumbai".to_owned()),
+            ..toggle.clone()
+        },
+        other.clone(),
+    ];
+    super::wide::pressed_last(&mut grown, Some(&toggle));
+    assert_eq!(
+        grown[0].name.as_deref(),
+        Some("Srinagar"),
+        "a button whose name grew by the list it opened is the same button"
+    );
     assert_eq!(pool[1].name.as_deref(), Some("Destination"));
 
     let mut untouched = vec![toggle.clone(), other];
