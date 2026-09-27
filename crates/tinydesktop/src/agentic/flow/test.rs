@@ -653,14 +653,37 @@ async fn an_allowed_destructive_step_is_performed_and_verified() {
 #[tokio::test]
 async fn a_step_already_accomplished_is_skipped_without_acting() {
     let app = App::with(|sim| sim.compose_open = true);
-    let run = run(
+    let run = run_with(
         app,
-        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        json!({"app": "Mail", "steps": ["show the compose window"]}),
+        |_| {},
+        |id, _, sim| (id == "done").then(|| noul(if sim.compose_open { 0.95 } else { 0.05 })),
     )
     .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert_eq!(run.result.steps[0].outcome, StepOutcome::AlreadyDone);
     assert!(run.app.sim().presses.is_empty() && run.app.sim().clicks.is_empty());
+}
+
+#[tokio::test]
+async fn something_new_is_never_taken_to_exist_before_acting() {
+    // An open draft is someone's own; "start a new email" must make another.
+    let app = App::with(|sim| sim.compose_open = true);
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |_| {},
+        |id, question, sim| match id {
+            "move" if sim.presses.is_empty() => Some(pick(question, "finished", 0.9)),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+    assert!(!run.app.sim().presses.is_empty() || !run.app.sim().clicks.is_empty());
+    assert!(super::act::creates_new("Create a folder"));
+    assert!(!super::act::creates_new("open the inbox"));
 }
 
 #[tokio::test]
