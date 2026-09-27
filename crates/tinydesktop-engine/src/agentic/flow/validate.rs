@@ -225,8 +225,8 @@ fn check_step(
 }
 
 /// Rejects every `${name}` in `value` that names a fact: that text is what
-/// Jev is asked to reason about, and a fact belongs only where a step types
-/// it locally or uses it to reach an address or an application.
+/// Jev is asked to reason about, or state it is later shown, and a fact
+/// belongs only where an `enter` step types it.
 fn forbid_facts(errors: &mut Vec<String>, path: &str, value: &str, facts: &BTreeSet<String>) {
     for name in references(value) {
         if facts.contains(&name) {
