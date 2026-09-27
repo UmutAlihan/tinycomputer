@@ -69,6 +69,8 @@ struct Sim {
     results: Vec<(&'static str, &'static str, &'static str)>,
     /// Refs of the result cards' "Select" buttons clicked, in order.
     picked: Vec<String>,
+    /// Days in a date strip above the results, a longer list than they are.
+    date_strip: usize,
     extra_buttons: usize,
     /// A booking form with an autocomplete destination and a calendar.
     booking: Option<Booking>,
@@ -231,6 +233,29 @@ fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<C
             available_actions: vec!["Click".to_owned()],
             path,
             order: order + 5,
+            ..Candidate::default()
+        });
+    }
+    for day in 0..sim.date_strip {
+        let path = vec![
+            root.to_owned(),
+            "list \"Dates\"".to_owned(),
+            format!("listitem #{}", day + 1),
+        ];
+        text_nodes.push(Candidate {
+            role: "text".to_owned(),
+            value: Some(json!("--")),
+            path: path.clone(),
+            order: 500 + day * 10,
+            ..Candidate::default()
+        });
+        candidates.push(Candidate {
+            ref_id: format!("@s:day-{}", day + 1),
+            role: "button".to_owned(),
+            name: Some(format!("Please Select Date for {} Oct", day + 12)),
+            available_actions: vec!["Click".to_owned()],
+            path,
+            order: 500 + day * 10 + 5,
             ..Candidate::default()
         });
     }
@@ -2306,6 +2331,28 @@ async fn pick_ranks_a_measurable_criterion_exactly_and_opens_the_winner() {
             "a measurable criterion needs no judgement"
         );
     }
+}
+
+#[tokio::test]
+async fn pick_ranks_the_list_that_has_prices_not_the_longest_one() {
+    let app = flights();
+    app.sim().date_strip = 7;
+    let run = run(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "lowest price", "into": "flight"}}
+        ]}),
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    assert_eq!(run.app.sim().picked, ["@s:select-1"]);
+    assert!(run.result.vars["flight"].starts_with("IndiGo"));
+    assert!(run.result.steps[0].note.contains("ranked"));
 }
 
 #[tokio::test]

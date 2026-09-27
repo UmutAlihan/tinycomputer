@@ -33,7 +33,10 @@ pub struct Group {
 /// repeats. Where several lists repeat, the one with the most cards.
 #[must_use]
 pub fn result_groups(screen: &Screen) -> Vec<Group> {
-    result_families(screen).into_iter().next().unwrap_or_default()
+    result_families(screen)
+        .into_iter()
+        .next()
+        .unwrap_or_default()
 }
 
 /// Every list of repeated cards on `screen`, the longest first (the deeper
