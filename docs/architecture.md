@@ -26,7 +26,7 @@ see [`decision-loops.md`](decision-loops.md); for the task API, see
               ▼                                             ▼
 ┌───────────────────────────────┐             ┌────────────────────────────────┐
 │ tinydesktop-desktop           │             │ tinydesktop-browser            │
-│ Desktop: 56 typed members     │             │ Browser: sessions, outputs     │
+│ Desktop: 54 typed members     │             │ Browser: sessions, outputs     │
 │ Desktop as a core Surface     │             │ BrowserSurface: a core Surface │
 └───────────────────────────────┘             └────────────────────────────────┘
               │                                             │
@@ -176,7 +176,7 @@ members share it; their names do not collide.
 
 | Level | Members | Who plans | Who chooses | Use it when |
 |---|---|---|---|---|
-| Primitives | `Snapshot`, `Click`, `SetValue`, `Press`, `Launch`, … (56 desktop members) | the caller | the caller | the caller already knows the interface, or wants full control |
+| Primitives | `Snapshot`, `Click`, `SetValue`, `Press`, `Launch`, … (54 desktop members) | the caller | the caller | the caller already knows the interface, or wants full control |
 | Goals and flows | `ResolveIntent`, `RunGoal`, `RunFlow`, `ValidateFlow`, `FlowGuide` | the caller (a flow) or nobody (a goal) | Jev | the caller knows what it wants but not the interface |
 | Tasks | `Describe`, `PlanTask`, `StartTask`, `AwaitTask`, `ContinueTask`, `CancelTask`, `TaskReport`, `ListTasks` | the caller or the planner | Jev | an outside agent wants a job done, across the browser and desktop apps, with pauses for approvals |
 
@@ -184,8 +184,9 @@ The browser's own typed contract (`OpenSession`, `Navigate`, `Snapshot`,
 `Perform`, `ReadPage`, `Screenshot`, downloads, and outputs) is defined in
 `tinydesktop-bus/src/browser/` under the name `ai.tinyhumans.tinydesktop.Browser`
 and implemented by `tinydesktop_browser::Browser`. The module does not serve
-those as bus members yet; today the browser is reached through flows and
-tasks.
+those as bus members yet, and a direct `RunFlow` call runs on the desktop
+alone. Today the browser is reached through tasks, whose runner gives every
+task a `Workspace` with a browser session.
 
 `RunGoal` and `ResolveIntent` are the older, single-goal loop: one goal string,
 one Choice over operation and target per turn, and success predicates the
@@ -211,8 +212,9 @@ configuration validates.
 | `planner` | object | OpenRouter `api_key` and optional `model` for the planner; absent means no planner |
 | `browser.executable` | string | the Chrome or Chromium binary to launch, when discovery would not find one |
 
-Without `jev`, the agentic members answer with a configuration error, while the
-primitives keep working.
+Without `jev`, `ResolveIntent`, `RunGoal`, `RunFlow`, and task runs answer
+with `JEV_NOT_CONFIGURED`, while the primitives, `ValidateFlow`, `FlowGuide`,
+and `Describe` keep working.
 
 ## Safety, in one place
 
