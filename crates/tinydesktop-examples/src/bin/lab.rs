@@ -118,18 +118,7 @@ async fn main() -> Result<(), LabError> {
                             Ok(record) => records.push(record),
                             Err(error) => {
                                 println!("run failed: {error}");
-                                records.push(RunRecord {
-                                    scenario: scenario.name.to_owned(),
-                                    mode: mode.clone(),
-                                    passed: false,
-                                    detail: format!("run failed: {error}"),
-                                    stop: "Error".to_owned(),
-                                    actions: 0,
-                                    jev_calls: 0,
-                                    llm_calls: 0,
-                                    seconds: 0.0,
-                                    dir: PathBuf::new(),
-                                });
+                                records.push(failed_run_record(scenario.name, mode, &error));
                             }
                         }
                     }
