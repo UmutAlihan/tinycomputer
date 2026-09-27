@@ -82,6 +82,8 @@ struct Sim {
     booking: Option<Booking>,
     /// A fare radio shown already checked, as a fare page preselects one.
     checked_fare: Option<&'static str>,
+    /// A line of guidance shown on the page, such as a date layout.
+    hint: Option<&'static str>,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -380,7 +382,9 @@ impl App {
             window: Some(window.to_owned()),
             surface,
             candidates,
-            context: vec![format!("{window} heading")],
+            context: std::iter::once(format!("{window} heading"))
+                .chain(sim.hint.map(str::to_owned))
+                .collect(),
             unexplored: Vec::new(),
             text_nodes,
         }
@@ -733,6 +737,7 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         // Every action helps and no field shows an error, unless a test says.
         "confirm" | "helped" => noul(0.9),
         _ if id.starts_with("error_") => noul(0.05),
+        _ if id.starts_with("asks_") => noul(0.9),
         "dismiss" => pick(question, "Keep Editing", 0.9),
         "region" => pick(question, "Region 1", 0.9),
         _ if id.starts_with("slot_") => {
@@ -3686,5 +3691,56 @@ async fn after_acting_a_finished_move_stands_unless_the_judge_leans_undone() {
         run.app.sim().clicks.len(),
         1,
         "no click after the step was done"
+    );
+}
+
+#[tokio::test]
+async fn a_date_is_typed_in_the_layout_the_page_asks_for() {
+    let run = run(
+        App::with(|sim| {
+            sim.compose_open = true;
+            sim.hint = Some("Please enter the date in (DD-MM-YYYY) format");
+        }),
+        json!({"app": "Mail", "steps": [{"enter": {"subject": "2000-01-31"}}]}),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.app.sim().fields["Subject"], "31-01-2000");
+}
+
+#[tokio::test]
+async fn a_detail_the_form_does_not_ask_for_is_skipped_not_typed_blindly() {
+    let run = run_with(
+        App::with(|sim| sim.compose_open = true),
+        json!({"app": "Mail", "steps": [{"enter": {"subject": "Hi", "title": "Ms"}}]}),
+        |_| {},
+        |id, question, _| match id {
+            "asks_1" => Some(noul(0.1)),
+            _ if id.starts_with("slot_") && text_of(question, "purpose").contains("title") => {
+                Some(pick(question, "none", 0.9))
+            }
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    let step = &run.result.steps[0];
+    assert!(
+        step.note.contains("the form does not ask for: title"),
+        "{}",
+        step.note
+    );
+    let sim = run.app.sim();
+    assert_eq!(sim.fields["Subject"], "Hi", "no blind typing spoiled it");
+    assert!(
+        !sim.fields.values().any(|value| value.contains("Ms")),
+        "{:?}",
+        sim.fields
+    );
+    assert!(
+        step.actions
+            .iter()
+            .all(|action| action.action != "type to filter"),
+        "a slot with no field is never typed into the focus"
     );
 }
