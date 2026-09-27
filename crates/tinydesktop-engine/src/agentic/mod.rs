@@ -42,11 +42,11 @@ use screen::{Candidate, Screen, fingerprint, observe};
 use task::run_goal_fresh;
 use verify::{exact_label, satisfied, verify};
 
-pub(crate) use flow::{flow_guide, run_flow, validate_flow};
+pub use flow::{flow_guide, run_flow, validate_flow};
 
 /// Configured Jev transport and non-secret policy metadata.
 #[derive(Clone)]
-pub(crate) struct JevRuntime {
+pub struct JevRuntime {
     client: Arc<dyn Evaluator>,
     configuration: JevConfiguration,
     pending: Arc<Mutex<HashMap<String, PendingRun>>>,
@@ -78,7 +78,7 @@ impl std::fmt::Debug for JevRuntime {
 }
 
 impl JevRuntime {
-    pub(crate) fn configure(request: &JevConfig) -> Result<Self, Box<DesktopError>> {
+    pub fn configure(request: &JevConfig) -> Result<Self, Box<DesktopError>> {
         let mut config = match request.provider {
             JevProvider::TypeSafe => ClientConfig::new(request.api_key()),
             JevProvider::OpenRouter => ClientConfig::openrouter(request.api_key()),
@@ -180,7 +180,7 @@ fn trusted_endpoint(provider: JevProvider, endpoint: &str) -> bool {
     false
 }
 
-pub(crate) async fn resolve_intent(
+pub async fn resolve_intent(
     desktop: Desktop,
     runtime: JevRuntime,
     request: ResolveIntentRequest,
@@ -214,7 +214,7 @@ async fn resolve_intent_with<B: AgentBackend>(
     }
 }
 
-pub(crate) async fn run_goal(
+pub async fn run_goal(
     desktop: Desktop,
     runtime: JevRuntime,
     request: RunGoalRequest,

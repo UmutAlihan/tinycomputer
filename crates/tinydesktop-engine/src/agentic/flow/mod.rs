@@ -61,7 +61,7 @@ const MAX_BLIND_LOOKS: u32 = 3;
 const MAX_EXPLORED: usize = 4;
 
 /// Runs `request` against the live desktop.
-pub(crate) async fn run_flow(
+pub async fn run_flow(
     desktop: Desktop,
     runtime: JevRuntime,
     request: RunFlowRequest,
@@ -70,13 +70,13 @@ pub(crate) async fn run_flow(
 }
 
 /// Checks a flow without touching the desktop or Jev.
-pub(crate) fn validate_flow(request: &ValidateFlowRequest) -> DesktopResponse {
+pub fn validate_flow(request: &ValidateFlowRequest) -> DesktopResponse {
     let (_, validation) = validate::validate(&request.flow, &BTreeSet::new());
     response("validate-flow", &validation)
 }
 
 /// The flow authoring guide, as prompt text.
-pub(crate) fn flow_guide() -> DesktopResponse {
+pub fn flow_guide() -> DesktopResponse {
     DesktopResponse::ok(
         "flow-guide",
         json!({"guide": FLOW_GUIDE, "step_kinds": tinydesktop_bus::STEP_KINDS}),
