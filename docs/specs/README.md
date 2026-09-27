@@ -24,4 +24,5 @@ See [`desktop-module-contract.md`](desktop-module-contract.md) for a complete
 example, [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime, and
 [`unified-agent.md`](unified-agent.md) for browser and desktop behind one task API,
 [`jev-briefing.md`](jev-briefing.md) for briefs, secrets, and votes,
+[`jev-wide-turns.md`](jev-wide-turns.md) for the wide strategy,
 and [`virtual-cursor.md`](virtual-cursor.md) for the agent's drawn cursor.

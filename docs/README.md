@@ -44,7 +44,8 @@ Start with these, in order:
   from a request to a Jev call, what each adds, where the time goes, and how
   each is tested and observed.
 - [`decision-loops.md`](decision-loops.md): how the flow runtime grounds each
-  step on a live screen, every question it asks Jev, and every threshold.
+  step on a live screen and every question it asks Jev;
+  [`decision-thresholds.md`](decision-thresholds.md) lists every threshold.
 - [`jev-questions.md`](jev-questions.md): every input Jev receives, every
   question id with its type and options, the answer shapes, and how each
   answer is thresholded.
@@ -67,8 +68,11 @@ packaging and release contract is in
 sequence in
 [`plans/tinybus-module-release.md`](plans/tinybus-module-release.md). Intent
 flows are specified in [`specs/jev-intent-flows.md`](specs/jev-intent-flows.md),
-and the browser, the task API, and the planner in
-[`specs/unified-agent.md`](specs/unified-agent.md).
+the browser, the task API, and the planner in
+[`specs/unified-agent.md`](specs/unified-agent.md), and the wide strategy —
+one request per turn over a digest of the screen, with a survey and a working
+memory — in [`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)
+([`plans/jev-wide-turns.md`](plans/jev-wide-turns.md)).
 
 ## Conventions
 
