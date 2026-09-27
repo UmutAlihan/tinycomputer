@@ -49,6 +49,8 @@ enum Quirk {
     FailObserve,
     /// Launching fails.
     FailLaunch,
+    /// The compose fields sit in a subtree the budgeted snapshot cut short.
+    HiddenEditor,
 }
 
 #[derive(Debug, Default)]
@@ -201,7 +203,7 @@ impl AgentBackend for App {
     fn observe(
         &self,
         _app: &str,
-        _root: Option<&str>,
+        root: Option<&str>,
         _depth: Depth,
     ) -> Result<Screen, Box<DesktopResponse>> {
         if self.sim().has(Quirk::FailObserve) {
@@ -210,7 +212,23 @@ impl AgentBackend for App {
                 tinydesktop_bus::DesktopError::new("APP_NOT_FOUND", "no such app"),
             )));
         }
-        Ok(self.screen())
+        let mut screen = self.screen();
+        if self.sim().has(Quirk::HiddenEditor) && self.sim().compose_open {
+            let (fields, rest): (Vec<_>, Vec<_>) =
+                screen.candidates.into_iter().partition(|candidate| {
+                    candidate
+                        .available_actions
+                        .iter()
+                        .any(|action| action == "SetValue")
+                });
+            if root == Some("@s:editor") {
+                screen.candidates = fields;
+            } else {
+                screen.candidates = rest;
+                screen.unexplored = vec!["@s:editor".to_owned()];
+            }
+        }
+        Ok(screen)
     }
 
     fn execute(
@@ -1536,4 +1554,29 @@ fn the_front_window_is_the_focused_then_the_first_visible_titled_one() {
     assert_eq!(front_of(&windows[..2]).as_deref(), Some("w-2"));
     assert_eq!(front_of(&windows[..1]).as_deref(), Some("w-1"));
     assert!(front_of(&[]).is_none());
+}
+
+#[tokio::test]
+async fn fields_in_a_truncated_subtree_are_found_by_exploring_it() {
+    let run = run(
+        App::with(|sim| {
+            sim.compose_open = true;
+            sim.quirks.insert(Quirk::HiddenEditor);
+        }),
+        json!({"app": "Mail", "steps": [{"enter": {"subject": "Found it"}}]}),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.app.sim().fields["Subject"], "Found it");
+}
+
+#[tokio::test]
+async fn an_app_that_never_shows_a_window_is_reported_as_opened_but_unreadable() {
+    let run = run(
+        App::quirky(Quirk::FailObserve),
+        json!({"app": "Mail", "steps": [{"open": "Mail"}]}),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert!(run.result.steps[0].note.contains("no readable window yet"));
 }
