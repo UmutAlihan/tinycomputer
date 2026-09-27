@@ -92,8 +92,12 @@ fn a_card_field_alone_marks_a_payment_page() {
 #[test]
 fn a_payment_url_needs_a_payment_control_too() {
     assert!(payment_evidence("https://ota.test/checkout/review", &[], &["Continue"]).is_none());
-    let evidence =
-        payment_evidence("https://ota.test/checkout/review", &[], &["Continue", "Pay now"]).unwrap();
+    let evidence = payment_evidence(
+        "https://ota.test/checkout/review",
+        &[],
+        &["Continue", "Pay now"],
+    )
+    .unwrap();
     assert!(evidence.reasons[0].contains("Pay now"));
     assert!(payment_evidence("https://ota.test/deals", &[], &["Pay now"]).is_none());
     assert!(payment_evidence("ota.test/payment", &[], &["Pay"]).is_some());

@@ -1442,6 +1442,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinydesktop-core"
+version = "0.5.1"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "tinydesktop-desktop"
 version = "0.5.1"
 dependencies = [

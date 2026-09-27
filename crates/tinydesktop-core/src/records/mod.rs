@@ -155,7 +155,9 @@ fn decimal(number: &str) -> Option<f64> {
     let normalized = match (last_dot, last_comma) {
         (Some(dot), Some(comma)) if dot > comma => number.replace(',', ""),
         (Some(_), Some(_)) => number.replace('.', "").replace(',', "."),
-        (None, Some(comma)) if number.len() - comma - 1 == 2 && number.matches(',').count() == 1 => {
+        (None, Some(comma))
+            if number.len() - comma - 1 == 2 && number.matches(',').count() == 1 =>
+        {
             number.replace(',', ".")
         }
         (None, Some(_)) => number.replace(',', ""),
@@ -191,7 +193,10 @@ pub fn parse_clock(text: &str) -> Option<u32> {
         return None;
     }
     let rest = lower[colon + 3..].trim_start();
-    let hours = match (rest.starts_with("pm") || rest.starts_with("p.m"), rest.starts_with("am") || rest.starts_with("a.m")) {
+    let hours = match (
+        rest.starts_with("pm") || rest.starts_with("p.m"),
+        rest.starts_with("am") || rest.starts_with("a.m"),
+    ) {
         (true, _) if hours < 12 => hours + 12,
         (_, true) if hours == 12 => 0,
         _ => hours,
@@ -282,7 +287,13 @@ impl Criterion {
     pub fn parse(text: &str) -> Option<Self> {
         let lower = text.to_ascii_lowercase();
         let has = |words: &[&str]| words.iter().any(|word| lower.contains(word));
-        if has(&["cheapest", "lowest price", "least expensive", "lowest fare", "cheaper"]) {
+        if has(&[
+            "cheapest",
+            "lowest price",
+            "least expensive",
+            "lowest fare",
+            "cheaper",
+        ]) {
             Some(Self::LowestPrice)
         } else if has(&["most expensive", "highest price"]) {
             Some(Self::HighestPrice)
@@ -324,9 +335,7 @@ impl Criterion {
             Self::Earliest | Self::Latest => named_or_any(&["depart", "time", "start"], &|text| {
                 parse_clock(text).map(f64::from)
             }),
-            Self::FewestStops => {
-                named_or_any(&["stop"], &|text| parse_stops(text).map(f64::from))
-            }
+            Self::FewestStops => named_or_any(&["stop"], &|text| parse_stops(text).map(f64::from)),
             Self::Shortest => named_or_any(&["duration", "length"], &|text| {
                 parse_duration(text).map(f64::from)
             }),
@@ -363,7 +372,11 @@ pub fn rank(records: &[Record], criterion: Criterion) -> Option<Vec<usize>> {
     order.sort_by(|&left, &right| match (keyed[left], keyed[right]) {
         (Some(a), Some(b)) => {
             let ordering = a.total_cmp(&b);
-            if descending { ordering.reverse() } else { ordering }
+            if descending {
+                ordering.reverse()
+            } else {
+                ordering
+            }
         }
         (Some(_), None) => std::cmp::Ordering::Less,
         (None, Some(_)) => std::cmp::Ordering::Greater,

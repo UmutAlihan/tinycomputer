@@ -2,7 +2,9 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{Criterion, Price, Record, parse_clock, parse_duration, parse_price, parse_stops, rank};
+use super::{
+    Criterion, Price, Record, parse_clock, parse_duration, parse_price, parse_stops, rank,
+};
 
 fn price(text: &str) -> (f64, Option<&'static str>) {
     let Price { amount, currency } = parse_price(text).unwrap_or_else(|| panic!("{text}"));
@@ -115,11 +117,20 @@ fn flights() -> Vec<Record> {
 #[test]
 fn ranking_orders_by_each_criterion_with_unreadable_records_last() {
     let flights = flights();
-    assert_eq!(rank(&flights, Criterion::LowestPrice), Some(vec![1, 0, 3, 2]));
-    assert_eq!(rank(&flights, Criterion::HighestPrice), Some(vec![3, 0, 1, 2]));
+    assert_eq!(
+        rank(&flights, Criterion::LowestPrice),
+        Some(vec![1, 0, 3, 2])
+    );
+    assert_eq!(
+        rank(&flights, Criterion::HighestPrice),
+        Some(vec![3, 0, 1, 2])
+    );
     assert_eq!(rank(&flights, Criterion::Earliest), Some(vec![3, 0, 1, 2]));
     assert_eq!(rank(&flights, Criterion::Latest), Some(vec![1, 0, 3, 2]));
-    assert_eq!(rank(&flights, Criterion::FewestStops), Some(vec![0, 1, 3, 2]));
+    assert_eq!(
+        rank(&flights, Criterion::FewestStops),
+        Some(vec![0, 1, 3, 2])
+    );
     assert_eq!(rank(&flights, Criterion::Shortest), Some(vec![0, 3, 1, 2]));
 }
 

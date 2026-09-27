@@ -159,21 +159,30 @@ const PAYMENT_PATHS: &[&str] = &["payment", "payments", "pay", "billing", "check
 /// assert!(payment_evidence("https://ota.test/results", &[], &["Book"]).is_none());
 /// ```
 #[must_use]
-pub fn payment_evidence(url: &str, fields: &[FieldHint], controls: &[&str]) -> Option<PaymentEvidence> {
+pub fn payment_evidence(
+    url: &str,
+    fields: &[FieldHint],
+    controls: &[&str],
+) -> Option<PaymentEvidence> {
     let mut reasons = Vec::new();
     for field in fields {
-        if let Some(autocomplete) = field
-            .autocomplete
-            .as_deref()
-            .filter(|value| value.to_ascii_lowercase().split_whitespace().any(|token| token.starts_with("cc-")))
-        {
+        if let Some(autocomplete) = field.autocomplete.as_deref().filter(|value| {
+            value
+                .to_ascii_lowercase()
+                .split_whitespace()
+                .any(|token| token.starts_with("cc-"))
+        }) {
             reasons.push(format!("a card field (autocomplete {autocomplete})"));
             continue;
         }
         let described = normalize(&format!(
             "{} {}",
             field.label,
-            field.name.as_deref().unwrap_or_default().replace(['_', '-'], " ")
+            field
+                .name
+                .as_deref()
+                .unwrap_or_default()
+                .replace(['_', '-'], " ")
         ));
         if let Some(term) = CARD_FIELDS.iter().find(|term| has_phrase(&described, term)) {
             reasons.push(format!("a card field ({term})"));
@@ -186,7 +195,9 @@ pub fn payment_evidence(url: &str, fields: &[FieldHint], controls: &[&str]) -> O
         .map_or("", |(_, path)| path)
         .to_ascii_lowercase();
     let path_words = normalize(&path);
-    let payment_url = PAYMENT_PATHS.iter().any(|word| has_phrase(&path_words, word));
+    let payment_url = PAYMENT_PATHS
+        .iter()
+        .any(|word| has_phrase(&path_words, word));
     let pay_control = controls
         .iter()
         .find(|label| consequence(label) == Consequence::Payment);
@@ -211,7 +222,10 @@ fn normalize(text: &str) -> String {
             }
         })
         .collect::<String>();
-    format!(" {} ", words.split_whitespace().collect::<Vec<_>>().join(" "))
+    format!(
+        " {} ",
+        words.split_whitespace().collect::<Vec<_>>().join(" ")
+    )
 }
 
 fn has_phrase(words: &str, phrase: &str) -> bool {
