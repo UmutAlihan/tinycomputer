@@ -36,21 +36,28 @@ engine's argument types, the permission preflight, and the bus surface.
 
 ### Jev control
 
-- `ResolveIntent` and `RunGoal` require TinyBus confidential delivery. Jev
+- `ResolveIntent`, `RunGoal`, and `RunFlow` require TinyBus confidential
+  delivery; `ValidateFlow` and `FlowGuide` touch neither the desktop nor Jev.
+  Flows are specified in [`jev-intent-flows.md`](jev-intent-flows.md). Jev
   configuration arrives through sensitive module initialization or
   reinitialization; the module never returns, logs, or traces its API key.
 - Jev chooses only from module-supplied operations and compatible refs. Text is
   caller-supplied, ordinary field values are withheld by default, and a
-  destructive result always stops for confirmation. Local label/goal checks
-  also force confirmation for delete, send, purchase, payment, submission,
-  overwrite, unsafe quit, trash, and sign-out actions.
+  destructive result always stops for confirmation. A local check of the
+  *target's* label also forces confirmation for delete, send, purchase,
+  payment, submission, overwrite, unsafe quit, trash, and sign-out actions; the
+  goal's wording no longer does, so "write and send" still opens the compose
+  window without confirmation.
 - Exact endpoint overrides are limited to the selected provider's published
   route. Accessibility content is labeled as untrusted data, and observation
   visits at most 4,096 nodes and 64 levels before returning a bounded view.
 - Execution gates on the selected option's probability, not Jev's distribution
-  concentration. Exact accessible names and explicitly requested first/topmost
-  rows may add deterministic identity evidence but never bypass risk checks.
-- Goal runs stop at 40 actions, 80 evaluations, or three unchanged turns.
+  concentration. Exact accessible names may add deterministic identity evidence
+  but never bypass risk checks.
+- Goal runs stop at 40 actions, 80 evaluations, or three turns that changed
+  nothing (compared without refs, which every snapshot re-mints). A failed
+  action or a low-confidence turn is fed back and retried up to `max_retries`
+  (default 2, at most 5); an element that fails twice is not offered again.
 
 ### The envelope
 

@@ -64,11 +64,11 @@ See [`crates/tinydesktop-bus/README.md`](crates/tinydesktop-bus/README.md).
 
 ## The member surface
 
-Fifty-four members, listed in dispatch order by `tinydesktop_bus::names::METHODS`:
+Fifty-nine members, listed in dispatch order by `tinydesktop_bus::names::METHODS`:
 
 | Family | Members |
 | --- | --- |
-| Agentic Jev control | `ResolveIntent` `RunGoal` |
+| Agentic Jev control | `ResolveIntent` `RunGoal` `RunFlow` `ValidateFlow` `FlowGuide` |
 | Observation | `Snapshot` `Find` `Get` `Is` `Screenshot` |
 | Interaction | `Click` `DoubleClick` `TripleClick` `RightClick` `Type` `SetValue` `Clear` `Focus` `Select` `Toggle` `Check` `Uncheck` `Expand` `Collapse` `Scroll` `ScrollTo` |
 | Input | `Press` `KeyDown` `KeyUp` `Hover` `Drag` `MouseMove` `MouseClick` `MouseDown` `MouseUp` `MouseWheel` |
@@ -104,6 +104,44 @@ Jev receives a closed choice of operations and compatible accessibility refs;
 it never generates text or bypasses desktop delivery checks. Existing field
 values are withheld unless the caller opts in. Actions judged hard to undo
 always stop with `confirmation_required`.
+
+### Intent flows
+
+`RunFlow` runs a short, app-agnostic JSON script of *what* to accomplish:
+
+```json
+{ "app": "Mail",
+  "steps": [
+    { "open": "Mail" },
+    "start a new email message",
+    { "enter": { "recipient": "sam@example.com", "subject": "Friday", "message body": "Hi Sam, …" } },
+    { "verify": "the draft shows the recipient, the subject, and the message body" },
+    { "stop_before": "sending the email" } ] }
+```
+
+The caller — often a language model that has never seen the application —
+plans and writes the text; the module grounds every step on the live screen by
+composing many small Jev questions (completion and progress judges, app-agnostic
+moves, region narrowing, relabelled re-asks, corroboration, slot matching,
+obstacle dismissal, undo, and grounding memory). Nothing irreversible happens
+without `allow_destructive`. `FlowGuide` returns the authoring guide as prompt
+text and `ValidateFlow` checks a candidate. See
+[`docs/specs/jev-intent-flows.md`](docs/specs/jev-intent-flows.md).
+
+### The lab
+
+`scripts/lab` builds and attests the module, then runs scenarios against real
+applications on this machine, checks the real application state, and writes a
+timeline and every Jev exchange per run:
+
+```sh
+scripts/lab run mail-compose              # a hand-written flow
+scripts/lab run mail-compose --mode goal  # the single-goal RunGoal baseline
+scripts/lab run mail-compose --mode authored  # an LLM writes the flow
+scripts/lab eval all --modes flow,goal --trials 3
+```
+
+See [`docs/lab.md`](docs/lab.md).
 
 The opt-in Spotify verifier reads an exported `OPENROUTER_API_KEY`, passes it
 through private initialization, and never writes or prints it:
