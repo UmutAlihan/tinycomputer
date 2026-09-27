@@ -1428,3 +1428,35 @@ fn editable_fields_are_found_by_action_or_role_in_reading_order() {
         .collect::<Vec<_>>();
     assert_eq!(names, ["To", "Subject", "Body", "From", "message body"]);
 }
+
+#[test]
+fn a_rich_text_area_reports_the_text_inside_it_as_its_contents() {
+    let mut screen = App::with(|sim| {
+        sim.compose_open = true;
+        sim.fields.insert("Subject".to_owned(), "Hello".to_owned());
+    })
+    .screen();
+    let body = Candidate {
+        role: "webarea".to_owned(),
+        name: Some("message body".to_owned()),
+        available_actions: vec!["SetFocus".to_owned()],
+        ..Candidate::default()
+    };
+    let area = super::super::screen::label(&body);
+    screen.candidates.push(body);
+    for line in ["Hi Sam,", "See you Friday."] {
+        screen.candidates.push(Candidate {
+            role: "statictext".to_owned(),
+            value: Some(json!(line)),
+            path: vec![area.clone()],
+            ..Candidate::default()
+        });
+    }
+    let state = ask::state(&screen, "check the draft", &[], true);
+    let fields = state["field_contents"]["untrusted_accessibility_data"]
+        .as_array()
+        .unwrap();
+    assert!(fields.contains(&json!({"field": "textfield \"Subject\"", "holds": "Hello"})));
+    assert!(fields.contains(&json!({"field": area, "holds": "Hi Sam,\nSee you Friday."})));
+    assert!(ask::state(&screen, "x", &[], false).get("field_contents").is_none());
+}
