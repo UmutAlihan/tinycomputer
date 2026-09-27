@@ -232,7 +232,7 @@ fn forbid_facts(errors: &mut Vec<String>, path: &str, value: &str, facts: &BTree
     for name in references(value) {
         if facts.contains(&name) {
             errors.push(format!(
-                "step {path}: `${{{name}}}` is a fact; use an enter step to type it — Jev only sees slot names"
+                "step {path}: `${{{name}}}` is a secret; only an enter step may type it — Jev only ever sees it as a name"
             ));
         }
     }
