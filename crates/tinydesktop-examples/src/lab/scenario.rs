@@ -156,7 +156,15 @@ pub const SCENARIOS: &[Scenario] = &[
             subject: "Friday",
             body: "3pm",
         },
-        reset: &[],
+        // A trial that already produced a compose window otherwise leaves it
+        // open, unsent, for the next trial: if that run then fails before
+        // ever touching the UI, the checker still reads this stale draft's
+        // "Friday"/"3pm" text and records a false pass. `outgoing message` is
+        // Mail's own class for both a new draft and an in-progress reply, so
+        // this closes both scenarios' leftover windows regardless of title.
+        reset: &[Reset::AppleScript(
+            r#"tell application "Mail" to delete every outgoing message"#,
+        )],
     },
     Scenario {
         name: "mail-reply",
