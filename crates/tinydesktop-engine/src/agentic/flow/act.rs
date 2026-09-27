@@ -188,7 +188,7 @@ fn closed_the_overlay(last: &LastAction, screen: &Screen, intent: &str) -> Optio
 }
 
 /// Whether an action was refused because something covers its target.
-fn covered(reply: &DesktopResponse) -> bool {
+fn covered(reply: &tinydesktop_bus::DesktopResponse) -> bool {
     reply
         .error
         .as_ref()
