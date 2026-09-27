@@ -196,10 +196,16 @@ pub(super) fn app_at(flow: &Flow, index: usize) -> String {
         .unwrap_or_else(|| flow.app.clone())
 }
 
-/// The top-level index a step path belongs to: `3` (index 2) for a top-level
-/// step, and `4` (index 3) for one nested inside it, such as `4.2` (an `if`
-/// branch) or `4.r1.2` (a `repeat_until` round).
+/// The top-level index of a step path such as `3` (index 2); `None` for a
+/// nested step such as `4.2`.
 pub(super) fn top_index(path: &str) -> Option<usize> {
+    path.parse::<usize>().ok()?.checked_sub(1)
+}
+
+/// The top-level index a step path belongs to, whether the path names a
+/// top-level step directly (`3`) or one nested inside it, such as `4.2` (an
+/// `if` branch) or `4.r1.2` (a `repeat_until` round).
+pub(super) fn containing_top_index(path: &str) -> Option<usize> {
     path.split('.').next()?.parse::<usize>().ok()?.checked_sub(1)
 }
 
