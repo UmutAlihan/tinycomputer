@@ -400,6 +400,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             {
                 screen.candidates.extend(part.candidates);
                 screen.context.extend(part.context);
+                screen.text_nodes.extend(part.text_nodes);
             }
         }
     }
