@@ -50,6 +50,6 @@ pub use records::{
     Criterion, Price, Record, parse_clock, parse_duration, parse_price, parse_stops, rank,
 };
 pub use safety::{
-    Consequence, FieldHint, PaymentEvidence, consequence, human_needed, payment_evidence,
-    screen_payment_evidence,
+    Consequence, FieldHint, PaymentEvidence, adjusts_a_count, consequence, human_needed,
+    payment_evidence, screen_payment_evidence,
 };

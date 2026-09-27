@@ -13,24 +13,26 @@ pub(in crate::agentic) use tinydesktop_core::surface::{
 /// Least probability a target choice needs to be used without re-asking.
 pub(in crate::agentic) const ACT: f64 = 0.70;
 
-/// Whether a lower-cased label names an action that is hard to undo.
+/// Whether a lower-cased label names an action that is hard to undo. A
+/// counter's minus button ("remove adult") is not: it only lowers a number.
 pub(in crate::agentic) fn destructive_label(evidence: &str) -> bool {
-    [
-        "delete",
-        "remove",
-        "send",
-        "purchase",
-        "buy",
-        "pay",
-        "submit",
-        "confirm",
-        "overwrite",
-        "quit without saving",
-        "empty trash",
-        "sign out",
-    ]
-    .iter()
-    .any(|term| evidence.contains(term))
+    !tinydesktop_core::adjusts_a_count(evidence)
+        && [
+            "delete",
+            "remove",
+            "send",
+            "purchase",
+            "buy",
+            "pay",
+            "submit",
+            "confirm",
+            "overwrite",
+            "quit without saving",
+            "empty trash",
+            "sign out",
+        ]
+        .iter()
+        .any(|term| evidence.contains(term))
 }
 
 /// Whether `label` is named by a `stop_before` phrase the flow itself
