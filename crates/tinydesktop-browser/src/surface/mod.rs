@@ -59,8 +59,6 @@ const SAME_CARD_JS: &str = r#"((x, y, name) => {
   return stack.some((element) => shown(element) === name && card.contains(element));
 })"#;
 
-/// How much of a target's name identifies it inside its card.
-const CARD_NAME_CHARS: usize = 80;
 
 /// One browser session, lazily opened, as a [`Surface`].
 #[derive(Clone)]
