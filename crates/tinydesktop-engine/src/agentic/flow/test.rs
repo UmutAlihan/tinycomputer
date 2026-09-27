@@ -3268,7 +3268,7 @@ async fn a_web_page_is_named_and_the_name_briefs_the_next_question() {
         json!({"app": "browser", "steps": [
             {"browse": "https://flights.test"},
             {"verify": "flights are listed"},
-            {"verify": "prices are shown"}
+            {"stop_before": "booking the flight"}
         ]}),
         |_| {},
         |id, question, _| match id {
