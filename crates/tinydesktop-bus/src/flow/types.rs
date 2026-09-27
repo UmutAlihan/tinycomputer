@@ -348,6 +348,20 @@ pub struct RunFlowRequest {
     pub flow: Flow,
     /// Values for `${name}` references, overriding the flow's own `vars`.
     pub vars: BTreeMap<String, String>,
+    /// Names among `vars` whose value is a caller-supplied fact rather than
+    /// an ordinary flow variable.
+    ///
+    /// A fact may be typed only where a step delivers text locally: an
+    /// `enter` step's value, or substituted into a `browse` address or an
+    /// `open` application name. Anywhere else `${name}` may appear in a
+    /// flow — a `do`, `verify`, `wait_for`, or `stop_before` text, a
+    /// `choose`'s `what`/`option`, a `read`/`extract`'s `what`, a `pick`'s
+    /// `from`/`by`, a `repeat_until`/`if` condition, or an `enter` slot's
+    /// name — never sees a fact's value, because that text is what Jev is
+    /// asked to reason about. [`crate::FlowValidation`] rejects a flow that
+    /// references a fact there, and the flow runtime never expands one even
+    /// if that check were bypassed.
+    pub facts: BTreeSet<String>,
     /// Whether `stop_before` steps may perform their irreversible action.
     pub allow_destructive: bool,
     /// Whether ordinary field values may leave the machine for Jev.
