@@ -19,7 +19,7 @@ Three parties take part in a run, and each does one job.
    and supplies every piece of text that will end up on screen. The caller is
    usually a language model, or a person, that knows what it wants but has
    never seen the application.
-2. **Jev** chooses. Jev is TinyHumans' decision model, reached through the
+2. **Jev** chooses. Jev is TypeSafe's decision model, reached through the
    `tinyinference_decisions` client in `vendor/tinyinference`. It answers
    three kinds of closed question and nothing else:
    - a **Noul**: a yes/no question, answered as the probability of yes;

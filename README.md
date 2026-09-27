@@ -14,7 +14,7 @@ The module works at three levels, and a caller picks whichever fits:
   decides everything.
 - **Flows.** A short, plain-language script of what to accomplish ("start a new
   email message", `enter` a recipient and subject, `stop_before` sending). The
-  module works out how on the live screen by asking Jev, TinyHumans' decision
+  module works out how on the live screen by asking Jev, TypeSafe's decision
   model, many small questions.
 - **Tasks.** One call hands over a whole job, such as "find the cheapest flight
   from Delhi to Srinagar on 14 October and fill in my details up to payment". It
