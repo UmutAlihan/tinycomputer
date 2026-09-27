@@ -89,8 +89,18 @@ impl Sim {
 }
 
 const MONTH_NAMES: [&str; 12] = [
-    "January", "February", "March", "April", "May", "June", "July", "August", "September",
-    "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ];
 
 #[derive(Clone, Default)]
@@ -223,7 +233,13 @@ impl App {
             let widget = [root.as_str(), "group \"Booking\""];
             candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
             if sim.searching {
-                candidates.push(node("Search city", "textbox", &["Click", "SetValue"], &widget, 90.0));
+                candidates.push(node(
+                    "Search city",
+                    "textbox",
+                    &["Click", "SetValue"],
+                    &widget,
+                    90.0,
+                ));
                 let typed = sim.fields.get("Search city").cloned().unwrap_or_default();
                 if !typed.is_empty() && "srinagar".starts_with(&typed.to_lowercase()) {
                     candidates.push(node("Srinagar, SXR", "option", &["Click"], &widget, 95.0));
@@ -1440,7 +1456,12 @@ async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
         },
     )
     .await;
-    assert_eq!(run.result.stop, FlowStopReason::Completed, "{:?}", run.result.steps);
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
     let sim = run.app.sim();
     assert_eq!(sim.fields["Search city"], "Srinagar");
     assert_eq!(
@@ -1473,11 +1494,19 @@ async fn enter_picks_a_date_from_a_calendar_without_telling_jev_the_date() {
         },
     )
     .await;
-    assert_eq!(run.result.stop, FlowStopReason::Completed, "{:?}", run.result.steps);
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
     let sim = run.app.sim();
     assert_eq!(sim.fields["Departure"], "18 October 2026");
     assert_eq!(
-        sim.clicks.iter().filter(|click| *click == "Next Month").count(),
+        sim.clicks
+            .iter()
+            .filter(|click| *click == "Next Month")
+            .count(),
         1,
         "paged from September to October: {:?}",
         sim.clicks
@@ -1512,12 +1541,20 @@ fn a_date_is_told_from_other_options_and_containers_give_way() {
         &[],
         0.0,
     );
-    let names = |kept: Vec<Candidate>| kept.into_iter().filter_map(|node| node.name).collect::<Vec<_>>();
+    let names = |kept: Vec<Candidate>| {
+        kept.into_iter()
+            .filter_map(|node| node.name)
+            .collect::<Vec<_>>()
+    };
     assert_eq!(
         names(closest(vec![month.clone(), day.clone()])),
         [day.name.clone().unwrap()]
     );
-    assert_eq!(names(closest(vec![month.clone()])).len(), 1, "a lone match stays");
+    assert_eq!(
+        names(closest(vec![month.clone()])).len(),
+        1,
+        "a lone match stays"
+    );
     assert!(closest(Vec::new()).is_empty());
 }
 

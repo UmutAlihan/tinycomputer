@@ -14,9 +14,9 @@ use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     act::DONE,
     ask::{self, Questions, chosen, condition, numbered},
+    backend::deliver_text,
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute},
-    backend::deliver_text,
     view::{Candidate, Screen, is_destructive, label, target_payload},
 };
 
@@ -270,7 +270,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .await?;
                 if reply.ok {
                     learn(&mut self.learned, remember(&self.app, &purpose, &target));
-                    self.history.push(format!("chose an option with {}", label(&target)));
+                    self.history
+                        .push(format!("chose an option with {}", label(&target)));
                     return Ok(Ended::new(
                         StepOutcome::Done,
                         if private {
@@ -729,8 +730,18 @@ const MAX_MONTHS: usize = 12;
 
 /// Month names, as a date option spells them.
 const MONTHS: &[&str] = &[
-    "january", "february", "march", "april", "may", "june", "july", "august", "september",
-    "october", "november", "december",
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
 ];
 
 /// Whether `option` names a calendar day: a month name and a day number.
@@ -800,7 +811,9 @@ fn mentions(candidate: &Candidate, option: &str) -> bool {
         .any(|text| {
             let shown = format!(" {} ", plain(&text));
             match &date {
-                Some(words) => words.iter().all(|word| shown.contains(&format!(" {word} "))),
+                Some(words) => words
+                    .iter()
+                    .all(|word| shown.contains(&format!(" {word} "))),
                 None => shown.contains(&format!(" {wanted} ")),
             }
         })

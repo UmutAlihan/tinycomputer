@@ -277,6 +277,17 @@ fn every_operation_becomes_its_engine_command() {
     }
     let untargeted = surface.execute(JevOperation::Click, Some(node("", &[])), None);
     assert_eq!(untargeted.error.unwrap().code, "INVALID_TARGET");
+    let focused = surface.execute(JevOperation::TypeText, None, Some("Srinagar".to_owned()));
+    assert!(
+        focused.ok,
+        "text without a target goes to the focused element"
+    );
+    let typed = fake.last("type");
+    assert_eq!(typed["text"], "Srinagar");
+    assert!(
+        typed.get("selector").is_none_or(serde_json::Value::is_null),
+        "{typed}"
+    );
     assert!(surface.execute(JevOperation::Scroll, None, None).ok);
 }
 
