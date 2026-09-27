@@ -17,6 +17,7 @@ use std::{
     collections::BTreeMap,
     fmt::Write as _,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use serde::Serialize;
@@ -475,5 +476,3 @@ fn clip(text: &str, limit: usize) -> String {
 fn not_found(message: String) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::NotFound, message)
 }
-
-use std::time::Duration;

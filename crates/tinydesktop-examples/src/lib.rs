@@ -15,4 +15,5 @@
 //! assert_eq!(JevProvider::OpenRouter, JevProvider::OpenRouter);
 //! ```
 
+pub mod journal;
 pub mod lab;
