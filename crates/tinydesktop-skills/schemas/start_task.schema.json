@@ -9,11 +9,17 @@
     "facts": {
       "type": "object",
       "additionalProperties": {"type": "string"},
-      "description": "Values the task may type, by name. Never payment card details."
+      "description": "Values the task may type, by name. Shared ones brief the decision model; card, passport, password, and one-time-code values are secret and only ever shown to a model as ${name}."
+    },
+    "secret_facts": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Names among facts to keep secret as well."
     },
     "constraints": {
       "type": "object",
       "properties": {
+        "payment": {"enum": ["stop_at_payment", "fill_then_approve"], "description": "Stop at the control that pays (default), or fill the payment form from secret facts and wait for approval to pay; the latter needs origins."},
         "surfaces": {"type": "array", "items": {"enum": ["desktop", "browser"]}},
         "origins": {"type": "array", "items": {"type": "string"}},
         "allow_destructive": {"type": "boolean"},
@@ -26,7 +32,8 @@
       "properties": {
         "max_actions": {"type": "integer"},
         "max_model_calls": {"type": "integer"},
-        "max_elapsed_ms": {"type": "integer"}
+        "max_elapsed_ms": {"type": "integer"},
+        "votes": {"type": "integer", "description": "How many ways each decision is asked before its answers are averaged."}
       }
     },
     "trace": {"type": "boolean"}
