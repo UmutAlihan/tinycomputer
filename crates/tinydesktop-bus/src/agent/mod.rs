@@ -4,7 +4,7 @@
 //! in plain language, or as a high-level [`Flow`](crate::Flow) — and runs it
 //! end to end across the desktop and the browser, pausing only for what the
 //! caller must decide: missing values, approvals, a person's hand at a captcha,
-//! and always a payment page.
+//! and always before paying.
 //!
 //! # Designed to be driven by a model
 //!
@@ -18,8 +18,10 @@
 //!   exactly what the task needs.
 //! - **No refs, selectors, or coordinates** at this level. Those belong to the
 //!   Desktop and Browser interfaces.
-//! - **Facts stay local.** Values a task types are held by name; a decision
-//!   model or planner sees the names only.
+//! - **Shared facts brief, secret facts stay templates.** A traveller's name
+//!   and date of birth brief the decision model, so it knows whom it books
+//!   for; a card or passport number is only ever shown to a model as
+//!   `${name}` and typed locally.
 //!
 //! ```
 //! use tinydesktop_bus::agent::{StartTaskRequest, TaskStatus, TaskView, TaskId};
@@ -50,7 +52,7 @@ mod types;
 
 pub use types::{
     AgentError, AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, Example,
-    InputField, InputKind, MemberDoc, PlanTaskRequest, StartTaskRequest, StepView,
+    InputField, InputKind, MemberDoc, PaymentMode, PlanTaskRequest, StartTaskRequest, StepView,
     SurfaceAvailability, SurfaceKind, TaskBudget, TaskConstraints, TaskId, TaskPlan, TaskRef,
     TaskReport, TaskStatus, TaskView,
 };

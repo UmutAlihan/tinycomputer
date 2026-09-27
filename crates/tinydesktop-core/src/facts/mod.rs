@@ -214,9 +214,11 @@ fn replace_values<'a>(
         .filter(|(_, value)| !value.trim().is_empty())
         .collect::<Vec<_>>();
     values.sort_by_key(|(_, value)| std::cmp::Reverse(value.len()));
-    values.into_iter().fold(text.to_owned(), |text, (name, value)| {
-        text.replace(value.as_str(), &placeholder(name))
-    })
+    values
+        .into_iter()
+        .fold(text.to_owned(), |text, (name, value)| {
+            text.replace(value.as_str(), &placeholder(name))
+        })
 }
 
 /// Whether a fact called `name` must be secret: its name labels a card, a
