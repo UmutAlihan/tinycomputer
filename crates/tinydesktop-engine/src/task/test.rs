@@ -280,6 +280,42 @@ async fn missing_values_are_asked_for_before_anything_runs() {
 }
 
 #[tokio::test]
+async fn a_value_supplied_for_a_missing_fact_still_fails_fast_if_it_leaks() {
+    // `email` is not declared at `StartTask`, so the flow only looks like it
+    // is missing a plain value; once `ContinueTask` supplies it, it becomes a
+    // fact the same as one declared up front, and the `verify` step that
+    // reads it is exactly as invalid as if it had been declared from the
+    // start. This must fail before the task spawns, not after.
+    let (tasks, script) = controller(Vec::new());
+    let view = start(
+        &tasks,
+        json!({"app": "Mail", "steps": [
+            {"verify": "shows ${email}"}
+        ]}),
+        &[],
+    );
+    let TaskStatus::NeedsInput { fields } = &view.status else {
+        panic!("{:?}", view.status);
+    };
+    assert_eq!(fields[0].name, "email");
+
+    let supplied = tasks.continue_task(ContinueTaskRequest {
+        id: view.id,
+        inputs: BTreeMap::from([("email".to_owned(), "sam@example.com".to_owned())]),
+        ..ContinueTaskRequest::default()
+    });
+    assert_eq!(code(&supplied), "INVALID_FLOW");
+    assert!(
+        supplied.error.unwrap().message.contains("is a fact"),
+        "a fact supplied to answer a missing-input prompt is still a fact"
+    );
+    assert!(
+        script.requests.lock().unwrap().is_empty(),
+        "the invalid flow must never be run"
+    );
+}
+
+#[tokio::test]
 async fn requests_that_cannot_start_are_refused_with_a_hint() {
     let (tasks, _) = controller(Vec::new());
     let card = tasks.start(&StartTaskRequest {
