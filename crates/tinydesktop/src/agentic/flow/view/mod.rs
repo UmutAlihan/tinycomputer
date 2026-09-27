@@ -241,7 +241,6 @@ pub(in crate::agentic) fn parse_reply(
 
 struct Collected<'a> {
     candidates: &'a mut Vec<Candidate>,
-    context: &'a mut Vec<String>,
     unexplored: &'a mut Vec<String>,
     text_nodes: &'a mut Vec<Candidate>,
 }
