@@ -216,8 +216,30 @@ pub(in crate::agentic) fn running_is_launched(reply: DesktopResponse) -> Desktop
     reply
 }
 
+/// Rewrites the platform-neutral `cmd` modifier a flow's shortcuts and this
+/// module's paste path both write into whatever modifier this platform
+/// actually binds for an application's primary shortcuts.
+///
+/// The engine's combo parser maps `cmd` literally to the Meta key
+/// (`vendor/agent-desktop/crates/core/src/commands/combo.rs`), which is the
+/// Command key on macOS but the Windows/Super key everywhere else, so a
+/// shortcut such as `cmd+n` would open the Start menu instead of a new item
+/// on Windows and Linux. `is_macos` is threaded through rather than read from
+/// `cfg!` here so the mapping stays a pure, unit-testable function; the one
+/// caller below supplies the real platform.
+pub(in crate::agentic) fn platform_combo(combo: &str, is_macos: bool) -> String {
+    if is_macos {
+        return combo.to_owned();
+    }
+    combo
+        .split('+')
+        .map(|part| if part == "cmd" { "ctrl" } else { part })
+        .collect::<Vec<_>>()
+        .join("+")
+}
+
 fn press_at(app: &str, combo: &str) -> PressRequest {
-    let mut request = PressRequest::new(combo);
+    let mut request = PressRequest::new(platform_combo(combo, cfg!(target_os = "macos")));
     request.app = Some(app.to_owned());
     request
 }
