@@ -12,8 +12,8 @@ use tinydesktop_bus::{DesktopResponse, JevOperation};
 
 use super::{
     super::view::{Candidate, Depth, Screen},
-    AgentBackend, Restore, blocking, deliver_text, execute_desktop, holds, restore_plan,
-    running_is_launched, tokenized,
+    AgentBackend, Restore, blocking, deliver_text, execute_desktop, holds, platform_combo,
+    restore_plan, running_is_launched, tokenized,
 };
 
 /// A backend whose reads, set-values, and pastes are scripted.
