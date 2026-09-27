@@ -149,6 +149,54 @@ impl AgentBackend for Desktop {
 /// How long a field is given to commit text before it is read back again.
 const SETTLE_MS: u64 = 200;
 
+/// What to put back on the pasteboard once a paste is done with it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(in crate::agentic) enum Restore {
+    /// Write this back; it is what the pasteboard held before the paste.
+    Set(ClipboardSetRequest),
+    /// The pasteboard held nothing in a readable flavor before the paste, so
+    /// it is emptied rather than left holding the field text the paste staged.
+    Clear,
+}
+
+/// Decides how to restore the pasteboard from what a pre-paste
+/// [`Desktop::clipboard_get`] read there, without touching the pasteboard
+/// itself: a pure function a test can drive with a scripted reply.
+///
+/// A failed read (permission denied, no pasteboard service) reports nothing
+/// unreadable rather than "empty", so the pasteboard is left untouched instead
+/// of being cleared on a guess.
+pub(in crate::agentic) fn restore_plan(previous: &DesktopResponse) -> Option<Restore> {
+    let data = previous.data.as_ref().filter(|_| previous.ok)?;
+    match data.get("type").and_then(Value::as_str) {
+        Some("text") => data
+            .get("text")
+            .and_then(Value::as_str)
+            .map(|text| Restore::Set(ClipboardSetRequest::text(text))),
+        Some("file_urls") => data.get("file_urls").and_then(Value::as_array).map(|urls| {
+            let file_urls = urls
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_owned)
+                .collect();
+            Restore::Set(ClipboardSetRequest {
+                file_urls,
+                ..ClipboardSetRequest::default()
+            })
+        }),
+        Some("image") => data.get("path").and_then(Value::as_str).map(|path| {
+            Restore::Set(ClipboardSetRequest {
+                image: Some(path.to_owned()),
+                ..ClipboardSetRequest::default()
+            })
+        }),
+        // `found: false`, or an unrecognized flavor: the pasteboard had
+        // nothing readable before the paste, so it is emptied rather than
+        // left holding the field text the paste just staged there.
+        _ => Some(Restore::Clear),
+    }
+}
+
 /// Treats "several windows match" as launched: the application is running,
 /// and which of its windows to act in is the next step's decision.
 pub(in crate::agentic) fn running_is_launched(reply: DesktopResponse) -> DesktopResponse {
