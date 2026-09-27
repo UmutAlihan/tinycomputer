@@ -1,6 +1,8 @@
 //! Unit tests for the debug journal: switching it on, naming runs, and the
 //! events a run writes.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::{
     ffi::OsString,
     path::{Path, PathBuf},
@@ -125,7 +127,7 @@ fn a_begun_run_writes_a_run_event_then_each_exchange() {
     let failed = EvaluationFailure {
         error: Box::new(tinyinference_decisions::Error::Timeout),
         attempts: 3,
-        latency: Duration::from_millis(9000),
+        latency: Duration::from_secs(9),
     };
     journal.exchange(None, &request(), Err(&failed));
 
