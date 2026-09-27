@@ -6,7 +6,12 @@
 //! (`spawn_blocking`); each one here runs the async [`Browser`] call to
 //! completion on the runtime handle the surface was built with. The session
 //! opens lazily, on the first call that needs a page.
+//!
+//! When the session has a window on screen, the agent's cursor glides onto
+//! each element before the surface acts on it (`cursor.rs`). It is cosmetic:
+//! the actions are the same with or without it.
 
+mod cursor;
 mod tree;
 
 use std::sync::{Arc, Mutex};
@@ -17,8 +22,9 @@ use tinydesktop_bus::browser::{
     WaitState,
 };
 use tinydesktop_bus::{DesktopError, DesktopResponse, JevOperation};
-use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface};
+use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
 use tinydesktop_core::{Key, Platform};
+use tinydesktop_cursor::ScreenCursor;
 
 use crate::error::{Error, Result};
 use crate::sessions::Browser;
@@ -67,6 +73,7 @@ pub struct BrowserSurface {
     session: Arc<Mutex<Option<SessionId>>>,
     handle: tokio::runtime::Handle,
     platform: Platform,
+    cursor: Arc<ScreenCursor>,
 }
 
 impl std::fmt::Debug for BrowserSurface {
@@ -75,13 +82,15 @@ impl std::fmt::Debug for BrowserSurface {
             .debug_struct("BrowserSurface")
             .field("session", &self.session)
             .field("platform", &self.platform)
+            .field("cursor", &self.cursor)
             .finish_non_exhaustive()
     }
 }
 
 impl BrowserSurface {
     /// A surface that opens its session on `browser` with `options`, and
-    /// runs browser calls on `handle`.
+    /// runs browser calls on `handle`. It draws no cursor until given one
+    /// with [`BrowserSurface::with_cursor`].
     #[must_use]
     pub fn new(
         browser: Arc<Browser>,
@@ -94,7 +103,18 @@ impl BrowserSurface {
             session: Arc::new(Mutex::new(None)),
             handle,
             platform: Platform::current(),
+            cursor: Arc::new(ScreenCursor::off()),
         }
+    }
+
+    /// The same surface, drawing on `cursor` — the screen's one agent
+    /// cursor, shared with the desktop surface — whenever its session has a
+    /// window on screen. The cursor is cosmetic: every action is performed
+    /// the same way with or without it.
+    #[must_use]
+    pub fn with_cursor(mut self, cursor: Arc<ScreenCursor>) -> Self {
+        self.cursor = cursor;
+        self
     }
 
     /// The session this surface drives, once one is open.
@@ -275,6 +295,12 @@ impl Surface for BrowserSurface {
                 },
             )
         };
+        if let Some(reference) = reference
+            .as_deref()
+            .filter(|_| uses_pointer(operation) || operation == JevOperation::TypeText)
+        {
+            self.show_cursor(reference);
+        }
         match operation {
             JevOperation::Click | JevOperation::Expand | JevOperation::Collapse => {
                 let reply = targeted("click", |target, _| Action::Click {

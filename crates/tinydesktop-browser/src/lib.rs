@@ -17,6 +17,8 @@
 //!   engine implements it over agent-browser's dispatcher.
 //! - [`BrowserSurface`] — one session as a `tinydesktop_core` surface, so the
 //!   engine's decision loops drive a web page as they drive a desktop app.
+//!   When the session has a window on screen it glides the agent's
+//!   [`ScreenCursor`] onto each target; the cursor is cosmetic.
 //! - `AgentBrowser` (feature `agent-browser`) — the [`Launcher`] for
 //!   agent-browser linked in-process.
 //! - [`Error`] — what can go wrong, as a taxonomy of what a caller should do
@@ -45,3 +47,4 @@ pub use outputs::SWEEP_INTERVAL;
 pub use sessions::{Browser, MAX_SESSIONS};
 pub use surface::BrowserSurface;
 pub use tinydesktop_bus::browser::*;
+pub use tinydesktop_cursor::{CursorPace, ProcessOverlay, ScreenCursor};

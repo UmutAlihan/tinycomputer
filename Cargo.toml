@@ -41,6 +41,9 @@ tinydesktop-desktop = { path = "crates/tinydesktop-desktop" }
 tinydesktop-browser = { path = "crates/tinydesktop-browser" }
 # The agent runtime: Jev loops, goals, and intent flows. Served by the module.
 tinydesktop-engine = { path = "crates/tinydesktop-engine" }
+# The agent's on-screen cursor: aim points and human glide paths a surface
+# draws over its content. Cosmetic; it sends no input.
+tinydesktop-cursor = { path = "crates/tinydesktop-cursor" }
 # Native typed Jev transport used by the desktop-control policy: the decisions
 # crate of the vendored `vendor/tinyinference` submodule, pinned by its gitlink
 # so provider validation and retry behavior are reproducible. Only this crate
@@ -127,3 +130,8 @@ private_intra_doc_links = "warn"
 lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
+
+# The cursor sprite is rasterized with supersampling when the overlay helper
+# (`tinydesktop-cursor`'s binary) starts; unoptimized, that takes over a second and the first glide is missed.
+[profile.dev.package.tinydesktop-cursor]
+opt-level = 3

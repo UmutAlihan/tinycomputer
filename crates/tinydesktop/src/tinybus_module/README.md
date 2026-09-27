@@ -34,7 +34,10 @@ same reason — one to run a blocking command on, one to keep answering on.
 
 The module takes its configuration from the loader as a JSON object, parsed into
 `Desktop` by `Desktop::from_config`: `session_id` and `trace_path` as strings,
-`trace_strict` and `headed` as booleans. An optional `jev` object configures the
+`trace_strict` and `headed` as booleans. `browser.executable` names the
+browser binary, and `cursor` sets the agent's on-screen cursor: a pace
+(`off`, `brisk`, `natural`, `calm`) or `{pace, overlay}` with the overlay
+helper's path. An optional `jev` object configures the
 provider, model, endpoint, and API key before the service is registered.
 TinyBus treats initial and replacement module configuration as sensitive
 host-control traffic. An unreadable configuration fails before replacing the
