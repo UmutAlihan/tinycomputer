@@ -6,12 +6,15 @@ the same instructions.
 
 ## What This Repository Is
 
-tinydesktop adapts the vendored [`agent-desktop`] engine — accessibility-tree
-observation and interaction for macOS, Windows, and Linux — into an installable
-TinyBus module, so a host can expose desktop automation to an agent as typed
-tool calls.
+tinydesktop adapts the vendored [`agent-desktop`] engine (accessibility-tree
+observation and interaction for macOS, Windows, and Linux) and the vendored
+[`agent-browser`] engine (Chrome over CDP) into one installable TinyBus module,
+so a host can expose desktop and browser automation to an agent as typed tool
+calls, Jev-driven flows, and background tasks. `README.md` and
+`docs/architecture.md` describe the whole system.
 
 [`agent-desktop`]: https://github.com/lahfir/agent-desktop
+[`agent-browser`]: https://github.com/vercel-labs/agent-browser
 
 The single most important thing to understand before changing anything here:
 **this repository is an adapter, not an engine.** Behavior lives upstream. If a
@@ -64,7 +67,9 @@ crates/
 └── tinydesktop-examples/ # runnable examples and the lab (`scripts/lab`)
 vendor/
 ├── tinybus/            # pinned TinyBus host types and module SDK
-└── agent-desktop/      # pinned desktop automation engine
+├── agent-desktop/      # pinned desktop automation engine
+├── agent-browser/      # pinned browser automation engine, linked as a library
+└── tinyinference/      # pinned Jev client and the planner's LLM client
 docs/
 ├── specs/              # behavior and architecture specifications
 ├── plans/              # test-first implementation plans
@@ -221,15 +226,20 @@ releases are reproducible.
 
 ### Vendored dependencies
 
-Two submodules, both pinned by gitlink:
+Four submodules, all pinned by gitlink:
 
 - `vendor/tinybus` supplies the host types and module-side SDK required to build
   the `cdylib`.
-- `vendor/agent-desktop` supplies the automation engine: `agent-desktop-core`
+- `vendor/agent-desktop` supplies the desktop engine: `agent-desktop-core`
   plus one accessibility backend per platform, taken as target-specific
   dependencies.
+- `vendor/agent-browser` supplies the browser engine, linked in-process by
+  `tinydesktop-browser`. It tracks the `library-target` branch of the
+  `tinyhumansai/agent-browser` fork until that library target lands upstream.
+- `vendor/tinyinference` supplies the Jev decisions client and, behind the
+  engine's `planner` feature, the LLM client.
 
-Initialize both after cloning with:
+Initialize them after cloning with:
 
 ```sh
 git submodule update --init --recursive
