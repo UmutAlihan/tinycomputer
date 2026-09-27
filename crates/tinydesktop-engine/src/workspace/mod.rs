@@ -39,10 +39,18 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
     /// and `browser` when the browser is.
     #[must_use]
     pub fn new(desktop: Option<D>, browser: Option<W>) -> Self {
+        // Default to whichever side is actually available, so a browser-only
+        // task does not start by aiming an unnamed call at a desktop it was
+        // never given.
+        let active = if desktop.is_some() {
+            Side::Desktop
+        } else {
+            Side::Browser
+        };
         Self {
             desktop,
             browser,
-            active: Arc::new(Mutex::new(Side::Desktop)),
+            active: Arc::new(Mutex::new(active)),
             last_app: Arc::new(Mutex::new(String::new())),
         }
     }
