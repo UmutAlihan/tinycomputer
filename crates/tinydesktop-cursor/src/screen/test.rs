@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use super::{OverlaySink, ProcessOverlay, ScreenCursor};
+use super::{OverlaySink, ScreenCursor};
 use crate::geometry::Rect;
 use crate::pace::CursorPace;
 use crate::protocol::OverlayCommand;
@@ -129,6 +129,7 @@ fn a_missing_helper_leaves_the_cursor_off_without_waiting() {
 #[cfg(unix)]
 #[test]
 fn the_helper_process_receives_one_line_per_command() {
+    use super::ProcessOverlay;
     let mut overlay = ProcessOverlay::spawn(Some(std::path::Path::new("/bin/cat"))).unwrap();
     overlay.send(&OverlayCommand::Hide).unwrap();
     drop(overlay);
