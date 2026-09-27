@@ -350,8 +350,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// and opens it. A criterion over prices, times, durations, or stops is
     /// ranked exactly; anything else is judged by Jev among the records.
     async fn pick(&mut self, log: &mut StepLog, pick: &PickStep) -> Result<Ended, Halt> {
-        let from = substitute(&pick.from, &self.vars);
-        let by = substitute(&pick.by, &self.vars);
+        let from = substitute_safe(&pick.from, &self.vars, &self.facts);
+        let by = substitute_safe(&pick.by, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
         let groups = result_groups(&screen);
