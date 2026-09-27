@@ -208,6 +208,8 @@ pub(super) struct FlowRun<'r, B> {
     blind_looks: u32,
     tracing: bool,
     trace: Vec<JevExchange>,
+    /// When the run began, for the journal's end-of-run wall time.
+    started: Instant,
     step: String,
     /// What the run is for, shown with every question.
     brief: FlowBrief,
@@ -318,6 +320,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             blind_looks: 0,
             tracing: request.trace,
             trace: Vec::new(),
+            started: Instant::now(),
             step: String::new(),
         }
     }
@@ -812,6 +815,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         self.runtime.journal.record("end", || {
             json!({
                 "stop": stop,
+                "wall_ms": millis(self.started.elapsed()),
                 "actions": self.actions,
                 "metrics": self.metrics,
                 "learned": self.learned.len(),
