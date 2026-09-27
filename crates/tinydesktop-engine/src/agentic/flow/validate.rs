@@ -301,6 +301,32 @@ pub(super) fn references(text: &str) -> Vec<String> {
 /// value that itself looks like `${other}` must stand as literal text rather
 /// than expand into `other`'s value.
 pub(super) fn substitute(text: &str, vars: &BTreeMap<String, String>) -> String {
+    substitute_with(text, |name| vars.get(name).map(String::as_str))
+}
+
+/// [`substitute`], but a name in `facts` is treated as undefined and left as
+/// literal `${name}` rather than expanded.
+///
+/// This is the substitution every model-facing text goes through: the
+/// runtime's backstop against a fact's value ever reaching Jev, even if
+/// validation somehow let a `${fact}` reference through. It never runs on an
+/// `enter` step's typed value, or on a `browse` address or `open` application
+/// name, which is where a fact is actually delivered.
+pub(super) fn substitute_safe(
+    text: &str,
+    vars: &BTreeMap<String, String>,
+    facts: &BTreeSet<String>,
+) -> String {
+    substitute_with(text, |name| {
+        if facts.contains(name) {
+            None
+        } else {
+            vars.get(name).map(String::as_str)
+        }
+    })
+}
+
+fn substitute_with<'a>(text: &'a str, resolve: impl Fn(&str) -> Option<&'a str>) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(start) = rest.find("${") {
@@ -311,7 +337,7 @@ pub(super) fn substitute(text: &str, vars: &BTreeMap<String, String>) -> String 
             return out;
         };
         let name = &after[..end];
-        match vars.get(name) {
+        match resolve(name) {
             Some(value) => out.push_str(value),
             None => out.push_str(&rest[start..=start + 2 + end]),
         }
