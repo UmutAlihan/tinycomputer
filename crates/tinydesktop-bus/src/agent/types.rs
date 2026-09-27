@@ -9,7 +9,7 @@ use crate::browser::OutputRef;
 use crate::flow::{Flow, GroundingHint, JevExchange, StepReport};
 
 /// A task's identity, handed out by `StartTask`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct TaskId(pub String);
 
@@ -44,10 +44,10 @@ pub struct AgentResponse<T> {
     /// Whether the call did what was asked.
     pub ok: bool,
     /// The result, when `ok`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<T>,
     /// Why not, when not `ok`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<AgentError>,
 }
 
@@ -194,12 +194,6 @@ pub struct ContinueTaskRequest {
     /// A free-text answer, for a pause that asked a question — or, for
     /// `needs_human`, `"done"` once the person has finished.
     pub answer: Option<String>,
-}
-
-impl Default for TaskId {
-    fn default() -> Self {
-        Self(String::new())
-    }
 }
 
 /// A task named in a request.

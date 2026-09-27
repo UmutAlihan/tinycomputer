@@ -19,6 +19,9 @@
 //! - [`observation`], [`interaction`], [`input`], [`apps`], [`clipboard`],
 //!   [`notifications`], [`waiting`], [`system`] — one module per family of
 //!   members, holding that family's request payloads.
+//! - [`agent`] — the Agent interface: tasks handed over in plain language or
+//!   as a flow, run across the desktop and the browser, paused only for what
+//!   the caller must decide.
 //! - [`browser`] — the browser interface's own vocabulary and member names,
 //!   namespaced so its snapshot and screenshot types never shadow the
 //!   desktop ones.
@@ -104,6 +107,7 @@
 //! interface without an entry here fails that crate's tests rather than
 //! surfacing as an unknown method in a host at runtime.
 
+pub mod agent;
 pub mod agentic;
 pub mod apps;
 pub mod browser;
