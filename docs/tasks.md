@@ -15,9 +15,9 @@ values, budgets, and the planner.
 ## A session, end to end
 
 A caller that has never used the module starts with `Describe`. It returns the
-available surfaces, the permissions, the step kinds, the flow guide, JSON
-Schemas for every request, worked examples, and whether a planner is
-configured.
+contract version, which surfaces are available (and why one is not), whether
+Jev and a planner are configured, the step kinds, the flow guide, a JSON Schema
+for every Agent member's request and reply, and worked examples.
 
 Then it starts the task. With a planner configured, plain language is enough:
 
@@ -180,9 +180,10 @@ follows three rules:
    every later question. When `ContinueTask` supplies a new value, the flow is
    checked again, since a name that looked undefined at the start may now be a
    fact used somewhere it must not be.
-3. **Card data is refused.** A fact named like card data (card number, CVV,
-   expiry, and so on), or any value of 13 to 19 digits that passes the Luhn
-   check, is refused with `CARD_DATA_REFUSED`. No task can be handed a card to
+3. **Card data is refused.** A fact whose name labels card data (card number,
+   credit or debit card, CVV, CVC, security code, card expiry, card PIN, UPI
+   PIN), or any value of 13 to 19 digits that passes the Luhn check, is refused
+   with `CARD_DATA_REFUSED`, both at `StartTask` and at `ContinueTask`. No task can be handed a card to
    type.
 
 ## Payment is always a checkpoint
