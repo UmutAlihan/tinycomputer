@@ -305,12 +305,11 @@ pub(super) fn describe(node: &Candidate, include_values: bool) -> Value {
 /// Refs are re-minted by every snapshot, so a fingerprint that included them
 /// would report a change on every turn and stall detection would never fire.
 pub(super) fn fingerprint(screen: &Screen) -> String {
-    let mut parts = screen
-        .candidates
-        .iter()
-        .map(signature)
-        .collect::<Vec<_>>();
-    parts.push(format!("window:{}", screen.window.as_deref().unwrap_or_default()));
+    let mut parts = screen.candidates.iter().map(signature).collect::<Vec<_>>();
+    parts.push(format!(
+        "window:{}",
+        screen.window.as_deref().unwrap_or_default()
+    ));
     parts.push(format!("surface:{}", screen.surface));
     parts.extend(screen.context.iter().map(|line| format!("text:{line}")));
     parts.join("|")
@@ -326,7 +325,10 @@ pub(super) fn signature(node: &Candidate) -> String {
             .as_deref()
             .or(node.description.as_deref())
             .unwrap_or_default(),
-        node.value.as_ref().map(Value::to_string).unwrap_or_default(),
+        node.value
+            .as_ref()
+            .map(Value::to_string)
+            .unwrap_or_default(),
         node.states,
         node.path.join(">")
     )
@@ -337,7 +339,10 @@ pub(super) fn label(node: &Candidate) -> String {
     node.name
         .as_deref()
         .or(node.description.as_deref())
-        .map_or_else(|| node.role.clone(), |name| format!("{} {name:?}", node.role))
+        .map_or_else(
+            || node.role.clone(),
+            |name| format!("{} {name:?}", node.role),
+        )
 }
 
 /// Element labels present in `after` but not `before`, and the reverse.

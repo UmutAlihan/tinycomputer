@@ -88,7 +88,12 @@ pub(super) async fn run_goal_with<B: AgentBackend>(
             .as_ref()
             .map_or_else(|| "the selected element".to_owned(), label);
         if let Some(failure) = outcome.action_failure {
-            if run.failed(&decision, outcome.selected.as_ref(), &target_label, &failure) {
+            if run.failed(
+                &decision,
+                outcome.selected.as_ref(),
+                &target_label,
+                &failure,
+            ) {
                 continue;
             }
             return run.finish(JevStopReason::ActionFailed, Some(decision));
@@ -254,8 +259,10 @@ impl GoalRun {
             self.unchanged.saturating_add(1)
         };
         let step = self.next_step();
-        self.history
-            .push(format!("step {step}: {:?} {target}; {note}", decision.operation));
+        self.history.push(format!(
+            "step {step}: {:?} {target}; {note}",
+            decision.operation
+        ));
         self.turns.push(JevTurn {
             step,
             operation: decision.operation,

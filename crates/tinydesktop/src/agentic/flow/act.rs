@@ -53,9 +53,15 @@ const MOVES: &[(&str, &str)] = &[
         "shortcut",
         "Use a standard keyboard shortcut, such as creating a new item or opening search.",
     ),
-    ("expand", "Open a collapsed section, disclosure, or dropdown."),
+    (
+        "expand",
+        "Open a collapsed section, disclosure, or dropdown.",
+    ),
     ("scroll", "Scroll a list or page to reveal more of it."),
-    ("wait", "The application is visibly still loading; wait for it."),
+    (
+        "wait",
+        "The application is visibly still loading; wait for it.",
+    ),
     (
         "finished",
         "The step is already accomplished; nothing more is needed.",
@@ -80,7 +86,11 @@ pub(super) const SHORTCUTS: &[(&str, &str, &str)] = &[
     ("settings", "cmd+,", "Open the application's settings."),
     ("back", "cmd+[", "Go back to the previous view."),
     ("next_field", "tab", "Move focus to the next field."),
-    ("dismiss", "escape", "Close a popup, menu, or dialog without acting."),
+    (
+        "dismiss",
+        "escape",
+        "Close a popup, menu, or dialog without acting.",
+    ),
 ];
 
 /// What the last action was, so a regression can be undone sensibly.
@@ -165,7 +175,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let screen = self.look().await?;
         let judged = self.judge(log, &screen, intent).await?;
         if judged.done.unwrap_or_default() >= DONE {
-            return Ok(Ended::new(StepOutcome::Done, "accomplished on the last turn"));
+            return Ok(Ended::new(
+                StepOutcome::Done,
+                "accomplished on the last turn",
+            ));
         }
         Err(Halt::Failed(format!(
             "not accomplished after {max_turns} turns"
@@ -326,7 +339,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         };
         let target = grounded.candidate;
         log.confidence = Some(grounded.confidence);
-        if jev_operation == JevOperation::Click && destructive_label(&label(&target).to_ascii_lowercase()) {
+        if jev_operation == JevOperation::Click
+            && destructive_label(&label(&target).to_ascii_lowercase())
+        {
             self.history.push(format!(
                 "refused to press {} inside an ordinary step: it looks irreversible; a flow must use stop_before for that",
                 label(&target)
@@ -339,11 +354,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 backend.execute(jev_operation, Some(chosen_target), None)
             })
             .await?;
-        self.history.push(format!(
-            "{verb} {} ok={}",
-            label(&target),
-            reply.ok
-        ));
+        self.history
+            .push(format!("{verb} {} ok={}", label(&target), reply.ok));
         if reply.ok {
             learn(&mut self.learned, remember(&self.app, intent, &target));
         }
@@ -361,7 +373,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .candidates
             .iter()
             .filter(|candidate| {
-                candidate.available_actions.iter().any(|action| action == "Click")
+                candidate
+                    .available_actions
+                    .iter()
+                    .any(|action| action == "Click")
                     && !destructive_label(&label(candidate).to_ascii_lowercase())
             })
             .take(ask::CAP)
@@ -371,7 +386,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let mut options = keys
             .iter()
             .cloned()
-            .zip(pool.iter().map(|node| super::super::screen::describe(node, false)))
+            .zip(
+                pool.iter()
+                    .map(|node| super::super::screen::describe(node, false)),
+            )
             .collect::<Vec<_>>();
         options.push(("escape".to_owned(), json!("Press Escape to close it.")));
         let answers = self

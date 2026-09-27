@@ -38,8 +38,8 @@ use std::{
 use serde_json::json;
 use tinydesktop_bus::{
     DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowLoop,
-    FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevMetrics, JevTarget,
-    RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
+    FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevMetrics, JevTarget, RunFlowRequest,
+    StepOutcome, StepReport, ValidateFlowRequest,
 };
 use tinyjevclient::{Answer, EvaluationRequest};
 
@@ -199,9 +199,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 
     async fn start(&mut self, flow: &Flow) -> Result<(), Halt> {
         let app = self.app.clone();
-        let _activated = self
-            .backend_call(move |backend| backend.launch(&app))
-            .await;
+        let _activated = self.backend_call(move |backend| backend.launch(&app)).await;
         self.run_steps(&flow.steps, String::new()).await
     }
 

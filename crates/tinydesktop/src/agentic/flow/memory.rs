@@ -42,10 +42,7 @@ pub(super) fn recall<'a>(
 }
 
 fn matches(hint: &GroundingHint, candidate: &Candidate) -> bool {
-    let name = candidate
-        .name
-        .as_ref()
-        .or(candidate.description.as_ref());
+    let name = candidate.name.as_ref().or(candidate.description.as_ref());
     hint.role == candidate.role
         && hint.name.as_ref() == name
         && tail(&hint.path) == tail(&candidate.path)

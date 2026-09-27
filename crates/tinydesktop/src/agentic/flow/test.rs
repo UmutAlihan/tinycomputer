@@ -105,7 +105,13 @@ impl App {
             let mut body = node("Body", "textarea", &["SetValue"], &[&root], 300.0);
             body.value = sim.fields.get("Body").map(|value| json!(value));
             candidates.push(body);
-            candidates.push(node("Send", "button", &["Click"], &[&root, "toolbar"], 40.0));
+            candidates.push(node(
+                "Send",
+                "button",
+                &["Click"],
+                &[&root, "toolbar"],
+                40.0,
+            ));
         } else {
             candidates.push(node(
                 "New Message",
@@ -114,7 +120,13 @@ impl App {
                 &[&root, "toolbar"],
                 40.0,
             ));
-            candidates.push(node("Archive", "button", &["Click"], &[&root, "toolbar"], 40.0));
+            candidates.push(node(
+                "Archive",
+                "button",
+                &["Click"],
+                &[&root, "toolbar"],
+                40.0,
+            ));
             for index in 0..sim.extra_buttons {
                 let region = if sim.one_region {
                     "list \"Messages\"".to_owned()
@@ -134,8 +146,20 @@ impl App {
         let mut surface = "window".to_owned();
         if sim.obstacle {
             surface = "sheet".to_owned();
-            candidates.push(node("Delete Draft", "button", &["Click"], &["sheet"], 500.0));
-            candidates.push(node("Keep Editing", "button", &["Click"], &["sheet"], 500.0));
+            candidates.push(node(
+                "Delete Draft",
+                "button",
+                &["Click"],
+                &["sheet"],
+                500.0,
+            ));
+            candidates.push(node(
+                "Keep Editing",
+                "button",
+                &["Click"],
+                &["sheet"],
+                500.0,
+            ));
         }
         Screen {
             app: "Mail".to_owned(),
@@ -257,7 +281,9 @@ impl Evaluator for Oracle {
     ) -> Pin<Box<dyn Future<Output = Result<EvaluationResult, EvaluationFailure>> + Send + 'a>>
     {
         Box::pin(async move {
-            request.validate().expect("every request the flow builds is valid");
+            request
+                .validate()
+                .expect("every request the flow builds is valid");
             self.requests.lock().unwrap().push(request.clone());
             if self.fail {
                 return Err(EvaluationFailure {
@@ -271,8 +297,8 @@ impl Evaluator for Oracle {
                 .questions
                 .iter()
                 .map(|(id, question)| {
-                    let answer =
-                        (self.hook)(id, question, &sim).unwrap_or_else(|| default_answer(id, question, &sim));
+                    let answer = (self.hook)(id, question, &sim)
+                        .unwrap_or_else(|| default_answer(id, question, &sim));
                     (id.clone(), answer)
                 })
                 .collect::<BTreeMap<_, _>>();
@@ -298,7 +324,11 @@ fn text_of(question: &Question, field: &str) -> String {
     };
     instructions
         .get(field)
-        .map(|value| value.as_str().map_or_else(|| value.to_string(), str::to_owned))
+        .map(|value| {
+            value
+                .as_str()
+                .map_or_else(|| value.to_string(), str::to_owned)
+        })
         .unwrap_or_default()
         .to_ascii_lowercase()
 }
@@ -380,9 +410,11 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
             let held = if condition.contains("has happened") {
                 sim.sent
             } else if condition.contains("draft shows") {
-                ["To", "Subject", "Body"]
-                    .iter()
-                    .all(|field| sim.fields.get(*field).is_some_and(|value| !value.is_empty()))
+                ["To", "Subject", "Body"].iter().all(|field| {
+                    sim.fields
+                        .get(*field)
+                        .is_some_and(|value| !value.is_empty())
+                })
             } else {
                 sim.compose_open
             };
@@ -395,7 +427,9 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         "confirm" => noul(0.9),
         "dismiss" => pick(question, "Keep Editing", 0.9),
         "region" => pick(question, "Region 1", 0.9),
-        _ if id.starts_with("slot_") => pick(question, needle_for(&text_of(question, "purpose")), 0.9),
+        _ if id.starts_with("slot_") => {
+            pick(question, needle_for(&text_of(question, "purpose")), 0.9)
+        }
         _ => pick(question, needle_for(&text_of(question, "purpose")), 0.9),
     }
 }
@@ -517,9 +551,15 @@ async fn a_mail_compose_flow_fills_every_field_and_stops_in_front_of_send() {
     let sim = run.app.sim();
     assert!(!sim.sent, "a gated flow must never press Send");
     assert_eq!(sim.fields["To"], "sam@example.com");
-    assert_eq!(sim.fields["Body"], "Hi Sam,\n\nCould we move it to Friday?\n\nAlex");
+    assert_eq!(
+        sim.fields["Body"],
+        "Hi Sam,\n\nCould we move it to Friday?\n\nAlex"
+    );
     assert_eq!(sim.presses, ["cmd+n"]);
-    assert_eq!(run.result.pending.as_ref().unwrap().name.as_deref(), Some("Send"));
+    assert_eq!(
+        run.result.pending.as_ref().unwrap().name.as_deref(),
+        Some("Send")
+    );
 
     let enter = &run.result.steps[2];
     assert!(enter.loops.contains(&FlowLoop::Slots));
@@ -528,8 +568,15 @@ async fn a_mail_compose_flow_fills_every_field_and_stops_in_front_of_send() {
         .iter()
         .find(|action| action.action == "fill message body")
         .unwrap();
-    assert_eq!(body.note, "via paste", "an ignored set-value falls back to paste");
-    assert_eq!(enter.actions.first().unwrap().action, "fill recipient", "fields fill top to bottom");
+    assert_eq!(
+        body.note, "via paste",
+        "an ignored set-value falls back to paste"
+    );
+    assert_eq!(
+        enter.actions.first().unwrap().action,
+        "fill recipient",
+        "fields fill top to bottom"
+    );
     assert!(
         run.result
             .learned
@@ -537,12 +584,22 @@ async fn a_mail_compose_flow_fills_every_field_and_stops_in_front_of_send() {
             .any(|hint| hint.key == "recipient" && hint.name.as_deref() == Some("To"))
     );
     assert!(run.result.metrics.calls > 0 && run.result.actions >= 5);
-    assert!(choice_sizes(&run.requests).iter().all(|size| *size <= ask::CAP + 1));
+    assert!(
+        choice_sizes(&run.requests)
+            .iter()
+            .all(|size| *size <= ask::CAP + 1)
+    );
 }
 
 #[tokio::test]
 async fn an_allowed_destructive_step_is_performed_and_verified() {
-    let run = run_with(App::default(), mail_flow(), |request| request.allow_destructive = true, |_, _, _| None).await;
+    let run = run_with(
+        App::default(),
+        mail_flow(),
+        |request| request.allow_destructive = true,
+        |_, _, _| None,
+    )
+    .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert!(run.app.sim().sent);
     assert_eq!(run.result.steps[4].outcome, StepOutcome::Done);
@@ -551,7 +608,11 @@ async fn an_allowed_destructive_step_is_performed_and_verified() {
 #[tokio::test]
 async fn a_step_already_accomplished_is_skipped_without_acting() {
     let app = App::with(|sim| sim.compose_open = true);
-    let run = run(app, json!({"app": "Mail", "steps": ["start a new email message"]})).await;
+    let run = run(
+        app,
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+    )
+    .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert_eq!(run.result.steps[0].outcome, StepOutcome::AlreadyDone);
     assert!(run.app.sim().presses.is_empty() && run.app.sim().clicks.is_empty());
@@ -590,7 +651,10 @@ async fn a_remembered_element_is_confirmed_instead_of_searched_for() {
     assert_eq!(run.app.sim().clicks, ["New Message"]);
     let step = &run.result.steps[0];
     assert!(step.loops.contains(&FlowLoop::Memory));
-    assert!(!step.loops.contains(&FlowLoop::Narrowing), "memory skips the search");
+    assert!(
+        !step.loops.contains(&FlowLoop::Narrowing),
+        "memory skips the search"
+    );
 }
 
 #[tokio::test]
@@ -610,7 +674,11 @@ async fn a_large_screen_is_narrowed_by_region_before_choosing() {
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert_eq!(run.app.sim().clicks, ["Message 7"]);
     assert!(run.result.steps[0].loops.contains(&FlowLoop::Narrowing));
-    assert!(choice_sizes(&run.requests).iter().all(|size| *size <= ask::CAP + 1));
+    assert!(
+        choice_sizes(&run.requests)
+            .iter()
+            .all(|size| *size <= ask::CAP + 1)
+    );
 }
 
 #[tokio::test]
@@ -669,7 +737,10 @@ async fn a_low_confidence_choice_is_used_only_when_the_re_ask_agrees() {
         },
     )
     .await;
-    assert!(disagreed.app.sim().clicks.is_empty(), "disagreement means no click");
+    assert!(
+        disagreed.app.sim().clicks.is_empty(),
+        "disagreement means no click"
+    );
     assert_eq!(disagreed.result.stop, FlowStopReason::StepFailed);
 }
 
@@ -689,7 +760,9 @@ async fn an_obstacle_is_dismissed_with_a_safe_control_only() {
         .find_map(|request| request.questions.get("dismiss"))
         .unwrap();
     assert!(
-        !serde_json::to_string(dismiss).unwrap().contains("Delete Draft"),
+        !serde_json::to_string(dismiss)
+            .unwrap()
+            .contains("Delete Draft"),
         "an irreversible control is never offered to clear an obstacle"
     );
 
@@ -962,7 +1035,9 @@ async fn enter_reveals_fields_and_fails_for_a_slot_with_no_field() {
         App::with(|sim| sim.compose_open = true),
         json!({"app": "Mail", "steps": [{"enter": {"shoe size": "11"}}]}),
         |request| request.max_actions = 6,
-        |id, question, _| (id.starts_with("slot_") || id == "target").then(|| pick(question, "none", 0.9)),
+        |id, question, _| {
+            (id.starts_with("slot_") || id == "target").then(|| pick(question, "none", 0.9))
+        },
     )
     .await;
     assert_eq!(missing.result.stop, FlowStopReason::StepFailed);
@@ -976,7 +1051,10 @@ async fn enter_reveals_fields_and_fails_for_a_slot_with_no_field() {
                 key: "subject".to_owned(),
                 role: "textfield".to_owned(),
                 name: Some("Subject".to_owned()),
-                path: vec!["window \"New Message\"".to_owned(), "group \"Header\"".to_owned()],
+                path: vec![
+                    "window \"New Message\"".to_owned(),
+                    "group \"Header\"".to_owned(),
+                ],
             }];
         },
         |_, _, _| None,
@@ -994,10 +1072,22 @@ async fn enter_reveals_fields_and_fails_for_a_slot_with_no_field() {
 
 #[tokio::test]
 async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
-    let actions = run_with(App::default(), mail_flow(), |request| request.max_actions = 1, |_, _, _| None).await;
+    let actions = run_with(
+        App::default(),
+        mail_flow(),
+        |request| request.max_actions = 1,
+        |_, _, _| None,
+    )
+    .await;
     assert_eq!(actions.result.stop, FlowStopReason::ActionBudget);
 
-    let calls = run_with(App::default(), mail_flow(), |request| request.max_model_calls = 1, |_, _, _| None).await;
+    let calls = run_with(
+        App::default(),
+        mail_flow(),
+        |request| request.max_model_calls = 1,
+        |_, _, _| None,
+    )
+    .await;
     assert_eq!(calls.result.stop, FlowStopReason::ModelBudget);
 
     let unopened = run(
@@ -1013,7 +1103,11 @@ async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
         json!({"app": "Mail", "steps": ["anything"]}),
     )
     .await;
-    assert!(unreadable.result.steps[0].note.contains("could not be read"));
+    assert!(
+        unreadable.result.steps[0]
+            .note
+            .contains("could not be read")
+    );
 
     let failing = Oracle {
         app: App::default(),
@@ -1083,15 +1177,26 @@ fn validation_reports_every_problem_by_step() {
         "step 8: `${also_missing}` is not defined",
         "nests deeper than 4 levels",
     ] {
-        assert!(errors.contains(expected), "missing {expected:?} in:\n{errors}");
+        assert!(
+            errors.contains(expected),
+            "missing {expected:?} in:\n{errors}"
+        );
     }
 
-    let malformed = validate::validate(&json!({"app": "Mail", "steps": [{"click": "x"}]}), &BTreeSet::new());
+    let malformed = validate::validate(
+        &json!({"app": "Mail", "steps": [{"click": "x"}]}),
+        &BTreeSet::new(),
+    );
     assert!(malformed.0.is_none());
     assert!(malformed.1.errors[0].contains("not well formed"));
 
     let empty = validate::check(&Flow::default(), &BTreeSet::new());
-    assert!(empty.errors.iter().any(|error| error.contains("at least one step")));
+    assert!(
+        empty
+            .errors
+            .iter()
+            .any(|error| error.contains("at least one step"))
+    );
 
     let huge = Flow {
         app: "Mail".to_owned(),
@@ -1112,9 +1217,18 @@ fn validation_reports_every_problem_by_step() {
 #[test]
 fn text_helpers_substitute_reference_and_normalize() {
     let vars = BTreeMap::from([("to".to_owned(), "sam".to_owned())]);
-    assert_eq!(validate::substitute("hi ${to}, ${other}", &vars), "hi sam, ${other}");
-    assert_eq!(validate::references("${a} and ${b} and ${unclosed"), ["a", "b"]);
-    assert_eq!(validate::normalize("  The Message-Body! "), "the message body");
+    assert_eq!(
+        validate::substitute("hi ${to}, ${other}", &vars),
+        "hi sam, ${other}"
+    );
+    assert_eq!(
+        validate::references("${a} and ${b} and ${unclosed"),
+        ["a", "b"]
+    );
+    assert_eq!(
+        validate::normalize("  The Message-Body! "),
+        "the message body"
+    );
     assert_eq!(validate::step_path("", 0), "1");
     assert_eq!(validate::step_path("4", 1), "4.2");
 }
@@ -1122,17 +1236,25 @@ fn text_helpers_substitute_reference_and_normalize() {
 #[test]
 fn guide_and_answer_helpers_behave() {
     let guide = flow_guide();
-    assert!(guide.data.unwrap()["guide"].as_str().unwrap().contains("# Writing a desktop flow"));
+    assert!(
+        guide.data.unwrap()["guide"]
+            .as_str()
+            .unwrap()
+            .contains("# Writing a desktop flow")
+    );
     assert_eq!(ask::lettered(28)[..3], ["A", "B", "C"]);
     assert_eq!(ask::lettered(28)[26..], ["AA", "AB"]);
     let answers = BTreeMap::from([
         ("progress".to_owned(), level(4)),
-        ("flat".to_owned(), Answer::Score(ScoreAnswer {
-            score: 0.0,
-            legend: BTreeMap::new(),
-            probabilities: BTreeMap::from([("0".to_owned(), 1.0)]),
-            confidence: 1.0,
-        })),
+        (
+            "flat".to_owned(),
+            Answer::Score(ScoreAnswer {
+                score: 0.0,
+                legend: BTreeMap::new(),
+                probabilities: BTreeMap::from([("0".to_owned(), 1.0)]),
+                confidence: 1.0,
+            }),
+        ),
         ("yes".to_owned(), noul(0.7)),
     ]);
     assert!((ask::level(&answers, "progress").unwrap() - 1.0).abs() < 1e-9);
@@ -1146,20 +1268,37 @@ fn guide_and_answer_helpers_behave() {
 #[test]
 fn regions_split_at_the_first_level_that_divides_and_merge_the_tail() {
     let pool = (0..30)
-        .map(|index| node(&format!("b{index}"), "button", &["Click"], &["window", &format!("r{index}")], 0.0))
+        .map(|index| {
+            node(
+                &format!("b{index}"),
+                "button",
+                &["Click"],
+                &["window", &format!("r{index}")],
+                0.0,
+            )
+        })
         .collect::<Vec<_>>();
     let (level, regions) = ground::split(&pool, 0).unwrap();
     assert_eq!(level, 1);
     assert_eq!(regions.len(), ask::CAP);
     assert_eq!(regions.last().unwrap().0, "everything else");
     assert_eq!(regions.last().unwrap().1.len(), 30 - (ask::CAP - 1));
-    let flat = vec![node("a", "button", &[], &[], 0.0), node("b", "button", &[], &[], 0.0)];
+    let flat = vec![
+        node("a", "button", &[], &[], 0.0),
+        node("b", "button", &[], &[], 0.0),
+    ];
     assert!(ground::split(&flat, 0).is_none());
 }
 
 #[test]
 fn memory_matches_by_role_name_and_path_tail_and_replaces_old_hints() {
-    let field = node("Subject", "textfield", &["SetValue"], &["app", "window", "group"], 0.0);
+    let field = node(
+        "Subject",
+        "textfield",
+        &["SetValue"],
+        &["app", "window", "group"],
+        0.0,
+    );
     let hint = memory::remember("Mail", "The Subject", &field);
     assert_eq!(hint.key, "the subject");
     let pool = [field.clone()];

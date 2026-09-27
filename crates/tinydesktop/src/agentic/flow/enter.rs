@@ -83,12 +83,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .map(|index| slots[*index].slot.as_str())
                     .collect::<Vec<_>>()
                     .join(", ");
-                self.accomplish(
-                    log,
-                    &format!("show the fields for: {names}"),
-                    REVEAL_TURNS,
-                )
-                .await?;
+                self.accomplish(log, &format!("show the fields for: {names}"), REVEAL_TURNS)
+                    .await?;
                 continue;
             }
             for assignment in assignments {
@@ -99,10 +95,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         &mut self.learned,
                         remember(&self.app, &slot.slot, &assignment.field),
                     );
-                    log.confidence = Some(
-                        log.confidence
-                            .map_or(assignment.probability, |seen| seen.min(assignment.probability)),
-                    );
+                    log.confidence = Some(log.confidence.map_or(assignment.probability, |seen| {
+                        seen.min(assignment.probability)
+                    }));
                 }
             }
         }
@@ -218,14 +213,22 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Delivers one slot's text and reports whether it verifiably arrived.
-    async fn fill(&mut self, log: &mut StepLog, slot: &Slot, field: &Candidate) -> Result<bool, Halt> {
+    async fn fill(
+        &mut self,
+        log: &mut StepLog,
+        slot: &Slot,
+        field: &Candidate,
+    ) -> Result<bool, Halt> {
         let app = self.app.clone();
         let target = field.clone();
         let text = slot.text.clone();
         let reply = self
-            .act(log, &format!("fill {}", slot.slot), Some(field), move |backend| {
-                deliver_text(&backend, &app, &target, &text)
-            })
+            .act(
+                log,
+                &format!("fill {}", slot.slot),
+                Some(field),
+                move |backend| deliver_text(&backend, &app, &target, &text),
+            )
             .await?;
         let path = reply
             .data
@@ -253,9 +256,16 @@ pub(super) fn editable(screen: &Screen) -> Vec<Candidate> {
                 .available_actions
                 .iter()
                 .any(|action| action == "SetValue" || action == "TypeText")
-                || ["textfield", "textarea", "text field", "text area", "combobox", "searchfield"]
-                    .iter()
-                    .any(|role| candidate.role.eq_ignore_ascii_case(role))
+                || [
+                    "textfield",
+                    "textarea",
+                    "text field",
+                    "text area",
+                    "combobox",
+                    "searchfield",
+                ]
+                .iter()
+                .any(|role| candidate.role.eq_ignore_ascii_case(role))
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -277,7 +287,11 @@ fn position(candidate: &Candidate) -> f64 {
 }
 
 fn preview(text: &str) -> String {
-    let words = text.split_whitespace().take(8).collect::<Vec<_>>().join(" ");
+    let words = text
+        .split_whitespace()
+        .take(8)
+        .collect::<Vec<_>>()
+        .join(" ");
     if text.split_whitespace().count() > 8 {
         format!("{words}…")
     } else {

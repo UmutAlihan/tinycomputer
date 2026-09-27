@@ -73,7 +73,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Judges one condition on the current screen.
-    pub(super) async fn holds(&mut self, log: &mut StepLog, condition_text: &str) -> Result<f64, Halt> {
+    pub(super) async fn holds(
+        &mut self,
+        log: &mut StepLog,
+        condition_text: &str,
+    ) -> Result<f64, Halt> {
         log.used(FlowLoop::Completion);
         let screen = self.look().await?;
         let answers = self
@@ -144,15 +148,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     learn(&mut self.learned, remember(&self.app, &purpose, &target));
                     self.history
                         .push(format!("chose {option:?} with {}", label(&target)));
-                    return Ok(Ended::new(
-                        StepOutcome::Done,
-                        format!("chose {option:?}"),
-                    ));
+                    return Ok(Ended::new(StepOutcome::Done, format!("chose {option:?}")));
                 }
             }
             if attempt == 0 {
-                self.accomplish(log, &format!("open {what} so its options show"), REVEAL_TURNS)
-                    .await?;
+                self.accomplish(
+                    log,
+                    &format!("open {what} so its options show"),
+                    REVEAL_TURNS,
+                )
+                .await?;
             }
         }
         Err(Halt::Failed(format!("{option:?} was not found in {what}")))
@@ -202,25 +207,31 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                                 "task": "Choose the piece of text on screen that shows this.",
                                 "what": what,
                             }),
-                            keys.iter()
-                                .cloned()
-                                .zip(sources.iter().map(|(_, description, _)| description.clone())),
+                            keys.iter().cloned().zip(
+                                sources
+                                    .iter()
+                                    .map(|(_, description, _)| description.clone()),
+                            ),
                         ),
                     ),
                 ),
             )
             .await?;
-        let Some((choice, confidence)) = chosen(&answers, "source")
-            .filter(|(_, confidence)| *confidence >= LOCATE_FLOOR)
+        let Some((choice, confidence)) =
+            chosen(&answers, "source").filter(|(_, confidence)| *confidence >= LOCATE_FLOOR)
         else {
-            return Err(Halt::Failed(format!("no text on screen clearly shows {what}")));
+            return Err(Halt::Failed(format!(
+                "no text on screen clearly shows {what}"
+            )));
         };
         let Some((source, _, text)) = keys
             .iter()
             .position(|key| *key == choice)
             .and_then(|index| sources.get(index))
         else {
-            return Err(Halt::Failed(format!("no text on screen clearly shows {what}")));
+            return Err(Halt::Failed(format!(
+                "no text on screen clearly shows {what}"
+            )));
         };
         log.confidence = Some(confidence);
         self.vars.insert(read.into.clone(), text.clone());
@@ -228,7 +239,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .push(format!("read {what} from {source} into {}", read.into));
         Ok(Ended::new(
             StepOutcome::Done,
-            format!("read {} characters into {}", text.chars().count(), read.into),
+            format!(
+                "read {} characters into {}",
+                text.chars().count(),
+                read.into
+            ),
         ))
     }
 
@@ -262,14 +277,18 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             })
             .await?;
         if !reply.ok {
-            return Err(Halt::Failed(format!("{} could not be pressed", label(&target))));
+            return Err(Halt::Failed(format!(
+                "{} could not be pressed",
+                label(&target)
+            )));
         }
         learn(&mut self.learned, remember(&self.app, &purpose, &target));
-        let happened = self
-            .holds(log, &format!("{action} has happened"))
-            .await?;
+        let happened = self.holds(log, &format!("{action} has happened")).await?;
         if happened >= DONE {
-            Ok(Ended::new(StepOutcome::Done, format!("performed {action:?}")))
+            Ok(Ended::new(
+                StepOutcome::Done,
+                format!("performed {action:?}"),
+            ))
         } else {
             Err(Halt::Failed(format!(
                 "pressed {} but {action:?} is not visibly done (confidence {happened:.2})",
@@ -278,7 +297,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
     }
 
-    async fn repeat(&mut self, log: &mut StepLog, repeat: &RepeatStep, path: &str) -> Result<Ended, Halt> {
+    async fn repeat(
+        &mut self,
+        log: &mut StepLog,
+        repeat: &RepeatStep,
+        path: &str,
+    ) -> Result<Ended, Halt> {
         let condition_text = substitute(&repeat.condition, &self.vars);
         for round in 0..repeat.max.min(MAX_REPEAT) {
             if self.holds(log, &condition_text).await? >= DONE {
@@ -299,7 +323,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         )))
     }
 
-    async fn branch(&mut self, log: &mut StepLog, branch: &IfStep, path: &str) -> Result<Ended, Halt> {
+    async fn branch(
+        &mut self,
+        log: &mut StepLog,
+        branch: &IfStep,
+        path: &str,
+    ) -> Result<Ended, Halt> {
         let condition_text = substitute(&branch.condition, &self.vars);
         let held = self.holds(log, &condition_text).await?;
         let (steps, taken) = if held >= DONE {

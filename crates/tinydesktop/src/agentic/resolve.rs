@@ -231,8 +231,5 @@ async fn rerank(input: RerankInput<'_>) -> Result<Reranked, Box<DesktopResponse>
                 .cloned()
                 .map(|candidate| (candidate, confidence))
         });
-    Ok((
-        reranked.or(input.selected),
-        vec![input.first, evaluation],
-    ))
+    Ok((reranked.or(input.selected), vec![input.first, evaluation]))
 }

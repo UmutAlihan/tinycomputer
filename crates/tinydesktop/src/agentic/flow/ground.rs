@@ -22,9 +22,7 @@ use super::{
         screen::{Candidate, Screen, label},
     },
     AgentBackend, FlowRun, Halt, StepLog,
-    ask::{
-        self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability,
-    },
+    ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
     memory::recall,
 };
 
@@ -77,10 +75,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         ask::request(
                             self.model(),
                             self.state(screen, purpose),
-                            Questions::default().with(
-                                "confirm",
-                                corroborate(purpose, &known, self.include_values),
-                            ),
+                            Questions::default()
+                                .with("confirm", corroborate(purpose, &known, self.include_values)),
                         ),
                     )
                     .await?;
@@ -131,13 +127,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     "task": "Choose the region of the screen that contains the element for this purpose.",
                     "purpose": purpose,
                 }),
-                keys.iter().cloned().zip(regions.iter().map(|(region, members)| {
-                    json!({"untrusted_accessibility_data": {
-                        "region": region,
-                        "elements": members.len(),
-                        "examples": members.iter().take(6).map(label).collect::<Vec<_>>(),
-                    }})
-                })),
+                keys.iter()
+                    .cloned()
+                    .zip(regions.iter().map(|(region, members)| {
+                        json!({"untrusted_accessibility_data": {
+                            "region": region,
+                            "elements": members.len(),
+                            "examples": members.iter().take(6).map(label).collect::<Vec<_>>(),
+                        }})
+                    })),
             );
             let answers = self
                 .ask(
@@ -155,7 +153,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let Some(index) = keys.iter().position(|key| *key == choice) else {
                 break;
             };
-            pool = regions.into_iter().nth(index).map(|(_, members)| members).unwrap_or_default();
+            pool = regions
+                .into_iter()
+                .nth(index)
+                .map(|(_, members)| members)
+                .unwrap_or_default();
             depth = level + 1;
         }
         if pool.len() <= CAP {
@@ -172,7 +174,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         purpose: &str,
         pool: Vec<Candidate>,
     ) -> Result<Vec<Candidate>, Halt> {
-        let groups = pool.chunks(CAP).take(CAP).map(<[Candidate]>::to_vec).collect::<Vec<_>>();
+        let groups = pool
+            .chunks(CAP)
+            .take(CAP)
+            .map(<[Candidate]>::to_vec)
+            .collect::<Vec<_>>();
         let mut questions = Questions::default();
         for (index, group) in groups.iter().enumerate() {
             questions = questions.with(
@@ -256,10 +262,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         if corroboration {
             log.used(FlowLoop::Corroboration);
-            questions = questions.with(
-                "confirm",
-                corroborate(purpose, &first, self.include_values),
-            );
+            questions =
+                questions.with("confirm", corroborate(purpose, &first, self.include_values));
         }
         let answers = self
             .ask(

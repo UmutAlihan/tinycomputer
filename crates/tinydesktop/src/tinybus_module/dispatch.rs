@@ -20,8 +20,8 @@ use tinydesktop_bus::{
     JevConfig, LaunchRequest, ListAppsRequest, ListNotificationsRequest, ListSurfacesRequest,
     ListWindowsRequest, MouseClickRequest, MouseMoveRequest, MouseWheelRequest, MoveWindowRequest,
     NotificationActionRequest, PermissionsRequest, PressRequest, RefRequest, ResizeWindowRequest,
-    ResolveIntentRequest, RunFlowRequest, RunGoalRequest, ScreenshotRequest, ScrollRequest, SelectRequest,
-    SetValueRequest, SnapshotRequest, TypeRequest, ValidateFlowRequest, WaitRequest,
+    ResolveIntentRequest, RunFlowRequest, RunGoalRequest, ScreenshotRequest, ScrollRequest,
+    SelectRequest, SetValueRequest, SnapshotRequest, TypeRequest, ValidateFlowRequest, WaitRequest,
     WindowRequest,
 };
 

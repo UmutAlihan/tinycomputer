@@ -99,7 +99,10 @@ fn deterministic_risk_and_identity_checks_fail_closed() {
         name: Some("Delete account".to_owned()),
         ..Candidate::default()
     };
-    assert!(deterministic_destructive(JevOperation::Click, Some(&delete)));
+    assert!(deterministic_destructive(
+        JevOperation::Click,
+        Some(&delete)
+    ));
     assert!(!deterministic_destructive(
         JevOperation::Scroll,
         Some(&delete)
@@ -172,7 +175,10 @@ impl AgentBackend for FakeBackend {
     }
 
     fn paste(&self, _app: &str, _target: &Candidate, text: &str) -> DesktopResponse {
-        self.pastes.lock().expect("paste lock").push(text.to_owned());
+        self.pastes
+            .lock()
+            .expect("paste lock")
+            .push(text.to_owned());
         if self.fail_paste {
             DesktopResponse::err(
                 "paste",
@@ -1065,10 +1071,7 @@ fn a_silently_ignored_set_value_falls_back_to_paste() {
 fn text_that_never_arrives_is_reported_as_not_delivered() {
     let backend = text_backend(&["", "still empty"]);
     let reply = deliver_text(&backend, "Mail", &field(), "Body");
-    assert_eq!(
-        reply.error.expect("error").code,
-        "TEXT_NOT_DELIVERED"
-    );
+    assert_eq!(reply.error.expect("error").code, "TEXT_NOT_DELIVERED");
 
     let unreadable = text_backend(&[]);
     let reply = deliver_text(&unreadable, "Mail", &field(), "Body");

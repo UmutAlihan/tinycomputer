@@ -13,7 +13,10 @@ fn a_bare_string_step_is_a_do_intent() {
     let step: FlowStep = serde_json::from_value(json!("start a new note")).unwrap();
     assert_eq!(step, FlowStep::Intent("start a new note".into()));
     assert_eq!(step.action(), FlowAction::Do("start a new note".into()));
-    assert_eq!(serde_json::to_value(&step).unwrap(), json!("start a new note"));
+    assert_eq!(
+        serde_json::to_value(&step).unwrap(),
+        json!("start a new note")
+    );
 }
 
 #[test]
@@ -85,8 +88,7 @@ fn control_steps_pin_their_wire_form() {
         panic!("expected repeat_until");
     };
     assert_eq!(repeat.max, 5);
-    let round_trip: Flow =
-        serde_json::from_value(serde_json::to_value(&flow).unwrap()).unwrap();
+    let round_trip: Flow = serde_json::from_value(serde_json::to_value(&flow).unwrap()).unwrap();
     assert_eq!(round_trip, flow);
     assert_eq!(
         serde_json::to_value(&flow).unwrap()["steps"][0]["if"]["else"],
@@ -101,10 +103,13 @@ fn run_requests_default_to_safe_bounded_runs() {
     assert!(!request.allow_destructive && !request.include_values);
     assert_eq!((request.max_actions, request.max_model_calls), (60, 150));
     assert!(request.disabled_loops.is_empty() && request.memory.is_empty());
-    assert_eq!(request, RunFlowRequest {
-        flow: request.flow.clone(),
-        ..RunFlowRequest::default()
-    });
+    assert_eq!(
+        request,
+        RunFlowRequest {
+            flow: request.flow.clone(),
+            ..RunFlowRequest::default()
+        }
+    );
 }
 
 #[test]
@@ -121,7 +126,8 @@ fn flow_enums_and_hints_pin_their_wire_spelling() {
         serde_json::to_value(FlowLoop::Corroboration).unwrap(),
         json!("corroboration")
     );
-    let hint: GroundingHint = serde_json::from_value(json!({"app": "Mail", "key": "subject"})).unwrap();
+    let hint: GroundingHint =
+        serde_json::from_value(json!({"app": "Mail", "key": "subject"})).unwrap();
     assert!(hint.name.is_none() && hint.path.is_empty());
     let slot = Slot {
         slot: "a".into(),

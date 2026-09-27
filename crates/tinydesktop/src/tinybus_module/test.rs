@@ -180,6 +180,11 @@ fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
     let empty = json!([{}]);
 
     vec![
+        (
+            names::methods::VALIDATE_FLOW,
+            json!([{ "flow": { "app": "Mail", "steps": ["start a new note"] } }]),
+        ),
+        (names::methods::FLOW_GUIDE, nothing.clone()),
         (names::methods::SNAPSHOT, empty.clone()),
         (names::methods::FIND, empty.clone()),
         (
@@ -264,6 +269,7 @@ fn the_wire_sweep_covers_every_member_except_the_one_with_no_safe_input() {
         vec![
             &names::methods::RESOLVE_INTENT,
             &names::methods::RUN_GOAL,
+            &names::methods::RUN_FLOW,
             &names::methods::CLIPBOARD_CLEAR,
         ]
     );
@@ -272,7 +278,11 @@ fn the_wire_sweep_covers_every_member_except_the_one_with_no_safe_input() {
 #[test]
 fn every_agentic_member_requires_confidential_delivery() {
     let service = service();
-    for member in [names::methods::RESOLVE_INTENT, names::methods::RUN_GOAL] {
+    for member in [
+        names::methods::RESOLVE_INTENT,
+        names::methods::RUN_GOAL,
+        names::methods::RUN_FLOW,
+    ] {
         assert!(
             service.requires_confidential(&member.try_into().expect("valid member")),
             "{member} was ordinary"
@@ -319,6 +329,10 @@ async fn private_module_configuration_initializes_jev_without_exposing_the_key()
         (
             names::methods::RUN_GOAL,
             json!([{"app": "App", "goal": "finish"}]),
+        ),
+        (
+            names::methods::RUN_FLOW,
+            json!([{"flow": {"app": "App", "steps": ["finish"]}}]),
         ),
     ] {
         let reply = service.call(&member.try_into()?, body).await?;
