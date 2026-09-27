@@ -1,6 +1,6 @@
 # Briefing Jev: the whole task, secrets as templates, and votes
 
-**Status:** Accepted. **Owner:** tinydesktop maintainers.
+**Status:** Accepted. **Owner:** tinycomputer maintainers.
 **Builds on:** [`jev-intent-flows.md`](jev-intent-flows.md),
 [`unified-agent.md`](unified-agent.md).
 

@@ -18,8 +18,8 @@ scripts/docker-lab
 scripts/docker-lab -- cargo test --all-features
 
 # the browser stack against the travel fixture (no Jev), then a full task
-scripts/docker-lab -- crates/tinydesktop-examples/fixtures/run browser_fixture
-scripts/docker-lab -- crates/tinydesktop-examples/fixtures/run task_fixture
+scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run browser_fixture
+scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture
 
 # another checkout, e.g. agent-browser's crate
 scripts/docker-lab --src ../agent-browser --workdir cli -- cargo test --profile ci
@@ -38,12 +38,12 @@ scripts/docker-lab --src ../agent-browser --workdir cli -- cargo test --profile 
 - Build output goes to `<workdir>/target/docker-lab`, beside the host's
   `target/`. Linux and macOS artifacts never share a directory, and
   `tune-box --clean-targets` still finds it.
-- The cargo registry is cached in the `tinydesktop-lab-cargo` volume. Remove it
-  with `docker volume rm tinydesktop-lab-cargo`.
+- The cargo registry is cached in the `tinycomputer-lab-cargo` volume. Remove it
+  with `docker volume rm tinycomputer-lab-cargo`.
 - `PLAYWRIGHT_BROWSERS_PATH=/ms-playwright` is set. agent-browser searches that
   path for Chromium, and adds `--no-sandbox` itself inside a container.
 - `.env` is loaded the way `scripts/lab` loads it, and only
-  `OPENROUTER_API_KEY` and `TINYDESKTOP_LAB_MODEL` are forwarded into the
+  `OPENROUTER_API_KEY` and `TINYCOMPUTER_LAB_MODEL` are forwarded into the
   container, by name. Nothing is printed.
 - The container has no display. Headed browser runs, and anything that drives
   macOS applications, still need the host (`scripts/lab`).

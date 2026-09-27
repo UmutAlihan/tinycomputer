@@ -15,10 +15,10 @@ reinitialization — and drives real applications on the machine it runs on.
   and Spotify; Mail needs an account. The screen must be unlocked: a locked
   screen exposes no window to accessibility.
 
-`scripts/lab` builds `crates/tinydesktop` in release mode into `target/lab/`,
+`scripts/lab` builds `crates/tinycomputer` in release mode into `target/lab/`,
 places the engine's clipboard helper beside it (the engine only trusts it
 there), writes `modules.toml`, and runs the `lab` binary from
-`crates/tinydesktop-examples`.
+`crates/tinycomputer-examples`.
 
 ## Commands
 
@@ -36,14 +36,14 @@ Flags: `--headed` (physical input; the target app needs a window to focus),
 `--disable moves,undo,…` (turn decision loops off to measure them),
 `--no-memory` (ignore grounding hints from earlier runs), `--flow <file>` (run
 your own flow against a scenario's checker), `--send` (mail only; addresses
-`TINYDESKTOP_LAB_SELF_EMAIL` and nothing else).
+`TINYCOMPUTER_LAB_SELF_EMAIL` and nothing else).
 
 ## Modes
 
 - **`goal`** — `RunGoal` on the scenario's single goal string: the baseline.
 - **`flow`** — the scenario's hand-written, UI-agnostic flow
-  (`crates/tinydesktop-examples/scenarios/<name>/flow.json`).
-- **`authored`** — an LLM (`TINYDESKTOP_LAB_MODEL`, default
+  (`crates/tinycomputer-examples/scenarios/<name>/flow.json`).
+- **`authored`** — an LLM (`TINYCOMPUTER_LAB_MODEL`, default
   `anthropic/claude-sonnet-5`, through the vendored `tinyinference`) is given the
   brief and the flow guide, never the screen. It writes a flow; the lab
   validates and runs it, then shows the author a summary including anything
@@ -59,7 +59,7 @@ your own flow against a scenario's checker), `--send` (mail only; addresses
   loops that contributed, and every action with its target and delivery path.
 - `jev.jsonl` — every Jev exchange: the state it saw, the questions, the
   answers. This is how a wrong judgement is diagnosed: read what Jev was shown.
-- With `TINYDESKTOP_JEV_JOURNAL=1`, the module also journals every raw Jev
+- With `TINYCOMPUTER_JEV_JOURNAL=1`, the module also journals every raw Jev
   call and every timing under `.jev-journal/`; see [`jev-journal.md`](jev-journal.md).
 - `verdict.json` — the checker's verdict, which reads the application's real
   state rather than trusting the run's report.
@@ -76,5 +76,5 @@ run of a scenario usually makes fewer Jev calls than the first.
    loop (how it was asked), the flow (what was asked), or the engine (a wrong
    tree or a failed action). Engine faults go upstream to `agent-desktop`.
 4. Write the failing test against the simulator in
-   `crates/tinydesktop-engine/src/agentic/flow/test.rs`, fix, and re-run the scenario.
+   `crates/tinycomputer-engine/src/agentic/flow/test.rs`, fix, and re-run the scenario.
 5. Record notable results in [`evals/`](evals/).

@@ -1,6 +1,6 @@
 # Architecture
 
-tinydesktop is one TinyBus module that lets an agent drive desktop
+tinycomputer is one TinyBus module that lets an agent drive desktop
 applications and web pages. This page explains how the workspace is put
 together: which crate does what, how a call travels from the bus to a click,
 and the rules that keep the layers apart. For the decision loops themselves,
@@ -14,18 +14,18 @@ see [`decision-loops.md`](decision-loops.md); for the task API, see
                                         │  typed bus calls
                                         ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ tinydesktop (cdylib)   TinyBus glue: manifest, dispatch, config, runner   │
+│ tinycomputer (cdylib)   TinyBus glue: manifest, dispatch, config, runner   │
 └──────────────────────────────────────────────────────────────────────────┘
                                         │
                                         ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ tinydesktop-engine     Jev runtime · RunGoal · ResolveIntent · RunFlow    │
+│ tinycomputer-engine     Jev runtime · RunGoal · ResolveIntent · RunFlow    │
 │                        flow runtime · Workspace · Tasks · Planner         │
 └──────────────────────────────────────────────────────────────────────────┘
               │                                             │
               ▼                                             ▼
 ┌───────────────────────────────┐             ┌────────────────────────────────┐
-│ tinydesktop-desktop           │             │ tinydesktop-browser            │
+│ tinycomputer-desktop           │             │ tinycomputer-browser            │
 │ Desktop: 54 typed members     │             │ Browser: sessions, outputs     │
 │ Desktop as a core Surface     │             │ BrowserSurface: a core Surface │
 └───────────────────────────────┘             └────────────────────────────────┘
@@ -35,28 +35,28 @@ see [`decision-loops.md`](decision-loops.md); for the task API, see
    (accessibility trees:                          (Chrome over CDP, linked
     macOS, Windows, Linux)                         in-process as a library)
 
-        tinydesktop-core: Surface trait, Screen, keymap, safety, records, facts
-        tinydesktop-cursor: the agent's drawn cursor, aim points and glides
-        tinydesktop-bus:  every type that crosses the bus, and nothing else
+        tinycomputer-core: Surface trait, Screen, keymap, safety, records, facts
+        tinycomputer-cursor: the agent's drawn cursor, aim points and glides
+        tinycomputer-bus:  every type that crosses the bus, and nothing else
 ```
 
 Dependencies point one way:
-`bus` ← `core` ← {`desktop`, `browser`} ← `engine` ← `tinydesktop`. Nothing
+`bus` ← `core` ← {`desktop`, `browser`} ← `engine` ← `tinycomputer`. Nothing
 lower down knows about anything higher up. The desktop and browser adapters
 never see Jev, the engine never sees TinyBus, and the contract crate has no
 runtime at all.
 
 | Crate | Holds | Deliberately does not hold |
 |---|---|---|
-| `tinydesktop-bus` | the wire contract: member names, request and reply types, the `DesktopResponse` envelope, the Agent types (`TaskView`, `TaskStatus`, …), the browser types, the flow grammar and its authoring guide, and the contract version | a transport, an async runtime, an HTTP client, a native library, or an engine. CI fails the build if one appears. |
-| `tinydesktop-core` | the `Surface` trait and the `Screen` it observes; fingerprints, change notes, verified text delivery, result-card grouping; the per-OS keymap; the safety classifier and payment detector; the facts store; price, time, duration, and stop parsers and `rank` | engines, Jev, TinyBus, and any tokio runtime |
-| `tinydesktop-cursor` | the agent's one on-screen cursor, shared by desktop and browser: aim points, human glide paths, `CursorPace`, the sprite, the animator, the overlay protocol, and (feature `overlay`) the `tinydesktop-cursor-overlay` helper window ([spec](specs/virtual-cursor.md)) | input and engines |
-| `tinydesktop-desktop` | `Desktop`, one typed method per desktop member over agent-desktop, with the permission preflight; `Desktop` as a `Surface` | Jev, TinyBus |
-| `tinydesktop-browser` | `Browser` (sessions, navigate, snapshot, perform, read, evaluate, screenshots, downloads, held outputs) over agent-browser; `BrowserSurface`; the error taxonomy | Jev, TinyBus |
-| `tinydesktop-engine` | the Jev runtime, `RunGoal`, `ResolveIntent`, the flow runtime, the `Workspace`, the task controller, and the optional planner | TinyBus |
-| `tinydesktop` | the TinyBus module: manifest, one dispatch method per member, configuration, and the task runner that gives each task a workspace | behaviour of its own |
-| `tinydesktop-skills` | the agent-facing `SKILL.md` and schemas for the task API | code |
-| `tinydesktop-examples` | runnable examples, the lab, the travel fixture, and live verification binaries | anything shipped |
+| `tinycomputer-bus` | the wire contract: member names, request and reply types, the `DesktopResponse` envelope, the Agent types (`TaskView`, `TaskStatus`, …), the browser types, the flow grammar and its authoring guide, and the contract version | a transport, an async runtime, an HTTP client, a native library, or an engine. CI fails the build if one appears. |
+| `tinycomputer-core` | the `Surface` trait and the `Screen` it observes; fingerprints, change notes, verified text delivery, result-card grouping; the per-OS keymap; the safety classifier and payment detector; the facts store; price, time, duration, and stop parsers and `rank` | engines, Jev, TinyBus, and any tokio runtime |
+| `tinycomputer-cursor` | the agent's one on-screen cursor, shared by desktop and browser: aim points, human glide paths, `CursorPace`, the sprite, the animator, the overlay protocol, and (feature `overlay`) the `tinycomputer-cursor-overlay` helper window ([spec](specs/virtual-cursor.md)) | input and engines |
+| `tinycomputer-desktop` | `Desktop`, one typed method per desktop member over agent-desktop, with the permission preflight; `Desktop` as a `Surface` | Jev, TinyBus |
+| `tinycomputer-browser` | `Browser` (sessions, navigate, snapshot, perform, read, evaluate, screenshots, downloads, held outputs) over agent-browser; `BrowserSurface`; the error taxonomy | Jev, TinyBus |
+| `tinycomputer-engine` | the Jev runtime, `RunGoal`, `ResolveIntent`, the flow runtime, the `Workspace`, the task controller, and the optional planner | TinyBus |
+| `tinycomputer` | the TinyBus module: manifest, one dispatch method per member, configuration, and the task runner that gives each task a workspace | behaviour of its own |
+| `tinycomputer-skills` | the agent-facing `SKILL.md` and schemas for the task API | code |
+| `tinycomputer-examples` | runnable examples, the lab, the travel fixture, and live verification binaries | anything shipped |
 
 The desktop and browser crates are plain libraries. Another host or module can
 take just one of them without the engine or the bus glue.
@@ -69,13 +69,13 @@ bump in its own commit.
 
 | Path | What it is | Used by |
 |---|---|---|
-| `vendor/agent-desktop` | accessibility-tree observation and interaction for macOS, Windows, and Linux | `tinydesktop-desktop` |
-| `vendor/agent-browser` | Vercel's browser automation engine, pinned to the `library-target` branch of the `tinyhumansai/agent-browser` fork, which adds a library target | `tinydesktop-browser` (feature `agent-browser`) |
+| `vendor/agent-desktop` | accessibility-tree observation and interaction for macOS, Windows, and Linux | `tinycomputer-desktop` |
+| `vendor/agent-browser` | Vercel's browser automation engine, pinned to the `library-target` branch of the `tinyhumansai/agent-browser` fork, which adds a library target | `tinycomputer-browser` (feature `agent-browser`) |
 | `vendor/tinyinference` | the Jev decisions client (`tinyinference_decisions`) and an LLM client (`tinyinference-llm`) | the engine: Jev always, the LLM only with the `planner` feature |
 | `vendor/tinybus` | TinyBus host types and the module SDK | the cdylib |
 
 agent-browser is normally a CLI with a daemon. Here it is linked in-process:
-`tinydesktop-browser/src/linked/` builds one agent-browser `DaemonState` per
+`tinycomputer-browser/src/linked/` builds one agent-browser `DaemonState` per
 session from explicit options (so nothing leaks in from the host's
 `AGENT_BROWSER_*` environment) and sends it the same JSON commands its daemon
 would receive over a socket. agent-browser keeps one process-wide piece of
@@ -84,7 +84,7 @@ serialized through one lock. There is no sidecar process and no socket.
 
 ## One surface abstraction
 
-The decision loops are written once, against `tinydesktop_core::surface::Surface`:
+The decision loops are written once, against `tinycomputer_core::surface::Surface`:
 
 ```rust
 pub trait Surface: Clone + Send + 'static {
@@ -116,7 +116,7 @@ to do something outside that list.
 | launch | launch or bring forward | open the session if it is not open |
 | navigate | refused | load the URL |
 
-The `Workspace` in `tinydesktop-engine/src/workspace/` joins the two into one
+The `Workspace` in `tinycomputer-engine/src/workspace/` joins the two into one
 `Surface`. Calls that name an application route by the name: `browser`,
 `browser:…`, or an `http(s)://` address goes to the browser, anything else to
 the desktop. Calls that do not name one (acting on a candidate, reading it
@@ -132,7 +132,7 @@ Mail, and `enter` the price it read into a draft.
 Take `StartTask` with a planned booking flow.
 
 1. The host calls the module. TinyBus delivers the call to
-   `DesktopService::start_task` in `crates/tinydesktop/src/tinybus_module/dispatch.rs`.
+   `DesktopService::start_task` in `crates/tinycomputer/src/tinybus_module/dispatch.rs`.
    `StartTask`, `ContinueTask`, `TaskReport`, `RunGoal`, `ResolveIntent`, and
    `RunFlow` are confidential members: they carry the caller's values and page
    data, so the bus requires an attested module and keeps them away from
@@ -172,7 +172,7 @@ independently, up to eight (`MAX_SESSIONS`).
 ## Three ways in
 
 The module serves three levels of API from one interface,
-`ai.tinyhumans.tinydesktop.Desktop` at `/ai/tinyhumans/tinydesktop/Desktop`.
+`ai.tinyhumans.tinycomputer.Desktop` at `/ai/tinyhumans/tinycomputer/Desktop`.
 A TinyBus manifest currently attaches its member list to one interface, so all
 members share it; their names do not collide.
 
@@ -184,8 +184,8 @@ members share it; their names do not collide.
 
 The browser's own typed contract (`OpenSession`, `Navigate`, `Snapshot`,
 `Perform`, `ReadPage`, `Screenshot`, downloads, and outputs) is defined in
-`tinydesktop-bus/src/browser/` under the name `ai.tinyhumans.tinydesktop.Browser`
-and implemented by `tinydesktop_browser::Browser`. The module does not serve
+`tinycomputer-bus/src/browser/` under the name `ai.tinyhumans.tinycomputer.Browser`
+and implemented by `tinycomputer_browser::Browser`. The module does not serve
 those as bus members yet, and a direct `RunFlow` call runs on the desktop
 alone. Today the browser is reached through tasks, whose runner gives every
 task a `Workspace` with a browser session.
@@ -193,7 +193,7 @@ task a `Workspace` with a browser session.
 `RunGoal` and `ResolveIntent` are the older, single-goal loop: one goal string,
 one Choice over operation and target per turn, and success predicates the
 module checks on the accessibility tree. They drive the desktop only.
-[`crates/tinydesktop-engine/src/agentic/README.md`](../crates/tinydesktop-engine/src/agentic/README.md)
+[`crates/tinycomputer-engine/src/agentic/README.md`](../crates/tinycomputer-engine/src/agentic/README.md)
 describes them, including their confirmation handles.
 
 ## Configuration

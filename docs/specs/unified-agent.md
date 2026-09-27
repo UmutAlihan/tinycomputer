@@ -1,6 +1,6 @@
 # Unified agent: browser and desktop behind one task API
 
-**Status:** Accepted. **Owner:** tinydesktop maintainers.
+**Status:** Accepted. **Owner:** tinycomputer maintainers.
 **Plan:** [`../plans/unified-agent.md`](../plans/unified-agent.md).
 **Builds on:** [`jev-intent-flows.md`](jev-intent-flows.md).
 **Extended by:** [`jev-briefing.md`](jev-briefing.md) — briefs, secrets, votes,
@@ -42,31 +42,31 @@ vocabularies and two loops, and stitch them together itself.
 ## Architecture
 
 Dependencies point one way:
-`bus` ← `core` ← {`desktop`, `browser`} ← `engine` ← `tinydesktop` (cdylib).
+`bus` ← `core` ← {`desktop`, `browser`} ← `engine` ← `tinycomputer` (cdylib).
 
 | Crate | Responsibility |
 |---|---|
-| `tinydesktop-bus` | Wire contract for all interfaces. No runtime. |
-| `tinydesktop-core` | Shared domain: the `Surface` trait; `Screen`, `Candidate` and `Depth`; logical keys and the per-OS keymap; the safety classifier (irreversible labels, payment detection); facts; records and parsers; budgets. |
-| `tinydesktop-desktop` | The agent-desktop adapter (`Desktop`, one method per member) and `DesktopSurface`. |
-| `tinydesktop-browser` | The agent-browser adapter (sessions over `agent_browser::execute_command`, typed conversion, error mapping, origin policy, output handles) and `BrowserSurface`. |
-| `tinydesktop-engine` | The Jev runtime, `RunGoal`, `ResolveIntent`, the flow runtime over `core::Surface`, the decision loops, the workspace, the task controller and the optional planner. End-to-end tested. |
-| `tinydesktop` | The TinyBus cdylib. One interface impl per surface family, each delegating to the engine. No behavior. |
+| `tinycomputer-bus` | Wire contract for all interfaces. No runtime. |
+| `tinycomputer-core` | Shared domain: the `Surface` trait; `Screen`, `Candidate` and `Depth`; logical keys and the per-OS keymap; the safety classifier (irreversible labels, payment detection); facts; records and parsers; budgets. |
+| `tinycomputer-desktop` | The agent-desktop adapter (`Desktop`, one method per member) and `DesktopSurface`. |
+| `tinycomputer-browser` | The agent-browser adapter (sessions over `agent_browser::execute_command`, typed conversion, error mapping, origin policy, output handles) and `BrowserSurface`. |
+| `tinycomputer-engine` | The Jev runtime, `RunGoal`, `ResolveIntent`, the flow runtime over `core::Surface`, the decision loops, the workspace, the task controller and the optional planner. End-to-end tested. |
+| `tinycomputer` | The TinyBus cdylib. One interface impl per surface family, each delegating to the engine. No behavior. |
 
 ## Interfaces
 
 A TinyBus module manifest declares one bus name and one object path, and
 `module_export!` attaches its member list to the first interface only. Until
 TinyBus serves several interfaces per module, the members below share
-`ai.tinyhumans.tinydesktop.Desktop` (their names do not collide; browser
+`ai.tinyhumans.tinycomputer.Desktop` (their names do not collide; browser
 members that would collide take a `Browser` prefix). The table is the logical
 split.
 
 | Interface | For | Members |
 |---|---|---|
-| `ai.tinyhumans.tinydesktop.Agent` | external agents | `Describe`, `PlanTask`, `StartTask`, `AwaitTask`, `ContinueTask`, `CancelTask`, `TaskReport`, `ListTasks` |
-| `ai.tinyhumans.tinydesktop.Browser` | power users | sessions, navigate, snapshot, perform, read, screenshot, outputs, downloads, tabs, cookies and storage state, upload, dialog, find, wait, plus a policy-checked `Command` |
-| `ai.tinyhumans.tinydesktop.Desktop` | power users | the existing 59 members, unchanged |
+| `ai.tinyhumans.tinycomputer.Agent` | external agents | `Describe`, `PlanTask`, `StartTask`, `AwaitTask`, `ContinueTask`, `CancelTask`, `TaskReport`, `ListTasks` |
+| `ai.tinyhumans.tinycomputer.Browser` | power users | sessions, navigate, snapshot, perform, read, screenshot, outputs, downloads, tabs, cookies and storage state, upload, dialog, find, wait, plus a policy-checked `Command` |
+| `ai.tinyhumans.tinycomputer.Desktop` | power users | the existing 59 members, unchanged |
 
 ### Agent API rules
 
@@ -175,7 +175,7 @@ These are additive to the grammar in [`jev-intent-flows.md`](jev-intent-flows.md
 - The origin allow-list is enforced per task by agent-browser's domain filter.
   It is a guard rail, not a sandbox.
 - Browser tests that launch Chromium run in the Docker lab
-  ([`../docker-lab.md`](../docker-lab.md)) or behind `TINYDESKTOP_LIVE_BROWSER=1`.
+  ([`../docker-lab.md`](../docker-lab.md)) or behind `TINYCOMPUTER_LIVE_BROWSER=1`.
 
 ## Acceptance criteria
 

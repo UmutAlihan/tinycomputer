@@ -6,7 +6,7 @@ the same instructions.
 
 ## What This Repository Is
 
-tinydesktop adapts the vendored [`agent-desktop`] engine (accessibility-tree
+tinycomputer adapts the vendored [`agent-desktop`] engine (accessibility-tree
 observation and interaction for macOS, Windows, and Linux) and the vendored
 [`agent-browser`] engine (Chrome over CDP) into one installable TinyBus module,
 so a host can expose desktop and browser automation to an agent as typed tool
@@ -28,13 +28,13 @@ preflight, and the bus surface.
 This is a Rust 2024 cargo workspace rooted at a virtual `Cargo.toml`. Every
 crate lives under `crates/`, one directory per package, each directory named for
 the package it holds. There is no root package: the crate that ships as the
-loadable module is `crates/tinydesktop`, the same as any other member.
+loadable module is `crates/tinycomputer`, the same as any other member.
 
 ```text
 Cargo.toml              # virtual workspace: members, [workspace.package],
                         # [workspace.dependencies], [workspace.lints]
 crates/
-├── tinydesktop-bus/    # the wire contract: what crosses the bus, nothing else
+├── tinycomputer-bus/    # the wire contract: what crosses the bus, nothing else
 │   ├── README.md       # why the contract is its own crate
 │   └── src/
 │       ├── lib.rs      # crate docs + the entire public re-export surface
@@ -43,10 +43,10 @@ crates/
 │       ├── vocabulary/ # enumerations shared across payload families
 │       ├── version/    # contract version and the host bind rule
 │       └── <family>/   # one directory per payload family
-├── tinydesktop-core/   # shared domain: Surface trait, keys, safety, records
-├── tinydesktop-cursor/ # the agent's on-screen cursor, and the overlay that draws it
-├── tinydesktop-browser/ # the agent-browser adapter: sessions, outputs
-├── tinydesktop-desktop/ # the agent-desktop adapter: no bus, no agent loop
+├── tinycomputer-core/   # shared domain: Surface trait, keys, safety, records
+├── tinycomputer-cursor/ # the agent's on-screen cursor, and the overlay that draws it
+├── tinycomputer-browser/ # the agent-browser adapter: sessions, outputs
+├── tinycomputer-desktop/ # the agent-desktop adapter: no bus, no agent loop
 │   └── src/
 │       ├── lib.rs      # crate docs + public surface, re-exporting the contract
 │       ├── error/mod.rs      # crate-wide `Error` and `Result<T>`
@@ -57,15 +57,15 @@ crates/
 │       │   ├── reply.rs      # engine result -> response envelope
 │       │   └── test.rs       # module-local unit tests
 │       └── surface/          # `Desktop` as a core `Surface`
-├── tinydesktop-engine/ # the agent runtime: Jev, RunGoal, intent flows
+├── tinycomputer-engine/ # the agent runtime: Jev, RunGoal, intent flows
 │   └── src/agentic/    # goal and intent loops; `flow/` runs intent flows
-├── tinydesktop/        # the module: TinyBus glue and the cdylib, no behavior
+├── tinycomputer/        # the module: TinyBus glue and the cdylib, no behavior
 │   ├── src/
 │   │   ├── lib.rs      # crate docs + public surface, re-exporting the rest
 │   │   └── tinybus_module/   # TinyBus interface, ABI exports, integration tests
 │   └── tests/          # integration tests against the public API only
-├── tinydesktop-skills/ # agent-facing SKILL.md and schemas for the task API
-└── tinydesktop-examples/ # runnable examples and the lab (`scripts/lab`)
+├── tinycomputer-skills/ # agent-facing SKILL.md and schemas for the task API
+└── tinycomputer-examples/ # runnable examples and the lab (`scripts/lab`)
 vendor/
 ├── tinybus/            # pinned TinyBus host types and module SDK
 ├── agent-desktop/      # pinned desktop automation engine
@@ -79,16 +79,16 @@ docs/
 
 ### The crate split
 
-`crates/tinydesktop-bus` holds every type that crosses the bus and the names of
+`crates/tinycomputer-bus` holds every type that crosses the bus and the names of
 the members that carry them. It has no transport, no runtime, no engine, and no
 behavior, and CI asserts it stays that way. A host that only makes calls depends
 on it alone.
 
-`crates/tinydesktop-desktop` wraps the engine, `crates/tinydesktop-engine`
-builds the Jev loops on it, and `crates/tinydesktop` serves both over the bus
+`crates/tinycomputer-desktop` wraps the engine, `crates/tinycomputer-engine`
+builds the Jev loops on it, and `crates/tinycomputer` serves both over the bus
 (`docs/specs/unified-agent.md` describes where the browser joins). The module
 crate depends on the contract and re-exports all of it, so
-`tinydesktop::SnapshotRequest` and `tinydesktop_bus::SnapshotRequest` are the
+`tinycomputer::SnapshotRequest` and `tinycomputer_bus::SnapshotRequest` are the
 *same* type rather than structural twins. That direction is load-bearing: a
 parallel set of payload types for hosts would mean a conversion at every call
 site that nothing checks.
@@ -101,7 +101,7 @@ a connection, or touches an engine belongs in the module crate.
 
 **The contract mirrors the engine's enumerations; it does not import them.**
 `Surface`, `Modifier`, `MouseButton`, and the rest are redefined in
-`crates/tinydesktop-bus/src/vocabulary/`, because a host must be able to name a
+`crates/tinycomputer-bus/src/vocabulary/`, because a host must be able to name a
 surface without linking a platform accessibility backend. `desktop/convert.rs`
 maps between them with exhaustive `match`es, which is why those enumerations
 deliberately carry no `#[non_exhaustive]`: a variant added upstream must fail
@@ -142,7 +142,7 @@ broad ones.
 Keep public exports centralized in each crate's `src/lib.rs` so downstream users
 have one predictable surface. Put shared error variants in
 the owning crate's `src/error/mod.rs` (for the adapter,
-`crates/tinydesktop-desktop/src/error/mod.rs`) and return the crate-wide `Result<T>` from
+`crates/tinycomputer-desktop/src/error/mod.rs`) and return the crate-wide `Result<T>` from
 fallible public APIs.
 
 ## Build And Test
@@ -161,9 +161,9 @@ Supporting commands:
 
 - `cargo fmt --all` — format before committing.
 - `cargo test <filter>` — run a focused subset while iterating.
-- `cargo test -p tinydesktop-bus` — run one crate's suite.
-- `cargo run -p tinydesktop-examples --bin basic` — run the bundled example.
-- `cargo run -p tinydesktop-examples --bin verify_module -- <path>` — load a built
+- `cargo test -p tinycomputer-bus` — run one crate's suite.
+- `cargo run -p tinycomputer-examples --bin basic` — run the bundled example.
+- `cargo run -p tinycomputer-examples --bin verify_module -- <path>` — load a built
   `cdylib` through the real TinyBus dynamic loader.
 - `cargo doc --no-deps --all-features` — build the rustdoc CI also builds with
   `RUSTDOCFLAGS="-D warnings"`.
@@ -215,7 +215,7 @@ add one:
 - gate anything optional behind a Cargo feature, documented in `Cargo.toml`;
 - declare it once in the root `[workspace.dependencies]` when more than one
   crate needs it, and take it with `{ workspace = true }`;
-- never add one to `crates/tinydesktop-bus` that pulls in a transport, an async
+- never add one to `crates/tinycomputer-bus` that pulls in a transport, an async
   runtime, an HTTP client, a native library, or the engine itself — CI fails the
   build if you do;
 - leave a comment above the entry explaining *why* the crate is needed and what
@@ -235,7 +235,7 @@ Four submodules, all pinned by gitlink:
   plus one accessibility backend per platform, taken as target-specific
   dependencies.
 - `vendor/agent-browser` supplies the browser engine, linked in-process by
-  `tinydesktop-browser`. It tracks the `library-target` branch of the
+  `tinycomputer-browser`. It tracks the `library-target` branch of the
   `tinyhumansai/agent-browser` fork until that library target lands upstream.
 - `vendor/tinyinference` supplies the Jev decisions client and, behind the
   engine's `planner` feature, the LLM client.
@@ -343,7 +343,7 @@ re-runs the full validation suite, computes the next version, updates
 the root `[workspace.package]` version and `Cargo.lock`, then opens a version
 pull request so branch protection can run its required checks. After merging
 that pull request, dispatch `current`: it revalidates the checked version,
-creates or reuses its `vX.Y.Z` tag, builds `crates/tinydesktop` as a TinyBus
+creates or reuses its `vX.Y.Z` tag, builds `crates/tinycomputer` as a TinyBus
 module for every supported platform, and creates an immutable GitHub release
 with installable native packages. `current` also resumes an interrupted
 release when its tag already exists.

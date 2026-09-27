@@ -10,7 +10,7 @@
 *.profdata
 lcov.info
 
-# Jev debug journal (TINYDESKTOP_JEV_JOURNAL): holds screen text Jev was
+# Jev debug journal (TINYCOMPUTER_JEV_JOURNAL): holds screen text Jev was
 # shown, so it never leaves the machine
 .jev-journal/
 

@@ -7,7 +7,7 @@ from Delhi to Srinagar on 14 October and fill in my details up to payment",
 and gets back a task that runs in the background and stops only when it needs
 something from the caller.
 
-The controller lives in `crates/tinydesktop-engine/src/task/`. It runs flows
+The controller lives in `crates/tinycomputer-engine/src/task/`. It runs flows
 through the flow runtime described in [`decision-loops.md`](decision-loops.md);
 this page covers what sits on top: task state, pausing and resuming, private
 values, budgets, and the planner.
@@ -106,7 +106,7 @@ one entry, the whole flow. For each run it:
 
 The `FlowRunner` trait is what makes the controller testable: tests script the
 runs, and the module plugs in `WorkspaceRunner`
-(`crates/tinydesktop/src/tinybus_module/runner.rs`), which gives each task its
+(`crates/tinycomputer/src/tinybus_module/runner.rs`), which gives each task its
 own `Workspace` of the desktop and a fresh browser session. Runs of one task
 share that workspace, so a resumed task picks up on the page the last run left.
 
@@ -167,7 +167,7 @@ spent waiting for the caller does not count.
 ## Private values
 
 Facts are the caller's own details: names, email, phone, date of birth. The
-controller keeps them in a `Facts` store (`tinydesktop-core/src/facts/`) and
+controller keeps them in a `Facts` store (`tinycomputer-core/src/facts/`) and
 follows three rules:
 
 1. Values stay local: Jev and the planner see fact names only. A value is
@@ -196,7 +196,7 @@ clicks the control it finds instead of stopping in front of it, and neither
 check below gates that click: the caller has explicitly asked to press
 irreversible controls, payments included, without a checkpoint.
 
-- `consequence(label)` in `tinydesktop-core/src/safety/` classifies a control
+- `consequence(label)` in `tinycomputer-core/src/safety/` classifies a control
   by its words. "Pay", "Pay now", "Place order", "Checkout", "Buy now",
   "Confirm and pay" and similar are `Payment`. "Send", "Delete", "Publish",
   "Confirm booking" are `Irreversible`. "Book", "Select", and "Continue" are
@@ -213,7 +213,7 @@ turns that into the final checkpoint.
 
 ## The planner
 
-The planner (`crates/tinydesktop-engine/src/planner/`) is an optional language
+The planner (`crates/tinycomputer-engine/src/planner/`) is an optional language
 model that turns a plain-language task into a flow. It never acts and never
 sees the screen.
 
@@ -256,4 +256,4 @@ that wants to try again starts a new task with a corrected flow. The lab's
 | `planner/mod.rs` | the planning protocol, validation, and repairs |
 | `planner/openrouter.rs` | the OpenRouter `LanguageModel` (feature `planner`) |
 | `workspace/mod.rs` | the desktop and the browser as one surface |
-| `tinydesktop/src/tinybus_module/runner.rs` | the module's `FlowRunner`: one workspace and browser session per task |
+| `tinycomputer/src/tinybus_module/runner.rs` | the module's `FlowRunner`: one workspace and browser session per task |

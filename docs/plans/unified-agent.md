@@ -1,7 +1,7 @@
 # Unified agent — implementation plan
 
 Implements [`../specs/unified-agent.md`](../specs/unified-agent.md). Each phase
-is a PR against `tinyhumansai/tinydesktop`, test-first, and keeps the four
+is a PR against `tinyhumansai/tinycomputer`, test-first, and keeps the four
 contract commands and the per-file coverage gate green.
 
 ## Phase 0 — docs and harness
@@ -12,27 +12,27 @@ contract commands and the per-file coverage gate green.
 
 ## Phase 1 — crate split, no behavior change
 
-- [x] `tinydesktop-desktop`: move `src/desktop/` and `src/error/`; the
-      `tinydesktop` crate re-exports `Desktop`, `Error` and `Result`.
-- [x] `tinydesktop-engine`: move `src/agentic/`; expose `JevRuntime`,
+- [x] `tinycomputer-desktop`: move `src/desktop/` and `src/error/`; the
+      `tinycomputer` crate re-exports `Desktop`, `Error` and `Result`.
+- [x] `tinycomputer-engine`: move `src/agentic/`; expose `JevRuntime`,
       `run_goal`, `resolve_intent`, `run_flow`, `validate_flow` and
       `flow_guide`.
-- [x] `tinydesktop-core::surface`: the flow's `Screen`, `Candidate`, `Depth`,
+- [x] `tinycomputer-core::surface`: the flow's `Screen`, `Candidate`, `Depth`,
       fingerprints, change notes and verified text delivery, behind the
       `Surface` trait (the flow's former `AgentBackend`). `Desktop` implements
-      it in `tinydesktop-desktop/src/surface/`; the engine's `view` and
+      it in `tinycomputer-desktop/src/surface/`; the engine's `view` and
       `backend` keep only flow policy and the async wrappers.
 - [ ] Replace the flow's `cmd+…` strings with `core::Key` (PR #21's
       `platform_combo` covers Windows and Linux meanwhile).
 - [ ] `RunGoal`'s private backend is ported onto `core::Surface`, and the
       duplicate `agentic/screen.rs` pair is collapsed.
-- [ ] `tinydesktop` keeps only `tinybus_module/`.
+- [ ] `tinycomputer` keeps only `tinybus_module/`.
 
 ## Phase 2 — link agent-browser
 
-- [x] `tinydesktop-bus::browser` ported from `tinybrowser-bus`; the Agent
-      interface contract in `tinydesktop-bus::agent`.
-- [x] `tinydesktop-browser`: sessions, conversion, error mapping, and held
+- [x] `tinycomputer-bus::browser` ported from `tinybrowser-bus`; the Agent
+      interface contract in `tinycomputer-bus::agent`.
+- [x] `tinycomputer-browser`: sessions, conversion, error mapping, and held
       outputs over an `Engine` seam, tested with a scripted engine.
 - [x] Upstream: `lib.rs`, `StateOptions` and `DaemonState::with_options`
       (vercel-labs/agent-browser#2008); the `tinyhumansai/agent-browser` fork
@@ -49,7 +49,7 @@ contract commands and the per-file coverage gate green.
 
 ## Phase 3 — deterministic components
 
-- [x] `tinydesktop-core`: platform keymap, action consequences and payment
+- [x] `tinycomputer-core`: platform keymap, action consequences and payment
       detection, record parsers and ranking, facts with card-data refusal.
 - [ ] Workspace, record extraction from screens, form model, obstacle
       heuristics, settle.
@@ -63,7 +63,7 @@ contract commands and the per-file coverage gate green.
 
 - [x] `browse` step; `Workspace` routing a flow between the desktop and the
       browser; `run_flow` generic over surfaces.
-- [x] `tinydesktop-engine::Tasks`: start, long-poll, continue (inputs and
+- [x] `tinycomputer-engine::Tasks`: start, long-poll, continue (inputs and
       approvals), cancel, report, list; `needs_input` for missing facts,
       `needs_approval` for irreversible actions, a final checkpoint at payment.
 - [x] Agent members served by the module (contract 1.7, 67 members), with
@@ -75,11 +75,11 @@ contract commands and the per-file coverage gate green.
       code, two-factor prompt, or login wall pauses for a person and retries
       the step; each task keeps its own workspace across runs and releases it
       when it ends (not at a payment checkpoint, which the person finishes).
-- [x] A static travel fixture (`crates/tinydesktop-examples/fixtures/travel`)
+- [x] A static travel fixture (`crates/tinycomputer-examples/fixtures/travel`)
       for end-to-end runs in the Docker lab.
 - [x] `extract {what, into}`: every card of a list as JSON rows, surfaced as
       structured records in the task report.
-- [x] `tinydesktop-skills`: an agent-facing `SKILL.md` and `StartTask`
+- [x] `tinycomputer-skills`: an agent-facing `SKILL.md` and `StartTask`
       schema, tested against the contract.
 - [ ] `in` step (switching surfaces already works through `open` and
       `browse`).

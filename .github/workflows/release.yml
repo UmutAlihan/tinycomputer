@@ -23,9 +23,9 @@ permissions:
 
 env:
   # The workspace member that ships as the loadable module. Its package name is
-  # the artifact name and the library name; `crates/tinydesktop-bus` rides along on
+  # the artifact name and the library name; `crates/tinycomputer-bus` rides along on
   # the same inherited version and is not packaged separately.
-  RELEASE_PACKAGE: tinydesktop
+  RELEASE_PACKAGE: tinycomputer
 
 jobs:
   prepare:
@@ -276,7 +276,7 @@ jobs:
             macOS) module="target/release/lib${library_name}.dylib" ;;
             *) echo "unsupported Unix runner: ${RUNNER_OS}" >&2; exit 1 ;;
           esac
-          cargo run --locked --package tinydesktop-examples --bin verify_module -- "$module"
+          cargo run --locked --package tinycomputer-examples --bin verify_module -- "$module"
 
       - name: Verify Windows module through TinyBus loader
         if: ${{ runner.os == 'Windows' }}
@@ -287,7 +287,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $libraryName = $env:CRATE_NAME.Replace('-', '_')
           $module = "target/release/$libraryName.dll"
-          $verifyRoot = Join-Path $env:RUNNER_TEMP 'tinydesktop-module-verify'
+          $verifyRoot = Join-Path $env:RUNNER_TEMP 'tinycomputer-module-verify'
           New-Item -ItemType Directory -Force $verifyRoot | Out-Null
 
           $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
@@ -317,7 +317,7 @@ jobs:
 
           $verifiedModule = Join-Path $verifyRoot "$libraryName.dll"
           Copy-Item -LiteralPath $module -Destination $verifiedModule
-          cargo run --locked --package tinydesktop-examples --bin verify_module -- $verifiedModule
+          cargo run --locked --package tinycomputer-examples --bin verify_module -- $verifiedModule
 
       - name: Assemble Unix module package
         if: ${{ runner.os != 'Windows' }}
@@ -353,8 +353,8 @@ jobs:
             install -m 755 target/release/agent-desktop-macos-helper "$package_root/"
             # The window that draws the agent's cursor; the host points the
             # module's `cursor.overlay` configuration at it.
-            cargo build --locked --release -p tinydesktop-cursor --features overlay --bin tinydesktop-cursor-overlay
-            install -m 755 target/release/tinydesktop-cursor-overlay "$package_root/"
+            cargo build --locked --release -p tinycomputer-cursor --features overlay --bin tinycomputer-cursor-overlay
+            install -m 755 target/release/tinycomputer-cursor-overlay "$package_root/"
           fi
           install -m 644 LICENSE MODULE.md "$package_root/"
 
@@ -389,8 +389,8 @@ jobs:
           Copy-Item -LiteralPath $module, 'LICENSE', 'MODULE.md' -Destination $packageRoot
           # The window that draws the agent's cursor; the host points the
           # module's `cursor.overlay` configuration at it.
-          cargo build --locked --release -p tinydesktop-cursor --features overlay --bin tinydesktop-cursor-overlay
-          Copy-Item -LiteralPath 'target/release/tinydesktop-cursor-overlay.exe' -Destination $packageRoot
+          cargo build --locked --release -p tinycomputer-cursor --features overlay --bin tinycomputer-cursor-overlay
+          Copy-Item -LiteralPath 'target/release/tinycomputer-cursor-overlay.exe' -Destination $packageRoot
 
           $moduleName = Split-Path -Leaf $module
           $hash = (Get-FileHash -LiteralPath "$packageRoot/$moduleName" -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -496,7 +496,7 @@ jobs:
           verify_root="/opt/${CRATE_NAME}-module-verify"
           install -d -m 700 "$verify_root"
           install -m 755 "target/release/lib${library_name}.so" "$verify_root/"
-          cargo run --locked --package tinydesktop-examples --bin verify_module -- \
+          cargo run --locked --package tinycomputer-examples --bin verify_module -- \
             "$verify_root/lib${library_name}.so"
 
       - name: Assemble distribution module package
@@ -627,5 +627,5 @@ jobs:
           cargo run --manifest-path vendor/tinybus/Cargo.toml --locked \
             --package tinybus --all-features --example github_module_host -- \
             "$release_url" "$archive" "$sha256"
-          cargo run --locked --package tinydesktop-examples --bin verify_github_release -- \
+          cargo run --locked --package tinycomputer-examples --bin verify_github_release -- \
             "$release_url" "$archive" "$sha256"

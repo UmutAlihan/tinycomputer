@@ -11,7 +11,7 @@ changes what a run does.
 
 ```sh
 # any run in this process: the lab, an example, a host embedding the module
-TINYDESKTOP_JEV_JOURNAL=1 scripts/lab run <scenario> --mode flow
+TINYCOMPUTER_JEV_JOURNAL=1 scripts/lab run <scenario> --mode flow
 ```
 
 | Value | Effect |
@@ -70,14 +70,14 @@ slowest framing's `latency_ms`, not their sum. A parent step (`if`,
 ## Reading a run
 
 ```sh
-cargo run -p tinydesktop-examples --bin jev_journal                        # list runs
-cargo run -p tinydesktop-examples --bin jev_journal -- latest              # summary
-cargo run -p tinydesktop-examples --bin jev_journal -- a1b2c3 --transcript # every answer
-cargo run -p tinydesktop-examples --bin jev_journal -- latest --json       # summary as JSON
+cargo run -p tinycomputer-examples --bin jev_journal                        # list runs
+cargo run -p tinycomputer-examples --bin jev_journal -- latest              # summary
+cargo run -p tinycomputer-examples --bin jev_journal -- a1b2c3 --transcript # every answer
+cargo run -p tinycomputer-examples --bin jev_journal -- latest --json       # summary as JSON
 ```
 
 A run is named by `latest`, any unique part of its id, or its directory. The
-binary reads `TINYDESKTOP_JEV_JOURNAL` to find the journal the same way the
+binary reads `TINYCOMPUTER_JEV_JOURNAL` to find the journal the same way the
 module does. The summary looks like:
 
 ```text

@@ -17,9 +17,9 @@ engine's argument types, the permission preflight, and the bus surface.
 
 ### Members
 
-- The interface `ai.tinyhumans.tinydesktop.Desktop` is served at
-  `/ai/tinyhumans/tinydesktop/Desktop` with exactly sixty-seven members,
-  enumerated in dispatch order by `tinydesktop_bus::names::METHODS`.
+- The interface `ai.tinyhumans.tinycomputer.Desktop` is served at
+  `/ai/tinyhumans/tinycomputer/Desktop` with exactly sixty-seven members,
+  enumerated in dispatch order by `tinycomputer_bus::names::METHODS`.
 - Every member takes at most one request payload. Members taking no argument:
   `ListDisplays`, `ClipboardClear`, `FlowGuide`, `Version`, `Status`,
   `Describe`, `ListTasks`.
@@ -38,7 +38,7 @@ engine's argument types, the permission preflight, and the bus surface.
   alternative, and so the names are already reserved for a stateful daemon.
 - Session lifecycle, trace read and export, and the engine's bundled skills
   loader are out of contract version 1.0. Adding a member is a minor bump, which
-  the bind rule in `tinydesktop_bus::version` permits.
+  the bind rule in `tinycomputer_bus::version` permits.
 
 ### Jev control
 
@@ -84,13 +84,13 @@ engine's argument types, the permission preflight, and the bus surface.
 
 ### The contract crate
 
-- `tinydesktop-bus` depends on `serde` and `serde_json` and nothing else. It may
+- `tinycomputer-bus` depends on `serde` and `serde_json` and nothing else. It may
   not depend on a transport, an async runtime, an HTTP client, a native library,
   or the engine. CI asserts the resolved dependency tree.
 - It mirrors the engine's enumerations by wire form rather than importing them,
   and those mirrors carry no `#[non_exhaustive]`, so the module crate's
   conversions are exhaustive and a variant added upstream fails the build.
-- `tinydesktop` depends on it and re-exports all of it, so the two crates name
+- `tinycomputer` depends on it and re-exports all of it, so the two crates name
   the same types rather than structural twins.
 
 ### Permissions
@@ -129,7 +129,7 @@ engine's argument types, the permission preflight, and the bus surface.
 - The served interface is exercised over TinyBus's in-memory transport,
   including a member with a payload, a member without one, a member that fails
   closed, and an unknown member.
-- `crates/tinydesktop-examples/src/bin/verify_module.rs` loads the compiled `cdylib` through the real
+- `crates/tinycomputer-examples/src/bin/verify_module.rs` loads the compiled `cdylib` through the real
   dynamic loader and calls `Version` before a release archive is accepted.
 - The generated dispatch table and the embedded module manifest are both
-  asserted against `tinydesktop_bus::names::METHODS`.
+  asserted against `tinycomputer_bus::names::METHODS`.

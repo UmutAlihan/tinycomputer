@@ -2,7 +2,7 @@
 resolver = "3"
 # Every crate in this repository lives under `crates/`, one directory per
 # package, each directory named for the package it holds. There is no root
-# package: the crate a host loads is `crates/tinydesktop`, the same as any other
+# package: the crate a host loads is `crates/tinycomputer`, the same as any other
 # member. Keeping the root virtual is what makes that uniform — a root package
 # would make one crate structurally different from the rest for no reason other
 # than history, and it is the arrangement this template moved away from.
@@ -22,28 +22,28 @@ version = "0.5.1"
 edition = "2024"
 rust-version = "1.89"
 license = "GPL-3.0-only"
-repository = "https://github.com/tinyhumansai/tinydesktop"
+repository = "https://github.com/tinyhumansai/tinycomputer"
 
 [workspace.dependencies]
-# The wire contract. `crates/tinydesktop` depends on it and re-exports it, so a
+# The wire contract. `crates/tinycomputer` depends on it and re-exports it, so a
 # host that only makes calls takes this crate alone.
 # No `version` requirement on purpose: the workspace version moves on every
 # release, and a pinned requirement here would stop resolving the moment it did.
 # Nothing in this workspace is published, so the path is the whole address.
-tinydesktop-bus = { path = "crates/tinydesktop-bus" }
+tinycomputer-bus = { path = "crates/tinycomputer-bus" }
 # Shared, engine-free domain logic: keys, safety, records, and facts. Taken by
 # the surface adapters and the engine.
-tinydesktop-core = { path = "crates/tinydesktop-core" }
+tinycomputer-core = { path = "crates/tinycomputer-core" }
 # The agent-desktop adapter: `Desktop`, one method per desktop member. Taken by
 # the engine and re-exported by the module crate.
-tinydesktop-desktop = { path = "crates/tinydesktop-desktop" }
+tinycomputer-desktop = { path = "crates/tinycomputer-desktop" }
 # The agent-browser adapter: typed browser sessions over the linked engine.
-tinydesktop-browser = { path = "crates/tinydesktop-browser" }
+tinycomputer-browser = { path = "crates/tinycomputer-browser" }
 # The agent runtime: Jev loops, goals, and intent flows. Served by the module.
-tinydesktop-engine = { path = "crates/tinydesktop-engine" }
+tinycomputer-engine = { path = "crates/tinycomputer-engine" }
 # The agent's on-screen cursor: aim points and human glide paths a surface
 # draws over its content. Cosmetic; it sends no input.
-tinydesktop-cursor = { path = "crates/tinydesktop-cursor" }
+tinycomputer-cursor = { path = "crates/tinycomputer-cursor" }
 # Native typed Jev transport used by the desktop-control policy: the decisions
 # crate of the vendored `vendor/tinyinference` submodule, pinned by its gitlink
 # so provider validation and retry behavior are reproducible. Only this crate
@@ -77,7 +77,7 @@ tinybus = { path = "vendor/tinybus/crates/tinybus", version = "0.1.2", default-f
 # required by TinyBus's dynamic loader.
 tinybus-module = { path = "vendor/tinybus/crates/tinybus-module", version = "0.1.2" }
 # Derive macros for the crate-wide error types, e.g.
-# `crates/tinydesktop-desktop/src/error/`.
+# `crates/tinycomputer-desktop/src/error/`.
 # Every dependency entry should carry a comment like this one saying why it is
 # here.
 thiserror = "2"
@@ -132,6 +132,6 @@ codegen-units = 1
 strip = "debuginfo"
 
 # The cursor sprite is rasterized with supersampling when the overlay helper
-# (`tinydesktop-cursor`'s binary) starts; unoptimized, that takes over a second and the first glide is missed.
-[profile.dev.package.tinydesktop-cursor]
+# (`tinycomputer-cursor`'s binary) starts; unoptimized, that takes over a second and the first glide is missed.
+[profile.dev.package.tinycomputer-cursor]
 opt-level = 3

@@ -1,0 +1,18 @@
+{
+  "app": "Finder",
+  "vars": { "folder": "tinycomputer-lab" },
+  "steps": [
+    { "open": "Finder" },
+    "show the Desktop folder in the Finder window",
+    { "if": {
+        "condition": "a folder named ${folder} is visible",
+        "then": [ { "verify": "a folder named ${folder} is visible" } ],
+        "else": [
+          "create a new folder",
+          { "enter": { "folder name": "${folder}" } },
+          "confirm the folder name",
+          { "verify": "a folder named ${folder} is visible" }
+        ]
+    } }
+  ]
+}

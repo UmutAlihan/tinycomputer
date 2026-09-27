@@ -2005,22 +2005,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "tinydesktop"
+name = "tinycomputer"
 version = "0.5.1"
 dependencies = [
  "serde",
  "serde_json",
  "tinybus",
  "tinybus-module",
- "tinydesktop-browser",
- "tinydesktop-bus",
- "tinydesktop-desktop",
- "tinydesktop-engine",
+ "tinycomputer-browser",
+ "tinycomputer-bus",
+ "tinycomputer-desktop",
+ "tinycomputer-engine",
  "tokio",
 ]
 
 [[package]]
-name = "tinydesktop-browser"
+name = "tinycomputer-browser"
 version = "0.5.1"
 dependencies = [
  "agent-browser",
@@ -2029,14 +2029,14 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "thiserror 2.0.20",
- "tinydesktop-bus",
- "tinydesktop-core",
- "tinydesktop-cursor",
+ "tinycomputer-bus",
+ "tinycomputer-core",
+ "tinycomputer-cursor",
  "tokio",
 ]
 
 [[package]]
-name = "tinydesktop-bus"
+name = "tinycomputer-bus"
 version = "0.5.1"
 dependencies = [
  "serde",
@@ -2044,17 +2044,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "tinydesktop-core"
+name = "tinycomputer-core"
 version = "0.5.1"
 dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.20",
- "tinydesktop-bus",
+ "tinycomputer-bus",
 ]
 
 [[package]]
-name = "tinydesktop-cursor"
+name = "tinycomputer-cursor"
 version = "0.5.1"
 dependencies = [
  "block2",
@@ -2069,7 +2069,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tinydesktop-desktop"
+name = "tinycomputer-desktop"
 version = "0.5.1"
 dependencies = [
  "agent-desktop-core",
@@ -2078,49 +2078,49 @@ dependencies = [
  "agent-desktop-windows",
  "serde_json",
  "thiserror 2.0.20",
- "tinydesktop-bus",
- "tinydesktop-core",
- "tinydesktop-cursor",
+ "tinycomputer-bus",
+ "tinycomputer-core",
+ "tinycomputer-cursor",
 ]
 
 [[package]]
-name = "tinydesktop-engine"
+name = "tinycomputer-engine"
 version = "0.5.1"
 dependencies = [
  "getrandom 0.4.3",
  "serde",
  "serde_json",
- "tinydesktop-bus",
- "tinydesktop-core",
- "tinydesktop-desktop",
+ "tinycomputer-bus",
+ "tinycomputer-core",
+ "tinycomputer-desktop",
  "tinyinference-decisions",
  "tinyinference-llm",
  "tokio",
 ]
 
 [[package]]
-name = "tinydesktop-examples"
+name = "tinycomputer-examples"
 version = "0.5.1"
 dependencies = [
  "serde",
  "serde_json",
  "tinybus",
- "tinydesktop",
- "tinydesktop-browser",
- "tinydesktop-bus",
- "tinydesktop-core",
- "tinydesktop-cursor",
- "tinydesktop-engine",
+ "tinycomputer",
+ "tinycomputer-browser",
+ "tinycomputer-bus",
+ "tinycomputer-core",
+ "tinycomputer-cursor",
+ "tinycomputer-engine",
  "tinyinference-llm",
  "tokio",
 ]
 
 [[package]]
-name = "tinydesktop-skills"
+name = "tinycomputer-skills"
 version = "0.5.1"
 dependencies = [
  "serde_json",
- "tinydesktop-bus",
+ "tinycomputer-bus",
 ]
 
 [[package]]

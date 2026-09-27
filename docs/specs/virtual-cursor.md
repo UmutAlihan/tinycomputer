@@ -1,7 +1,7 @@
 # Virtual cursor
 
 **Status:** Implemented. The overlay runs on macOS and Windows; Linux draws
-nothing yet. **Owner:** tinydesktop maintainers.
+nothing yet. **Owner:** tinycomputer maintainers.
 **Plan:** [`../plans/virtual-cursor.md`](../plans/virtual-cursor.md).
 
 ## Problem
@@ -42,7 +42,7 @@ So the cursor is **purely cosmetic**.
 
 ## Behavior
 
-### `tinydesktop-cursor`
+### `tinycomputer-cursor`
 
 | Item | Behavior |
 |---|---|
@@ -65,7 +65,7 @@ So the cursor is **purely cosmetic**.
   8–12 Hz. Both fade to zero at the ends.
 - **Sampling:** 60 Hz.
 
-### The overlay (`tinydesktop-cursor-overlay`)
+### The overlay (`tinycomputer-cursor-overlay`)
 
 This is the crate's binary, built with the `overlay` feature.
 
@@ -110,7 +110,7 @@ itself, and every `unsafe` block carries a `// SAFETY:` comment.
 `cursor` is either a pace name, or `{ "pace": …, "overlay": "/path/to/helper" }`.
 Anything else is `ConfigFieldType { field: "cursor" }`. When `overlay` is
 absent, the helper is looked for in this order:
-1. `$TINYDESKTOP_CURSOR_OVERLAY`;
+1. `$TINYCOMPUTER_CURSOR_OVERLAY`;
 2. beside the host executable;
 3. on `PATH`.
 

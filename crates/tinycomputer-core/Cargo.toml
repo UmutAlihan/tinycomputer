@@ -1,0 +1,25 @@
+[package]
+name = "tinycomputer-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The shared domain of tinycomputer's surfaces: platform keys, action safety and payment detection, extracted records, and task facts."
+documentation = "https://docs.rs/tinycomputer-core"
+readme = "README.md"
+keywords = ["automation", "agent", "safety"]
+categories = ["os"]
+publish = false
+
+[dependencies]
+# The closed operations and response envelope a surface speaks.
+tinycomputer-bus = { workspace = true }
+# Candidates parse straight out of engine snapshots, which are JSON.
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Derive macros for the crate-wide error type in `src/error/`.
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

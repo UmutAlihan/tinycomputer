@@ -1,4 +1,4 @@
-# tinydesktop
+# tinycomputer
 
 An installable TinyBus module that lets an agent use a computer: desktop
 applications through their accessibility trees, and web pages through a real
@@ -92,41 +92,41 @@ question, and threshold in detail.
 ## Architecture
 
 ```text
- tinydesktop (cdylib)        TinyBus glue: manifest, dispatch, config
+ tinycomputer (cdylib)        TinyBus glue: manifest, dispatch, config
         │
- tinydesktop-engine          Jev runtime, flow runtime, workspace, tasks, planner
+ tinycomputer-engine          Jev runtime, flow runtime, workspace, tasks, planner
         │                 │
- tinydesktop-desktop    tinydesktop-browser       adapters, one Surface each
+ tinycomputer-desktop    tinycomputer-browser       adapters, one Surface each
         │                 │
  vendor/agent-desktop   vendor/agent-browser      the engines, pinned by gitlink
 
- tinydesktop-core            Surface trait, screen model, keymap, safety, facts
- tinydesktop-cursor          the agent's drawn cursor: aim points, human glides
- tinydesktop-bus             the wire contract, with no runtime at all
+ tinycomputer-core            Surface trait, screen model, keymap, safety, facts
+ tinycomputer-cursor          the agent's drawn cursor: aim points, human glides
+ tinycomputer-bus             the wire contract, with no runtime at all
 ```
 
 Dependencies point one way: `bus` ← `core` ← {`desktop`, `browser`} ←
-`engine` ← `tinydesktop`. The decision loops are written once against the
-`Surface` trait in `tinydesktop-core`, so they run the same over a desktop
+`engine` ← `tinycomputer`. The decision loops are written once against the
+`Surface` trait in `tinycomputer-core`, so they run the same over a desktop
 window and a browser tab. A `Workspace` joins the two, so one flow can search
 flights on the web and then write an email in Mail.
 
 | Crate | Holds |
 |---|---|
-| `tinydesktop-bus` | every type that crosses the bus: member names, payloads, the `DesktopResponse` envelope, the Agent and browser types, the flow grammar and guide, the contract version |
-| `tinydesktop-core` | the `Surface` trait and `Screen`; verified text delivery; result cards; the per-OS keymap; the safety classifier and payment detector; facts; price, time, duration, and stop parsers |
-| `tinydesktop-cursor` | the agent's one on-screen cursor, shared by desktop and browser: aim points, human glide paths (overshoot, correction, wobble, tremor, Fitts timing), its look, and — with the `overlay` feature — the `tinydesktop-cursor-overlay` helper that draws it in a click-through, never-focused window on macOS and Windows; cosmetic, it sends no input |
-| `tinydesktop-desktop` | `Desktop`, one typed method per desktop member, with a permission preflight; `Desktop` as a `Surface` |
-| `tinydesktop-browser` | `Browser` sessions over agent-browser linked in-process; `BrowserSurface` |
-| `tinydesktop-engine` | Jev, `RunGoal`, `ResolveIntent`, the flow runtime, the workspace, the task controller, the optional planner |
-| `tinydesktop` | the TinyBus module; no behaviour of its own |
-| `tinydesktop-skills` | agent-facing `SKILL.md` and schemas for the task API |
-| `tinydesktop-examples` | examples, the lab, the travel fixture, live verifiers |
+| `tinycomputer-bus` | every type that crosses the bus: member names, payloads, the `DesktopResponse` envelope, the Agent and browser types, the flow grammar and guide, the contract version |
+| `tinycomputer-core` | the `Surface` trait and `Screen`; verified text delivery; result cards; the per-OS keymap; the safety classifier and payment detector; facts; price, time, duration, and stop parsers |
+| `tinycomputer-cursor` | the agent's one on-screen cursor, shared by desktop and browser: aim points, human glide paths (overshoot, correction, wobble, tremor, Fitts timing), its look, and — with the `overlay` feature — the `tinycomputer-cursor-overlay` helper that draws it in a click-through, never-focused window on macOS and Windows; cosmetic, it sends no input |
+| `tinycomputer-desktop` | `Desktop`, one typed method per desktop member, with a permission preflight; `Desktop` as a `Surface` |
+| `tinycomputer-browser` | `Browser` sessions over agent-browser linked in-process; `BrowserSurface` |
+| `tinycomputer-engine` | Jev, `RunGoal`, `ResolveIntent`, the flow runtime, the workspace, the task controller, the optional planner |
+| `tinycomputer` | the TinyBus module; no behaviour of its own |
+| `tinycomputer-skills` | agent-facing `SKILL.md` and schemas for the task API |
+| `tinycomputer-examples` | examples, the lab, the travel fixture, live verifiers |
 
-A host that only makes calls depends on `tinydesktop-bus` alone and compiles no
-engine, no TinyBus, and no accessibility backend. `tinydesktop` re-exports the
-contract, so `tinydesktop::SnapshotRequest` and
-`tinydesktop_bus::SnapshotRequest` are the same type rather than structural
+A host that only makes calls depends on `tinycomputer-bus` alone and compiles no
+engine, no TinyBus, and no accessibility backend. `tinycomputer` re-exports the
+contract, so `tinycomputer::SnapshotRequest` and
+`tinycomputer_bus::SnapshotRequest` are the same type rather than structural
 twins. The adapters are plain libraries that another host can take without the
 engine.
 
@@ -135,8 +135,8 @@ through the layers, threading, configuration, and the safety checks.
 
 ## The members
 
-All 67 members are served on `ai.tinyhumans.tinydesktop.Desktop` at
-`/ai/tinyhumans/tinydesktop/Desktop`. `tinydesktop_bus::names::METHODS` lists
+All 67 members are served on `ai.tinyhumans.tinycomputer.Desktop` at
+`/ai/tinyhumans/tinycomputer/Desktop`. `tinycomputer_bus::names::METHODS` lists
 them in dispatch order; here they are by family:
 
 | Family | Members |
@@ -158,7 +158,7 @@ the bus requires an attested module and keeps them away from monitors.
 
 The browser's typed contract (`OpenSession`, `Navigate`, `Snapshot`,
 `Perform`, `ReadPage`, `Screenshot`, downloads, and outputs) is defined in
-`tinydesktop-bus` and implemented by `tinydesktop-browser`, but not yet served
+`tinycomputer-bus` and implemented by `tinycomputer-browser`, but not yet served
 as bus members. Today the browser is reached through tasks.
 
 ### Primitives: observe, then act on what you observed
@@ -174,7 +174,7 @@ so acting on one either reaches the element that was described or fails with
 moved into that position.
 
 ```rust,ignore
-use tinydesktop_bus::{names, DesktopResponse, RefRequest, SnapshotRequest};
+use tinycomputer_bus::{names, DesktopResponse, RefRequest, SnapshotRequest};
 
 let proxy = connection.proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)?;
 
@@ -203,7 +203,7 @@ Every member returns a `DesktopResponse`, on success and on failure, carrying
 either the data or a structured error with its code, a suggestion, whether a
 retry is safe, and how to recover. A TinyBus error is reserved for a transport
 or dispatch failure. See
-[`crates/tinydesktop-bus/README.md`](crates/tinydesktop-bus/README.md).
+[`crates/tinycomputer-bus/README.md`](crates/tinycomputer-bus/README.md).
 
 `KeyDown`, `KeyUp`, `MouseDown`, and `MouseUp` validate their arguments and then
 refuse: holding a button down is stateful and this module is not. They are
@@ -230,7 +230,7 @@ The step kinds are `do` (or a plain string), `open`, `browse`, `enter`,
 `repeat_until`, and `if`. `FlowGuide` returns the authoring guide as prompt
 text, `ValidateFlow` checks a candidate without touching anything, and the
 guide itself is
-[`crates/tinydesktop-bus/src/flow/guide.md`](crates/tinydesktop-bus/src/flow/guide.md).
+[`crates/tinycomputer-bus/src/flow/guide.md`](crates/tinycomputer-bus/src/flow/guide.md).
 Nothing irreversible happens without `allow_destructive`. The design and its
 rationale are in [`docs/specs/jev-intent-flows.md`](docs/specs/jev-intent-flows.md).
 
@@ -244,7 +244,7 @@ one-use `confirmation_id`; the host shows it to a person and calls again with
 `continuation: {"id": "...", "approve": true}`. Approval takes a fresh
 snapshot and acts only if exactly one element still matches the original
 target. `ResolveIntent` grounds one described element, optionally acting on it.
-See [`crates/tinydesktop-engine/src/agentic/README.md`](crates/tinydesktop-engine/src/agentic/README.md).
+See [`crates/tinycomputer-engine/src/agentic/README.md`](crates/tinycomputer-engine/src/agentic/README.md).
 
 ## Configuration
 
@@ -259,7 +259,7 @@ object only after the whole new configuration validates.
 | `jev` | Jev provider, API key, and optional model, endpoint, timeout, retries, and `sdk_name` |
 | `planner` | an OpenRouter `api_key` and optional `model`; absent means tasks need a flow |
 | `browser.executable` | the Chrome or Chromium binary to launch |
-| `cursor` | the agent's on-screen cursor for desktop and browser: a pace (`off`, `brisk`, `natural` (default), `calm`) or `{pace, overlay}`, where `overlay` is the path to the shipped `tinydesktop-cursor-overlay` helper |
+| `cursor` | the agent's on-screen cursor for desktop and browser: a pace (`off`, `brisk`, `natural` (default), `calm`) or `{pace, overlay}`, where `overlay` is the path to the shipped `tinycomputer-cursor-overlay` helper |
 
 Without `jev`, the Jev-driven members answer `JEV_NOT_CONFIGURED` and the
 primitives keep working. For the TinyHumans proxy, the host supplies
@@ -316,7 +316,7 @@ Anything that launches Chromium runs in a Linux container instead of on the
 host:
 
 ```sh
-scripts/docker-lab -- crates/tinydesktop-examples/fixtures/run task_fixture
+scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture
 ```
 
 See [`docs/lab.md`](docs/lab.md) and [`docs/docker-lab.md`](docs/docker-lab.md).
@@ -326,7 +326,7 @@ See [`docs/lab.md`](docs/lab.md) and [`docs/docker-lab.md`](docs/docker-lab.md).
 ```text
 Cargo.toml                 # virtual workspace: members, shared metadata, lints
 crates/
-├── tinydesktop-bus/       # the wire contract
+├── tinycomputer-bus/       # the wire contract
 │   └── src/
 │       ├── names/         # interface, object path, one constant per member
 │       ├── envelope/      # DesktopResponse and DesktopError
@@ -335,19 +335,19 @@ crates/
 │       ├── flow/          # the flow grammar and guide.md
 │       ├── browser/       # the browser contract
 │       └── observation/ interaction/ input/ apps/ clipboard/ …
-├── tinydesktop-core/      # surface/ keymap/ safety/ records/ facts/
-├── tinydesktop-cursor/    # glide/ animate/ sprite/ screen/ + bin/: the agent's cursor
-├── tinydesktop-desktop/   # desktop/ (the 54 members) and surface/
-├── tinydesktop-browser/   # sessions/ convert/ reply/ linked/ outputs/ surface/
-├── tinydesktop-engine/
+├── tinycomputer-core/      # surface/ keymap/ safety/ records/ facts/
+├── tinycomputer-cursor/    # glide/ animate/ sprite/ screen/ + bin/: the agent's cursor
+├── tinycomputer-desktop/   # desktop/ (the 54 members) and surface/
+├── tinycomputer-browser/   # sessions/ convert/ reply/ linked/ outputs/ surface/
+├── tinycomputer-engine/
 │   └── src/
 │       ├── agentic/       # RunGoal and ResolveIntent; flow/ is the flow runtime
 │       ├── workspace/     # the desktop and the browser as one surface
 │       ├── task/          # the task controller
 │       └── planner/       # the optional LLM planner
-├── tinydesktop/           # the cdylib: tinybus_module/ dispatch, runner, manifest
-├── tinydesktop-skills/    # SKILL.md for agents
-└── tinydesktop-examples/  # bins, the lab, scenarios, fixtures/travel
+├── tinycomputer/           # the cdylib: tinybus_module/ dispatch, runner, manifest
+├── tinycomputer-skills/    # SKILL.md for agents
+└── tinycomputer-examples/  # bins, the lab, scenarios, fixtures/travel
 vendor/
 ├── tinybus/               # TinyBus host types and module SDK
 ├── agent-desktop/         # the desktop engine
@@ -390,15 +390,15 @@ cargo test --all-features
 Useful extras:
 
 ```sh
-cargo run -p tinydesktop-examples --bin basic
-cargo build -p tinydesktop --release --lib   # the installable cdylib
+cargo run -p tinycomputer-examples --bin basic
+cargo build -p tinycomputer --release --lib   # the installable cdylib
 cargo doc --no-deps --all-features           # CI builds it with RUSTDOCFLAGS="-D warnings"
 cargo deny check all                         # supply chain; see deny.toml
 .github/scripts/check-file-coverage.sh 90 coverage.json   # needs cargo-llvm-cov
 
 # Load the built cdylib through the real TinyBus dynamic loader:
-cargo run -p tinydesktop-examples --bin verify_module -- \
-  target/release/libtinydesktop.so
+cargo run -p tinycomputer-examples --bin verify_module -- \
+  target/release/libtinycomputer.so
 ```
 
 The test suite needs no display server, no granted permission, no browser, and
@@ -415,10 +415,10 @@ Run the **Release** workflow from the Actions tab with a `patch`, `minor`, or
 `major` bump. It validates the workspace and opens a version pull request for
 the one `[workspace.package]` version every member inherits. Merge that PR
 after required checks pass, then run the workflow with `current` to tag the
-checked version, build `crates/tinydesktop` as a TinyBus `cdylib`, and create
+checked version, build `crates/tinycomputer` as a TinyBus `cdylib`, and create
 the GitHub release. Use `current` again to resume an interrupted release.
 
-Assets are named `tinydesktop-<version>-<platform>.<tar.gz|zip>` and contain
+Assets are named `tinycomputer-<version>-<platform>.<tar.gz|zip>` and contain
 the native module, its SHA-256 `modules.toml`, the license, and
 [`MODULE.md`](MODULE.md). Every release also publishes `checksum.toml`, which
 TinyBus uses to verify an archive before extracting it. The workflow loads the
