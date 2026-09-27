@@ -68,6 +68,16 @@ const MAX_ACTIONS: u32 = 120;
 const MAX_CALLS: u32 = 5000;
 /// Choices, picks, and entries remembered for the brief's `so_far`.
 const MAX_SO_FAR: usize = 12;
+/// Longest goal the brief carries, in characters.
+const MAX_GOAL: usize = 600;
+/// Longest plan line the brief carries, in characters.
+const MAX_PLAN_LINE: usize = 120;
+/// Longest `so_far` note the brief carries, in characters.
+const MAX_SO_FAR_NOTE: usize = 200;
+/// Largest request sent to Jev, in bytes of JSON. Jev refuses one past its
+/// token limit outright (HTTP 400, `max_tokens_exceeded`), which ends the
+/// run; measured, 120 KB passed and 160 KB did not.
+const MAX_REQUEST_BYTES: usize = 100_000;
 /// Consecutive unreadable observations that fail a step.
 const MAX_BLIND_LOOKS: u32 = 3;
 /// Truncated subtrees one exploration reads at most.
@@ -436,6 +446,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         }
         self.brief_into(&mut request);
         self.mask(&mut request);
+        fit(&mut request, MAX_REQUEST_BYTES);
         let room = self.max_calls - self.metrics.calls;
         let votes = if self.enabled(FlowLoop::Vote) {
             self.votes.min(room)
@@ -535,12 +546,12 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                     std::cmp::Ordering::Equal => "now",
                     std::cmp::Ordering::Greater => "next",
                 };
-                format!("{}. [{mark}] {step}", index + 1)
+                clip(&format!("{}. [{mark}] {step}", index + 1), MAX_PLAN_LINE)
             })
             .collect::<Vec<_>>();
         let mut brief = serde_json::Map::new();
         if !self.brief.goal.is_empty() {
-            brief.insert("goal".to_owned(), json!(self.brief.goal));
+            brief.insert("goal".to_owned(), json!(clip(&self.brief.goal, MAX_GOAL)));
         }
         if !self.brief.details.is_empty() {
             brief.insert("for".to_owned(), json!(self.brief.details));
@@ -561,7 +572,15 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             brief.insert("plan".to_owned(), json!(plan));
         }
         if !self.so_far.is_empty() {
-            brief.insert("so_far".to_owned(), json!(self.so_far));
+            brief.insert(
+                "so_far".to_owned(),
+                json!(
+                    self.so_far
+                        .iter()
+                        .map(|note| clip(note, MAX_SO_FAR_NOTE))
+                        .collect::<Vec<_>>()
+                ),
+            );
         }
         if let Some(page) = &self.page {
             brief.insert("page".to_owned(), json!(page));
@@ -735,6 +754,71 @@ const PAGE_KIND: &str = "page_kind";
 /// The yes/no questions that are about choosing, not judging the screen:
 /// whether an element is the right one for a purpose.
 const BRIEFED_NOULS: &[&str] = &["confirm"];
+
+/// `text` cut to `limit` characters, marked with `…` when it was cut.
+fn clip(text: &str, limit: usize) -> String {
+    if text.chars().count() <= limit {
+        return text.to_owned();
+    }
+    let mut clipped = text.chars().take(limit).collect::<String>();
+    clipped.push('…');
+    clipped
+}
+
+/// Shrinks `request` until its JSON is at most `limit` bytes: first the
+/// brief is kept on the first briefed question only, then the longest lists
+/// of screen text and elements in the shared state lose their last entries.
+/// What remains is the part of the screen read first.
+pub(super) fn fit(request: &mut EvaluationRequest, limit: usize) {
+    let size = |request: &EvaluationRequest| serde_json::to_vec(request).map_or(0, |json| json.len());
+    if size(request) <= limit {
+        return;
+    }
+    let mut kept = false;
+    for question in request.questions.values_mut() {
+        let instructions = match question {
+            Question::Choice(choice) => &mut choice.instructions,
+            Question::Noul(noul) => &mut noul.instructions,
+            Question::Score(score) => &mut score.instructions,
+        };
+        if let Value::Object(fields) = instructions
+            && fields.contains_key("brief")
+        {
+            if kept {
+                fields.remove("brief");
+            }
+            kept = true;
+        }
+    }
+    while size(request) > limit {
+        let Some(longest) = longest_list(&mut request.state) else {
+            return;
+        };
+        let cut = (longest.len() / 4).max(1);
+        longest.truncate(longest.len() - cut);
+    }
+}
+
+/// The longest non-empty array anywhere in `value`.
+fn longest_list(value: &mut Value) -> Option<&mut Vec<Value>> {
+    let mut best: Option<&mut Vec<Value>> = None;
+    let candidates: Vec<&mut Vec<Value>> = match value {
+        Value::Array(items) => {
+            if items.iter().all(|item| !item.is_array() && !item.is_object()) {
+                return (!items.is_empty()).then_some(items);
+            }
+            items.iter_mut().filter_map(longest_list).collect()
+        }
+        Value::Object(fields) => fields.values_mut().filter_map(longest_list).collect(),
+        _ => Vec::new(),
+    };
+    for candidate in candidates {
+        if best.as_ref().is_none_or(|best| candidate.len() > best.len()) {
+            best = Some(candidate);
+        }
+    }
+    best
+}
 
 /// Every string inside `value` with the secrets masked.
 fn mask_value(value: &mut Value, secrets: &Facts) {
