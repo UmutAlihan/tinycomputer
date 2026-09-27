@@ -218,7 +218,8 @@ fn average(answers: &[Answer]) -> Option<Answer> {
                     _ => None,
                 })
                 .collect::<Vec<_>>();
-            let probabilities = mean_probabilities(choices.iter().map(|choice| &choice.probabilities), count);
+            let probabilities =
+                mean_probabilities(choices.iter().map(|choice| &choice.probabilities), count);
             let winner = probabilities
                 .iter()
                 .max_by(|left, right| left.1.total_cmp(right.1))

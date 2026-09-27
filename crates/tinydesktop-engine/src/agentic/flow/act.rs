@@ -30,6 +30,8 @@ const ALREADY_DONE: f64 = 0.85;
 const BLOCKED: f64 = 0.7;
 /// A progress drop, as a fraction of the scale, that counts as a regression.
 const REGRESSION: f64 = 0.25;
+/// Probability that the last action helped below which it is undone.
+const UNHELPFUL: f64 = 0.2;
 /// Least probability a shortcut choice needs to be pressed.
 const SHORTCUT_FLOOR: f64 = 0.5;
 /// Unchanged turns after which a step gives up.
@@ -227,7 +229,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             {
                 return Ok(ended);
             }
-            let judged = self.judge(log, &screen, intent).await?;
+            let last = state
+                .last
+                .as_ref()
+                .and_then(|last| last.target.as_ref())
+                .map(label);
+            let judged = self.judge(log, &screen, intent, last.as_deref()).await?;
             let creating = creates_new(intent) && log.actions.is_empty();
             if !creating && let Some(ended) = finished(log, &judged, turn) {
                 return Ok(ended);
@@ -260,7 +267,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
         }
         let screen = self.look().await?;
-        let judged = self.judge(log, &screen, intent).await?;
+        let judged = self.judge(log, &screen, intent, None).await?;
         if judged.done.unwrap_or_default() >= DONE {
             return Ok(Ended::new(
                 StepOutcome::Done,
@@ -317,10 +324,26 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             (Some(previous), Some(now)) => previous
                 .progress
                 .filter(|before| before - now >= REGRESSION)
-                .map(|before| (before, now, previous.target.clone())),
+                .map(|before| {
+                    (
+                        format!("progress {before:.2} -> {now:.2}"),
+                        previous.target.clone(),
+                    )
+                }),
             _ => None,
         };
-        let Some((before, now, target)) = regressed else {
+        let unhelpful = state
+            .last
+            .as_ref()
+            .filter(|previous| previous.target.is_some())
+            .zip(judged.helped.filter(|helped| *helped < UNHELPFUL))
+            .map(|(previous, helped)| {
+                (
+                    format!("it did not help (confidence {helped:.2})"),
+                    previous.target.clone(),
+                )
+            });
+        let Some((why, target)) = regressed.or(unhelpful) else {
             return Ok(false);
         };
         if !self.enabled(FlowLoop::Undo) || state.undos >= MAX_UNDOS {
@@ -337,7 +360,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         })
         .await?;
         self.history.push(format!(
-            "that made things worse (progress {before:.2} -> {now:.2}); undid it and will try something else"
+            "that made things worse ({why}); undid it and will try something else"
         ));
         state.last = None;
         Ok(true)
@@ -571,12 +594,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(())
     }
 
-    /// One request judging the screen against `intent` and proposing a move.
+    /// One request judging the screen against `intent` and proposing a move;
+    /// after pressing `last`, it also asks whether that helped.
     async fn judge(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
         intent: &str,
+        last: Option<&str>,
     ) -> Result<Judgement, Halt> {
         let mut questions = Questions::default();
         if self.enabled(FlowLoop::Completion) {
@@ -591,6 +616,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         if self.enabled(FlowLoop::Obstacles) {
             questions = questions.with("blocked", obstacle(intent));
+        }
+        if self.enabled(FlowLoop::Undo)
+            && let Some(last) = last
+        {
+            questions = questions.with("helped", ask::helped(intent, &format!("pressed {last}")));
         }
         if self.enabled(FlowLoop::Moves) {
             log.used(FlowLoop::Moves);
@@ -645,6 +675,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }),
             progress: level(&answers, "progress"),
             blocked: probability(&answers, "blocked"),
+            helped: probability(&answers, "helped"),
             next,
             shortcut,
         })
@@ -657,6 +688,7 @@ struct Judgement {
     done: Option<f64>,
     progress: Option<f64>,
     blocked: Option<f64>,
+    helped: Option<f64>,
     next: String,
     shortcut: Option<(&'static str, &'static str)>,
 }
@@ -668,6 +700,7 @@ impl Judgement {
             done: None,
             progress: None,
             blocked: None,
+            helped: None,
             next: "activate".to_owned(),
             shortcut: None,
         }

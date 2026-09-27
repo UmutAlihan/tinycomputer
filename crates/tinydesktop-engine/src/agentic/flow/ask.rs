@@ -316,19 +316,46 @@ pub(super) fn combined(yes_no: Option<f64>, top: Option<f64>) -> Option<f64> {
 
 /// The kinds of page a web task passes through, with what each looks like.
 const PAGE_KINDS: &[(&str, &str)] = &[
-    ("search_form", "A form to search: where from, where to, when, how many."),
-    ("results", "A list of results to choose from, such as flights, fares, or products."),
-    ("details", "The details of one item, with a way to continue with it."),
-    ("fare_options", "Fare, class, or plan options for an item already chosen."),
+    (
+        "search_form",
+        "A form to search: where from, where to, when, how many.",
+    ),
+    (
+        "results",
+        "A list of results to choose from, such as flights, fares, or products.",
+    ),
+    (
+        "details",
+        "The details of one item, with a way to continue with it.",
+    ),
+    (
+        "fare_options",
+        "Fare, class, or plan options for an item already chosen.",
+    ),
     ("login", "A sign-in, sign-up, or account wall."),
-    ("traveller_form", "A form for a person's details: name, date of birth, contact details."),
-    ("extras", "Optional add-ons or upsells: seats, meals, baggage, insurance, upgrades."),
+    (
+        "traveller_form",
+        "A form for a person's details: name, date of birth, contact details.",
+    ),
+    (
+        "extras",
+        "Optional add-ons or upsells: seats, meals, baggage, insurance, upgrades.",
+    ),
     ("seats", "A seat map to choose seats on."),
     ("review", "A summary of the order to review before paying."),
-    ("payment", "A way to pay: a card form, UPI, a wallet, or net banking."),
-    ("confirmation", "Confirmation that something was booked, bought, or sent."),
+    (
+        "payment",
+        "A way to pay: a card form, UPI, a wallet, or net banking.",
+    ),
+    (
+        "confirmation",
+        "Confirmation that something was booked, bought, or sent.",
+    ),
     ("error", "An error page or message that blocks going on."),
-    ("captcha", "A captcha or other check that only a person can pass."),
+    (
+        "captcha",
+        "A captcha or other check that only a person can pass.",
+    ),
 ];
 
 /// "What kind of page is this?" — asked beside a web page's other questions

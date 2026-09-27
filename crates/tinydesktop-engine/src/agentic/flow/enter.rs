@@ -60,7 +60,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             })
             .collect::<Vec<_>>();
         let mut pending = (0..slots.len()).collect::<BTreeSet<_>>();
-        self.fill_pending(log, &slots, &private, &mut pending).await?;
+        self.fill_pending(log, &slots, &private, &mut pending)
+            .await?;
         if pending.is_empty() && self.enabled(FlowLoop::Validation) {
             // A form that rejects a value says so next to its field; enter
             // those once more, then give up naming them.
@@ -71,7 +72,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     names(&slots, &flagged)
                 ));
                 pending = flagged;
-                self.fill_pending(log, &slots, &private, &mut pending).await?;
+                self.fill_pending(log, &slots, &private, &mut pending)
+                    .await?;
                 let still = self.flagged(log, &slots).await?;
                 if !still.is_empty() {
                     return Err(Halt::Failed(format!(
@@ -103,7 +105,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// The slots the screen shows an error about, by one Noul each.
-    async fn flagged(&mut self, log: &mut StepLog, slots: &[Slot]) -> Result<BTreeSet<usize>, Halt> {
+    async fn flagged(
+        &mut self,
+        log: &mut StepLog,
+        slots: &[Slot],
+    ) -> Result<BTreeSet<usize>, Halt> {
         log.used(FlowLoop::Validation);
         let screen = self.look().await?;
         let mut questions = Questions::default();

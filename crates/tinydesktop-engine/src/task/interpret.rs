@@ -146,8 +146,8 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult, payment: PaymentMode) -> 
         .as_ref()
         .and_then(|target| target.name.clone())
         .unwrap_or_default();
-    let pays =
-        consequence(&target) == Consequence::Payment || consequence(&phrase) == Consequence::Payment;
+    let pays = consequence(&target) == Consequence::Payment
+        || consequence(&phrase) == Consequence::Payment;
     if pays && payment == PaymentMode::StopAtPayment {
         return Next::Stop {
             status: Box::new(TaskStatus::Checkpoint {

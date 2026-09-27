@@ -250,7 +250,10 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             facts
                 .iter()
                 .filter_map(|name| Some((name.clone(), vars.get(name)?.clone()))),
-            facts.iter().filter(|name| vars.contains_key(*name)).cloned(),
+            facts
+                .iter()
+                .filter(|name| vars.contains_key(*name))
+                .cloned(),
         )
         .unwrap_or_default();
         let outline = request
@@ -469,9 +472,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let answers = match (answered.is_empty(), failure) {
             (true, Some(failure)) => return Err(Halt::Error(provider_error(&failure))),
             (true, None) => {
-                return Err(Halt::Failed(
-                    "no Jev evaluation completed".to_owned(),
-                ));
+                return Err(Halt::Failed("no Jev evaluation completed".to_owned()));
             }
             _ => vote::merge(&answered),
         };
@@ -715,9 +716,7 @@ const PAGE_KIND: &str = "page_kind";
 fn mask_value(value: &mut Value, secrets: &Facts) {
     match value {
         Value::String(text) => *text = secrets.mask(text),
-        Value::Array(items) => items
-            .iter_mut()
-            .for_each(|item| mask_value(item, secrets)),
+        Value::Array(items) => items.iter_mut().for_each(|item| mask_value(item, secrets)),
         Value::Object(fields) => fields
             .values_mut()
             .for_each(|field| mask_value(field, secrets)),

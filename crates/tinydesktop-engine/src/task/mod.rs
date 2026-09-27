@@ -38,8 +38,8 @@ use tinydesktop_bus::agent::{
     TaskPlan, TaskReport, TaskStatus, TaskView,
 };
 use tinydesktop_bus::{
-    DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowStep, GroundingHint,
-    JevExchange, RunFlowRequest, StepReport,
+    DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowStep, GroundingHint, JevExchange,
+    RunFlowRequest, StepReport,
 };
 use tinydesktop_core::Facts;
 use tokio::sync::watch;
@@ -203,8 +203,7 @@ impl Tasks {
     /// When called outside a Tokio runtime: the task runs on a spawned worker.
     #[must_use]
     pub fn start(&self, request: &StartTaskRequest) -> AgentResponse<TaskView> {
-        let facts = match Facts::with_secrets(request.facts.clone(), request.secret_facts.clone())
-        {
+        let facts = match Facts::with_secrets(request.facts.clone(), request.secret_facts.clone()) {
             Ok(facts) => facts,
             Err(error) => {
                 return AgentResponse::err(AgentError::new(
@@ -720,7 +719,9 @@ fn brief(state: &State) -> FlowBrief {
             .to_owned(),
     ];
     rules.push(match state.constraints.payment {
-        PaymentMode::StopAtPayment => "Never pay: stop in front of the control that pays.".to_owned(),
+        PaymentMode::StopAtPayment => {
+            "Never pay: stop in front of the control that pays.".to_owned()
+        }
         PaymentMode::FillThenApprove => {
             "Fill the payment form from the secrets, then stop in front of the control that pays."
                 .to_owned()
@@ -989,7 +990,11 @@ fn known_names(flow: &Flow, facts: &Facts) -> BTreeSet<String> {
 /// The secret names among `facts`: what the flow validator and runtime
 /// treat as never allowed in model-facing text.
 fn fact_names(facts: &Facts) -> BTreeSet<String> {
-    facts.secret_names().into_iter().map(str::to_owned).collect()
+    facts
+        .secret_names()
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
 }
 
 fn is_undefined(error: &str) -> bool {

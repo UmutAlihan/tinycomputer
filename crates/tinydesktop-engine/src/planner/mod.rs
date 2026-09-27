@@ -150,14 +150,21 @@ impl Planner {
         };
         let facts = format!(
             "{}.\nSecret facts, only ever an `enter` value: {}",
-            listed(known.iter().filter(|name| !secrets.contains(*name)).collect()),
+            listed(
+                known
+                    .iter()
+                    .filter(|name| !secrets.contains(*name))
+                    .collect()
+            ),
             listed(secrets.iter().collect()),
         );
         let mut turns = vec![
             Turn::new(Role::System, format!("{PROTOCOL}\n\n{FLOW_GUIDE}")),
             Turn::new(
                 Role::User,
-                format!("Task: {task}\n\nAvailable: {surfaces}.\nShared facts you may use: {facts}."),
+                format!(
+                    "Task: {task}\n\nAvailable: {surfaces}.\nShared facts you may use: {facts}."
+                ),
             ),
         ];
         let mut last = String::new();
