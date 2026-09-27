@@ -137,6 +137,7 @@ async fn main() -> Result<(), Failure> {
             max_model_calls: Some(5000),
             max_elapsed_ms: None,
             votes: None,
+            strategy: None,
         },
         trace: true,
         ..StartTaskRequest::default()
