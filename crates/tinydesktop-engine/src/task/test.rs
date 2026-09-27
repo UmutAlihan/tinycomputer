@@ -450,12 +450,13 @@ async fn an_approval_nested_in_an_if_resumes_the_whole_branch_and_what_follows()
     assert_eq!(
         requests[2].flow.steps,
         [
-            flow(json!({"if": {
-                "condition": "a draft is open",
-                "then": [{"stop_before": "sending the email"}],
-            }}))
-            .steps
-            .remove(0),
+            FlowStep::Action(FlowAction::If(IfStep {
+                condition: "a draft is open".to_owned(),
+                then: vec![FlowStep::Action(FlowAction::StopBefore(
+                    "sending the email".to_owned()
+                ))],
+                otherwise: Vec::new(),
+            })),
             FlowStep::Action(FlowAction::Do("finish another email message".to_owned())),
         ]
     );
