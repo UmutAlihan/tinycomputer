@@ -76,11 +76,14 @@ guide below. Reply with exactly one JSON object and nothing else: a flow \
 Use `browse` for anything on the web and `open` for a desktop application. \
 Refer to the person's details only as ${name} variables: use the fact names you are given, \
 and invent a clear name for any other detail the task needs, so the person can be asked for \
-it. Never invent personal details. A fact variable may appear only as an `enter` step's \
-value: you never see it, so it may not appear in an `open` application name, a `browse` \
-address, a `do`, `verify`, `wait_for`, `stop_before`, `choose`, `read`, `extract`, `pick`, \
-`repeat_until`, or `if` text, or as an `enter` slot's own name. Never enter \
-payment details: end any purchase or booking with a stop_before step for paying. Guard \
+it. Never invent personal details. A shared fact may appear in any step's text, so write \
+steps the way a person would (\"choose ${title} in the title field\"). A secret fact — a \
+card number, a passport number, a password — may appear only as an `enter` step's value: \
+it is never shown to the model that runs the steps, so it may not appear in an `open` \
+application name, a `browse` address, a `do`, `verify`, `wait_for`, `stop_before`, `choose`, \
+`read`, `extract`, `pick`, `repeat_until`, or `if` text, or as an `enter` slot's own name. \
+Enter payment details only from secret facts you are given, and end any purchase or \
+booking with a stop_before step for paying. Guard \
 sending, deleting, publishing, or submitting with a stop_before step.";
 
 /// Turns tasks into flows with a [`LanguageModel`].
@@ -112,6 +115,7 @@ impl Planner {
         &self,
         task: &str,
         fact_names: &[String],
+        secret_names: &[String],
         surfaces: &[SurfaceKind],
     ) -> Result<TaskPlan, String> {
         let surfaces = if surfaces.is_empty() {
@@ -126,36 +130,48 @@ impl Planner {
                 .collect::<Vec<_>>()
                 .join(" and ")
         };
-        let facts = if fact_names.is_empty() {
-            "none".to_owned()
-        } else {
-            fact_names
-                .iter()
-                .map(|name| format!("${{{name}}}"))
-                .collect::<Vec<_>>()
-                .join(", ")
+        let known = fact_names.iter().cloned().collect::<BTreeSet<_>>();
+        let secrets = known
+            .iter()
+            .filter(|name| secret_names.contains(name) || is_sensitive_name(name))
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        let listed = |names: Vec<&String>| {
+            if names.is_empty() {
+                "none".to_owned()
+            } else {
+                names
+                    .iter()
+                    .map(|name| format!("${{{name}}}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }
         };
+        let facts = format!(
+            "{}.\nSecret facts, only ever an `enter` value: {}",
+            listed(known.iter().filter(|name| !secrets.contains(*name)).collect()),
+            listed(secrets.iter().collect()),
+        );
         let mut turns = vec![
             Turn::new(Role::System, format!("{PROTOCOL}\n\n{FLOW_GUIDE}")),
             Turn::new(
                 Role::User,
-                format!("Task: {task}\n\nAvailable: {surfaces}.\nFacts you may use: {facts}."),
+                format!("Task: {task}\n\nAvailable: {surfaces}.\nShared facts you may use: {facts}."),
             ),
         ];
-        let known = fact_names.iter().cloned().collect::<BTreeSet<_>>();
         let mut last = String::new();
         for _ in 0..=REPAIRS {
             let reply = self.model.complete(&turns).await?;
             turns.push(Turn::new(Role::Assistant, reply.clone()));
             let problem = match parse(&reply) {
                 Ok(flow) => {
-                    let errors = crate::agentic::check_flow(&flow, &known, &known)
+                    let errors = crate::agentic::check_flow(&flow, &known, &secrets)
                         .errors
                         .into_iter()
                         .filter(|error| !error.contains("` is not defined in `vars`"))
                         .collect::<Vec<_>>();
                     if errors.is_empty() {
-                        return Ok(plan_for(flow, &known));
+                        return Ok(plan_for(flow, &known, &secrets));
                     }
                     format!("That flow is invalid:\n- {}", errors.join("\n- "))
                 }
@@ -171,8 +187,8 @@ impl Planner {
     }
 }
 
-fn plan_for(flow: Flow, known: &BTreeSet<String>) -> TaskPlan {
-    let questions = crate::agentic::missing_inputs(&flow, known, known)
+fn plan_for(flow: Flow, known: &BTreeSet<String>, secrets: &BTreeSet<String>) -> TaskPlan {
+    let questions = crate::agentic::missing_inputs(&flow, known, secrets)
         .into_iter()
         .map(|name| InputField {
             why: format!("the plan uses ${{{name}}}"),
