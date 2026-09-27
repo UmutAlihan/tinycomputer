@@ -40,8 +40,8 @@ contract commands and the per-file coverage gate green.
 - [x] `vendor/agent-browser` submodule; the linked `AgentBrowser` engine over
       `execute_command`; `BrowserSurface`; each task gets its own session.
 - [x] Upstream: trim agent-browser's dependencies so `cargo deny` passes
-      (vercel-labs/agent-browser#2009: `image` codecs, `rustls-pemfile`); the
-      fork's `tinydesktop` branch merges both upstream PRs and is pinned.
+      (`image` codecs, `rustls-pemfile`), folded into the same upstream PR.
+      The fork's `library-target` branch is that PR's head and is pinned.
 - [ ] The `Browser` interface in the cdylib, plus tabs, cookies, storage
       state, upload, dialog, find, and wait members.
 - [ ] Browser tests in the Docker lab; a CI job on the Playwright image;
