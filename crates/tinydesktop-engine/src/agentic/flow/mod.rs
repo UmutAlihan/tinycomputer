@@ -49,7 +49,7 @@ use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use super::{JevRuntime, merge_metrics, provider_error, response};
 use backend::{AgentBackend, blocking, observe_async};
-use validate::{step_path, substitute};
+use validate::{step_path, substitute_safe};
 use view::{Candidate, Depth, Screen, target_payload};
 
 /// Upper bound on [`RunFlowRequest::max_actions`].
