@@ -31,6 +31,9 @@ repository = "https://github.com/tinyhumansai/tinydesktop"
 # release, and a pinned requirement here would stop resolving the moment it did.
 # Nothing in this workspace is published, so the path is the whole address.
 tinydesktop-bus = { path = "crates/tinydesktop-bus" }
+# The agent-desktop adapter: `Desktop`, one method per desktop member. Taken by
+# the engine and re-exported by the module crate.
+tinydesktop-desktop = { path = "crates/tinydesktop-desktop" }
 # Native typed Jev transport used by the desktop-control policy: the decisions
 # crate of the vendored `vendor/tinyinference` submodule, pinned by its gitlink
 # so provider validation and retry behavior are reproducible. Only this crate
@@ -56,7 +59,8 @@ tinybus = { path = "vendor/tinybus/crates/tinybus", version = "0.1.2", default-f
 # The module-side SDK owns the isolated runtime and exports the ABI entrypoints
 # required by TinyBus's dynamic loader.
 tinybus-module = { path = "vendor/tinybus/crates/tinybus-module", version = "0.1.2" }
-# Derive macros for the crate-wide error type in `crates/tinydesktop/src/error/`.
+# Derive macros for the crate-wide error types, e.g.
+# `crates/tinydesktop-desktop/src/error/`.
 # Every dependency entry should carry a comment like this one saying why it is
 # here.
 thiserror = "2"
