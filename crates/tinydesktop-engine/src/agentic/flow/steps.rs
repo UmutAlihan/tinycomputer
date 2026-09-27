@@ -255,7 +255,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
-        let what = substitute(&read.what, &self.vars);
+        let what = substitute_safe(&read.what, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
         let ordered = ask::ordered_nodes(&screen);
