@@ -98,21 +98,23 @@ async fn a_shared_fact_may_be_named_in_steps_but_a_secret_only_typed() {
         .await
         .unwrap();
     assert_eq!(plan.flow.steps.len(), 4);
-    let seen = model.seen.lock().unwrap();
-    let brief = &seen[1][1].text;
-    assert!(
-        brief.contains("Shared facts you may use: ${title}."),
-        "{brief}"
-    );
-    assert!(
-        brief.contains("only ever an `enter` value: ${card number}."),
-        "{brief}"
-    );
-    assert!(
-        seen[1][3].text.contains("`${card number}` is a secret"),
-        "{}",
-        seen[1][3].text
-    );
+    {
+        let seen = model.seen.lock().unwrap();
+        let brief = &seen[1][1].text;
+        assert!(
+            brief.contains("Shared facts you may use: ${title}."),
+            "{brief}"
+        );
+        assert!(
+            brief.contains("only ever an `enter` value: ${card number}."),
+            "{brief}"
+        );
+        assert!(
+            seen[1][3].text.contains("`${card number}` is a secret"),
+            "{}",
+            seen[1][3].text
+        );
+    }
 
     let (planner, _) = scripted(&[Ok(shared)]);
     let names = ["title".to_owned(), "frequent flyer".to_owned()];

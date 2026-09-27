@@ -84,7 +84,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
         }
         if pending.is_empty() {
-            self.remember_choice(format!(
+            self.remember_choice(&format!(
                 "entered: {}",
                 slots
                     .iter()

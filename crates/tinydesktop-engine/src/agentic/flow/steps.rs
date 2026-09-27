@@ -293,7 +293,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     learn(&mut self.learned, remember(&self.app, &purpose, &target));
                     self.history
                         .push(format!("chose an option with {}", label(&target)));
-                    self.remember_choice(if private {
+                    self.remember_choice(&if private {
                         format!("chose the value in {what}")
                     } else {
                         format!("chose {option:?} in {what}")
@@ -569,7 +569,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         self.history
             .push(format!("picked {summary} ({how} by {by})"));
-        self.remember_choice(format!("picked from {from} by {by}: {summary}"));
+        self.remember_choice(&format!("picked from {from} by {by}: {summary}"));
         Ok(Ended::new(
             StepOutcome::Done,
             format!("picked {summary} ({how} by {by}, out of {})", groups.len()),
