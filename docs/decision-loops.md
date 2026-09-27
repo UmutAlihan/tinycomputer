@@ -104,14 +104,13 @@ The runtime never knows which one it is looking at.
 
 Two situations get special handling in `FlowRun::look`:
 
-- When nothing is readable: an application can be running with no readable window
-  yet. Instead of failing, the runtime shows Jev a blank screen with a note
-  ("No window of the application can be read right now … A keyboard shortcut
-  may still work."). Only three unreadable looks in a row (`MAX_BLIND_LOOKS`)
-  fail the step.
-- When the tree was cut short: when a step cannot find what it needs in the budgeted
-  view, `explore` reads up to four of the truncated subtrees and merges them
-  in. The common case still costs one bounded snapshot.
+- An application can be running with no readable window yet. Instead of
+  failing, the runtime shows Jev a blank screen with a note ("No window of the
+  application can be read right now … A keyboard shortcut may still work.").
+  Only three unreadable looks in a row (`MAX_BLIND_LOOKS`) fail the step.
+- When a step cannot find what it needs in the budgeted view, `explore` reads
+  up to four of the subtrees the engine cut short and merges them in. The
+  common case still costs one bounded snapshot.
 
 ## The step driver
 
