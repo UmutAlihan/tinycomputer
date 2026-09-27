@@ -129,6 +129,16 @@ fn press_booking(sim: &mut Sim, name: &str) {
 fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec<Candidate>) {
     let widget = [root, "group \"Booking\""];
     candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
+    // The destination's own container names its recent searches, so it
+    // mentions the option without being it; pressing it chooses nothing.
+    candidates.push(node(
+        "destinationCity Empty RECENT SEARCHES Srinagar Srinagar International Airport SXR \
+         POPULAR DESTINATIONS Mumbai Chhatrapati Shivaji Maharaj International Airport BOM",
+        "button",
+        &["Click"],
+        &widget,
+        81.0,
+    ));
     if booking.searching {
         // A suggestion row that claims to take text but does not, as
         // IndiGo's comboboxes do.

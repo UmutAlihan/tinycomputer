@@ -255,7 +255,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             // not one of the options it offers.
             let pool = closest(
                 pool.into_iter()
-                    .filter(|candidate| mentions(candidate, option) && !editable(candidate))
+                    .filter(|candidate| {
+                        mentions(candidate, option)
+                            && !editable(candidate)
+                            && !lists_more_than(candidate, option)
+                    })
                     .collect(),
             );
             // Matches that all name one option leave nothing to judge; a
@@ -825,6 +829,26 @@ fn records_of(groups: &[Group]) -> Vec<Record> {
                 .collect(),
         })
         .collect()
+}
+
+/// Words beyond the option's own that a label may carry and still be the
+/// option ("Srinagar, SXR Srinagar International Airport").
+const OPTION_EXTRA_WORDS: usize = 12;
+
+/// Whether a label says far more than the option: a control whose name
+/// strings together a whole list (recent searches, every day of a month)
+/// mentions the option without being it.
+fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
+    let words = |text: &str| {
+        plain(text)
+            .split(' ')
+            .filter(|word| !word.is_empty())
+            .count()
+    };
+    candidate
+        .name
+        .as_deref()
+        .is_some_and(|name| words(name) > words(option) + OPTION_EXTRA_WORDS)
 }
 
 /// Whether an element takes typed text.
