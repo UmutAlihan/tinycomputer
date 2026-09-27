@@ -1497,9 +1497,28 @@ async fn enter_picks_a_date_from_a_calendar_without_telling_jev_the_date() {
 
 #[test]
 fn a_date_is_told_from_other_options_and_containers_give_way() {
-    assert!(super::steps::looks_like_date("Sunday 18 October 2026"));
-    assert!(super::steps::looks_like_date("18 oct") == false);
-    assert!(!super::steps::looks_like_date("Srinagar"));
+    use super::steps::{closest, looks_like_date};
+    assert!(looks_like_date("Sunday 18 October 2026"));
+    assert!(looks_like_date("october 3"));
+    assert!(!looks_like_date("18 oct"), "a month must be spelled out");
+    assert!(!looks_like_date("October"), "a month alone is no day");
+    assert!(!looks_like_date("Srinagar 40"));
+
+    let day = node("Sunday, 18 October 2026", "button", &["Click"], &[], 0.0);
+    let month = node(
+        &format!("departureDate {}", "Sunday, 18 October 2026 ".repeat(20)),
+        "button",
+        &["Click"],
+        &[],
+        0.0,
+    );
+    let names = |kept: Vec<Candidate>| kept.into_iter().filter_map(|node| node.name).collect::<Vec<_>>();
+    assert_eq!(
+        names(closest(vec![month.clone(), day.clone()])),
+        [day.name.clone().unwrap()]
+    );
+    assert_eq!(names(closest(vec![month.clone()])).len(), 1, "a lone match stays");
+    assert!(closest(Vec::new()).is_empty());
 }
 
 #[tokio::test]

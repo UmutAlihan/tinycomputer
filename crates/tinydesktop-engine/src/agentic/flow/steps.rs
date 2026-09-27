@@ -734,7 +734,7 @@ const MONTHS: &[&str] = &[
 ];
 
 /// Whether `option` names a calendar day: a month name and a day number.
-fn looks_like_date(option: &str) -> bool {
+pub(super) fn looks_like_date(option: &str) -> bool {
     let lower = option.to_lowercase();
     let words = lower
         .split(|character: char| !character.is_alphanumeric())
@@ -748,7 +748,7 @@ fn looks_like_date(option: &str) -> bool {
 /// The matches whose labels say little besides the option: a container
 /// whose label strings together everything inside it (a calendar button
 /// named with every day of the month) is dropped when a plainer match exists.
-fn closest(matches: Vec<Candidate>) -> Vec<Candidate> {
+pub(super) fn closest(matches: Vec<Candidate>) -> Vec<Candidate> {
     let length = |candidate: &Candidate| candidate.name.as_deref().map_or(0, str::len);
     let Some(shortest) = matches.iter().map(length).min() else {
         return matches;
