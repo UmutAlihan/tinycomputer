@@ -13,7 +13,7 @@ use super::{
     },
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     act::DONE,
-    ask::{self, Questions, chosen, condition, numbered, probability},
+    ask::{self, Questions, chosen, condition, numbered},
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute},
 };
