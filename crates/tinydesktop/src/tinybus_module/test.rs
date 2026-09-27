@@ -524,3 +524,18 @@ fn the_browser_executable_is_configured_or_refused() {
     assert!(DesktopService::from_config(&json!({"browser": {"executable": 7}})).is_err());
     assert!(DesktopService::from_config(&json!({"browser": "chrome"})).is_err());
 }
+
+#[test]
+fn the_browser_cursor_pace_is_configured_or_refused() {
+    use super::dispatch::browser_config;
+    assert_eq!(
+        browser_config(&json!({})).unwrap().cursor,
+        tinydesktop_browser::CursorPace::Natural
+    );
+    let calm = browser_config(&json!({"browser": {"cursor": "calm", "executable": "/c"}})).unwrap();
+    assert_eq!(calm.cursor, tinydesktop_browser::CursorPace::Calm);
+    assert_eq!(calm.executable.as_deref(), Some("/c"));
+    assert!(DesktopService::from_config(&json!({"browser": {"cursor": "off"}})).is_ok());
+    assert!(DesktopService::from_config(&json!({"browser": {"cursor": "frantic"}})).is_err());
+    assert!(DesktopService::from_config(&json!({"browser": {"cursor": true}})).is_err());
+}

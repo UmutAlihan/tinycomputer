@@ -88,7 +88,9 @@ impl DesktopService {
             })
             .transpose()?;
         let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone());
-        runner.executable = browser_executable(config)?;
+        let browser = browser_config(config)?;
+        runner.executable = browser.executable;
+        runner.cursor = browser.cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
         if let Some(planner) = planner {
             tasks = tasks.with_planner(planner);
@@ -571,20 +573,36 @@ pub(super) fn desktop_availability(permissions: &DesktopResponse) -> SurfaceAvai
     }
 }
 
-/// The `browser.executable` configuration: the Chrome or Chromium binary to
-/// launch where the platform's own discovery would not find one.
-fn browser_executable(config: &serde_json::Value) -> Result<Option<String>> {
+/// The `browser` configuration.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct BrowserConfig {
+    /// `browser.executable`: the Chrome or Chromium binary to launch where
+    /// the platform's own discovery would not find one.
+    executable: Option<String>,
+    /// `browser.cursor`: the pace the agent's cursor is drawn at in a
+    /// visible session, or `off`.
+    cursor: CursorPace,
+}
+
+fn browser_config(config: &serde_json::Value) -> Result<BrowserConfig> {
     let Some(browser) = config.as_object().and_then(|object| object.get("browser")) else {
-        return Ok(None);
+        return Ok(BrowserConfig::default());
     };
     let invalid = || crate::Error::ConfigFieldType {
         field: "browser",
-        expected: "an object whose optional `executable` is a string",
+        expected: "an object whose optional `executable` is a string and optional `cursor` is \
+                   off, brisk, natural, or calm",
     };
     let browser = browser.as_object().ok_or_else(invalid)?;
-    match browser.get("executable") {
-        None => Ok(None),
-        Some(serde_json::Value::String(path)) => Ok(Some(path.clone())),
-        Some(_) => Err(invalid()),
-    }
+    let executable = match browser.get("executable") {
+        None => None,
+        Some(serde_json::Value::String(path)) => Some(path.clone()),
+        Some(_) => return Err(invalid()),
+    };
+    let cursor = match browser.get("cursor") {
+        None => CursorPace::default(),
+        Some(serde_json::Value::String(pace)) => pace.parse().map_err(|_| invalid())?,
+        Some(_) => return Err(invalid()),
+    };
+    Ok(BrowserConfig { executable, cursor })
 }
