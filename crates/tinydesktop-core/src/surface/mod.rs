@@ -67,6 +67,20 @@ pub trait Surface: Clone + Send + 'static {
     /// Gives the application a moment to commit what it was just given, as a
     /// token field does when it turns an address into a token.
     fn settle(&self) {}
+
+    /// Loads `url`, for a surface that has addresses.
+    ///
+    /// A desktop application has none, so the default refuses with
+    /// `ACTION_NOT_SUPPORTED`; a browser tab navigates.
+    fn navigate(&self, url: &str) -> DesktopResponse {
+        DesktopResponse::err(
+            "navigate",
+            tinydesktop_bus::DesktopError::new(
+                "ACTION_NOT_SUPPORTED",
+                format!("this surface has no addresses to load {url} into"),
+            ),
+        )
+    }
 }
 
 #[cfg(test)]

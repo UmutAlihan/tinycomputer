@@ -285,6 +285,8 @@ fn text_that_never_arrives_is_reported_as_not_delivered() {
 }
 
 #[test]
-fn a_surface_settles_instantly_unless_it_says_otherwise() {
+fn a_surface_settles_instantly_and_has_no_addresses_unless_it_says_otherwise() {
     Surface::settle(&TextBackend::default());
+    let refused = Surface::navigate(&TextBackend::default(), "https://example.com");
+    assert_eq!(refused.error.unwrap().code, "ACTION_NOT_SUPPORTED");
 }
