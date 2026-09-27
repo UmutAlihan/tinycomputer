@@ -192,16 +192,18 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
         target: Option<Candidate>,
         text: Option<String>,
     ) -> DesktopResponse {
-        match self.active_browser() {
-            Some(browser) => browser.execute(operation, target, text),
-            None => self.desktop.execute(operation, target, text),
+        match (self.active_browser(), &self.desktop) {
+            (Some(browser), _) => browser.execute(operation, target, text),
+            (None, Some(desktop)) => desktop.execute(operation, target, text),
+            (None, None) => no_desktop("execute"),
         }
     }
 
     fn read_value(&self, target: &Candidate) -> Option<String> {
-        match self.active_browser() {
-            Some(browser) => browser.read_value(target),
-            None => self.desktop.read_value(target),
+        match (self.active_browser(), &self.desktop) {
+            (Some(browser), _) => browser.read_value(target),
+            (None, Some(desktop)) => desktop.read_value(target),
+            (None, None) => None,
         }
     }
 
