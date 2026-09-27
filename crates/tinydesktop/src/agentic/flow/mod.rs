@@ -57,6 +57,8 @@ use validate::{step_path, substitute};
 const MAX_ACTIONS: u32 = 120;
 /// Upper bound on [`RunFlowRequest::max_model_calls`].
 const MAX_CALLS: u32 = 300;
+/// Consecutive unreadable observations that fail a step.
+const MAX_BLIND_LOOKS: u32 = 3;
 
 /// Runs `request` against the live desktop.
 pub(crate) async fn run_flow(
@@ -166,6 +168,7 @@ pub(super) struct FlowRun<'r, B> {
     actions: u32,
     reports: Vec<StepReport>,
     pub(super) pending: Option<JevTarget>,
+    blind_looks: u32,
 }
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
@@ -194,6 +197,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             actions: 0,
             reports: Vec::new(),
             pending: None,
+            blind_looks: 0,
         }
     }
 
@@ -321,18 +325,42 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     }
 
     /// Reads the application's current surface.
-    pub(super) async fn look(&self) -> Result<Screen, Halt> {
-        observe_async(self.backend.clone(), self.app.clone(), None, Depth::Full)
-            .await
-            .map_err(|error| {
-                Halt::Failed(format!(
-                    "the screen could not be read: {}",
-                    error
-                        .error
-                        .as_ref()
-                        .map_or("unknown error", |error| error.message.as_str())
-                ))
-            })
+    ///
+    /// An application can be running with nothing readable on screen — a
+    /// document app showing only its open panel, or one still starting. That
+    /// is reported to Jev as a blank screen with a note, so a keyboard move can
+    /// still make progress; only [`MAX_BLIND_LOOKS`] such looks in a row fail
+    /// the step.
+    pub(super) async fn look(&mut self) -> Result<Screen, Halt> {
+        match observe_async(self.backend.clone(), self.app.clone(), None, Depth::Full).await {
+            Ok(screen) => {
+                self.blind_looks = 0;
+                Ok(screen)
+            }
+            Err(error) => {
+                let reason = error
+                    .error
+                    .as_ref()
+                    .map_or_else(|| "unknown error".to_owned(), |error| error.message.clone());
+                self.blind_looks = self.blind_looks.saturating_add(1);
+                if self.blind_looks >= MAX_BLIND_LOOKS {
+                    return Err(Halt::Failed(format!(
+                        "the screen could not be read: {reason}"
+                    )));
+                }
+                Ok(Screen {
+                    app: self.app.clone(),
+                    window: None,
+                    surface: "none".to_owned(),
+                    root: None,
+                    candidates: Vec::new(),
+                    context: vec![format!(
+                        "No window of the application can be read right now ({reason}). A keyboard shortcut may still work."
+                    )],
+                    truncated: None,
+                })
+            }
+        }
     }
 
     /// Runs one desktop action, charging it to the budget and the step log.
