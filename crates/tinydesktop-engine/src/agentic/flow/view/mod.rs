@@ -52,10 +52,12 @@ pub(in crate::agentic) fn named_in_stop_before(label: &str, stop_before: &[Strin
 
 /// Whether pressing `candidate` on `screen` must be treated as irreversible:
 /// its own label names a hard-to-undo action, the flow's own `stop_before`
-/// steps already name it, or it is an unnamed control offered inside a
+/// steps already name it, it is an unnamed control offered inside a
 /// confirmation sheet — the shape of "Delete"/"Cancel" dialogs whose default
 /// button carries no accessible name on some platforms, so the denylist can
-/// never see the word that would otherwise gate it.
+/// never see the word that would otherwise gate it — or the screen itself
+/// shows payment evidence, so a control worded only "Continue" on a card form
+/// is caught even though its own label says nothing about money.
 pub(in crate::agentic) fn is_destructive(
     candidate: &Candidate,
     screen: &Screen,
@@ -69,6 +71,7 @@ pub(in crate::agentic) fn is_destructive(
     destructive_label(&label(candidate).to_ascii_lowercase())
         || named_in_stop_before(name, stop_before)
         || (screen.surface == "sheet" && candidate.name.is_none())
+        || tinydesktop_core::screen_payment_evidence(screen).is_some()
 }
 
 #[cfg(test)]
