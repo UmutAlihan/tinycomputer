@@ -51,17 +51,18 @@ fn malformed_steps_explain_what_is_wrong() {
         .unwrap_err()
         .to_string();
     assert!(wrong_payload.contains("in `read` step"), "{wrong_payload}");
-    for (value, kind) in [
-        (json!(null), "null"),
-        (json!(true), "a boolean"),
-        (json!(3), "a number"),
-        (json!([]), "an array"),
-    ] {
+    let empty = serde_json::from_value::<FlowStep>(json!({}))
+        .unwrap_err()
+        .to_string();
+    assert!(empty.contains("found none"), "{empty}");
+    for value in [json!(null), json!(true), json!(3), json!([])] {
         let error = serde_json::from_value::<FlowStep>(value)
             .unwrap_err()
             .to_string();
-        assert!(error.contains(kind), "{error}");
+        assert!(error.contains("a step: a string"), "{error}");
     }
+    let borrowed: FlowStep = serde_json::from_str(r#""plain""#).unwrap();
+    assert_eq!(borrowed, FlowStep::Intent("plain".into()));
 }
 
 #[test]

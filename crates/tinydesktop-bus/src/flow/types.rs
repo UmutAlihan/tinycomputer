@@ -62,40 +62,60 @@ impl Serialize for FlowStep {
 
 impl<'de> Deserialize<'de> for FlowStep {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        match Value::deserialize(deserializer)? {
-            Value::String(intent) => Ok(Self::Intent(intent)),
-            Value::Object(object) if object.len() == 1 => {
-                let kind = object.keys().next().cloned().unwrap_or_default();
-                if !STEP_KINDS.contains(&kind.as_str()) {
-                    return Err(de::Error::custom(format!(
-                        "unknown step kind `{kind}`; expected a string or one of {}",
-                        STEP_KINDS.join(", ")
-                    )));
-                }
-                serde_json::from_value(Value::Object(object))
-                    .map(Self::Action)
-                    .map_err(|error| de::Error::custom(format!("in `{kind}` step: {error}")))
-            }
-            Value::Object(object) => Err(de::Error::custom(format!(
-                "a step object must have exactly one key naming its kind, found {}",
-                object.len()
-            ))),
-            other => Err(de::Error::custom(format!(
-                "a step must be a string or an object, found {}",
-                kind_of(&other)
-            ))),
-        }
+        deserializer.deserialize_any(StepVisitor)
     }
 }
 
-fn kind_of(value: &Value) -> &'static str {
-    match value {
-        Value::Null => "null",
-        Value::Bool(_) => "a boolean",
-        Value::Number(_) => "a number",
-        Value::String(_) => "a string",
-        Value::Array(_) => "an array",
-        Value::Object(_) => "an object",
+/// Reads a step straight from the input rather than through a
+/// `serde_json::Value`, whose map would sort the keys of an `enter` step.
+struct StepVisitor;
+
+impl<'de> Visitor<'de> for StepVisitor {
+    type Value = FlowStep;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a step: a string, or an object with exactly one key naming its kind")
+    }
+
+    fn visit_str<E: de::Error>(self, intent: &str) -> Result<FlowStep, E> {
+        Ok(FlowStep::Intent(intent.to_owned()))
+    }
+
+    fn visit_string<E: de::Error>(self, intent: String) -> Result<FlowStep, E> {
+        Ok(FlowStep::Intent(intent))
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<FlowStep, A::Error> {
+        let Some(kind) = access.next_key::<String>()? else {
+            return Err(de::Error::custom(
+                "a step object must have exactly one key naming its kind, found none",
+            ));
+        };
+        let context = |error: A::Error| de::Error::custom(format!("in `{kind}` step: {error}"));
+        let action = match kind.as_str() {
+            "open" => FlowAction::Open(access.next_value().map_err(context)?),
+            "do" => FlowAction::Do(access.next_value().map_err(context)?),
+            "enter" => FlowAction::Enter(access.next_value().map_err(context)?),
+            "choose" => FlowAction::Choose(access.next_value().map_err(context)?),
+            "read" => FlowAction::Read(access.next_value().map_err(context)?),
+            "verify" => FlowAction::Verify(access.next_value().map_err(context)?),
+            "wait_for" => FlowAction::WaitFor(access.next_value().map_err(context)?),
+            "stop_before" => FlowAction::StopBefore(access.next_value().map_err(context)?),
+            "repeat_until" => FlowAction::RepeatUntil(access.next_value().map_err(context)?),
+            "if" => FlowAction::If(access.next_value().map_err(context)?),
+            _ => {
+                return Err(de::Error::custom(format!(
+                    "unknown step kind `{kind}`; expected a string or one of {}",
+                    STEP_KINDS.join(", ")
+                )));
+            }
+        };
+        if let Some(extra) = access.next_key::<String>()? {
+            return Err(de::Error::custom(format!(
+                "a step object must have exactly one key naming its kind, found `{kind}` and `{extra}`"
+            )));
+        }
+        Ok(FlowStep::Action(action))
     }
 }
 
