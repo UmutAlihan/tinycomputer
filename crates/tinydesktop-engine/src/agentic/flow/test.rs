@@ -716,6 +716,9 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         "move" => pick(question, "shortcut", 0.9),
         "shortcut" => pick(question, "new_item", 0.9),
         "confirm" => noul(0.9),
+        // Every action helps and no field shows an error, unless a test says.
+        "helped" => noul(0.9),
+        _ if id.starts_with("error_") => noul(0.05),
         "dismiss" => pick(question, "Keep Editing", 0.9),
         "region" => pick(question, "Region 1", 0.9),
         _ if id.starts_with("slot_") => {
@@ -766,10 +769,13 @@ async fn run_with(
         },
         pending: Arc::default(),
     };
+    // One framing per decision, so every test that counts requests counts
+    // decisions; voting has its own tests.
     let mut request = RunFlowRequest {
         flow: serde_json::from_value(flow).unwrap(),
         include_values: true,
         trace: true,
+        votes: 1,
         ..RunFlowRequest::default()
     };
     configure(&mut request);
