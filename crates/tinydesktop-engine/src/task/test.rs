@@ -20,7 +20,7 @@ use tinydesktop_bus::{
 };
 
 use super::interpret::app_at;
-use super::{FlowFuture, FlowRunner, MAX_TASKS, Tasks, input_kind, next_calls};
+use super::{FlowFuture, FlowRunner, MAX_TASKS, Tasks, capabilities, input_kind, next_calls};
 
 /// Replies queued in order; a missing reply never resolves, like a flow
 /// still running.
@@ -587,4 +587,39 @@ fn the_app_in_front_is_the_last_opened_before_a_step() {
     assert_eq!(app_at(&steps, 1), "Mail");
     assert_eq!(app_at(&steps, 3), "browser");
     assert_eq!(app_at(&steps, 99), "browser");
+}
+
+#[tokio::test]
+async fn describe_documents_every_member_and_its_examples_really_work() {
+    let described = capabilities(Vec::new(), true);
+    let names = described
+        .members
+        .iter()
+        .map(|member| member.name.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(names, tinydesktop_bus::agent::names::METHODS);
+    let confidential = described
+        .members
+        .iter()
+        .filter(|member| member.confidential)
+        .map(|member| member.name.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(confidential, tinydesktop_bus::agent::names::CONFIDENTIAL);
+    assert!(described.step_kinds.iter().any(|kind| kind == "browse"));
+    assert!(!described.planner_configured);
+
+    let flight = &described.examples[0];
+    assert_eq!(flight.member, "StartTask");
+    let request: StartTaskRequest = serde_json::from_value(flight.request.clone()).unwrap();
+    let (tasks, _) = controller(Vec::new());
+    let view = tasks.start(&request).data.unwrap();
+    let TaskStatus::NeedsInput { fields } = view.status else {
+        panic!("the example leaves one fact for the caller to supply");
+    };
+    assert_eq!(fields.len(), 1);
+    assert_eq!(fields[0].name, "phone");
+    assert_eq!(fields[0].kind, InputKind::Phone);
+    for example in &described.examples[1..] {
+        assert!(names.contains(&example.member.as_str()));
+    }
 }

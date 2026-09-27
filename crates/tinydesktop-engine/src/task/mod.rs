@@ -17,6 +17,7 @@
 //! How a flow actually runs is behind [`FlowRunner`], so this controller is
 //! tested with scripted runs and the module plugs in the real flow runtime.
 
+mod describe;
 mod interpret;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -38,6 +39,7 @@ use tinydesktop_bus::{
 use tinydesktop_core::Facts;
 use tokio::sync::watch;
 
+pub use describe::capabilities;
 use interpret::{Next, Resume, finished, run_outcome};
 
 /// The future a [`FlowRunner`] returns: the flow runtime's reply envelope.

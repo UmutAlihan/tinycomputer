@@ -40,9 +40,7 @@ fn task_id() -> Value {
 }
 
 fn members() -> Vec<MemberDoc> {
-    let object = |properties: Value, required: &[&str]| {
-        json!({"type": "object", "required": required, "properties": properties})
-    };
+    let object = |properties: Value, required: &[&str]| json!({"type": "object", "required": required, "properties": properties});
     vec![
         member(
             methods::DESCRIBE,
@@ -119,12 +117,7 @@ fn members() -> Vec<MemberDoc> {
             ),
             "TaskView",
         ),
-        member(
-            methods::CANCEL_TASK,
-            "Stops a task.",
-            task_id(),
-            "TaskView",
-        ),
+        member(methods::CANCEL_TASK, "Stops a task.", task_id(), "TaskView"),
         member(
             methods::TASK_REPORT,
             "Everything a task did: steps, reads, and learned hints.",
