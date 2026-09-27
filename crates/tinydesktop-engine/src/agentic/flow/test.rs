@@ -1294,14 +1294,32 @@ async fn an_irreversible_control_is_refused_inside_an_ordinary_step() {
 
 #[tokio::test]
 async fn move_outcomes_cover_finished_stuck_wait_and_a_missing_shortcut() {
+    // With no completion judge to overrule it, "finished" ends the step.
     let finished = run_with(
         App::default(),
         json!({"app": "Mail", "steps": ["tidy up"]}),
-        |_| {},
+        |request| request.disabled_loops = vec![FlowLoop::Completion],
         |id, question, _| (id == "move").then(|| pick(question, "finished", 0.9)),
     )
     .await;
     assert_eq!(finished.result.stop, FlowStopReason::Completed);
+
+    // A judge that sees the step undone overrules it: the loop acts instead
+    // of skipping a step that was never done.
+    let overruled = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["tidy up"]}),
+        |request| request.max_actions = 3,
+        |id, question, _| (id == "move").then(|| pick(question, "finished", 0.9)),
+    )
+    .await;
+    assert_ne!(overruled.result.stop, FlowStopReason::Completed);
+    assert!(!overruled.app.sim().clicks.is_empty(), "it acted instead");
+    assert!(overruled.requests.iter().any(|request| {
+        serde_json::to_string(&request.state)
+            .unwrap()
+            .contains("does not yet clearly show this step done")
+    }));
 
     let stuck = run_with(
         App::default(),
