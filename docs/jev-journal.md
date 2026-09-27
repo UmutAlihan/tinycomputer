@@ -66,7 +66,10 @@ has `""`, and goal and intent runs carry their goal or intent text.
 
 A voted decision writes one `exchange` per framing and then one `decision`.
 The framings run concurrently, so a decision's `wall_ms` is close to its
-slowest framing's `latency_ms`, not their sum. A parent step (`if`,
+slowest framing's `latency_ms`, not their sum. The `turn` events are where
+the summary's decisions-per-turn come from: a turn waits for its decisions
+one after another, so that number, not the call count, is what a `do` step's
+Jev latency scales with. A parent step (`if`,
 `repeat_until`) ends after its children, and its `wall_ms` includes theirs.
 
 ## Reading a run
@@ -86,6 +89,8 @@ module does. The summary looks like:
 run      flow: Mail: move Thursday's sync to Friday
 wall       41.2s
 jev        29.8s  72%  46 decisions, 230 calls (0 failed); latency p50 540 ms, p90 910 ms, max 2210 ms; mean request 14022 B; tokens 812000 in, 3100 out
+window   largest call 8120 tokens, 25% of Jev's 32 K
+turns    12 do turns; decisions in sequence per turn: mean 2.40, most 5
 observe     6.1s  14%  61 reads
 act         3.9s   9%  14 actions, plus 2.8s settling
 other       1.4s   3%
