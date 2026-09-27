@@ -2115,6 +2115,7 @@ dependencies = [
  "tinydesktop-browser",
  "tinydesktop-bus",
  "tinydesktop-core",
+ "tinydesktop-cursor",
  "tinydesktop-engine",
  "tinyinference-llm",
  "tokio",
