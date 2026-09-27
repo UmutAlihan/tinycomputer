@@ -401,13 +401,21 @@ fn clickable(candidates: &[Candidate]) -> Vec<Candidate> {
 }
 
 /// The text an element shows: its value, else its name.
-fn readable(candidate: &Candidate) -> Option<String> {
-    candidate
+///
+/// A control's numeric value (a radio button's `1`) says less than its name,
+/// so a named control with a number for a value reads as its name.
+pub(super) fn readable(candidate: &Candidate) -> Option<String> {
+    let value = candidate
         .value
         .as_ref()
         .and_then(Value::as_str)
-        .filter(|value| !value.trim().is_empty())
-        .map(str::to_owned)
-        .or_else(|| candidate.name.clone())
-        .filter(|text| !text.trim().is_empty())
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let numeric = value.is_some_and(|value| value.parse::<f64>().is_ok());
+    match (value, candidate.name.as_deref()) {
+        (Some(_), Some(name)) if numeric && !name.trim().is_empty() => Some(name.to_owned()),
+        (Some(value), _) => Some(value.to_owned()),
+        (None, Some(name)) if !name.trim().is_empty() => Some(name.to_owned()),
+        _ => None,
+    }
 }

@@ -218,15 +218,12 @@ impl Scenario {
             )),
             Check::CalculatorShows(value) => {
                 let tree = snapshot_text(host, self.app).await?;
+                let shown = tree.contains(value) || tree.contains(&thousands(value));
                 Ok(Verdict {
-                    passed: tree.contains(value) || tree.contains(&thousands(value)),
+                    passed: shown,
                     detail: format!(
                         "the Calculator tree {} {value}",
-                        if tree.contains(value) {
-                            "shows"
-                        } else {
-                            "does not show"
-                        }
+                        if shown { "shows" } else { "does not show" }
                     ),
                 })
             }

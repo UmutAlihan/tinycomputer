@@ -1502,3 +1502,38 @@ fn a_rich_text_area_reports_the_text_inside_it_as_its_contents() {
             .is_none()
     );
 }
+
+#[test]
+fn a_named_control_with_a_numeric_value_reads_as_its_name() {
+    let radio = |value: &str| Candidate {
+        role: "radiobutton".to_owned(),
+        name: Some("Dark".to_owned()),
+        value: Some(json!(value)),
+        ..Candidate::default()
+    };
+    assert_eq!(super::steps::readable(&radio("1")).as_deref(), Some("Dark"));
+    assert_eq!(
+        super::steps::readable(&radio("Night")).as_deref(),
+        Some("Night")
+    );
+    let blank = Candidate {
+        role: "group".to_owned(),
+        name: Some(" ".to_owned()),
+        ..Candidate::default()
+    };
+    assert!(super::steps::readable(&blank).is_none());
+}
+
+#[test]
+fn the_front_window_is_the_focused_then_the_first_visible_titled_one() {
+    use super::super::screen::front_of;
+    let windows = [
+        json!({"id": "w-1", "title": "", "visible": true}),
+        json!({"id": "w-2", "title": "Desktop", "visible": true}),
+        json!({"id": "w-3", "title": "Other", "visible": false, "is_focused": true}),
+    ];
+    assert_eq!(front_of(&windows).as_deref(), Some("w-3"));
+    assert_eq!(front_of(&windows[..2]).as_deref(), Some("w-2"));
+    assert_eq!(front_of(&windows[..1]).as_deref(), Some("w-1"));
+    assert!(front_of(&[]).is_none());
+}
