@@ -359,7 +359,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             // it before the next `holds` check so that call, and the final
             // one below on the last round, are traced to this repeat_until
             // step rather than misattributed to the child that just ran.
-            self.step = path.to_owned();
+            path.clone_into(&mut self.step);
         }
         if self.holds(log, &condition_text).await? >= DONE {
             return Ok(Ended::new(StepOutcome::Done, "held after the last round"));
