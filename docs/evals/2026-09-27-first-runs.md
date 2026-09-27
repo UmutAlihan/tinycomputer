@@ -26,7 +26,7 @@ recalled them.
 
 | Finding | Change |
 |---|---|
-| Jev's probabilities arrive rounded to two decimals; the client rejected valid Score answers and near-tied Choices | tolerance fixes in `vendor/tinyjevclient` (upstream PR) |
+| Jev's probabilities arrive rounded to two decimals; the client rejected valid Score answers and near-tied Choices | the Jev client moved into `tinyinference` (`tinyinference_decisions`); its Score tolerance had been fixed there, and the Choice tolerance fix is an upstream PR |
 | `--headed` press timed out on TextEdit's open panel (no window to focus) | the lab defaults to headless |
 | an app with no readable window failed the step | blank-screen looks with a note, for up to three turns |
 | the paste fallback always failed: the engine's clipboard helper was not beside the module | `scripts/lab` and macOS release archives ship `agent-desktop-macos-helper` |

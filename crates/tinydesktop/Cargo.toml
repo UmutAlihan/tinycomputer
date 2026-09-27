@@ -23,7 +23,7 @@ crate-type = ["rlib", "cdylib"]
 # takes one dependency rather than two, and so `tinydesktop::SnapshotRequest`
 # and `tinydesktop_bus::SnapshotRequest` are the same type.
 tinydesktop-bus = { workspace = true }
-tinyjevclient = { workspace = true }
+tinyinference_decisions = { workspace = true }
 tinybus = { workspace = true }
 tinybus-module = { workspace = true }
 thiserror = { workspace = true }

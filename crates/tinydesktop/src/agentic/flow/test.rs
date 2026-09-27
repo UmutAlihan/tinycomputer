@@ -21,7 +21,7 @@ use tinydesktop_bus::{
     DesktopResponse, Flow, FlowLoop, FlowRunResult, FlowStopReason, GroundingHint, JevOperation,
     RunFlowRequest, StepOutcome, ValidateFlowRequest,
 };
-use tinyjevclient::{
+use tinyinference_decisions::{
     Answer, ChoiceAnswer, EvaluationFailure, EvaluationRequest, EvaluationResponse,
     EvaluationResult, NoulAnswer, Question, ScoreAnswer,
 };
@@ -327,7 +327,7 @@ impl Evaluator for Oracle {
             self.requests.lock().unwrap().push(request.clone());
             if self.fail {
                 return Err(EvaluationFailure {
-                    error: tinyjevclient::Error::RateLimited,
+                    error: Box::new(tinyinference_decisions::Error::RateLimited),
                     attempts: 1,
                     latency: Duration::ZERO,
                 });
@@ -345,7 +345,7 @@ impl Evaluator for Oracle {
                 response: EvaluationResponse {
                     model: "typesafe/jev-test".to_owned(),
                     answers,
-                    usage: tinyjevclient::Usage::default(),
+                    usage: tinyinference_decisions::Usage::default(),
                 },
                 request_id: None,
                 attempts: 1,

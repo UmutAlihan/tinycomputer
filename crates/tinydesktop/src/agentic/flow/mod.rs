@@ -41,7 +41,7 @@ use tinydesktop_bus::{
     FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevExchange, JevMetrics, JevTarget,
     RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
-use tinyjevclient::{Answer, EvaluationRequest};
+use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use super::{
     JevRuntime,

@@ -194,7 +194,8 @@ crates/
 vendor/
 ├── tinybus/            # pinned TinyBus git submodule (host types, module SDK)
 ├── agent-desktop/      # pinned agent-desktop git submodule (the engine)
-└── tinyjevclient/      # pinned typed Jev/OpenRouter client
+└── tinyinference/      # pinned TinyInference: the Jev decisions client
+                        # (linked) and the lab's optional LLM author
 docs/
 ├── README.md           # documentation index and conventions
 ├── specs/              # behavior and architecture specifications

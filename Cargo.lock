@@ -1361,7 +1361,7 @@ dependencies = [
  "tinybus",
  "tinybus-module",
  "tinydesktop-bus",
- "tinyjevclient",
+ "tinyinference_decisions",
  "tokio",
 ]
 
@@ -1414,8 +1414,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "tinyjevclient"
-version = "0.2.1"
+name = "tinyinference_decisions"
+version = "0.3.0"
 dependencies = [
  "httpdate",
  "reqwest",

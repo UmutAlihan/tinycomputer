@@ -22,7 +22,7 @@ use tinydesktop_bus::{
     DesktopError, DesktopResponse, JevConfig, JevConfiguration, JevDecisionKind, JevMetrics,
     JevProvider, JevTarget, ResolveIntentRequest, RunGoalRequest,
 };
-use tinyjevclient::{
+use tinyinference_decisions::{
     Client, ClientConfig, Error as JevError, EvaluationFailure, EvaluationRequest, EvaluationResult,
 };
 
@@ -112,7 +112,18 @@ impl Evaluator for Client {
                 + 'a,
         >,
     > {
-        Box::pin(Client::evaluate(self, request))
+        Box::pin(async move {
+            Client::evaluate(self, request)
+                .await
+                .map_err(|error| match error {
+                    JevError::EvaluationFailure(failure) => failure,
+                    other => EvaluationFailure {
+                        error: Box::new(other),
+                        attempts: 0,
+                        latency: Duration::ZERO,
+                    },
+                })
+        })
     }
 }
 
@@ -235,8 +246,8 @@ fn config_error(error: &JevError) -> Box<DesktopError> {
     Box::new(DesktopError::new("JEV_INVALID_CONFIG", error.to_string()))
 }
 
-fn provider_error(error: &tinyjevclient::EvaluationFailure) -> Box<DesktopResponse> {
-    let code = match &error.error {
+fn provider_error(error: &tinyinference_decisions::EvaluationFailure) -> Box<DesktopResponse> {
+    let code = match error.error.as_ref() {
         JevError::Authentication => "JEV_AUTHENTICATION",
         JevError::RateLimited => "JEV_RATE_LIMITED",
         JevError::Timeout => "JEV_TIMEOUT",

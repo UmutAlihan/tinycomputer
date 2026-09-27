@@ -31,9 +31,11 @@ repository = "https://github.com/tinyhumansai/tinydesktop"
 # release, and a pinned requirement here would stop resolving the moment it did.
 # Nothing in this workspace is published, so the path is the whole address.
 tinydesktop-bus = { path = "crates/tinydesktop-bus" }
-# Native typed Jev transport used by the desktop-control policy. Vendored as a
-# pinned submodule so provider validation and retry behavior are reproducible.
-tinyjevclient = { path = "vendor/tinyjevclient/crates/tinyjevclient" }
+# Native typed Jev transport used by the desktop-control policy: the decisions
+# crate of the vendored `vendor/tinyinference` submodule, pinned by its gitlink
+# so provider validation and retry behavior are reproducible. Only this crate
+# of TinyInference is linked into the module.
+tinyinference_decisions = { path = "vendor/tinyinference/crates/tinyinference_decisions" }
 # The desktop automation engine this module wraps: accessibility-tree
 # observation, ref allocation, and the command implementations behind every
 # member of the bus interface. Vendored as the `vendor/agent-desktop` submodule

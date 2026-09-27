@@ -8,7 +8,7 @@
 use std::collections::BTreeSet;
 
 use tinydesktop_bus::{DesktopResponse, JevDecision, JevDecisionKind, JevOperation};
-use tinyjevclient::EvaluationResult;
+use tinyinference_decisions::EvaluationResult;
 
 use super::{
     JevRuntime,

@@ -162,7 +162,7 @@ impl GoalRun {
         }
     }
 
-    fn charge(&mut self, evaluations: &[tinyjevclient::EvaluationResult]) {
+    fn charge(&mut self, evaluations: &[tinyinference_decisions::EvaluationResult]) {
         for evaluation in evaluations {
             merge_metrics(&mut self.metrics, evaluation);
         }

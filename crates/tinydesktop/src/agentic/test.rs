@@ -28,7 +28,7 @@ use tinydesktop_bus::{
     DesktopResponse, JevConfig, JevDecisionKind, JevOperation, JevProvider, JevStopReason,
     RunGoalRequest,
 };
-use tinyjevclient::{Answer, ChoiceAnswer};
+use tinyinference_decisions::{Answer, ChoiceAnswer};
 
 #[test]
 fn execution_gates_on_selected_probability_not_distribution_concentration() {
@@ -231,7 +231,11 @@ fn two_candidate_screen() -> Screen {
     screen
 }
 
-fn response(operation: &str, probability: f64, target: &str) -> tinyjevclient::EvaluationResult {
+fn response(
+    operation: &str,
+    probability: f64,
+    target: &str,
+) -> tinyinference_decisions::EvaluationResult {
     response_with(operation, probability, target, 0.9, 0.05)
 }
 
@@ -241,7 +245,7 @@ fn response_with(
     target: &str,
     selected_target_probability: f64,
     destructive: f64,
-) -> tinyjevclient::EvaluationResult {
+) -> tinyinference_decisions::EvaluationResult {
     let remainder = (1.0 - probability) / 3.0;
     let target_probability = if target == "1" {
         selected_target_probability
@@ -270,9 +274,9 @@ fn response_with(
     }))
 }
 
-fn evaluation(value: serde_json::Value) -> tinyjevclient::EvaluationResult {
+fn evaluation(value: serde_json::Value) -> tinyinference_decisions::EvaluationResult {
     let response = serde_json::from_value(value).expect("mock response decodes");
-    tinyjevclient::EvaluationResult {
+    tinyinference_decisions::EvaluationResult {
         response,
         request_id: Some("mock-request".to_owned()),
         attempts: 1,
@@ -281,19 +285,19 @@ fn evaluation(value: serde_json::Value) -> tinyjevclient::EvaluationResult {
 }
 
 struct MockEvaluator {
-    results: Mutex<VecDeque<tinyjevclient::EvaluationResult>>,
+    results: Mutex<VecDeque<tinyinference_decisions::EvaluationResult>>,
 }
 
 impl Evaluator for MockEvaluator {
     fn evaluate<'a>(
         &'a self,
-        _request: &'a tinyjevclient::EvaluationRequest,
+        _request: &'a tinyinference_decisions::EvaluationRequest,
     ) -> std::pin::Pin<
         Box<
             dyn std::future::Future<
                     Output = Result<
-                        tinyjevclient::EvaluationResult,
-                        tinyjevclient::EvaluationFailure,
+                        tinyinference_decisions::EvaluationResult,
+                        tinyinference_decisions::EvaluationFailure,
                     >,
                 > + Send
                 + 'a,
@@ -310,7 +314,7 @@ impl Evaluator for MockEvaluator {
     }
 }
 
-fn runtime(results: Vec<tinyjevclient::EvaluationResult>) -> JevRuntime {
+fn runtime(results: Vec<tinyinference_decisions::EvaluationResult>) -> JevRuntime {
     JevRuntime {
         client: Arc::new(MockEvaluator {
             results: Mutex::new(VecDeque::from(results)),
@@ -371,7 +375,7 @@ async fn goal_loop_executes_a_safe_choice_then_stops_done() {
 }
 
 async fn run_case(
-    bodies: Vec<tinyjevclient::EvaluationResult>,
+    bodies: Vec<tinyinference_decisions::EvaluationResult>,
     screen_count: usize,
     max_steps: u32,
     max_model_calls: u32,
@@ -892,22 +896,28 @@ async fn one_step_resolution_reranks_a_close_target_shortlist() {
 #[test]
 fn response_helpers_classify_provider_failures_and_policy_reasons() {
     for (error, code) in [
-        (tinyjevclient::Error::Authentication, "JEV_AUTHENTICATION"),
-        (tinyjevclient::Error::RateLimited, "JEV_RATE_LIMITED"),
-        (tinyjevclient::Error::Timeout, "JEV_TIMEOUT"),
         (
-            tinyjevclient::Error::InvalidResponse {
+            tinyinference_decisions::Error::Authentication,
+            "JEV_AUTHENTICATION",
+        ),
+        (
+            tinyinference_decisions::Error::RateLimited,
+            "JEV_RATE_LIMITED",
+        ),
+        (tinyinference_decisions::Error::Timeout, "JEV_TIMEOUT"),
+        (
+            tinyinference_decisions::Error::InvalidResponse {
                 reason: "bad".to_owned(),
             },
             "JEV_INVALID_RESPONSE",
         ),
         (
-            tinyjevclient::Error::HttpStatus { status: 500 },
+            tinyinference_decisions::Error::HttpStatus { status: 500 },
             "JEV_PROVIDER_FAILED",
         ),
     ] {
-        let failure = tinyjevclient::EvaluationFailure {
-            error,
+        let failure = tinyinference_decisions::EvaluationFailure {
+            error: Box::new(error),
             attempts: 1,
             latency: Duration::ZERO,
         };

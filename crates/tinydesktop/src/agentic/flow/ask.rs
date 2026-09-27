@@ -7,7 +7,7 @@
 use std::{collections::BTreeMap, fmt::Write as _};
 
 use serde_json::{Value, json};
-use tinyjevclient::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
+use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
 
 use super::super::{
     policy::untrusted_context,
