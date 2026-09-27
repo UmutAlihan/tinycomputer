@@ -203,16 +203,23 @@ fn covered(reply: &tinydesktop_bus::DesktopResponse) -> bool {
         .is_some_and(|error| error.message.contains("is covered by"))
 }
 
+/// The completion a step needs on `turn`: more before acting, since
+/// skipping a step that was not done derails everything after it.
+fn threshold(turn: u32) -> f64 {
+    if turn == 0 { ALREADY_DONE } else { DONE }
+}
+
 /// Ends the step when the completion judge is confident enough.
 fn finished(log: &mut StepLog, judged: &Judgement, turn: u32) -> Option<Ended> {
     let done = judged.done?;
     log.confidence = Some(done);
-    let (threshold, outcome) = if turn == 0 {
-        (ALREADY_DONE, StepOutcome::AlreadyDone)
+    let outcome = if turn == 0 {
+        StepOutcome::AlreadyDone
     } else {
-        (DONE, StepOutcome::Done)
+        StepOutcome::Done
     };
-    (done >= threshold).then(|| Ended::new(outcome, format!("accomplished (confidence {done:.2})")))
+    (done >= threshold(turn))
+        .then(|| Ended::new(outcome, format!("accomplished (confidence {done:.2})")))
 }
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
@@ -240,7 +247,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .as_ref()
                 .and_then(|last| last.target.as_ref())
                 .map(label);
-            let judged = self.judge(log, &screen, intent, last.as_deref()).await?;
+            let mut judged = self.judge(log, &screen, intent, last.as_deref()).await?;
+            if judged.next == "finished" && judged.done.is_some_and(|done| done < threshold(turn)) {
+                // The move chooser's "finished" is one vote; the completion
+                // judge, calibrated against its negation, is the one that ends
+                // a step. Short of its bar, act instead.
+                self.history.push(
+                    "the screen does not yet clearly show this step done; act on it".to_owned(),
+                );
+                judged.next = "activate".to_owned();
+            }
             let creating = creates_new(intent) && log.actions.is_empty();
             if !creating && let Some(ended) = finished(log, &judged, turn) {
                 return Ok(ended);
