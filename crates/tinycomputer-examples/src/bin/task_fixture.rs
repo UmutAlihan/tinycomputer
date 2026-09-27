@@ -5,6 +5,7 @@
 //!
 //! Needs `OPENROUTER_API_KEY` for Jev. Run it in the Docker lab, never on the
 //! host: `scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture`.
+//! Set `TINYCOMPUTER_FLOW_STRATEGY=wide` to run it with the wide strategy.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

@@ -22,7 +22,7 @@ use std::{
 };
 
 use tinycomputer_bus::{
-    FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, RunFlowRequest, RunGoalRequest,
+    FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, FlowStrategy, RunFlowRequest, RunGoalRequest,
 };
 use tinycomputer_examples::lab::{
     host::{Host, HostOptions, LabError, module_path},
