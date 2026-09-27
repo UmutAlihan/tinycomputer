@@ -1470,6 +1470,21 @@ fn text_helpers_substitute_reference_and_normalize() {
     );
     assert_eq!(validate::step_path("", 0), "1");
     assert_eq!(validate::step_path("4", 1), "4.2");
+    assert_eq!(
+        validate::substitute(
+            "${a}",
+            &BTreeMap::from([
+                ("a".to_owned(), "${b}".to_owned()),
+                ("b".to_owned(), "leaked".to_owned()),
+            ]),
+        ),
+        "${b}",
+        "a substituted value must not be rescanned for further references"
+    );
+    assert_eq!(
+        validate::substitute("trailing ${unclosed", &BTreeMap::new()),
+        "trailing ${unclosed"
+    );
 }
 
 #[test]
