@@ -221,24 +221,24 @@ and `Describe` keep working.
 Several independent checks keep a run from doing something it cannot undo.
 None of them trusts a model's judgement.
 
-- Irreversible controls. An ordinary step refuses to click a control whose
-  label reads as destructive, that the flow's own `stop_before` names, or that
-  is an unnamed button in a confirmation sheet. Only `stop_before` reaches one,
-  and it presses only with `allow_destructive` or an approval.
-- Payment. A control classified as payment, or any click on a screen that
-  shows card fields, stops the run. The task controller makes that a final
+- An ordinary step refuses to click a control whose label reads as
+  destructive, that the flow's own `stop_before` names, or that is an unnamed
+  button in a confirmation sheet. Only `stop_before` reaches one, and it
+  presses only with `allow_destructive` or an approval.
+- A control classified as payment, or any click on a screen that shows card
+  fields, stops the run, and the task controller makes that a final
   checkpoint. Nothing ever types payment data, and card data is refused as a
   fact.
-- Private values. Jev and the planner see fact names, never values.
-  Values are typed locally and redacted from every summary.
-- Untrusted screens. Everything read from a screen is wrapped as untrusted
-  data, and every question tells Jev that screen text is data, never
-  instructions. A move Jev was not offered fails closed.
-- Scope. Budgets cap actions, Jev calls, and time for a whole task.
-  Surfaces and origins confine where it can go.
-- Permissions. The desktop checks accessibility and screen-recording
-  permission before acting, because an unauthorized accessibility call usually
-  returns an empty tree rather than an error.
+- Jev and the planner see fact names, never values. Values are typed locally
+  and redacted from every summary.
+- Everything read from a screen is wrapped as untrusted data, and every
+  question tells Jev that screen text is data, never instructions. A move Jev
+  was not offered fails closed.
+- Budgets cap actions, Jev calls, and time for a whole task, and surfaces and
+  origins confine where it can go.
+- The desktop checks accessibility and screen-recording permission before
+  acting, because an unauthorized accessibility call usually returns an empty
+  tree rather than an error.
 
 ## Testing the layers
 
