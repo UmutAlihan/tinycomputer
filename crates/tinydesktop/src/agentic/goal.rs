@@ -88,27 +88,12 @@ pub(super) async fn run_goal_with<B: AgentBackend>(
             .as_ref()
             .map_or_else(|| "the selected element".to_owned(), label);
         if let Some(failure) = outcome.action_failure {
-            let code = failure
-                .error
-                .as_ref()
-                .map_or("ACTION_FAILED", |error| error.code.as_str())
-                .to_owned();
-            if let Some(selected) = &outcome.selected {
-                run.strike(&signature(selected));
+            if run.failed(&decision, outcome.selected.as_ref(), &target_label, &failure) {
+                continue;
             }
-            let note = format!("{:?} {target_label} failed with {code}", decision.operation);
-            run.record_failure(&decision, &note);
-            if !run.retry() {
-                return run.finish(JevStopReason::ActionFailed, Some(decision));
-            }
-            continue;
+            return run.finish(JevStopReason::ActionFailed, Some(decision));
         }
-        if decision.decision == JevDecisionKind::Abstain && run.retry() {
-            let note = format!(
-                "no confident target (confidence {:.2}); look for a different element, scroll, or drill",
-                decision.confidence
-            );
-            run.history.push(format!("turn {}: {note}", run.turns.len() + 1));
+        if decision.decision == JevDecisionKind::Abstain && run.abstained(&decision) {
             root = None;
             current = Some(before);
             continue;
@@ -198,6 +183,39 @@ impl GoalRun {
             return false;
         }
         self.retries = self.retries.saturating_add(1);
+        true
+    }
+
+    /// Records a failed action; `true` when a retry remains.
+    fn failed(
+        &mut self,
+        decision: &JevDecision,
+        selected: Option<&super::screen::Candidate>,
+        target_label: &str,
+        failure: &DesktopResponse,
+    ) -> bool {
+        let code = failure
+            .error
+            .as_ref()
+            .map_or("ACTION_FAILED", |error| error.code.as_str());
+        if let Some(selected) = selected {
+            self.strike(&signature(selected));
+        }
+        let note = format!("{:?} {target_label} failed with {code}", decision.operation);
+        self.record_failure(decision, &note);
+        self.retry()
+    }
+
+    /// Records a low-confidence turn; `true` when a retry remains.
+    fn abstained(&mut self, decision: &JevDecision) -> bool {
+        if !self.retry() {
+            return false;
+        }
+        self.history.push(format!(
+            "turn {}: no confident target (confidence {:.2}); look for a different element, scroll, or drill",
+            self.turns.len() + 1,
+            decision.confidence
+        ));
         true
     }
 

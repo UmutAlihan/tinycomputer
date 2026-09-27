@@ -102,28 +102,21 @@ pub(super) async fn resolve_on_screen<B: AgentBackend>(
         .ok_or_else(|| invalid_response("operation answer was unknown"))?;
     let mut destructive = noul(answers.get("destructive"));
     let target_answer_name = format!("{}_target", operation_name.to_ascii_lowercase());
-    let mut selected = target(&space, &operation_name, answers.get(&target_answer_name))
+    let first = target(&space, &operation_name, answers.get(&target_answer_name))
         .map(|(candidate, confidence)| (candidate.clone(), confidence));
-    let mut evaluations = vec![evaluation];
-    if let Some((reranked_target, reranked)) = rerank(RerankInput {
+    let (selected, evaluations) = rerank(RerankInput {
         runtime,
         intent,
         screen,
         space: &space,
         operation: &operation_name,
         target_answer: &target_answer_name,
-        selected: selected.as_ref(),
+        selected: first,
         include_values,
-        first: &evaluations[0],
+        first: evaluation,
         allow: allow_rerank,
     })
-    .await?
-    {
-        if let Some(reranked_target) = reranked_target {
-            selected = Some(reranked_target);
-        }
-        evaluations.push(reranked);
-    }
+    .await?;
     let confidence = selected
         .as_ref()
         .map_or(operation_confidence, |(_, confidence)| *confidence);
@@ -142,20 +135,19 @@ pub(super) async fn resolve_on_screen<B: AgentBackend>(
     if operation == JevOperation::TypeText && text.is_none() {
         decision = JevDecisionKind::NeedsText;
     }
-    let target = selected
-        .as_ref()
-        .map(|(candidate, _)| target_payload(candidate));
     let mut out = JevDecision {
         decision,
         operation,
-        target,
+        target: selected
+            .as_ref()
+            .map(|(candidate, _)| target_payload(candidate)),
         confidence,
         destructive,
         reason: reason(decision, confidence, destructive),
         executed: false,
     };
     let selected = selected.map(|(node, _)| node);
-    let (executed, action_failure) = if execute && decision == JevDecisionKind::Act {
+    let action_failure = if execute && decision == JevDecisionKind::Act {
         let response = execute_operation(
             backend.clone(),
             screen.app.clone(),
@@ -164,15 +156,11 @@ pub(super) async fn resolve_on_screen<B: AgentBackend>(
             text.map(str::to_owned),
         )
         .await;
-        if response.ok {
-            (true, None)
-        } else {
-            (false, Some(response))
-        }
+        out.executed = response.ok;
+        (!response.ok).then_some(response)
     } else {
-        (false, None)
+        None
     };
-    out.executed = executed;
     Ok(ResolveOutcome {
         decision: out,
         evaluations,
@@ -188,21 +176,25 @@ struct RerankInput<'a> {
     space: &'a policy::ActionSpace,
     operation: &'a str,
     target_answer: &'a str,
-    selected: Option<&'a (Candidate, f64)>,
+    selected: Option<(Candidate, f64)>,
     include_values: bool,
-    first: &'a EvaluationResult,
+    first: EvaluationResult,
     allow: bool,
 }
 
-async fn rerank(
-    input: RerankInput<'_>,
-) -> Result<Option<(Option<(Candidate, f64)>, EvaluationResult)>, Box<DesktopResponse>> {
+/// The selection after an optional rerank, and every evaluation it took.
+type Reranked = (Option<(Candidate, f64)>, Vec<EvaluationResult>);
+
+/// Re-asks a close call over the top five, keeping the first answer when
+/// the rerank finds nothing better.
+async fn rerank(input: RerankInput<'_>) -> Result<Reranked, Box<DesktopResponse>> {
     if !input.allow
         || !input
             .selected
+            .as_ref()
             .is_some_and(|(_, confidence)| *confidence < policy::ACT)
     {
-        return Ok(None);
+        return Ok((input.selected, vec![input.first]));
     }
     let candidates = shortlist(
         input.space,
@@ -210,7 +202,7 @@ async fn rerank(
         input.first.response.answers.get(input.target_answer),
     );
     if candidates.len() <= 1 {
-        return Ok(None);
+        return Ok((input.selected, vec![input.first]));
     }
     let evaluation = input
         .runtime
@@ -225,12 +217,15 @@ async fn rerank(
         ))
         .await
         .map_err(|error| provider_error(&error))?;
-    let selected =
+    let reranked =
         choice(evaluation.response.answers.get("target")).and_then(|(choice, confidence)| {
             candidates
                 .get(choice)
                 .cloned()
                 .map(|candidate| (candidate, confidence))
         });
-    Ok(Some((selected, evaluation)))
+    Ok((
+        reranked.or(input.selected),
+        vec![input.first, evaluation],
+    ))
 }
