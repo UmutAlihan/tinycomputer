@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_core::human_needed;
-use tinydesktop_core::surface::{Depth, Surface};
+use tinydesktop_core::surface::{Depth, Surface, result_groups};
 
 /// How many controls to print per page.
 const SHOWN: usize = 40;
@@ -44,7 +44,11 @@ fn probe(surface: &BrowserSurface, url: &str) {
         println!("navigate failed: {:?}", reply.error);
         return;
     }
-    std::thread::sleep(std::time::Duration::from_secs(4));
+    let wait = std::env::var("PROBE_WAIT_SECS")
+        .ok()
+        .and_then(|secs| secs.parse().ok())
+        .unwrap_or(8);
+    std::thread::sleep(std::time::Duration::from_secs(wait));
     let screen = match surface.observe("browser", None, Depth::Full) {
         Ok(screen) => screen,
         Err(reply) => {
@@ -77,5 +81,13 @@ fn probe(surface: &BrowserSurface, url: &str) {
     }
     for line in screen.context.iter().take(15) {
         println!("  | {line}");
+    }
+    for group in result_groups(&screen).iter().take(12) {
+        println!(
+            "  [{}] {} -> {:?}",
+            group.label,
+            group.fields.join(" · "),
+            group.primary.as_ref().map(|node| (&node.ref_id, &node.name))
+        );
     }
 }
