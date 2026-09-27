@@ -2,7 +2,7 @@
 
 use serde::Deserialize;
 use serde_json::{Value, json};
-use tinydesktop_bus::{DesktopResponse, SnapshotRequest, Surface};
+use tinydesktop_bus::{DesktopResponse, ListWindowsRequest, SnapshotRequest, Surface};
 
 use crate::Desktop;
 
@@ -29,6 +29,8 @@ pub(super) struct Candidate {
     pub(super) children_count: Option<usize>,
     pub(super) bounds: Option<Value>,
     pub(super) children: Vec<Candidate>,
+    /// Whether the engine cut this node's subtree short to stay in budget.
+    pub(super) subtree_truncated: bool,
     #[serde(skip)]
     pub(super) path: Vec<String>,
 }
@@ -45,6 +47,9 @@ pub(super) struct Screen {
     pub(super) context: Vec<String>,
     /// `(kept, total)` when more candidates existed than were offered.
     pub(super) truncated: Option<(usize, usize)>,
+    /// Refs of subtrees the engine cut short; observing one as a root reads
+    /// what the budget left out.
+    pub(super) unexplored: Vec<String>,
 }
 
 /// How much of the tree one observation reads.
@@ -71,7 +76,19 @@ pub(super) fn observe(
         root_ref: root.map(str::to_owned),
         ..SnapshotRequest::default()
     };
-    let mut reply = desktop.snapshot(request);
+    let mut reply = desktop.snapshot(request.clone());
+    if root.is_none()
+        && reply
+            .error
+            .as_ref()
+            .is_some_and(|error| error.code == "AMBIGUOUS_TARGET")
+        && let Some(window_id) = front_window(desktop, app)
+    {
+        reply = desktop.snapshot(SnapshotRequest {
+            window_id: Some(window_id),
+            ..request
+        });
+    }
     if !reply.ok && root.is_none() {
         reply = desktop.snapshot(SnapshotRequest {
             app: Some(app.to_owned()),
@@ -82,6 +99,22 @@ pub(super) fn observe(
         });
     }
     parse_reply(desktop, app, root, reply)
+}
+
+/// The window to observe when an application has several: its focused one,
+/// else its first visible one.
+fn front_window(desktop: &Desktop, app: &str) -> Option<String> {
+    let reply = desktop.list_windows(ListWindowsRequest {
+        app: Some(app.to_owned()),
+    });
+    let windows = reply.data?.as_array()?.clone();
+    let flag = |window: &Value, key: &str| window.get(key).and_then(Value::as_bool) == Some(true);
+    windows
+        .iter()
+        .find(|window| flag(window, "is_focused"))
+        .or_else(|| windows.iter().find(|window| flag(window, "visible")))
+        .and_then(|window| window.get("id").and_then(Value::as_str))
+        .map(str::to_owned)
 }
 
 pub(super) fn parse_reply(
@@ -126,6 +159,7 @@ pub(super) fn parse_reply(
     let mut root_node: Candidate = serde_json::from_value(tree).unwrap_or_default();
     let mut candidates = Vec::new();
     let mut context = Vec::new();
+    let mut unexplored = Vec::new();
     let mut visited = 0_usize;
     collect(
         &mut root_node,
@@ -133,6 +167,7 @@ pub(super) fn parse_reply(
         &mut Collected {
             candidates: &mut candidates,
             context: &mut context,
+            unexplored: &mut unexplored,
         },
         0,
         &mut visited,
@@ -158,12 +193,14 @@ pub(super) fn parse_reply(
         candidates,
         context,
         truncated,
+        unexplored,
     })
 }
 
 struct Collected<'a> {
     candidates: &'a mut Vec<Candidate>,
     context: &'a mut Vec<String>,
+    unexplored: &'a mut Vec<String>,
 }
 
 fn collect(
@@ -186,6 +223,9 @@ fn collect(
             |name| format!("{} {name:?}", node.role),
         );
     node.path = path.to_vec();
+    if node.subtree_truncated && !node.ref_id.is_empty() {
+        out.unexplored.push(node.ref_id.clone());
+    }
     if node.ref_id.is_empty() {
         remember_text(node, out.context);
     } else {
