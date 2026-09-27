@@ -208,6 +208,7 @@ configuration validates.
 | `trace_path` | string | where agent-desktop writes its trace |
 | `trace_strict` | bool | fail a call when its trace cannot be written |
 | `headed` | bool | use real input instead of accessibility actions |
+| `motion` | string | virtual mouse and keyboard tempo: `instant`, `brisk`, `natural` (default), `calm` ([spec](specs/virtual-input.md)) |
 | `jev` | object | Jev provider, API key, optional model, endpoint, timeout, retries, and `sdk_name` for the TinyHumans proxy |
 | `planner` | object | OpenRouter `api_key` and optional `model` for the planner; absent means no planner |
 | `browser.executable` | string | the Chrome or Chromium binary to launch, when discovery would not find one |

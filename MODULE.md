@@ -28,6 +28,8 @@ is optional:
 
 - `session_id` and `trace_path` (strings), `trace_strict` and `headed`
   (booleans) for the desktop engine;
+- `motion`: how the virtual mouse and keyboard move — `instant`, `brisk`,
+  `natural` (the default), or `calm`;
 - `jev`: the Jev provider and API key, needed by the Jev-driven and task
   members;
 - `planner`: an OpenRouter `api_key` and optional `model`, which lets

@@ -254,6 +254,7 @@ object only after the whole new configuration validates.
 | Key | Meaning |
 |---|---|
 | `session_id`, `trace_path`, `trace_strict`, `headed` | agent-desktop's session, trace, and input mode |
+| `motion` | virtual mouse and keyboard tempo: `instant`, `brisk`, `natural` (default), or `calm` |
 | `jev` | Jev provider, API key, and optional model, endpoint, timeout, retries, and `sdk_name` |
 | `planner` | an OpenRouter `api_key` and optional `model`; absent means tasks need a flow |
 | `browser.executable` | the Chrome or Chromium binary to launch |
