@@ -275,7 +275,14 @@ impl Tasks {
         }
     }
 
-    /// Stops a task. Cancelling one already finished returns it unchanged.
+    /// Stops a task, and lets go of whatever surface it still holds.
+    ///
+    /// Cancelling one already finished leaves its status unchanged — its
+    /// view still reports how it ended — but still releases its workspace.
+    /// A payment checkpoint is final without ever running to `Done`, so this
+    /// is also its only path to release the browser session it left open for
+    /// a person to pay in: without it, every checkout would permanently
+    /// consume one of a limited number of session slots.
     #[must_use]
     pub fn cancel(&self, id: &TaskId) -> AgentResponse<TaskView> {
         let Some(cell) = self.find(id) else {
@@ -286,8 +293,8 @@ impl Tasks {
                 worker.abort();
             }
             publish(&cell, TaskStatus::Cancelled, "The task was cancelled.");
-            self.runner.release(id);
         }
+        self.runner.release(id);
         AgentResponse::ok(cell.view.borrow().clone())
     }
 
