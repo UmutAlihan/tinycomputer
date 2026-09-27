@@ -39,7 +39,7 @@ tty=()
 [ -t 0 ] && [ -t 1 ] && tty=(-it)
 [ $# -eq 0 ] && set -- bash
 
-exec docker run --rm "${tty[@]}" --init --shm-size=2g \
+exec docker run --rm "${tty[@]+"${tty[@]}"}" --init --shm-size=2g \
   -v "$src:/src" \
   -v tinydesktop-lab-cargo:/usr/local/cargo/registry \
   -w "$dir" \
