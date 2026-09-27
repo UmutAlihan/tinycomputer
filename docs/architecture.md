@@ -36,7 +36,7 @@ see [`decision-loops.md`](decision-loops.md); for the task API, see
     macOS, Windows, Linux)                         in-process as a library)
 
         tinydesktop-core: Surface trait, Screen, keymap, safety, records, facts
-        tinydesktop-input: virtual mouse and keyboard, human paths and typing
+        tinydesktop-cursor: the agent's drawn cursor, aim points and glides
         tinydesktop-bus:  every type that crosses the bus, and nothing else
 ```
 
@@ -50,7 +50,7 @@ runtime at all.
 |---|---|---|
 | `tinydesktop-bus` | the wire contract: member names, request and reply types, the `DesktopResponse` envelope, the Agent types (`TaskView`, `TaskStatus`, …), the browser types, the flow grammar and its authoring guide, and the contract version | a transport, an async runtime, an HTTP client, a native library, or an engine. CI fails the build if one appears. |
 | `tinydesktop-core` | the `Surface` trait and the `Screen` it observes; fingerprints, change notes, verified text delivery, result-card grouping; the per-OS keymap; the safety classifier and payment detector; the facts store; price, time, duration, and stop parsers and `rank` | engines, Jev, TinyBus, and any tokio runtime |
-| `tinydesktop-input` | the virtual mouse and keyboard: aim points inside an element, human pointer paths, typing cadence, `MotionProfile`, and the `InputSink` each adapter implements ([spec](specs/virtual-input.md)) | engines, I/O, and rendering |
+| `tinydesktop-cursor` | the agent's on-screen cursor: aim points inside an element, human glide paths, `CursorPace` ([spec](specs/virtual-cursor.md)) | input, engines, I/O, and rendering |
 | `tinydesktop-desktop` | `Desktop`, one typed method per desktop member over agent-desktop, with the permission preflight; `Desktop` as a `Surface` | Jev, TinyBus |
 | `tinydesktop-browser` | `Browser` (sessions, navigate, snapshot, perform, read, evaluate, screenshots, downloads, held outputs) over agent-browser; `BrowserSurface`; the error taxonomy | Jev, TinyBus |
 | `tinydesktop-engine` | the Jev runtime, `RunGoal`, `ResolveIntent`, the flow runtime, the `Workspace`, the task controller, and the optional planner | TinyBus |
@@ -210,10 +210,10 @@ configuration validates.
 | `trace_path` | string | where agent-desktop writes its trace |
 | `trace_strict` | bool | fail a call when its trace cannot be written |
 | `headed` | bool | use real input instead of accessibility actions |
-| `motion` | string | virtual mouse and keyboard tempo: `instant`, `brisk`, `natural` (default), `calm` ([spec](specs/virtual-input.md)) |
 | `jev` | object | Jev provider, API key, optional model, endpoint, timeout, retries, and `sdk_name` for the TinyHumans proxy |
 | `planner` | object | OpenRouter `api_key` and optional `model` for the planner; absent means no planner |
 | `browser.executable` | string | the Chrome or Chromium binary to launch, when discovery would not find one |
+| `browser.cursor` | string | pace of the agent's drawn cursor in a visible session: `off`, `brisk`, `natural` (default), `calm` ([spec](specs/virtual-cursor.md)) |
 
 Without `jev`, `ResolveIntent`, `RunGoal`, `RunFlow`, and task runs answer
 with `JEV_NOT_CONFIGURED`, while the primitives, `ValidateFlow`, `FlowGuide`,

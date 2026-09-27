@@ -44,7 +44,7 @@ crates/
 │       ├── version/    # contract version and the host bind rule
 │       └── <family>/   # one directory per payload family
 ├── tinydesktop-core/   # shared domain: Surface trait, keys, safety, records
-├── tinydesktop-input/  # virtual mouse and keyboard: human paths and typing
+├── tinydesktop-cursor/ # the agent's drawn cursor: aim points and human glides
 ├── tinydesktop-browser/ # the agent-browser adapter: sessions, outputs
 ├── tinydesktop-desktop/ # the agent-desktop adapter: no bus, no agent loop
 │   └── src/
