@@ -51,6 +51,13 @@ Dependencies point one way:
 
 ## Interfaces
 
+A TinyBus module manifest declares one bus name and one object path, and
+`module_export!` attaches its member list to the first interface only. Until
+TinyBus serves several interfaces per module, the members below share
+`ai.tinyhumans.tinydesktop.Desktop` (their names do not collide; browser
+members that would collide take a `Browser` prefix). The table is the logical
+split.
+
 | Interface | For | Members |
 |---|---|---|
 | `ai.tinyhumans.tinydesktop.Agent` | external agents | `Describe`, `PlanTask`, `StartTask`, `AwaitTask`, `ContinueTask`, `CancelTask`, `TaskReport`, `ListTasks` |
