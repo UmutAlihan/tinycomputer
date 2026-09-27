@@ -117,9 +117,19 @@ pub struct StartTaskRequest {
     pub task: Option<String>,
     /// A flow to run instead of planning one.
     pub flow: Option<Flow>,
-    /// Values the task may type, by name — traveller name, email, phone. They
-    /// stay on this machine: models see the names only. Card data is refused.
+    /// Values the task may type, by name — traveller name, date of birth,
+    /// email, phone, card number.
+    ///
+    /// Shared ones brief Jev by value, so it knows whom it is booking for.
+    /// Secret ones — those named in `secret_facts`, those whose name labels a
+    /// card, a password, a one-time code, or an identity or account number,
+    /// and any value that is a card number — are templates: Jev and the
+    /// planner only ever see `${name}`, and the value is typed locally.
     pub facts: BTreeMap<String, String>,
+    /// Names among `facts` to keep secret on top of the ones recognised as
+    /// sensitive. A name here that is not in `facts` is refused, so a typo
+    /// cannot leave a value shared.
+    pub secret_facts: Vec<String>,
     /// Where the task may act and what it may commit to.
     pub constraints: TaskConstraints,
     /// Upper bounds on the work a task may do.
@@ -132,11 +142,13 @@ pub struct StartTaskRequest {
 
 /// Where a task may act and what it may commit to.
 ///
-/// A payment is always a checkpoint and cannot be allowed here: the task
-/// stops on the payment page and hands it back.
+/// Paying is never automatic: [`PaymentMode`] says only how far a task goes
+/// before handing payment back.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TaskConstraints {
+    /// How far the task goes on a payment page.
+    pub payment: PaymentMode,
     /// Surfaces the task may use; empty means every available one.
     pub surfaces: Vec<SurfaceKind>,
     /// Origins browser sessions may load, such as `https://.makemytrip.com`
@@ -152,14 +164,31 @@ pub struct TaskConstraints {
     pub headed: bool,
 }
 
+/// How far a task goes on a payment page.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaymentMode {
+    /// Stop at the step that pays and hand it back as a final checkpoint.
+    #[default]
+    StopAtPayment,
+    /// Fill the payment form from secret facts, then pause as
+    /// `needs_approval` in front of the control that pays: only
+    /// `ContinueTask.approve` presses it. Needs `origins`, so card details
+    /// are only typed on sites the caller named.
+    FillThenApprove,
+}
+
 /// Upper bounds on a task. Unset fields take the module's defaults.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TaskBudget {
     /// Actions across every surface.
     pub max_actions: Option<u32>,
-    /// Jev decisions.
+    /// Jev evaluations. Every framing of a voted decision counts as one.
     pub max_model_calls: Option<u32>,
+    /// How many ways each decision is asked before its answers are averaged;
+    /// the module's default when unset.
+    pub votes: Option<u32>,
     /// Wall-clock time, excluding time spent waiting for the caller.
     pub max_elapsed_ms: Option<u64>,
 }
