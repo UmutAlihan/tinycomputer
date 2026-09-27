@@ -106,6 +106,11 @@ do.
    `what`/`option`, a `read`/`extract`'s `what`, a `pick`'s `from`/`by`, a
    condition, or an `enter` slot's own name — fails validation. The module
    reasons about all of that text, and it only ever sees a secret's name.
+8. **Name a variable as `${name}`, and verify what the screen shows.** A step
+   that reads a variable writes `${cheapest_flight}`, never `cheapest_flight`,
+   so its value is shown; a bare identifier fails validation. A `verify` or
+   `wait_for` must be checkable on the current screen alone — never "matches
+   what the other site showed": `pick` already ranks.
 
 ## A full example
 
