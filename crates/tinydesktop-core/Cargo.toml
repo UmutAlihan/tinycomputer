@@ -1,0 +1,20 @@
+[package]
+name = "tinydesktop-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The shared domain of tinydesktop's surfaces: platform keys, action safety and payment detection, extracted records, and task facts."
+documentation = "https://docs.rs/tinydesktop-core"
+readme = "README.md"
+keywords = ["automation", "agent", "safety"]
+categories = ["os"]
+publish = false
+
+[dependencies]
+# Derive macros for the crate-wide error type in `src/error/`.
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

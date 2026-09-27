@@ -31,6 +31,9 @@ repository = "https://github.com/tinyhumansai/tinydesktop"
 # release, and a pinned requirement here would stop resolving the moment it did.
 # Nothing in this workspace is published, so the path is the whole address.
 tinydesktop-bus = { path = "crates/tinydesktop-bus" }
+# Shared, engine-free domain logic: keys, safety, records, and facts. Taken by
+# the surface adapters and the engine.
+tinydesktop-core = { path = "crates/tinydesktop-core" }
 # The agent-desktop adapter: `Desktop`, one method per desktop member. Taken by
 # the engine and re-exported by the module crate.
 tinydesktop-desktop = { path = "crates/tinydesktop-desktop" }
