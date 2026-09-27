@@ -148,26 +148,9 @@ impl DesktopService {
         let permissions = self
             .run(|desktop| desktop.permissions(PermissionsRequest::default()))
             .await?;
-        let denied = permissions
-            .data
-            .as_ref()
-            .filter(|_| permissions.ok)
-            .and_then(|data| data.get("accessibility"))
-            .and_then(|state| state.get("granted").or(Some(state)))
-            .and_then(serde_json::Value::as_bool)
-            == Some(false);
         Ok(agentic::capabilities(
             vec![
-                SurfaceAvailability {
-                    kind: SurfaceKind::Desktop,
-                    available: permissions.ok && !denied,
-                    reason: (!permissions.ok || denied).then(|| {
-                        permissions.error.as_ref().map_or_else(
-                            || "the accessibility permission is not granted".to_owned(),
-                            |error| error.message.clone(),
-                        )
-                    }),
-                },
+                desktop_availability(&permissions),
                 SurfaceAvailability {
                     kind: SurfaceKind::Browser,
                     available: false,
@@ -549,5 +532,37 @@ impl DesktopService {
 impl DesktopService {
     fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
         self.jev.clone()
+    }
+}
+
+/// Whether the desktop surface is usable, from a `Permissions` reply: the
+/// accessibility permission must be granted (or not needed on this platform).
+pub(super) fn desktop_availability(permissions: &DesktopResponse) -> SurfaceAvailability {
+    let accessibility = permissions
+        .data
+        .as_ref()
+        .filter(|_| permissions.ok)
+        .and_then(|data| data.get("accessibility"));
+    let state = accessibility
+        .and_then(|value| value.get("state"))
+        .and_then(serde_json::Value::as_str);
+    let reason = match state {
+        Some("granted" | "not_required") => None,
+        Some("denied") => Some(
+            accessibility
+                .and_then(|value| value.get("suggestion"))
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("grant the accessibility permission")
+                .to_owned(),
+        ),
+        _ => Some(permissions.error.as_ref().map_or_else(
+            || "the accessibility permission could not be read".to_owned(),
+            |error| error.message.clone(),
+        )),
+    };
+    SurfaceAvailability {
+        kind: SurfaceKind::Desktop,
+        available: reason.is_none(),
+        reason,
     }
 }

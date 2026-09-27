@@ -462,3 +462,31 @@ async fn a_task_without_jev_fails_with_a_hint_and_reports_what_it_did() -> tinyb
     assert!(report.data.unwrap().flow.is_some());
     Ok(())
 }
+
+#[test]
+fn the_desktop_is_available_only_with_accessibility() {
+    use super::dispatch::desktop_availability;
+
+    let reply = |state: serde_json::Value| {
+        DesktopResponse::ok("permissions", json!({"accessibility": state}))
+    };
+    assert!(desktop_availability(&reply(json!({"state": "granted"}))).available);
+    assert!(desktop_availability(&reply(json!({"state": "not_required"}))).available);
+    let denied = desktop_availability(&reply(
+        json!({"state": "denied", "suggestion": "open Settings"}),
+    ));
+    assert!(!denied.available);
+    assert_eq!(denied.reason.as_deref(), Some("open Settings"));
+    let bare = desktop_availability(&reply(json!({"state": "denied"})));
+    assert_eq!(
+        bare.reason.as_deref(),
+        Some("grant the accessibility permission")
+    );
+    let unknown = desktop_availability(&reply(json!({"state": "unknown"})));
+    assert!(unknown.reason.unwrap().contains("could not be read"));
+    let failed = desktop_availability(&DesktopResponse::err(
+        "permissions",
+        tinydesktop_bus::DesktopError::new("PLATFORM_NOT_SUPPORTED", "no surfaces here"),
+    ));
+    assert_eq!(failed.reason.as_deref(), Some("no surfaces here"));
+}
