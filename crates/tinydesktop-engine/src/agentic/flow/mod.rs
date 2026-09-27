@@ -92,11 +92,11 @@ pub async fn run_flow<S: AgentBackend + Sync>(
     runtime: JevRuntime,
     request: RunFlowRequest,
 ) -> DesktopResponse {
-    let label = request
-        .flow
-        .name
-        .clone()
-        .unwrap_or_else(|| request.flow.app.clone());
+    let label = if request.brief.goal.is_empty() {
+        request.flow.app.clone()
+    } else {
+        format!("{}: {}", request.flow.app, request.brief.goal)
+    };
     let runtime = runtime.begin_run("flow", &label);
     run_flow_with(surface, &runtime, request).await
 }

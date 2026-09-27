@@ -33,7 +33,10 @@ mod planner;
 mod task;
 mod workspace;
 
-pub use agentic::{JevRuntime, flow_guide, resolve_intent, run_flow, run_goal, validate_flow};
+pub use agentic::{
+    JOURNAL_DEFAULT_DIR, JOURNAL_ENV, JOURNAL_FILE, JevRuntime, flow_guide, resolve_intent,
+    run_flow, run_goal, validate_flow,
+};
 pub use planner::{Completion, LanguageModel, Planner, REPAIRS, Role, Turn};
 #[cfg(feature = "planner")]
 pub use planner::{PLANNER_MODEL, PlannerConfig, open_router};
