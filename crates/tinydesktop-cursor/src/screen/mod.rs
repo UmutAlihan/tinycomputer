@@ -6,19 +6,20 @@
 //! web page and back without jumping. Each surface converts its target to
 //! global screen points and calls [`ScreenCursor::show`]; the cursor plans
 //! the glide from wherever it last landed and hands it to an
-//! [`OverlaySink`] to draw.
+//! [`OverlaySink`] to draw. It never waits: the cursor is cosmetic, and the
+//! engine performs the action at the same moment it would with no cursor.
 //!
 //! The default sink is the `tinydesktop-cursor-overlay` helper process,
-//! started on first use. A host with its own UI can supply a sink instead and
-//! draw the cursor itself. Everything here is best effort: when nothing can
-//! draw, actions are not slowed down and nothing fails.
+//! started on first use and written to from a background thread, so a slow
+//! or stuck helper can never hold an action up. A host with its own UI can
+//! supply a sink instead and draw the cursor itself. Everything here is best
+//! effort: when nothing can draw, nothing fails.
 
 mod process;
 
 pub use process::{HELPER_ENV, HELPER_NAME, ProcessOverlay};
 
 use std::sync::Mutex;
-use std::time::Duration;
 
 use crate::geometry::Rect;
 use crate::glide::VirtualCursor;
@@ -52,7 +53,6 @@ pub struct ScreenCursor {
     cursor: Mutex<VirtualCursor>,
     link: Mutex<Link>,
     connect: Connect,
-    wait: fn(Duration),
 }
 
 impl std::fmt::Debug for ScreenCursor {
@@ -102,16 +102,7 @@ impl ScreenCursor {
             cursor: Mutex::new(VirtualCursor::new(pace)),
             link: Mutex::new(Link::Pending),
             connect,
-            wait: std::thread::sleep,
         }
-    }
-
-    /// The same cursor, not waiting for glides to land, so tests run at full
-    /// speed.
-    #[must_use]
-    pub fn without_waiting(mut self) -> Self {
-        self.wait = |_| {};
-        self
     }
 
     /// The pace glides are drawn at.
@@ -137,9 +128,11 @@ impl ScreenCursor {
         false
     }
 
-    /// Glides the cursor onto `target`, in global screen points, and waits
-    /// for it to land so the action that follows is seen where it happens.
-    /// Returns at once when the pace is off or nothing can draw.
+    /// Glides the cursor onto `target`, in global screen points.
+    ///
+    /// Returns at once: the glide is handed to the overlay and animates on
+    /// its own while the action goes ahead, so the cursor never delays or
+    /// changes what the agent does.
     pub fn show(&self, target: Rect) {
         if self.pace.is_off() || !target.is_valid() || target.width <= 0.0 || target.height <= 0.0 {
             return;
@@ -152,9 +145,9 @@ impl ScreenCursor {
         else {
             return;
         };
-        if self.send(&OverlayCommand::glide(&glide)) {
-            (self.wait)(Duration::from_secs_f64(glide.duration_ms() / 1_000.0));
-        } else if let Ok(mut cursor) = self.cursor.lock() {
+        if !self.send(&OverlayCommand::glide(&glide))
+            && let Ok(mut cursor) = self.cursor.lock()
+        {
             cursor.forget();
         }
     }

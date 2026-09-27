@@ -3,7 +3,10 @@
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{SyncSender, TrySendError, sync_channel};
 
 use super::OverlaySink;
 use crate::protocol::OverlayCommand;
@@ -15,11 +18,20 @@ pub const HELPER_NAME: &str = "tinydesktop-cursor-overlay";
 /// it somewhere of their own.
 pub const HELPER_ENV: &str = "TINYDESKTOP_CURSOR_OVERLAY";
 
+/// Commands waiting for the helper. A glide is a few kilobytes; if the
+/// helper falls this far behind, newer glides are dropped rather than
+/// holding up the action that sent them.
+const QUEUE: usize = 8;
+
 /// A running overlay helper. Dropping it ends the helper.
+///
+/// Commands are written to the helper by a background thread, so sending
+/// never blocks on the helper's pipe.
 #[derive(Debug)]
 pub struct ProcessOverlay {
     child: Child,
-    stdin: ChildStdin,
+    queue: SyncSender<String>,
+    broken: Arc<AtomicBool>,
 }
 
 impl ProcessOverlay {
@@ -41,11 +53,32 @@ impl ProcessOverlay {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()?;
-        let stdin = child
+        let mut stdin = child
             .stdin
             .take()
             .ok_or_else(|| std::io::Error::other("the helper has no standard input"))?;
-        Ok(Self { child, stdin })
+        let (queue, lines) = sync_channel::<String>(QUEUE);
+        let broken = Arc::new(AtomicBool::new(false));
+        let failed = broken.clone();
+        std::thread::Builder::new()
+            .name("tinydesktop-cursor-overlay".into())
+            .spawn(move || {
+                for line in lines {
+                    if stdin
+                        .write_all(line.as_bytes())
+                        .and_then(|()| stdin.flush())
+                        .is_err()
+                    {
+                        failed.store(true, Ordering::Relaxed);
+                        break;
+                    }
+                }
+            })?;
+        Ok(Self {
+            child,
+            queue,
+            broken,
+        })
     }
 
     /// Where the helper is: [`HELPER_ENV`] when set, else beside the running
@@ -73,9 +106,19 @@ impl ProcessOverlay {
 }
 
 impl OverlaySink for ProcessOverlay {
+    /// Queues `command` for the helper without waiting for it. A full queue
+    /// drops the command; a helper that has gone is an error, so the cursor
+    /// stops drawing.
     fn send(&mut self, command: &OverlayCommand) -> std::io::Result<()> {
-        self.stdin.write_all(command.to_line().as_bytes())?;
-        self.stdin.flush()
+        if self.broken.load(Ordering::Relaxed) {
+            return Err(std::io::Error::other("the cursor overlay has gone"));
+        }
+        match self.queue.try_send(command.to_line()) {
+            Ok(()) | Err(TrySendError::Full(_)) => Ok(()),
+            Err(TrySendError::Disconnected(_)) => {
+                Err(std::io::Error::other("the cursor overlay has gone"))
+            }
+        }
     }
 }
 

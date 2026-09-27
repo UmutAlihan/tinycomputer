@@ -41,7 +41,6 @@ fn one_cursor_glides_from_target_to_target_across_surfaces() {
     let recorder = Recorder::default();
     let cursor = ScreenCursor::with_sink(CursorPace::Natural, Box::new(recorder.clone()));
     assert_eq!(cursor.pace(), CursorPace::Natural);
-    let cursor = cursor.without_waiting();
     cursor.show(MAIL_BUTTON);
     cursor.show(WEB_BUTTON);
     let sent = recorder.sent.lock().unwrap();
@@ -62,8 +61,7 @@ fn one_cursor_glides_from_target_to_target_across_surfaces() {
 #[test]
 fn hiding_fades_out_once_and_the_next_glide_fades_in() {
     let recorder = Recorder::default();
-    let cursor =
-        ScreenCursor::with_sink(CursorPace::Brisk, Box::new(recorder.clone())).without_waiting();
+    let cursor = ScreenCursor::with_sink(CursorPace::Brisk, Box::new(recorder.clone()));
     cursor.hide();
     assert!(
         recorder.sent.lock().unwrap().is_empty(),
@@ -94,34 +92,40 @@ fn an_off_cursor_or_an_unusable_target_sends_nothing() {
 }
 
 #[test]
-fn a_failing_sink_is_dropped_and_never_waited_on() {
-    fn never(_: std::time::Duration) {
-        panic!("a cursor nobody draws must not slow the action down");
+fn showing_never_waits_for_the_glide() {
+    let recorder = Recorder::default();
+    let cursor = ScreenCursor::with_sink(CursorPace::Calm, Box::new(recorder));
+    let started = std::time::Instant::now();
+    for _ in 0..20 {
+        cursor.show(MAIL_BUTTON);
+        cursor.show(WEB_BUTTON);
     }
-    let mut cursor = ScreenCursor::with_sink(
+    // Forty calm glides take tens of seconds to animate; showing them is
+    // instant, because the action never waits for the cursor.
+    assert!(started.elapsed() < std::time::Duration::from_secs(1));
+}
+
+#[test]
+fn a_failing_sink_is_dropped_and_the_cursor_starts_afresh() {
+    let failing = ScreenCursor::with_sink(
         CursorPace::Calm,
         Box::new(Recorder {
             fail: true,
             ..Recorder::default()
         }),
     );
-    cursor.wait = never;
-    cursor.show(MAIL_BUTTON);
-    cursor.show(WEB_BUTTON);
-    cursor.hide();
-    assert!(format!("{cursor:?}").contains("Calm"));
+    failing.show(MAIL_BUTTON);
+    failing.show(WEB_BUTTON);
+    failing.hide();
+    assert!(format!("{failing:?}").contains("Calm"));
 }
 
 #[test]
-fn a_missing_helper_leaves_the_cursor_off_without_waiting() {
-    fn never(_: std::time::Duration) {
-        panic!("no helper, no wait");
-    }
-    let mut cursor = ScreenCursor::new(
+fn a_missing_helper_leaves_the_cursor_off() {
+    let cursor = ScreenCursor::new(
         CursorPace::Natural,
         Some("/nonexistent/tinydesktop-cursor-overlay".into()),
     );
-    cursor.wait = never;
     cursor.show(MAIL_BUTTON);
     cursor.show(WEB_BUTTON);
 }
@@ -131,7 +135,17 @@ fn a_missing_helper_leaves_the_cursor_off_without_waiting() {
 fn the_helper_process_receives_one_line_per_command() {
     use super::ProcessOverlay;
     let mut overlay = ProcessOverlay::spawn(Some(std::path::Path::new("/bin/cat"))).unwrap();
-    overlay.send(&OverlayCommand::Hide).unwrap();
+    for _ in 0..100 {
+        overlay.send(&OverlayCommand::Hide).unwrap();
+    }
     drop(overlay);
+
+    // A helper that exits at once is noticed, and the cursor stops sending.
+    let mut gone = ProcessOverlay::spawn(Some(std::path::Path::new("/usr/bin/true"))).unwrap();
+    let noticed = (0..200).any(|_| {
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        gone.send(&OverlayCommand::Hide).is_err()
+    });
+    assert!(noticed);
     let _located = ProcessOverlay::locate();
 }
