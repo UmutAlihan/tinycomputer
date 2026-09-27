@@ -220,11 +220,31 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
         let what = substitute(&choose.what, &self.vars);
         let option = substitute(&choose.option, &self.vars);
-        let purpose = format!("pick the option {option:?} in {what}");
-        // As a person works a list or an autocomplete box: take the option
-        // if it shows, else open the control, else type the option to filter
-        // it, and only then fall back to judging every control.
-        for attempt in 0..4 {
+        self.pick_option(log, &what, &option, false).await
+    }
+
+    /// Picks `option` in `what` as a person works a list, an autocomplete
+    /// box, or a date picker: take the option if it shows, else open the
+    /// control, page a calendar forward to a date, type the option to filter
+    /// it, and only then (for a public option) judge every control.
+    ///
+    /// A `private` option — a value `enter` could not type into a field — is
+    /// never written into a question: only elements that already show it are
+    /// offered, so Jev sees nothing the page does not.
+    pub(super) async fn pick_option(
+        &mut self,
+        log: &mut StepLog,
+        what: &str,
+        option: &str,
+        private: bool,
+    ) -> Result<Ended, Halt> {
+        let purpose = if private {
+            format!("pick the option in {what} that shows the value being entered")
+        } else {
+            format!("pick the option {option:?} in {what}")
+        };
+        let attempts = if private { 3 } else { 4 };
+        for attempt in 0..attempts {
             let screen = self.look().await?;
             let pool = clickable(&screen.candidates)
                 .into_iter()
@@ -233,9 +253,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let pool = if attempt == 3 {
                 pool
             } else {
-                pool.into_iter()
-                    .filter(|candidate| mentions(candidate, &option))
-                    .collect()
+                closest(
+                    pool.into_iter()
+                        .filter(|candidate| mentions(candidate, option))
+                        .collect(),
+                )
             };
             if let Some(grounded) = self.ground(log, &screen, &purpose, &purpose, pool).await? {
                 log.confidence = Some(grounded.confidence);
@@ -248,9 +270,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .await?;
                 if reply.ok {
                     learn(&mut self.learned, remember(&self.app, &purpose, &target));
-                    self.history
-                        .push(format!("chose {option:?} with {}", label(&target)));
-                    return Ok(Ended::new(StepOutcome::Done, format!("chose {option:?}")));
+                    self.history.push(format!("chose an option with {}", label(&target)));
+                    return Ok(Ended::new(
+                        StepOutcome::Done,
+                        if private {
+                            format!("chose the value in {what}")
+                        } else {
+                            format!("chose {option:?}")
+                        },
+                    ));
                 }
             }
             match attempt {
@@ -262,11 +290,49 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     )
                     .await?;
                 }
-                1 => self.type_to_filter(log, &screen, &what, &option).await?,
+                1 if looks_like_date(option) => self.page_to(log, option).await?,
+                1 => self.type_to_filter(log, &screen, what, option).await?,
                 _ => {}
             }
         }
-        Err(Halt::Failed(format!("{option:?} was not found in {what}")))
+        Err(Halt::Failed(if private {
+            format!("the value was not found in {what}")
+        } else {
+            format!("{option:?} was not found in {what}")
+        }))
+    }
+
+    /// Pages a calendar forward, one month at a time, until a control shows
+    /// `date`; stops at [`MAX_MONTHS`] or where there is no next month.
+    async fn page_to(&mut self, log: &mut StepLog, date: &str) -> Result<(), Halt> {
+        for _ in 0..MAX_MONTHS {
+            let screen = self.look().await?;
+            if screen
+                .candidates
+                .iter()
+                .any(|candidate| mentions(candidate, date))
+            {
+                return Ok(());
+            }
+            let Some(next) = clickable(&screen.candidates).into_iter().find(|candidate| {
+                candidate
+                    .name
+                    .as_deref()
+                    .is_some_and(|name| name.to_lowercase().contains("next month"))
+            }) else {
+                return Ok(());
+            };
+            let clicked = next.clone();
+            let reply = self
+                .act(log, "click", Some(&next), move |backend| {
+                    backend.execute(JevOperation::Click, Some(clicked), None)
+                })
+                .await?;
+            if !reply.ok {
+                return Ok(());
+            }
+        }
+        Ok(())
     }
 
     /// Types `option` into the search box of `what`, so an autocomplete
@@ -289,20 +355,31 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             })
             .cloned()
             .collect::<Vec<_>>();
-        let purpose = format!("the search box to type {option:?} into, for {what}");
-        let Some(grounded) = self.ground(log, screen, &purpose, &purpose, fields).await? else {
-            return Ok(());
-        };
-        let app = self.app.clone();
-        let target = grounded.candidate;
-        let field = target.clone();
+        let purpose = format!("the search box that filters the options of {what}");
         let text = option.to_owned();
-        self.act(log, "type to filter", Some(&target), move |backend| {
-            deliver_text(&backend, &app, &field, &text)
-        })
-        .await?;
-        self.history
-            .push(format!("typed {option:?} into {} to filter it", label(&target)));
+        match self.ground(log, screen, &purpose, &purpose, fields).await? {
+            Some(grounded) => {
+                let app = self.app.clone();
+                let target = grounded.candidate;
+                let field = target.clone();
+                self.act(log, "type to filter", Some(&target), move |backend| {
+                    deliver_text(&backend, &app, &field, &text)
+                })
+                .await?;
+                self.history
+                    .push(format!("typed into {} to filter it", label(&target)));
+            }
+            // An opened autocomplete often keeps its input unnamed but
+            // focused; typing goes where the focus is.
+            None => {
+                self.act(log, "type to filter", None, move |backend| {
+                    backend.execute(JevOperation::TypeText, None, Some(text))
+                })
+                .await?;
+                self.history
+                    .push("typed into the focused field to filter it".to_owned());
+            }
+        }
         Ok(())
     }
 
@@ -645,6 +722,41 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             format!("took the {taken} branch (confidence {held:.2})"),
         ))
     }
+}
+
+/// The months a date picker is paged forward at most.
+const MAX_MONTHS: usize = 12;
+
+/// Month names, as a date option spells them.
+const MONTHS: &[&str] = &[
+    "january", "february", "march", "april", "may", "june", "july", "august", "september",
+    "october", "november", "december",
+];
+
+/// Whether `option` names a calendar day: a month name and a day number.
+fn looks_like_date(option: &str) -> bool {
+    let lower = option.to_lowercase();
+    let words = lower
+        .split(|character: char| !character.is_alphanumeric())
+        .collect::<Vec<_>>();
+    words.iter().any(|word| MONTHS.contains(word))
+        && words
+            .iter()
+            .any(|word| word.parse::<u8>().is_ok_and(|day| (1..=31).contains(&day)))
+}
+
+/// The matches whose labels say little besides the option: a container
+/// whose label strings together everything inside it (a calendar button
+/// named with every day of the month) is dropped when a plainer match exists.
+fn closest(matches: Vec<Candidate>) -> Vec<Candidate> {
+    let length = |candidate: &Candidate| candidate.name.as_deref().map_or(0, str::len);
+    let Some(shortest) = matches.iter().map(length).min() else {
+        return matches;
+    };
+    matches
+        .into_iter()
+        .filter(|candidate| length(candidate) <= shortest.saturating_mul(3).max(shortest + 40))
+        .collect()
 }
 
 /// Whether an element shows `option` in its name, value, or description.
