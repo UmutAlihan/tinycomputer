@@ -1,16 +1,14 @@
 //! Tests for the crate error's message.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-
 use super::Error;
 
 #[test]
-fn an_unknown_profile_names_itself_and_the_choices() {
-    let error = Error::UnknownProfile {
+fn an_unknown_pace_names_itself_and_the_choices() {
+    let error = Error::UnknownPace {
         name: "frantic".to_owned(),
     };
     assert_eq!(
         error.to_string(),
-        "unknown motion profile `frantic`, expected instant, brisk, natural, or calm"
+        "unknown cursor pace `frantic`, expected off, brisk, natural, or calm"
     );
 }

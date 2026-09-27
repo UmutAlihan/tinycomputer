@@ -11,7 +11,7 @@
 use std::f64::consts::{PI, TAU};
 
 use crate::geometry::Point;
-use crate::profile::MotionProfile;
+use crate::pace::CursorPace;
 use crate::rng::Rng;
 
 /// How often the pointer reports a position, as a 60 Hz display does.
@@ -48,10 +48,10 @@ pub struct PathSample {
 }
 
 /// How long a reach of `distance` towards a target `width` wide takes.
-pub(crate) fn travel_ms(distance: f64, width: f64, profile: MotionProfile, rng: &mut Rng) -> f64 {
+pub(crate) fn travel_ms(distance: f64, width: f64, pace: CursorPace, rng: &mut Rng) -> f64 {
     let difficulty = (distance / width.max(MIN_TARGET_WIDTH) + 1.0).log2();
     let jitter = rng.normal(1.0, 0.08).clamp(0.85, 1.2);
-    ((110.0 + 120.0 * difficulty) * jitter).clamp(TRAVEL_MS.0, TRAVEL_MS.1) * profile.tempo()
+    ((110.0 + 120.0 * difficulty) * jitter).clamp(TRAVEL_MS.0, TRAVEL_MS.1) * pace.tempo()
 }
 
 /// The minimum-jerk position profile: how far along a stroke a hand is at
@@ -74,11 +74,11 @@ pub fn human_path(
     from: Point,
     to: Point,
     width: f64,
-    profile: MotionProfile,
+    pace: CursorPace,
     rng: &mut Rng,
 ) -> Vec<PathSample> {
     let distance = from.distance(to);
-    if profile.is_instant() || distance < 1.0 || !from.is_finite() || !to.is_finite() {
+    if pace.is_off() || distance < 1.0 || !from.is_finite() || !to.is_finite() {
         return vec![PathSample {
             t_ms: 0.0,
             point: to,

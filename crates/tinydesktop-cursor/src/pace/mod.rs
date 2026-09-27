@@ -1,4 +1,4 @@
-//! [`MotionProfile`]: how quickly and how humanly the virtual devices move.
+//! [`CursorPace`]: whether the agent's cursor is drawn, and how fast it moves.
 
 use std::fmt;
 use std::str::FromStr;
@@ -7,53 +7,51 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 
-/// How the virtual mouse and keyboard pace themselves.
+/// How the agent's cursor moves on screen.
 ///
-/// Every profile but [`Instant`](MotionProfile::Instant) moves along a curved
-/// path with overshoot and tremor, pauses the way a hand does before it
-/// presses, and types key by key. The profiles differ only in tempo.
+/// Every pace but [`Off`](CursorPace::Off) glides along the same human path —
+/// curved, overshooting and correcting, with a small tremor. The paces differ
+/// only in tempo.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum MotionProfile {
-    /// No motion: the pointer jumps and text is inserted at once. The
-    /// behaviour before virtual input existed, for tests and bulk work.
-    Instant,
+pub enum CursorPace {
+    /// No cursor is drawn.
+    Off,
     /// A practised user in a hurry.
     Brisk,
     /// An attentive user at an ordinary pace.
     #[default]
     Natural,
-    /// A careful user, slow enough to follow on screen.
+    /// A careful user, slow enough to follow easily.
     Calm,
 }
 
-impl MotionProfile {
-    /// Every profile, fastest first.
-    pub const ALL: [Self; 4] = [Self::Instant, Self::Brisk, Self::Natural, Self::Calm];
+impl CursorPace {
+    /// Every pace, fastest first.
+    pub const ALL: [Self; 4] = [Self::Off, Self::Brisk, Self::Natural, Self::Calm];
 
-    /// The profile's configuration name.
+    /// The pace's configuration name.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
-            Self::Instant => "instant",
+            Self::Off => "off",
             Self::Brisk => "brisk",
             Self::Natural => "natural",
             Self::Calm => "calm",
         }
     }
 
-    /// Whether this profile moves at all.
+    /// Whether the cursor is drawn at all.
     #[must_use]
-    pub const fn is_instant(self) -> bool {
-        matches!(self, Self::Instant)
+    pub const fn is_off(self) -> bool {
+        matches!(self, Self::Off)
     }
 
-    /// The multiplier this profile applies to every human timing: pointer
-    /// travel, dwell, key holds, and the gaps between keys.
+    /// The multiplier this pace applies to the natural travel time.
     #[must_use]
     pub(crate) const fn tempo(self) -> f64 {
         match self {
-            Self::Instant => 0.0,
+            Self::Off => 0.0,
             Self::Brisk => 0.6,
             Self::Natural => 1.0,
             Self::Calm => 1.6,
@@ -61,26 +59,26 @@ impl MotionProfile {
     }
 }
 
-impl fmt::Display for MotionProfile {
+impl fmt::Display for CursorPace {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(self.as_str())
     }
 }
 
-impl FromStr for MotionProfile {
+impl FromStr for CursorPace {
     type Err = Error;
 
     /// Parses a configuration name, ignoring case and surrounding space.
     ///
     /// # Errors
     ///
-    /// Returns [`Error::UnknownProfile`] for any other name.
+    /// Returns [`Error::UnknownPace`] for any other name.
     fn from_str(name: &str) -> Result<Self> {
         let wanted = name.trim().to_ascii_lowercase();
         Self::ALL
             .into_iter()
-            .find(|profile| profile.as_str() == wanted)
-            .ok_or_else(|| Error::UnknownProfile {
+            .find(|pace| pace.as_str() == wanted)
+            .ok_or_else(|| Error::UnknownPace {
                 name: name.to_owned(),
             })
     }

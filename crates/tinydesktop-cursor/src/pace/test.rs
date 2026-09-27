@@ -1,46 +1,46 @@
-//! Tests for motion profiles: names, parsing, and the wire form.
+//! Tests for cursor paces: names, parsing, and the wire form.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::MotionProfile;
+use super::CursorPace;
 use crate::Error;
 
 #[test]
 fn names_round_trip_through_parsing() {
-    for profile in MotionProfile::ALL {
-        assert_eq!(profile.as_str().parse::<MotionProfile>(), Ok(profile));
-        assert_eq!(profile.to_string(), profile.as_str());
+    for pace in CursorPace::ALL {
+        assert_eq!(pace.as_str().parse::<CursorPace>(), Ok(pace));
+        assert_eq!(pace.to_string(), pace.as_str());
     }
-    assert_eq!(" Calm ".parse::<MotionProfile>(), Ok(MotionProfile::Calm));
+    assert_eq!(" Calm ".parse::<CursorPace>(), Ok(CursorPace::Calm));
 }
 
 #[test]
 fn an_unknown_name_is_refused() {
     assert_eq!(
-        "frantic".parse::<MotionProfile>(),
-        Err(Error::UnknownProfile {
+        "frantic".parse::<CursorPace>(),
+        Err(Error::UnknownPace {
             name: "frantic".to_owned()
         })
     );
 }
 
 #[test]
-fn natural_is_the_default_and_only_instant_is_instant() {
-    assert_eq!(MotionProfile::default(), MotionProfile::Natural);
-    assert!(MotionProfile::Instant.is_instant());
-    assert!(!MotionProfile::Brisk.is_instant());
-    assert!(MotionProfile::Brisk.tempo() < MotionProfile::Natural.tempo());
-    assert!(MotionProfile::Natural.tempo() < MotionProfile::Calm.tempo());
+fn natural_is_the_default_and_only_off_is_off() {
+    assert_eq!(CursorPace::default(), CursorPace::Natural);
+    assert!(CursorPace::Off.is_off());
+    assert!(!CursorPace::Brisk.is_off());
+    assert!(CursorPace::Brisk.tempo() < CursorPace::Natural.tempo());
+    assert!(CursorPace::Natural.tempo() < CursorPace::Calm.tempo());
 }
 
 #[test]
 fn the_wire_form_is_the_lowercase_name() {
     assert_eq!(
-        serde_json::to_value(MotionProfile::Brisk).unwrap(),
+        serde_json::to_value(CursorPace::Brisk).unwrap(),
         serde_json::json!("brisk")
     );
     assert_eq!(
-        serde_json::from_value::<MotionProfile>(serde_json::json!("calm")).unwrap(),
-        MotionProfile::Calm
+        serde_json::from_value::<CursorPace>(serde_json::json!("off")).unwrap(),
+        CursorPace::Off
     );
 }

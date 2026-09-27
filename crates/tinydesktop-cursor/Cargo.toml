@@ -1,23 +1,23 @@
 [package]
-name = "tinydesktop-input"
+name = "tinydesktop-cursor"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "A virtual mouse and keyboard: human-like pointer paths, aim points, and typing cadence, planned deterministically and played against any input sink."
-documentation = "https://docs.rs/tinydesktop-input"
+description = "The agent's on-screen cursor: where it aims on an element and the human path it glides along, planned deterministically for a renderer to draw."
+documentation = "https://docs.rs/tinydesktop-cursor"
 readme = "README.md"
-keywords = ["automation", "mouse", "keyboard", "humanize"]
+keywords = ["automation", "cursor", "overlay", "animation"]
 categories = ["os"]
 publish = false
 
 [dependencies]
-# `MotionProfile` is read from module configuration and task options.
+# `CursorPace` is read from module configuration.
 serde = { workspace = true }
 # Derive macros for the crate-wide error type in `src/error/`.
 thiserror = { workspace = true }
-# Seeds an unseeded run's motion, so two runs never trace the same path.
+# Seeds an unseeded cursor, so two runs never trace the same path.
 getrandom = { workspace = true }
 
 [dev-dependencies]

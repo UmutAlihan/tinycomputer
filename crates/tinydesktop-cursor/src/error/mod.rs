@@ -4,10 +4,9 @@
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
-    /// A motion profile name that is not one of `instant`, `brisk`,
-    /// `natural`, or `calm`.
-    #[error("unknown motion profile `{name}`, expected instant, brisk, natural, or calm")]
-    UnknownProfile {
+    /// A pace name that is not one of `off`, `brisk`, `natural`, or `calm`.
+    #[error("unknown cursor pace `{name}`, expected off, brisk, natural, or calm")]
+    UnknownPace {
         /// The name as it was given.
         name: String,
     },
