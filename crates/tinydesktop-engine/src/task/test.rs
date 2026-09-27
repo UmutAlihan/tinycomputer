@@ -463,6 +463,73 @@ async fn an_approval_nested_in_an_if_resumes_the_whole_branch_and_what_follows()
 }
 
 #[tokio::test]
+async fn an_approval_resume_spends_from_the_tasks_remaining_budget_not_a_fresh_one() {
+    // Every scripted reply reports 3 actions spent (`finished_run`'s fixed
+    // `actions: 3`), and the task's budget allows 10 in total.
+    let (tasks, script) = controller(vec![
+        gated("Send", "sending the email"),
+        finished_run(FlowStopReason::Completed, vec![], &[], None),
+        finished_run(FlowStopReason::Completed, vec![], &[], None),
+    ]);
+    let started = tasks.start(&StartTaskRequest {
+        flow: Some(flow(mail_flow())),
+        budget: tinydesktop_bus::agent::TaskBudget {
+            max_actions: Some(10),
+            ..tinydesktop_bus::agent::TaskBudget::default()
+        },
+        ..StartTaskRequest::default()
+    });
+    let view = started.data.unwrap();
+    settle(&tasks, &view.id).await;
+    tasks.continue_task(ContinueTaskRequest {
+        id: view.id.clone(),
+        approve: Some(true),
+        ..ContinueTaskRequest::default()
+    });
+    assert!(matches!(
+        settle(&tasks, &view.id).await.status,
+        TaskStatus::Done { .. }
+    ));
+    let requests = script.requests.lock().unwrap();
+    assert_eq!(requests.len(), 3);
+    assert_eq!(requests[0].max_actions, 10, "the first run gets the full budget");
+    assert_eq!(
+        requests[1].max_actions, 7,
+        "the approval's own run only gets what the first run did not spend"
+    );
+    assert_eq!(
+        requests[2].max_actions, 4,
+        "the rest gets only what neither earlier run spent, not a fresh 10"
+    );
+}
+
+#[tokio::test]
+async fn an_exhausted_time_budget_fails_the_task_before_a_run_starts() {
+    let (tasks, script) = controller(vec![finished_run(
+        FlowStopReason::Completed,
+        vec![],
+        &[],
+        None,
+    )]);
+    let started = tasks.start(&StartTaskRequest {
+        flow: Some(flow(json!({"app": "Mail", "steps": ["a"]}))),
+        budget: tinydesktop_bus::agent::TaskBudget {
+            max_elapsed_ms: Some(0),
+            ..tinydesktop_bus::agent::TaskBudget::default()
+        },
+        ..StartTaskRequest::default()
+    });
+    let view = started.data.unwrap();
+    let status = settle(&tasks, &view.id).await.status;
+    let TaskStatus::Failed { reason, .. } = &status else {
+        panic!("{status:?}");
+    };
+    assert!(reason.contains("time budget"));
+    assert!(script.requests.lock().unwrap().is_empty(), "no run was ever started");
+    assert_eq!(*script.released.lock().unwrap(), [view.id]);
+}
+
+#[tokio::test]
 async fn a_declined_action_cancels_and_a_payment_is_always_a_checkpoint() {
     let (tasks, _) = controller(vec![gated("Send", "sending the email")]);
     let view = start(&tasks, mail_flow(), &[]);
