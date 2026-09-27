@@ -95,6 +95,7 @@ impl<'de> Visitor<'de> for StepVisitor {
         let context = |error: A::Error| de::Error::custom(format!("in `{kind}` step: {error}"));
         let action = match kind.as_str() {
             "open" => FlowAction::Open(access.next_value().map_err(context)?),
+            "browse" => FlowAction::Browse(access.next_value().map_err(context)?),
             "do" => FlowAction::Do(access.next_value().map_err(context)?),
             "enter" => FlowAction::Enter(access.next_value().map_err(context)?),
             "choose" => FlowAction::Choose(access.next_value().map_err(context)?),
@@ -123,6 +124,7 @@ impl<'de> Visitor<'de> for StepVisitor {
 /// Every structured step kind, as spelled on the wire.
 pub const STEP_KINDS: &[&str] = &[
     "open",
+    "browse",
     "do",
     "enter",
     "choose",
@@ -140,6 +142,9 @@ pub const STEP_KINDS: &[&str] = &[
 pub enum FlowAction {
     /// Launch the named application, or bring it forward.
     Open(String),
+    /// Open a web address in the browser, and continue the flow there until
+    /// an `open` step switches back to an application.
+    Browse(String),
     /// Reach the described state ("the Liked Songs list is open").
     Do(String),
     /// Put each text into the thing its slot describes.

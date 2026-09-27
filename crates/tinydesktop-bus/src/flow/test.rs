@@ -80,6 +80,7 @@ fn control_steps_pin_their_wire_form() {
             {"wait_for": "ready"},
             {"stop_before": "deleting"},
             {"open": "Finder"},
+            {"browse": "https://flights.test"},
             {"do": "y"}
         ]
     }))
@@ -88,6 +89,10 @@ fn control_steps_pin_their_wire_form() {
         panic!("expected repeat_until");
     };
     assert_eq!(repeat.max, 5);
+    assert_eq!(
+        flow.steps[7],
+        FlowStep::Action(FlowAction::Browse("https://flights.test".to_owned()))
+    );
     let round_trip: Flow = serde_json::from_value(serde_json::to_value(&flow).unwrap()).unwrap();
     assert_eq!(round_trip, flow);
     assert_eq!(

@@ -34,6 +34,7 @@ do.
 |---|---|---|
 | string | `"open the Liked Songs list"` | Reach the described state. |
 | `open` | `{"open": "Mail"}` | Launch the app or bring it forward. |
+| `browse` | `{"browse": "https://www.google.com/travel/flights"}` | Open a web address in the browser; later steps act on the page until an `open` switches back to an app. |
 | `do` | `{"do": "start a new note"}` | Same as a plain string. |
 | `enter` | `{"enter": {"subject": "Hi"}}` | Put each text into the field its key describes. |
 | `choose` | `{"choose": {"what": "the font list", "option": "Helvetica"}}` | Pick an option in a list, menu, or popup. |
