@@ -96,11 +96,12 @@ pub const SCENARIOS: &[Scenario] = &[
         app: "Notes",
         brief: include_str!("../../scenarios/notes/brief.md"),
         flow: include_str!("../../scenarios/notes/flow.json"),
-        goal: "Create a new note titled tinydesktop lab note with the supplied text.",
+        goal: "Create a new note titled tinydesktop lab note {run} with the supplied text.",
         texts: &[
-            "tinydesktop lab note\nWritten by a Jev intent flow.\nSecond line: each step was grounded on the live screen.",
+            "tinydesktop lab note {run}\nWritten by a Jev intent flow.\nSecond line: each step was grounded on the live screen.",
         ],
-        check: Check::NoteNamed("tinydesktop lab note"),
+        check: Check::NoteNamed("tinydesktop lab note {run}"),
+        reset: &[],
     },
     Scenario {
         name: "finder",
