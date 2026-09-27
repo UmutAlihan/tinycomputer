@@ -1567,11 +1567,12 @@ fn validation_reports_every_problem_by_step() {
     let malformed = validate::validate(
         &json!({"app": "Mail", "steps": [{"click": "x"}]}),
         &BTreeSet::new(),
+        &BTreeSet::new(),
     );
     assert!(malformed.0.is_none());
     assert!(malformed.1.errors[0].contains("not well formed"));
 
-    let empty = validate::check(&Flow::default(), &BTreeSet::new());
+    let empty = validate::check(&Flow::default(), &BTreeSet::new(), &BTreeSet::new());
     assert!(
         empty
             .errors
@@ -1584,13 +1585,17 @@ fn validation_reports_every_problem_by_step() {
         vars: BTreeMap::new(),
         steps: vec![tinydesktop_bus::FlowStep::Intent("x".to_owned()); 101],
     };
-    assert!(validate::check(&huge, &BTreeSet::new()).errors[0].contains("at most 100"));
+    assert!(
+        validate::check(&huge, &BTreeSet::new(), &BTreeSet::new()).errors[0]
+            .contains("at most 100")
+    );
 
-    let ok = validate::validate(&mail_flow(), &BTreeSet::new());
+    let ok = validate::validate(&mail_flow(), &BTreeSet::new(), &BTreeSet::new());
     assert!(ok.0.is_some() && ok.1.valid && ok.1.steps == 5);
     let with_runtime_var = validate::check(
         &serde_json::from_value(json!({"app": "Mail", "steps": [{"open": "${app}"}]})).unwrap(),
         &BTreeSet::from(["app".to_owned()]),
+        &BTreeSet::new(),
     );
     assert!(with_runtime_var.valid);
 }
