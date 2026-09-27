@@ -1,0 +1,46 @@
+[package]
+name = "tinydesktop-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The tinydesktop agent runtime: Jev decision loops, goals, and intent flows over the desktop (and, next, the browser)."
+documentation = "https://docs.rs/tinydesktop-engine"
+readme = "README.md"
+keywords = ["automation", "agent", "accessibility", "desktop"]
+categories = ["os"]
+publish = false
+
+[dependencies]
+# Request and result payloads for goals, intents, and flows.
+tinydesktop-bus = { workspace = true }
+# The surface trait, screen model, and text delivery the loops run over.
+tinydesktop-core = { workspace = true }
+# The desktop surface the runtime observes and acts on.
+tinydesktop-desktop = { workspace = true }
+# The Jev decisions client every loop asks.
+tinyinference_decisions = { workspace = true }
+# Snapshots, replies, and Jev state are JSON values throughout.
+serde_json = { workspace = true }
+serde = { workspace = true }
+# Unpredictable one-use handles bind host confirmation to a module-held action.
+getrandom = { workspace = true }
+# Blocking engine calls run on `spawn_blocking`; loops sleep between looks.
+tokio = { workspace = true }
+
+# The planner's OpenRouter model, only with the `planner` feature. The shipped
+# module links it, but it stays inert until private configuration supplies a
+# key.
+tinyinference-llm = { workspace = true, optional = true }
+
+[features]
+default = []
+# An LLM planner that turns plain-language tasks into flows.
+planner = ["dep:tinyinference-llm"]
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[lints]
+workspace = true

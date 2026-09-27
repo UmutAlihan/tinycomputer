@@ -270,8 +270,17 @@ fn the_wire_sweep_covers_every_member_except_the_one_with_no_safe_input() {
             &names::methods::RESOLVE_INTENT,
             &names::methods::RUN_GOAL,
             &names::methods::RUN_FLOW,
+            &names::methods::DESCRIBE,
+            &names::methods::PLAN_TASK,
+            &names::methods::START_TASK,
+            &names::methods::AWAIT_TASK,
+            &names::methods::CONTINUE_TASK,
+            &names::methods::CANCEL_TASK,
+            &names::methods::TASK_REPORT,
+            &names::methods::LIST_TASKS,
             &names::methods::CLIPBOARD_CLEAR,
-        ]
+        ],
+        "the task members answer in their own reply shape; see the agent tests below"
     );
 }
 
@@ -282,6 +291,9 @@ fn every_agentic_member_requires_confidential_delivery() {
         names::methods::RESOLVE_INTENT,
         names::methods::RUN_GOAL,
         names::methods::RUN_FLOW,
+        names::methods::START_TASK,
+        names::methods::CONTINUE_TASK,
+        names::methods::TASK_REPORT,
     ] {
         assert!(
             service.requires_confidential(&member.try_into().expect("valid member")),
@@ -300,11 +312,13 @@ fn every_agentic_member_requires_confidential_delivery() {
 #[tokio::test]
 async fn private_module_configuration_initializes_jev_without_exposing_the_key()
 -> tinybus::Result<()> {
+    // The provider's default endpoint: loopback is trusted only inside the
+    // engine's own tests. The missing application fails observation before
+    // any Jev request, so nothing here reaches the network.
     let configured_service = DesktopService::from_config(&json!({
         "jev": {
             "api_key": "test-secret",
             "provider": "open_router",
-            "endpoint_url": "http://127.0.0.1:1/decisions",
             "model": "jev-test",
             "max_retries": 0
         }
@@ -367,4 +381,146 @@ async fn every_member_decodes_its_payload_and_answers_in_the_envelope() -> tinyb
         assert_eq!(!reply.ok, reply.error.is_some(), "{member}");
     }
     Ok(())
+}
+
+#[tokio::test]
+async fn the_ordinary_task_members_answer_over_a_real_bus() -> tinybus::Result<()> {
+    use tinydesktop_bus::agent::{AgentResponse, Capabilities, TaskView};
+
+    let bus = MemoryBus::new();
+    Broker::new().spawn(bus.clone());
+    let service = Connection::connect(bus.connect().await?).await?;
+    setup(service.clone(), json!({})).await?;
+    let client = Connection::connect(bus.connect().await?).await?;
+    let proxy = client.proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)?;
+
+    let described: Capabilities = proxy.call(names::methods::DESCRIBE, json!([])).await?;
+    assert!(!described.jev_configured);
+    assert_eq!(described.members.len(), 8);
+    assert!(described.surfaces.iter().any(|surface| surface.kind
+        == tinydesktop_bus::agent::SurfaceKind::Browser
+        && surface.available));
+
+    let listed: AgentResponse<Vec<TaskView>> =
+        proxy.call(names::methods::LIST_TASKS, json!([])).await?;
+    assert_eq!(listed.data.unwrap().len(), 0);
+
+    let planned: AgentResponse<serde_json::Value> = proxy
+        .call(
+            names::methods::PLAN_TASK,
+            json!([{"task": "book a flight"}]),
+        )
+        .await?;
+    assert_eq!(planned.error.unwrap().code, "PLANNER_NOT_CONFIGURED");
+
+    for member in [names::methods::AWAIT_TASK, names::methods::CANCEL_TASK] {
+        let missing: AgentResponse<TaskView> = proxy
+            .call(member, json!([{"id": "t-404", "timeout_ms": 1}]))
+            .await?;
+        assert_eq!(missing.error.unwrap().code, "NO_SUCH_TASK", "{member}");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_task_without_jev_fails_with_a_hint_and_reports_what_it_did() -> tinybus::Result<()> {
+    use tinydesktop_bus::agent::{AgentResponse, TaskReport, TaskStatus, TaskView};
+
+    let service = service();
+    let started = service
+        .call(
+            &names::methods::START_TASK.try_into()?,
+            json!([{"flow": {"app": "Mail", "steps": ["start a new email message"]}}]),
+        )
+        .await?;
+    let started: AgentResponse<TaskView> = serde_json::from_value(started)?;
+    let id = started.data.unwrap().id;
+    let settled = service
+        .call(
+            &names::methods::AWAIT_TASK.try_into()?,
+            json!([{"id": id, "timeout_ms": 5_000}]),
+        )
+        .await?;
+    let settled: AgentResponse<TaskView> = serde_json::from_value(settled)?;
+    assert!(matches!(
+        settled.data.unwrap().status,
+        TaskStatus::Failed { ref reason, recoverable: false, .. } if reason.contains("Jev")
+    ));
+    let continued = service
+        .call(
+            &names::methods::CONTINUE_TASK.try_into()?,
+            json!([{"id": id, "approve": true}]),
+        )
+        .await?;
+    let continued: AgentResponse<TaskView> = serde_json::from_value(continued)?;
+    assert_eq!(continued.error.unwrap().code, "NOT_WAITING");
+    let report = service
+        .call(
+            &names::methods::TASK_REPORT.try_into()?,
+            json!([{"id": id}]),
+        )
+        .await?;
+    let report: AgentResponse<TaskReport> = serde_json::from_value(report)?;
+    assert!(report.data.unwrap().flow.is_some());
+    Ok(())
+}
+
+#[test]
+fn the_desktop_is_available_only_with_accessibility() {
+    use super::dispatch::desktop_availability;
+
+    let reply = |state: serde_json::Value| {
+        DesktopResponse::ok("permissions", json!({"accessibility": state}))
+    };
+    assert!(desktop_availability(&reply(json!({"state": "granted"}))).available);
+    assert!(desktop_availability(&reply(json!({"state": "not_required"}))).available);
+    let denied = desktop_availability(&reply(
+        json!({"state": "denied", "suggestion": "open Settings"}),
+    ));
+    assert!(!denied.available);
+    assert_eq!(denied.reason.as_deref(), Some("open Settings"));
+    let bare = desktop_availability(&reply(json!({"state": "denied"})));
+    assert_eq!(
+        bare.reason.as_deref(),
+        Some("grant the accessibility permission")
+    );
+    let unknown = desktop_availability(&reply(json!({"state": "unknown"})));
+    assert!(unknown.reason.unwrap().contains("could not be read"));
+    let failed = desktop_availability(&DesktopResponse::err(
+        "permissions",
+        tinydesktop_bus::DesktopError::new("PLATFORM_NOT_SUPPORTED", "no surfaces here"),
+    ));
+    assert_eq!(failed.reason.as_deref(), Some("no surfaces here"));
+}
+
+#[test]
+fn a_planner_is_configured_from_private_configuration_only_with_a_key() {
+    assert!(DesktopService::from_config(&json!({"planner": {"api_key": "k"}})).is_ok());
+    assert!(DesktopService::from_config(&json!({"planner": {"api_key": " "}})).is_err());
+    assert!(DesktopService::from_config(&json!({"planner": {"model": "m"}})).is_err());
+}
+
+#[tokio::test]
+async fn the_runner_keeps_one_workspace_per_task_until_released() {
+    use tinydesktop_bus::agent::TaskId;
+    use tinydesktop_engine::FlowRunner;
+
+    let runner = super::runner::WorkspaceRunner::new(crate::Desktop::new(), None);
+    let task = TaskId::new("t-1");
+    // Nothing observed yet, so there is nothing to read.
+    assert!(runner.visible_text(&task).await.is_empty());
+    assert_eq!(runner.workspaces.lock().unwrap().len(), 1);
+    runner.release(&task);
+    assert!(runner.workspaces.lock().unwrap().is_empty());
+}
+
+#[test]
+fn the_browser_executable_is_configured_or_refused() {
+    assert!(DesktopService::from_config(&json!({"browser": {}})).is_ok());
+    assert!(
+        DesktopService::from_config(&json!({"browser": {"executable": "/usr/bin/chromium"}}))
+            .is_ok()
+    );
+    assert!(DesktopService::from_config(&json!({"browser": {"executable": 7}})).is_err());
+    assert!(DesktopService::from_config(&json!({"browser": "chrome"})).is_err());
 }

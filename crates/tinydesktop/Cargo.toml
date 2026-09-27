@@ -23,34 +23,24 @@ crate-type = ["rlib", "cdylib"]
 # takes one dependency rather than two, and so `tinydesktop::SnapshotRequest`
 # and `tinydesktop_bus::SnapshotRequest` are the same type.
 tinydesktop-bus = { workspace = true }
-tinyinference_decisions = { workspace = true }
+# The agent-desktop adapter. `Desktop`, `Error`, and `Result` are re-exported.
+tinydesktop-desktop = { workspace = true }
+# The agent runtime behind the agentic and task members: Jev loops, goals,
+# flows, the workspace, and the task controller.
+# `planner` compiles the LLM planner in; it stays inert until the private
+# `planner` configuration supplies a key.
+tinydesktop-engine = { workspace = true, features = ["planner"] }
+# The browser surface a task's workspace drives, with agent-browser linked
+# in-process.
+tinydesktop-browser = { workspace = true, features = ["agent-browser"] }
 tinybus = { workspace = true }
 tinybus-module = { workspace = true }
-thiserror = { workspace = true }
-# Command replies are `serde_json::Value` the whole way through: the engine
-# builds them and the envelope carries them without this crate reshaping them.
+# Command replies are `serde_json::Value` the whole way through.
 serde_json = { workspace = true }
 serde = { workspace = true }
-getrandom = { workspace = true }
-# The desktop automation engine. Platform-neutral; the accessibility backend
-# arrives through the target-specific dependencies below.
-agent-desktop-core = { workspace = true }
 # `spawn_blocking`, so a tree walk that takes a second does not stall the
 # connection's dispatch task for every other caller. See `src/tinybus_module/`.
 tokio = { workspace = true }
-
-# One accessibility backend per platform, selected at compile time. `linux`
-# currently implements no surfaces and fails closed with
-# `PLATFORM_NOT_SUPPORTED`; it is taken anyway so the module builds, loads, and
-# answers with a structured error there rather than failing to link.
-[target.'cfg(target_os = "macos")'.dependencies]
-agent-desktop-macos = { workspace = true }
-
-[target.'cfg(target_os = "windows")'.dependencies]
-agent-desktop-windows = { workspace = true }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-agent-desktop-linux = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

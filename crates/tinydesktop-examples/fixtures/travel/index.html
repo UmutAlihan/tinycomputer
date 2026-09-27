@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SkyFare · Search flights</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><h1>SkyFare</h1><p>Cheap flights across India</p></header>
+<main>
+  <h2>Search flights</h2>
+  <form action="results.html" method="get">
+    <label for="from">From</label>
+    <input id="from" name="from" autocomplete="off" required>
+    <label for="to">To</label>
+    <input id="to" name="to" autocomplete="off" required>
+    <label for="date">Departure date</label>
+    <input id="date" name="date" placeholder="e.g. 14 October" required>
+    <button type="submit">Search flights</button>
+  </form>
+</main>
+<div role="dialog" aria-label="Cookie consent" id="cookies">
+  <p>We use cookies to remember your searches.</p>
+  <button type="button" onclick="document.getElementById('cookies').remove()">Accept all</button>
+  <button type="button" onclick="document.getElementById('cookies').remove()">Reject non-essential</button>
+</div>
+</body>
+</html>

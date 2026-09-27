@@ -19,6 +19,12 @@
 //! - [`observation`], [`interaction`], [`input`], [`apps`], [`clipboard`],
 //!   [`notifications`], [`waiting`], [`system`] — one module per family of
 //!   members, holding that family's request payloads.
+//! - [`agent`] — the Agent interface: tasks handed over in plain language or
+//!   as a flow, run across the desktop and the browser, paused only for what
+//!   the caller must decide.
+//! - [`browser`] — the browser interface's own vocabulary and member names,
+//!   namespaced so its snapshot and screenshot types never shadow the
+//!   desktop ones.
 //! - [`version`] — [`CONTRACT_VERSION`] and the [`is_compatible`] bind rule.
 //!
 //! # How the pieces fit together at a call site
@@ -101,8 +107,10 @@
 //! interface without an entry here fails that crate's tests rather than
 //! surfacing as an unknown method in a host at runtime.
 
+pub mod agent;
 pub mod agentic;
 pub mod apps;
+pub mod browser;
 pub mod clipboard;
 pub mod envelope;
 pub mod flow;
@@ -132,8 +140,9 @@ pub use envelope::{
 };
 pub use flow::{
     ChooseStep, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowLoop, FlowRunResult, FlowStep,
-    FlowStopReason, FlowValidation, GroundingHint, IfStep, JevExchange, ReadStep, RepeatStep,
-    RunFlowRequest, STEP_KINDS, Slot, Slots, StepOutcome, StepReport, ValidateFlowRequest,
+    FlowStopReason, FlowValidation, GroundingHint, IfStep, JevExchange, PickStep, ReadStep,
+    RepeatStep, RunFlowRequest, STEP_KINDS, Slot, Slots, StepOutcome, StepReport,
+    ValidateFlowRequest,
 };
 pub use input::{
     DragEndpoint, DragRequest, HoldKeyRequest, HoldMouseRequest, HoverRequest, MouseClickRequest,

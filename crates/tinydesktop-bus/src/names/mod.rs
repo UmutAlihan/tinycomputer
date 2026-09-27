@@ -20,6 +20,11 @@ pub const OBJECT_PATH: &str = "/ai/tinyhumans/tinydesktop/Desktop";
 /// Every member returns a [`crate::DesktopResponse`], including on failure;
 /// see [`crate::envelope`] for why.
 pub mod methods {
+    pub use crate::agent::names::methods::{
+        AWAIT_TASK, CANCEL_TASK, CONTINUE_TASK, DESCRIBE, LIST_TASKS, PLAN_TASK, START_TASK,
+        TASK_REPORT,
+    };
+
     /// Resolves one natural-language intent. Requires confidential delivery.
     /// Takes a [`crate::ResolveIntentRequest`].
     pub const RESOLVE_INTENT: &str = "ResolveIntent";
@@ -213,6 +218,14 @@ pub const METHODS: &[&str] = &[
     methods::RUN_FLOW,
     methods::VALIDATE_FLOW,
     methods::FLOW_GUIDE,
+    methods::DESCRIBE,
+    methods::PLAN_TASK,
+    methods::START_TASK,
+    methods::AWAIT_TASK,
+    methods::CONTINUE_TASK,
+    methods::CANCEL_TASK,
+    methods::TASK_REPORT,
+    methods::LIST_TASKS,
     methods::SNAPSHOT,
     methods::FIND,
     methods::GET,

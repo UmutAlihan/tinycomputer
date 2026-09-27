@@ -20,6 +20,7 @@
 //! an `await`.
 
 mod dispatch;
+mod runner;
 
 use serde_json::Value;
 use tinybus::{Connection, Result as TinyBusResult};
@@ -54,6 +55,8 @@ tinybus_module::module_export! {
     provides = ["ai.tinyhumans.tinydesktop.Desktop"],
     methods = [
         "ResolveIntent", "RunGoal", "RunFlow", "ValidateFlow", "FlowGuide",
+        "Describe", "PlanTask", "StartTask", "AwaitTask", "ContinueTask", "CancelTask",
+        "TaskReport", "ListTasks",
         "Snapshot", "Find", "Get", "Is", "Screenshot",
         "Click", "DoubleClick", "TripleClick", "RightClick", "Type", "SetValue", "Clear",
         "Focus", "Select", "Toggle", "Check", "Uncheck", "Expand", "Collapse", "Scroll",

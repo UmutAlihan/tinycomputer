@@ -24,7 +24,8 @@ do.
 }
 ```
 
-- `app` is the application's name as the operating system shows it.
+- `app` is the application's name as the operating system shows it, or
+  `browser` for a flow that starts on the web.
 - `vars` are optional named values; any step text may use `${name}`.
 - `steps` run in order. A step is a plain string or an object with one key.
 
@@ -34,10 +35,13 @@ do.
 |---|---|---|
 | string | `"open the Liked Songs list"` | Reach the described state. |
 | `open` | `{"open": "Mail"}` | Launch the app or bring it forward. |
+| `browse` | `{"browse": "https://www.google.com/travel/flights"}` | Open a web address in the browser; later steps act on the page until an `open` switches back to an app. |
 | `do` | `{"do": "start a new note"}` | Same as a plain string. |
 | `enter` | `{"enter": {"subject": "Hi"}}` | Put each text into the field its key describes. |
 | `choose` | `{"choose": {"what": "the font list", "option": "Helvetica"}}` | Pick an option in a list, menu, or popup. |
 | `read` | `{"read": {"what": "the newest message's subject", "into": "subject"}}` | Store visible text in a variable. |
+| `extract` | `{"extract": {"what": "the flight results", "into": "flights"}}` | Store every item of a list, as JSON rows of their text, in a variable. |
+| `pick` | `{"pick": {"from": "the flight results", "by": "lowest price", "into": "flight"}}` | Choose the best of a list of results and open it; `into` stores its text. Prices, times, durations, and stops are compared exactly. |
 | `verify` | `{"verify": "the draft shows a recipient"}` | Fail the flow unless this holds. |
 | `wait_for` | `{"wait_for": "the search results are showing"}` | Wait until this holds. |
 | `stop_before` | `{"stop_before": "sending the email"}` | Find an irreversible action and stop in front of it. |
@@ -108,6 +112,30 @@ do.
         "message body": "Hi Sam,\n\nCould we move Thursday's sync to Friday at 3pm?\n\nThanks,\nAlex"
     } },
     { "verify": "the draft shows the recipient, the subject, and the message body" },
+    { "stop_before": "sending the email" }
+  ]
+}
+```
+
+## Across the web and an application
+
+A flow may move between surfaces: `browse` switches to the browser, `open`
+switches back to an application. Values captured with `read` on one surface
+can be typed on the other.
+
+```json
+{
+  "app": "browser",
+  "vars": { "from": "Delhi", "to": "Srinagar", "date": "14 October" },
+  "steps": [
+    { "browse": "https://www.google.com/travel/flights" },
+    { "enter": { "where from": "${from}", "where to": "${to}", "departure date": "${date}" } },
+    "search for flights",
+    { "wait_for": "flight results are listed" },
+    { "pick": { "from": "the flight results", "by": "lowest price", "into": "cheapest" } },
+    { "open": "Mail" },
+    "start a new email message",
+    { "enter": { "subject": "Flight to ${to}", "message body": "Cheapest option: ${cheapest}" } },
     { "stop_before": "sending the email" }
   ]
 }
