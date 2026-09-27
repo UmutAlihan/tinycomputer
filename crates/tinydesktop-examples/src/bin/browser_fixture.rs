@@ -15,17 +15,18 @@
 //! `TINYDESKTOP_BROWSER_EXECUTABLE` names the browser binary where discovery
 //! would not find one (Playwright's arm64 Chromium, for one).
 
-use std::process::ExitCode;
 use std::sync::Arc;
 
 use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_core::surface::{Depth, Screen, Surface, result_groups};
 use tinydesktop_core::{Criterion, FieldHint, Record, payment_evidence, rank};
 
-fn main() -> ExitCode {
+type Checks = Vec<(&'static str, bool, String)>;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let base = std::env::var("TINYDESKTOP_FIXTURE_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:8765".to_owned());
-    let runtime = tokio::runtime::Runtime::new().expect("a Tokio runtime starts");
+    let runtime = tokio::runtime::Runtime::new()?;
     let surface = BrowserSurface::new(
         Arc::new(Browser::new(Arc::new(AgentBrowser))),
         SessionOptions {
@@ -34,23 +35,34 @@ fn main() -> ExitCode {
         },
         runtime.handle().clone(),
     );
-    let mut failures = 0;
-    let mut check = |name: &str, passed: bool, detail: &str| {
-        println!("{} {name}: {detail}", if passed { "PASS" } else { "FAIL" });
-        if !passed {
-            failures += 1;
-        }
-    };
+    let mut checks = Checks::new();
+    search(&surface, &base, &mut checks);
+    results(&surface, &base, &mut checks);
+    payment(&surface, &base, &mut checks);
+    surface.close();
+    drop(runtime);
 
-    let search = open(&surface, &format!("{base}/index.html"));
-    match &search {
+    let failed = checks.iter().filter(|(_, passed, _)| !passed).count();
+    for (name, passed, detail) in &checks {
+        println!("{} {name}: {detail}", if *passed { "PASS" } else { "FAIL" });
+    }
+    if failed == 0 {
+        println!("all checks passed");
+        Ok(())
+    } else {
+        Err(format!("{failed} of {} checks failed", checks.len()).into())
+    }
+}
+
+fn search(surface: &BrowserSurface, base: &str, checks: &mut Checks) {
+    match open(surface, &format!("{base}/index.html")) {
         Ok(screen) => {
-            check(
+            checks.push((
                 "cookie dialog in front",
                 screen.surface == "sheet",
-                &format!("surface {:?}", screen.surface),
-            );
-            check(
+                format!("surface {:?}", screen.surface),
+            ));
+            checks.push((
                 "search form fields",
                 ["From", "To", "Departure date"].iter().all(|name| {
                     screen
@@ -58,87 +70,80 @@ fn main() -> ExitCode {
                         .iter()
                         .any(|node| node.name.as_deref() == Some(name))
                 }),
-                &format!("{} controls", screen.candidates.len()),
-            );
+                format!("{} controls", screen.candidates.len()),
+            ));
         }
-        Err(error) => check("search page", false, error),
+        Err(error) => checks.push(("search page", false, error)),
     }
+}
 
-    match open(
-        &surface,
+fn results(surface: &BrowserSurface, base: &str, checks: &mut Checks) {
+    let screen = match open(
+        surface,
         &format!("{base}/results.html?from=Delhi&to=Srinagar&date=14%20October"),
     ) {
-        Ok(screen) => {
-            let groups = result_groups(&screen);
-            check(
-                "four result cards",
-                groups.len() == 4,
-                &format!("{groups:?}"),
-            );
-            let records = groups
+        Ok(screen) => screen,
+        Err(error) => return checks.push(("results page", false, error)),
+    };
+    let groups = result_groups(&screen);
+    checks.push((
+        "four result cards",
+        groups.len() == 4,
+        format!("{} cards", groups.len()),
+    ));
+    let records = groups
+        .iter()
+        .map(|group| Record {
+            fields: group
+                .fields
                 .iter()
-                .map(|group| Record {
-                    fields: group
-                        .fields
-                        .iter()
-                        .enumerate()
-                        .map(|(index, text)| (format!("field {index}"), text.clone()))
-                        .collect(),
-                })
-                .collect::<Vec<_>>();
-            let best =
-                rank(&records, Criterion::LowestPrice).and_then(|order| order.first().copied());
-            let picked = best
-                .map(|index| groups[index].fields.join(" · "))
-                .unwrap_or_default();
-            check(
-                "cheapest is IndiGo at ₹6,840",
-                picked.contains("IndiGo") && picked.contains("6,840"),
-                &picked,
-            );
-            let opener = best.and_then(|index| groups[index].primary.clone());
-            check(
-                "the card opens with Select",
-                opener.as_ref().and_then(|node| node.name.as_deref()) == Some("Select"),
-                &format!("{:?}", opener.map(|node| node.name)),
-            );
-        }
-        Err(error) => check("results page", false, &error),
-    }
+                .enumerate()
+                .map(|(index, text)| (format!("field {index}"), text.clone()))
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+    let best = rank(&records, Criterion::LowestPrice).and_then(|order| order.first().copied());
+    let picked = best
+        .map(|index| groups[index].fields.join(" · "))
+        .unwrap_or_default();
+    checks.push((
+        "cheapest is IndiGo at ₹6,840",
+        picked.contains("IndiGo") && picked.contains("6,840"),
+        picked,
+    ));
+    let opener = best.and_then(|index| groups[index].primary.clone());
+    checks.push((
+        "the card opens with Select",
+        opener.as_ref().and_then(|node| node.name.as_deref()) == Some("Select"),
+        format!("{:?}", opener.map(|node| node.name)),
+    ));
+}
 
-    match open(&surface, &format!("{base}/payment.html")) {
-        Ok(screen) => {
-            let fields = screen
-                .candidates
-                .iter()
-                .map(|node| FieldHint {
-                    label: node.name.clone().unwrap_or_default(),
-                    ..FieldHint::default()
-                })
-                .collect::<Vec<_>>();
-            let controls = screen
-                .candidates
-                .iter()
-                .filter_map(|node| node.name.as_deref())
-                .collect::<Vec<_>>();
-            let evidence = payment_evidence(&format!("{base}/payment.html"), &fields, &controls);
-            check(
-                "payment page detected",
-                evidence.is_some(),
-                &format!("{evidence:?}"),
-            );
-        }
-        Err(error) => check("payment page", false, &error),
-    }
-
-    surface.close();
-    drop(runtime);
-    if failures == 0 {
-        println!("all checks passed");
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
-    }
+fn payment(surface: &BrowserSurface, base: &str, checks: &mut Checks) {
+    let url = format!("{base}/payment.html");
+    let screen = match open(surface, &url) {
+        Ok(screen) => screen,
+        Err(error) => return checks.push(("payment page", false, error)),
+    };
+    let fields = screen
+        .candidates
+        .iter()
+        .map(|node| FieldHint {
+            label: node.name.clone().unwrap_or_default(),
+            ..FieldHint::default()
+        })
+        .collect::<Vec<_>>();
+    let controls = screen
+        .candidates
+        .iter()
+        .filter_map(|node| node.name.as_deref())
+        .collect::<Vec<_>>();
+    let evidence = payment_evidence(&url, &fields, &controls);
+    checks.push((
+        "payment page detected",
+        evidence.is_some(),
+        format!("{evidence:?}"),
+    ));
 }
 
 fn open(surface: &BrowserSurface, url: &str) -> Result<Screen, String> {

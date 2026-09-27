@@ -7,7 +7,6 @@
 //! host: `scripts/docker-lab -- crates/tinydesktop-examples/fixtures/run task_fixture`.
 
 use std::collections::BTreeMap;
-use std::process::ExitCode;
 use std::sync::Arc;
 
 use serde_json::json;
@@ -15,6 +14,7 @@ use tinydesktop::Desktop;
 use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_bus::agent::{
     AwaitTaskRequest, ContinueTaskRequest, StartTaskRequest, TaskConstraints, TaskId, TaskStatus,
+    TaskView,
 };
 use tinydesktop_bus::{JevConfig, RunFlowRequest};
 use tinydesktop_engine::{FlowFuture, FlowRunner, JevRuntime, Tasks, TextFuture, Workspace};
@@ -49,17 +49,14 @@ impl FlowRunner for Fixture {
 }
 
 #[tokio::main]
-async fn main() -> ExitCode {
-    let Ok(key) = std::env::var("OPENROUTER_API_KEY") else {
-        eprintln!("OPENROUTER_API_KEY is not set; Jev cannot run");
-        return ExitCode::FAILURE;
-    };
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let key = std::env::var("OPENROUTER_API_KEY")
+        .map_err(|_| "OPENROUTER_API_KEY is not set; Jev cannot run")?;
     let base = std::env::var("TINYDESKTOP_FIXTURE_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:8765".to_owned());
     let config: JevConfig =
-        serde_json::from_value(json!({"api_key": key, "provider": "open_router"}))
-            .expect("a Jev configuration from a key");
-    let jev = JevRuntime::configure(&config).expect("Jev configures");
+        serde_json::from_value(json!({"api_key": key, "provider": "open_router"}))?;
+    let jev = JevRuntime::configure(&config).map_err(|error| error.message)?;
     let browser = BrowserSurface::new(
         Arc::new(Browser::new(Arc::new(AgentBrowser))),
         SessionOptions {
@@ -72,7 +69,32 @@ async fn main() -> ExitCode {
         workspace: Workspace::new(Desktop::new(), Some(browser.clone())),
         jev,
     }));
+    let started = tasks.start(&request(&base)?);
+    let view = started
+        .data
+        .ok_or_else(|| format!("the task did not start: {:?}", started.error))?;
+    let id = view.id.clone();
+    let view = follow(&tasks, view).await?;
+    if let Some(report) = tasks.report(&id).data {
+        for step in &report.steps {
+            println!(
+                "  {} {} [{:?}] {}",
+                step.path, step.kind, step.outcome, step.note
+            );
+        }
+    }
+    browser.close();
+    if matches!(view.status, TaskStatus::Checkpoint { ref reason, .. } if reason.contains("payment"))
+    {
+        println!("PASS stopped at payment");
+        Ok(())
+    } else {
+        Err("FAIL did not stop at payment".into())
+    }
+}
 
+/// The booking task: the flow, and every fact but the phone number.
+fn request(base: &str) -> Result<StartTaskRequest, serde_json::Error> {
     let flow = json!({"app": "browser", "steps": [
         {"browse": format!("{base}/index.html")},
         {"enter": {"from": "${from}", "to": "${to}", "departure date": "${date}"}},
@@ -92,72 +114,44 @@ async fn main() -> ExitCode {
         ("last name", "Raina"),
         ("email", "asha@example.com"),
     ];
-    let started = tasks.start(&StartTaskRequest {
-        flow: Some(serde_json::from_value(flow).expect("the fixture flow parses")),
+    Ok(StartTaskRequest {
+        flow: Some(serde_json::from_value(flow)?),
         facts: facts
             .iter()
             .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
             .collect(),
         trace: true,
         ..StartTaskRequest::default()
-    });
-    let Some(mut view) = started.data else {
-        eprintln!("the task did not start: {:?}", started.error);
-        return ExitCode::FAILURE;
-    };
+    })
+}
+
+/// Follows the task as a caller would, supplying the phone number when asked.
+async fn follow(tasks: &Tasks, mut view: TaskView) -> Result<TaskView, String> {
     let id = view.id.clone();
     loop {
         println!("[{}] {}", state(&view.status), view.summary);
-        match &view.status {
-            TaskStatus::NeedsInput { fields } => {
-                let inputs = fields
+        let reply = match &view.status {
+            TaskStatus::NeedsInput { fields } => tasks.continue_task(ContinueTaskRequest {
+                id: id.clone(),
+                inputs: fields
                     .iter()
                     .map(|field| (field.name.clone(), "+91 98765 43210".to_owned()))
-                    .collect::<BTreeMap<_, _>>();
-                view = tasks
-                    .continue_task(ContinueTaskRequest {
-                        id: id.clone(),
-                        inputs,
-                        ..ContinueTaskRequest::default()
-                    })
-                    .data
-                    .expect("inputs are accepted");
-            }
+                    .collect::<BTreeMap<_, _>>(),
+                ..ContinueTaskRequest::default()
+            }),
             TaskStatus::Running => {
-                view = tasks
+                tasks
                     .await_task(AwaitTaskRequest {
                         id: id.clone(),
                         timeout_ms: 60_000,
                     })
                     .await
-                    .data
-                    .expect("the task exists");
             }
-            _ => break,
-        }
-    }
-    if let Some(report) = tasks.report(&id).data {
-        for step in &report.steps {
-            println!(
-                "  {} {} [{:?}] {}",
-                step.path, step.kind, step.outcome, step.note
-            );
-        }
-    }
-    browser.close();
-    let at_payment = matches!(view.status, TaskStatus::Checkpoint { ref reason, .. } if reason.contains("payment"));
-    println!(
-        "{}",
-        if at_payment {
-            "PASS stopped at payment"
-        } else {
-            "FAIL did not stop at payment"
-        }
-    );
-    if at_payment {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
+            _ => return Ok(view),
+        };
+        view = reply
+            .data
+            .ok_or_else(|| format!("the task stopped answering: {:?}", reply.error))?;
     }
 }
 
