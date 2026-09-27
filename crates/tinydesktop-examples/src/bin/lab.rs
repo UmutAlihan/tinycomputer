@@ -337,7 +337,8 @@ async fn authored(
             serde_json::to_string_pretty(&flow)?
         );
         write_json(dir, &format!("authored-{round}.json"), &flow)?;
-        let result = run_flow(host, flow, options, dir, &format!("-{round}"), run).await?;
+        let result = run_flow(host, flow, options, dir, &format!("-{round}"), run, "authored")
+            .await?;
         actions += result.actions;
         jev_calls += result.metrics.calls;
         let summary = format!(
