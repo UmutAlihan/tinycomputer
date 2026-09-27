@@ -8,6 +8,12 @@ use crate::Desktop;
 
 const MAX_TREE_DEPTH: usize = 64;
 const MAX_VISITED_NODES: usize = 4_096;
+/// Most actionable candidates one observation offers.
+pub(super) const MAX_CANDIDATES: usize = 254;
+/// Most static-text lines one observation keeps as context.
+const MAX_CONTEXT_LINES: usize = 60;
+/// Longest static-text line kept as context, in characters.
+const MAX_CONTEXT_CHARS: usize = 160;
 
 /// One ref-bearing accessibility node offered to Jev.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -35,18 +41,33 @@ pub(super) struct Screen {
     pub(super) surface: String,
     pub(super) root: Option<String>,
     pub(super) candidates: Vec<Candidate>,
+    /// Visible non-actionable text (labels, headings, status), in tree order.
+    pub(super) context: Vec<String>,
+    /// `(kept, total)` when more candidates existed than were offered.
+    pub(super) truncated: Option<(usize, usize)>,
+}
+
+/// How much of the tree one observation reads.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) enum Depth {
+    /// The engine's default depth.
+    #[default]
+    Full,
+    /// A shallow overview whose cut-off containers can be drilled into.
+    Skeleton,
 }
 
 pub(super) fn observe(
     desktop: &Desktop,
     app: &str,
     root: Option<&str>,
+    depth: Depth,
 ) -> Result<Screen, Box<DesktopResponse>> {
     let request = SnapshotRequest {
         app: Some(app.to_owned()),
         include_bounds: true,
-        interactive_only: true,
         compact: true,
+        skeleton: depth == Depth::Skeleton && root.is_none(),
         root_ref: root.map(str::to_owned),
         ..SnapshotRequest::default()
     };
@@ -104,10 +125,22 @@ pub(super) fn parse_reply(
     let tree = data.get("tree").cloned().unwrap_or(Value::Null);
     let mut root_node: Candidate = serde_json::from_value(tree).unwrap_or_default();
     let mut candidates = Vec::new();
+    let mut context = Vec::new();
     let mut visited = 0_usize;
-    collect(&mut root_node, &[], &mut candidates, 0, &mut visited);
+    collect(
+        &mut root_node,
+        &[],
+        &mut Collected {
+            candidates: &mut candidates,
+            context: &mut context,
+        },
+        0,
+        &mut visited,
+    );
     candidates.retain(offerable);
-    candidates.truncate(254);
+    let total = candidates.len();
+    candidates.truncate(MAX_CANDIDATES);
+    let truncated = (total > MAX_CANDIDATES).then_some((MAX_CANDIDATES, total));
 
     Ok(Screen {
         app: data
@@ -123,13 +156,20 @@ pub(super) fn parse_reply(
         surface,
         root: root.map(str::to_owned),
         candidates,
+        context,
+        truncated,
     })
+}
+
+struct Collected<'a> {
+    candidates: &'a mut Vec<Candidate>,
+    context: &'a mut Vec<String>,
 }
 
 fn collect(
     node: &mut Candidate,
     path: &[String],
-    out: &mut Vec<Candidate>,
+    out: &mut Collected<'_>,
     depth: usize,
     visited: &mut usize,
 ) {
@@ -146,8 +186,10 @@ fn collect(
             |name| format!("{} {name:?}", node.role),
         );
     node.path = path.to_vec();
-    if !node.ref_id.is_empty() {
-        out.push(node.clone());
+    if node.ref_id.is_empty() {
+        remember_text(node, out.context);
+    } else {
+        out.candidates.push(node.clone());
     }
     let mut child_path = path.to_vec();
     if !node.children.is_empty() {
@@ -155,6 +197,36 @@ fn collect(
     }
     for child in &mut node.children {
         collect(child, &child_path, out, depth.saturating_add(1), visited);
+    }
+}
+
+/// Keeps a ref-less node's visible text as context for Jev.
+///
+/// Labels, headings, and status text are what tell a decision model where it
+/// is ("New Message", "Now playing"), and none of them carry a ref because none
+/// of them can be acted on.
+fn remember_text(node: &Candidate, context: &mut Vec<String>) {
+    if context.len() >= MAX_CONTEXT_LINES {
+        return;
+    }
+    let text = node
+        .name
+        .as_deref()
+        .or(node.description.as_deref())
+        .map(str::to_owned)
+        .or_else(|| match node.value.as_ref() {
+            Some(Value::String(value)) => Some(value.clone()),
+            _ => None,
+        });
+    let Some(text) = text.map(|text| text.split_whitespace().collect::<Vec<_>>().join(" ")) else {
+        return;
+    };
+    if text.is_empty() {
+        return;
+    }
+    let line: String = text.chars().take(MAX_CONTEXT_CHARS).collect();
+    if !context.contains(&line) {
+        context.push(line);
     }
 }
 
@@ -228,19 +300,59 @@ pub(super) fn describe(node: &Candidate, include_values: bool) -> Value {
     json!({"untrusted_accessibility_data": value})
 }
 
+/// Identifies what is on screen independently of ref allocation.
+///
+/// Refs are re-minted by every snapshot, so a fingerprint that included them
+/// would report a change on every turn and stall detection would never fire.
 pub(super) fn fingerprint(screen: &Screen) -> String {
-    screen
+    let mut parts = screen
         .candidates
         .iter()
-        .map(|node| {
-            format!(
-                "{}:{}:{}:{:?}",
-                node.ref_id,
-                node.role,
-                node.name.as_deref().unwrap_or_default(),
-                node.states
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("|")
+        .map(signature)
+        .collect::<Vec<_>>();
+    parts.push(format!("window:{}", screen.window.as_deref().unwrap_or_default()));
+    parts.push(format!("surface:{}", screen.surface));
+    parts.extend(screen.context.iter().map(|line| format!("text:{line}")));
+    parts.join("|")
+}
+
+/// A ref-free identity for one element: role, label, value, states, and where
+/// it sits.
+pub(super) fn signature(node: &Candidate) -> String {
+    format!(
+        "{}:{}:{}:{:?}:{}",
+        node.role,
+        node.name
+            .as_deref()
+            .or(node.description.as_deref())
+            .unwrap_or_default(),
+        node.value.as_ref().map(Value::to_string).unwrap_or_default(),
+        node.states,
+        node.path.join(">")
+    )
+}
+
+/// A short human label for an element: role plus accessible name.
+pub(super) fn label(node: &Candidate) -> String {
+    node.name
+        .as_deref()
+        .or(node.description.as_deref())
+        .map_or_else(|| node.role.clone(), |name| format!("{} {name:?}", node.role))
+}
+
+/// Element labels present in `after` but not `before`, and the reverse.
+pub(super) fn difference(before: &Screen, after: &Screen) -> (Vec<String>, Vec<String>) {
+    let labels = |screen: &Screen| {
+        screen
+            .candidates
+            .iter()
+            .map(label)
+            .chain(screen.context.iter().cloned())
+            .collect::<std::collections::BTreeSet<_>>()
+    };
+    let (before, after) = (labels(before), labels(after));
+    (
+        after.difference(&before).cloned().collect(),
+        before.difference(&after).cloned().collect(),
+    )
 }
