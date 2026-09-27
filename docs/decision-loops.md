@@ -286,7 +286,7 @@ step, when:
   so a button that only says "Continue" on a card form is caught too.
 
 When a click is refused because it is covered — a result list's whole card
-often lies a transparent click layer over its own controls, so the card's own
+often lies a transparent click layer (or its own text) over its own controls, so the card's own
 button is "covered" by the card itself — the runtime presses Escape once and
 retries the *same* already-vetted target. Escape never chooses a new element,
 so nothing exposed by dismissing whatever covered the click is ever pressed
