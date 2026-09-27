@@ -188,6 +188,8 @@ fn page_fake() -> Fake {
         "inputvalue" => Some(ok(&json!({"value": ""}))),
         "gettext" if command["selector"] == "@e2" => Some(ok(&json!({"text": "Srinagar"}))),
         "gettext" => Some(ok(&json!({"text": " "}))),
+        // A text field is focused, so targetless typing is accepted.
+        "evaluate" => Some(ok(&json!({"result": true}))),
         _ => None,
     })
 }
