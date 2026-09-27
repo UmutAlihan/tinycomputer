@@ -292,6 +292,19 @@ async fn requests_that_cannot_start_are_refused_with_a_hint() {
     assert_eq!(code(&invalid), "INVALID_FLOW");
     assert!(!invalid.error.unwrap().hint.is_empty());
 
+    let fact_leak = tasks.start(&StartTaskRequest {
+        flow: Some(flow(json!({"app": "Mail", "steps": [
+            {"verify": "shows ${email}"}
+        ]}))),
+        facts: BTreeMap::from([("email".to_owned(), "sam@example.com".to_owned())]),
+        ..StartTaskRequest::default()
+    });
+    assert_eq!(code(&fact_leak), "INVALID_FLOW");
+    assert!(
+        fact_leak.error.unwrap().message.contains("is a fact"),
+        "a fact referenced outside an enter step fails fast"
+    );
+
     let planless = tasks.start(&StartTaskRequest {
         task: Some("book the cheapest flight to Srinagar".to_owned()),
         ..StartTaskRequest::default()
