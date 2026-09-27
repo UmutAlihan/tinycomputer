@@ -15,19 +15,30 @@ const HISTORY_CHANGES: usize = 6;
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct Candidate {
+    /// The engine ref that addresses this node in its snapshot.
     pub ref_id: String,
+    /// The accessibility role, such as `button` or `textfield`.
     pub role: String,
+    /// The accessible name.
     pub name: Option<String>,
+    /// The accessible description, used when there is no name.
     pub description: Option<String>,
+    /// The current value, for fields and controls that hold one.
     pub value: Option<Value>,
+    /// States such as `focused`, `selected`, or `disabled`.
     pub states: Vec<String>,
+    /// The actions the engine can perform on it, such as `Click`.
     pub available_actions: Vec<String>,
+    /// How many children it has, when the engine reports it.
     pub children_count: Option<usize>,
+    /// Its on-screen rectangle, when known.
     pub bounds: Option<Value>,
+    /// Its child nodes, as the snapshot nested them.
     pub children: Vec<Candidate>,
     /// Whether the engine cut this node's subtree short to stay in budget.
     pub subtree_truncated: bool,
     #[serde(skip)]
+    /// Labels of its ancestors, outermost first.
     pub path: Vec<String>,
     /// This node's position in the tree's document order, so a ref-bearing
     /// and a ref-less node can be merged back into reading order even though
@@ -39,9 +50,13 @@ pub struct Candidate {
 /// Parsed current surface.
 #[derive(Debug, Clone)]
 pub struct Screen {
+    /// The application (or site) the screen belongs to.
     pub app: String,
+    /// The window or page title.
     pub window: Option<String>,
+    /// What is in front: `window`, or an overlay such as `sheet`.
     pub surface: String,
+    /// Ref-bearing, actionable nodes, in document order.
     pub candidates: Vec<Candidate>,
     /// Visible non-actionable text (labels, headings, status), in tree order.
     pub context: Vec<String>,
@@ -67,6 +82,9 @@ pub enum Depth {
     Skeleton,
 }
 
+/// Describes a node for Jev, wrapped so it is treated as untrusted data;
+/// field values are included only when `include_values` is set.
+#[must_use]
 pub fn describe(node: &Candidate, include_values: bool) -> Value {
     let mut value = json!({
         "what": format!(
@@ -103,6 +121,7 @@ pub fn describe(node: &Candidate, include_values: bool) -> Value {
 ///
 /// Refs are re-minted by every snapshot, so a fingerprint that included them
 /// would report a change on every turn and stall detection would never fire.
+#[must_use]
 pub fn fingerprint(screen: &Screen) -> String {
     let mut parts = screen.candidates.iter().map(signature).collect::<Vec<_>>();
     parts.push(format!(
@@ -116,6 +135,7 @@ pub fn fingerprint(screen: &Screen) -> String {
 
 /// A ref-free identity for one element: role, label, value, states, and where
 /// it sits.
+#[must_use]
 pub fn signature(node: &Candidate) -> String {
     format!(
         "{}:{}:{}:{:?}:{}",
@@ -134,6 +154,7 @@ pub fn signature(node: &Candidate) -> String {
 }
 
 /// A short human label for an element: role plus accessible name.
+#[must_use]
 pub fn label(node: &Candidate) -> String {
     node.name
         .as_deref()
@@ -145,10 +166,8 @@ pub fn label(node: &Candidate) -> String {
 }
 
 /// Element labels present in `after` but not `before`, and the reverse.
-pub fn difference(
-    before: &Screen,
-    after: &Screen,
-) -> (Vec<String>, Vec<String>) {
+#[must_use]
+pub fn difference(before: &Screen, after: &Screen) -> (Vec<String>, Vec<String>) {
     let labels = |screen: &Screen| {
         screen
             .candidates
@@ -165,6 +184,7 @@ pub fn difference(
 }
 
 /// Describes what an action changed, in labels Jev can match next turn.
+#[must_use]
 pub fn change_note(before: &Screen, after: &Screen, changed: bool) -> String {
     if !changed {
         return "nothing on screen changed".to_owned();
@@ -206,10 +226,14 @@ fn summarize(labels: &[String]) -> String {
 }
 
 /// The screen's static text, wrapped so Jev treats it as data.
+#[must_use]
 pub fn untrusted_context(screen: &Screen) -> serde_json::Value {
     json!({"untrusted_accessibility_data": screen.context})
 }
 
+/// Whether `goal` names the candidate exactly: a run of at least two of its
+/// name's words, in order, appears in the goal.
+#[must_use]
 pub fn exact_named_match(goal: &str, candidate: Option<&Candidate>) -> bool {
     let Some(name) = candidate.and_then(|candidate| {
         candidate
@@ -246,6 +270,7 @@ pub fn exact_named_match(goal: &str, candidate: Option<&Candidate>) -> bool {
 }
 
 /// The wire form of an element a flow acted on.
+#[must_use]
 pub fn target_payload(candidate: &Candidate) -> JevTarget {
     JevTarget {
         ref_id: candidate.ref_id.clone(),

@@ -13,8 +13,8 @@ use tinydesktop_bus::{DesktopResponse, JevOperation};
 
 pub use delivery::{deliver_text, holds, tokenized};
 pub use screen::{
-    Candidate, Depth, MAX_CANDIDATES, Screen, change_note, describe, difference,
-    exact_named_match, fingerprint, label, signature, target_payload, untrusted_context,
+    Candidate, Depth, MAX_CANDIDATES, Screen, change_note, describe, difference, exact_named_match,
+    fingerprint, label, signature, target_payload, untrusted_context,
 };
 
 /// One thing a task can observe and act on: a desktop application or a

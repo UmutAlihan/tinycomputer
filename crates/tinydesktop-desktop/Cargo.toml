@@ -16,6 +16,8 @@ publish = false
 # Request payloads and the response envelope every method takes and returns.
 # Re-exported, so `tinydesktop_desktop::SnapshotRequest` is the contract type.
 tinydesktop-bus = { workspace = true }
+# The surface trait and screen model `Desktop` implements for the engine.
+tinydesktop-core = { workspace = true }
 # Derive macros for the crate-wide error type in `src/error/`.
 thiserror = { workspace = true }
 # Command replies are `serde_json::Value` the whole way through: the engine

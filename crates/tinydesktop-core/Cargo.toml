@@ -13,6 +13,11 @@ categories = ["os"]
 publish = false
 
 [dependencies]
+# The closed operations and response envelope a surface speaks.
+tinydesktop-bus = { workspace = true }
+# Candidates parse straight out of engine snapshots, which are JSON.
+serde = { workspace = true }
+serde_json = { workspace = true }
 # Derive macros for the crate-wide error type in `src/error/`.
 thiserror = { workspace = true }
 

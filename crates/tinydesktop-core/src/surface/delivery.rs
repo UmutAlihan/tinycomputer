@@ -69,6 +69,7 @@ fn delivered(path: &str, verified: bool) -> DesktopResponse {
 /// A token field (a mail recipient list) turns each typed address into an
 /// attachment and reports it as U+FFFC, the object replacement character, so
 /// its value can never be compared with what was typed.
+#[must_use]
 pub fn tokenized(held: &str) -> bool {
     held.contains('\u{fffc}')
         && held.chars().all(|character| {
@@ -80,6 +81,7 @@ pub fn tokenized(held: &str) -> bool {
 ///
 /// Whitespace is collapsed on both sides: editors rewrap lines and turn a
 /// newline into a paragraph break, and neither changes what was written.
+#[must_use]
 pub fn holds(held: &str, text: &str) -> bool {
     let normalize = |value: &str| value.split_whitespace().collect::<Vec<_>>().join(" ");
     let (held, text) = (normalize(held), normalize(text));

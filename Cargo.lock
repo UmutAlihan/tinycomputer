@@ -1445,7 +1445,10 @@ dependencies = [
 name = "tinydesktop-core"
 version = "0.5.1"
 dependencies = [
+ "serde",
+ "serde_json",
  "thiserror",
+ "tinydesktop-bus",
 ]
 
 [[package]]
@@ -1459,6 +1462,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tinydesktop-bus",
+ "tinydesktop-core",
 ]
 
 [[package]]
@@ -1469,6 +1473,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tinydesktop-bus",
+ "tinydesktop-core",
  "tinydesktop-desktop",
  "tinyinference_decisions",
  "tokio",

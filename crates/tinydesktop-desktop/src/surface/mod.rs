@@ -26,7 +26,7 @@ const MAX_CONTEXT_LINES: usize = 60;
 /// Longest static-text line kept as context, in characters.
 const MAX_CONTEXT_CHARS: usize = 160;
 
-pub fn observe(
+pub(crate) fn observe(
     desktop: &Desktop,
     app: &str,
     root: Option<&str>,
@@ -81,7 +81,7 @@ fn front_window(desktop: &Desktop, app: &str) -> Option<String> {
 
 /// The focused window, else the first visible one with a title, else the
 /// first visible one.
-pub fn front_of(windows: &[Value]) -> Option<String> {
+pub(crate) fn front_of(windows: &[Value]) -> Option<String> {
     let flag = |window: &Value, key: &str| window.get(key).and_then(Value::as_bool) == Some(true);
     let titled = |window: &&Value| {
         window
@@ -103,7 +103,7 @@ pub fn front_of(windows: &[Value]) -> Option<String> {
         .map(str::to_owned)
 }
 
-pub fn parse_reply(
+pub(crate) fn parse_reply(
     desktop: &Desktop,
     app: &str,
     root: Option<&str>,
@@ -456,7 +456,7 @@ const SETTLE_MS: u64 = 200;
 
 /// What to put back on the pasteboard once a paste is done with it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Restore {
+pub(crate) enum Restore {
     /// Write this back; it is what the pasteboard held before the paste.
     Set(ClipboardSetRequest),
     /// The pasteboard held nothing in a readable flavor before the paste, so
@@ -471,7 +471,7 @@ pub enum Restore {
 /// A failed read (permission denied, no pasteboard service) reports nothing
 /// unreadable rather than "empty", so the pasteboard is left untouched instead
 /// of being cleared on a guess.
-pub fn restore_plan(previous: &DesktopResponse) -> Option<Restore> {
+pub(crate) fn restore_plan(previous: &DesktopResponse) -> Option<Restore> {
     let data = previous.data.as_ref().filter(|_| previous.ok)?;
     if data.get("found").and_then(Value::as_bool) == Some(false) {
         return Some(Restore::Clear);
@@ -526,7 +526,7 @@ fn with_restoration(mut result: DesktopResponse, restored: bool) -> DesktopRespo
 
 /// Treats "several windows match" as launched: the application is running,
 /// and which of its windows to act in is the next step's decision.
-pub fn running_is_launched(reply: DesktopResponse) -> DesktopResponse {
+pub(crate) fn running_is_launched(reply: DesktopResponse) -> DesktopResponse {
     if reply
         .error
         .as_ref()
@@ -551,7 +551,7 @@ pub fn running_is_launched(reply: DesktopResponse) -> DesktopResponse {
 /// on Windows and Linux. `is_macos` is threaded through rather than read from
 /// `cfg!` here so the mapping stays a pure, unit-testable function; the one
 /// caller below supplies the real platform.
-pub fn platform_combo(combo: &str, is_macos: bool) -> String {
+pub(crate) fn platform_combo(combo: &str, is_macos: bool) -> String {
     if is_macos {
         return combo.to_owned();
     }
@@ -568,7 +568,7 @@ fn press_at(app: &str, combo: &str) -> PressRequest {
     request
 }
 
-pub fn execute_desktop(
+pub(crate) fn execute_desktop(
     desktop: &Desktop,
     operation: JevOperation,
     target: Option<&Candidate>,

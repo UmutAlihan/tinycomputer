@@ -13,8 +13,12 @@
 //! - [`Record`], the value parsers, and [`rank`] — result cards as named
 //!   fields, and picking "the cheapest" or "the earliest" by arithmetic.
 //! - [`Facts`] — the caller's values, held locally by name, never card data.
+//! - [`surface`] — the [`Surface`](surface::Surface) trait every decision loop
+//!   runs against, the [`Screen`](surface::Screen) it observes, and verified
+//!   text delivery.
 //!
-//! The crate holds no engine, no bus, no model, and no runtime. The surface
+//! The crate holds no engine, no bus, no model, and no runtime; it speaks the
+//! contract crate's closed operations and envelope. The surface
 //! adapters and `tinydesktop-engine` build on it
 //! (`docs/specs/unified-agent.md`).
 //!
@@ -36,6 +40,7 @@ mod facts;
 mod keymap;
 mod records;
 mod safety;
+pub mod surface;
 
 pub use error::{Error, Result};
 pub use facts::Facts;

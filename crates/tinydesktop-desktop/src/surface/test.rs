@@ -5,7 +5,9 @@
 
 use serde_json::json;
 use tinydesktop_bus::{DesktopResponse, JevOperation};
-use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface, deliver_text, describe, fingerprint};
+use tinydesktop_core::surface::{
+    Candidate, Depth, Screen, Surface, deliver_text, describe, fingerprint,
+};
 
 use super::{
     Restore, execute_desktop, front_of, observe, parse_reply, platform_combo, restore_plan,

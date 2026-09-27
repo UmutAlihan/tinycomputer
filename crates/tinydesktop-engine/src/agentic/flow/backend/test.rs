@@ -9,7 +9,10 @@ use crate::Desktop;
 
 #[tokio::test]
 async fn a_blocking_call_runs_and_returns_its_value() {
-    let reply = blocking(Desktop::new(), |_| DesktopResponse::ok("probe", serde_json::json!({}))).await;
+    let reply = blocking(Desktop::new(), |_| {
+        DesktopResponse::ok("probe", serde_json::json!({}))
+    })
+    .await;
     assert!(reply.ok);
 }
 

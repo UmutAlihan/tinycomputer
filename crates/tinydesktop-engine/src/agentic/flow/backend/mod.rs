@@ -5,10 +5,8 @@
 //! the runtime makes them off the async executor through [`observe_async`]
 //! and [`blocking`].
 
-pub(in crate::agentic) use tinydesktop_core::surface::{
-    Surface as AgentBackend, deliver_text, holds, tokenized,
-};
 use tinydesktop_bus::DesktopResponse;
+pub(in crate::agentic) use tinydesktop_core::surface::{Surface as AgentBackend, deliver_text};
 
 use super::{
     super::internal_error,

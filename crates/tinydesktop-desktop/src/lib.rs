@@ -71,6 +71,7 @@
 
 mod desktop;
 mod error;
+mod surface;
 
 pub use desktop::Desktop;
 pub use error::{Error, Result};

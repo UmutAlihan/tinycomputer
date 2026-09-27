@@ -13,7 +13,7 @@ use tinydesktop_bus::{DesktopResponse, JevOperation};
 
 use super::{
     Candidate, Depth, Screen, Surface, change_note, deliver_text, exact_named_match, fingerprint,
-    holds, target_payload,
+    holds, target_payload, tokenized,
 };
 
 fn clickable_screen() -> Screen {
