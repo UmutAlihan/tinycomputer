@@ -133,9 +133,9 @@ through the layers, threading, configuration, and the safety checks.
 
 ## The members
 
-All members are served on `ai.tinyhumans.tinydesktop.Desktop` at
-`/ai/tinyhumans/tinydesktop/Desktop`, in the order of
-`tinydesktop_bus::names::METHODS`:
+All 67 members are served on `ai.tinyhumans.tinydesktop.Desktop` at
+`/ai/tinyhumans/tinydesktop/Desktop`. `tinydesktop_bus::names::METHODS` lists
+them in dispatch order; here they are by family:
 
 | Family | Members |
 | --- | --- |
@@ -343,7 +343,7 @@ crates/
 │       └── planner/       # the optional LLM planner
 ├── tinydesktop/           # the cdylib: tinybus_module/ dispatch, runner, manifest
 ├── tinydesktop-skills/    # SKILL.md for agents
-└── tinydesktop-examples/  # bins, the lab, scenarios, tasks, fixtures/travel
+└── tinydesktop-examples/  # bins, the lab, scenarios, fixtures/travel
 vendor/
 ├── tinybus/               # TinyBus host types and module SDK
 ├── agent-desktop/         # the desktop engine
