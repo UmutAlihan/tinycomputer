@@ -178,7 +178,12 @@ impl Tasks {
             return AgentResponse::err(no_planner());
         };
         match planner
-            .plan(&request.task, &request.fact_names, &request.surfaces)
+            .plan(
+                &request.task,
+                &request.fact_names,
+                &request.secret_facts,
+                &request.surfaces,
+            )
             .await
         {
             Ok(plan) => AgentResponse::ok(plan),

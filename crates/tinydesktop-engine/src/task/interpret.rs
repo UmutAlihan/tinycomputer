@@ -1,7 +1,7 @@
 //! What a finished flow run means for the task: carry on, or pause or stop
 //! with a status the caller can act on.
 
-use tinydesktop_bus::agent::TaskStatus;
+use tinydesktop_bus::agent::{PaymentMode, TaskStatus};
 use tinydesktop_bus::{
     DesktopResponse, Flow, FlowAction, FlowRunResult, FlowStep, FlowStopReason, StepOutcome,
     StepReport,
@@ -43,8 +43,12 @@ pub(super) enum Resume {
     },
 }
 
-/// Interprets a run of `flow`.
-pub(super) fn run_outcome(flow: &Flow, reply: &DesktopResponse) -> (Next, Option<FlowRunResult>) {
+/// Interprets a run of `flow`, stopped at payment as `payment` says.
+pub(super) fn run_outcome(
+    flow: &Flow,
+    reply: &DesktopResponse,
+    payment: PaymentMode,
+) -> (Next, Option<FlowRunResult>) {
     if !reply.ok {
         let (reason, hint) = reply.error.as_ref().map_or_else(
             || ("the flow could not run".to_owned(), String::new()),
@@ -79,7 +83,7 @@ pub(super) fn run_outcome(flow: &Flow, reply: &DesktopResponse) -> (Next, Option
     };
     let next = match result.stop {
         FlowStopReason::Completed => Next::Continue,
-        FlowStopReason::StoppedBeforeDestructive => stopped_before(flow, &result),
+        FlowStopReason::StoppedBeforeDestructive => stopped_before(flow, &result, payment),
         FlowStopReason::StepFailed => {
             let failure = result
                 .steps
@@ -127,7 +131,10 @@ pub(super) fn run_outcome(flow: &Flow, reply: &DesktopResponse) -> (Next, Option
     (next, Some(result))
 }
 
-fn stopped_before(flow: &Flow, result: &FlowRunResult) -> Next {
+/// A run stopped in front of an irreversible control. Paying is a final
+/// checkpoint unless the task was allowed to fill the payment form, when it
+/// is an approval like any other irreversible action — never automatic.
+fn stopped_before(flow: &Flow, result: &FlowRunResult, payment: PaymentMode) -> Next {
     let gated = result
         .steps
         .iter()
@@ -139,8 +146,9 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult) -> Next {
         .as_ref()
         .and_then(|target| target.name.clone())
         .unwrap_or_default();
-    if consequence(&target) == Consequence::Payment || consequence(&phrase) == Consequence::Payment
-    {
+    let pays =
+        consequence(&target) == Consequence::Payment || consequence(&phrase) == Consequence::Payment;
+    if pays && payment == PaymentMode::StopAtPayment {
         return Next::Stop {
             status: Box::new(TaskStatus::Checkpoint {
                 reason: format!(

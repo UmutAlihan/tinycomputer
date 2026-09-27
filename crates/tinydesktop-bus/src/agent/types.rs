@@ -241,6 +241,9 @@ pub struct PlanTaskRequest {
     /// The names of the facts the caller can supply — values are not needed
     /// to plan.
     pub fact_names: Vec<String>,
+    /// Names among `fact_names` to keep secret, on top of the ones
+    /// recognised as sensitive: the plan may only type them.
+    pub secret_facts: Vec<String>,
     /// Surfaces to plan for; empty means every available one.
     pub surfaces: Vec<SurfaceKind>,
 }
