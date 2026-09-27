@@ -98,11 +98,13 @@ do.
    there.
 7. **A caller's personal details are typed, never described.** If a `${name}`
    stands for a fact the caller supplied (an email, a phone number, a name), it
-   may appear only in an `enter` value, or in a `browse` address or `open`
-   application name. Putting it anywhere else — a `do`, `verify`, `wait_for`,
+   may appear only as an `enter` step's value. Putting it anywhere else — an
+   `open` application name or `browse` address, a `do`, `verify`, `wait_for`,
    or `stop_before` text, a `choose`'s `what`/`option`, a `read`/`extract`'s
    `what`, a `pick`'s `from`/`by`, a condition, or an `enter` slot's own name —
-   fails validation, because that text is what the module reasons about; it
+   fails validation. Even `open` and `browse` count as "seen": the launched
+   application or address becomes visible state on every step after it, not
+   just the one destination. The module reasons about all of that text; it
    never sees a fact's value, only its name.
 
 ## A full example
