@@ -142,7 +142,10 @@ fn press_booking(sim: &mut Sim, name: &str) {
 fn is_single_day_label(name: &str) -> bool {
     let mut words = name.split(' ');
     let day_is_a_number = words.next().is_some_and(|day| day.parse::<u8>().is_ok());
-    day_is_a_number && words.next().is_some() && words.next() == Some("2026") && words.next().is_none()
+    day_is_a_number
+        && words.next().is_some()
+        && words.next() == Some("2026")
+        && words.next().is_none()
 }
 
 /// The booking form's controls, as they stand.
