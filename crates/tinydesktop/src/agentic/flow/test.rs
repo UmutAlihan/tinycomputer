@@ -1377,6 +1377,83 @@ fn validation_reports_every_problem_by_step() {
 }
 
 #[test]
+fn validation_tracks_variables_along_execution_order() {
+    let used_before_read = validate::check(
+        &serde_json::from_value(json!({
+            "app": "Mail",
+            "steps": [
+                {"verify": "shows ${name}"},
+                {"read": {"what": "the name", "into": "name"}}
+            ]
+        }))
+        .unwrap(),
+        &BTreeSet::new(),
+    );
+    assert!(
+        used_before_read
+            .errors
+            .iter()
+            .any(|error| error.contains("${name}") && error.contains("not defined")),
+        "a read later in the flow must not define its variable for an earlier step"
+    );
+
+    let after_read = validate::check(
+        &serde_json::from_value(json!({
+            "app": "Mail",
+            "steps": [
+                {"read": {"what": "the name", "into": "name"}},
+                {"verify": "shows ${name}"}
+            ]
+        }))
+        .unwrap(),
+        &BTreeSet::new(),
+    );
+    assert!(after_read.valid);
+
+    let only_in_untaken_branch = validate::check(
+        &serde_json::from_value(json!({
+            "app": "Mail",
+            "steps": [
+                {"if": {"condition": "c", "then": [
+                    {"read": {"what": "the name", "into": "name"}}
+                ]}},
+                {"verify": "shows ${name}"}
+            ]
+        }))
+        .unwrap(),
+        &BTreeSet::new(),
+    );
+    assert!(
+        only_in_untaken_branch
+            .errors
+            .iter()
+            .any(|error| error.contains("${name}") && error.contains("not defined")),
+        "a read defined only inside one `if` branch must not survive it"
+    );
+
+    let only_in_repeat = validate::check(
+        &serde_json::from_value(json!({
+            "app": "Mail",
+            "steps": [
+                {"repeat_until": {"condition": "c", "steps": [
+                    {"read": {"what": "the name", "into": "name"}}
+                ]}},
+                {"verify": "shows ${name}"}
+            ]
+        }))
+        .unwrap(),
+        &BTreeSet::new(),
+    );
+    assert!(
+        only_in_repeat
+            .errors
+            .iter()
+            .any(|error| error.contains("${name}") && error.contains("not defined")),
+        "a `repeat_until` body can run zero times, so its reads must not survive it"
+    );
+}
+
+#[test]
 fn text_helpers_substitute_reference_and_normalize() {
     let vars = BTreeMap::from([("to".to_owned(), "sam".to_owned())]);
     assert_eq!(
