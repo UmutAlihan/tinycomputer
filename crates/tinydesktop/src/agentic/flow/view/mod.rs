@@ -202,6 +202,7 @@ pub(in crate::agentic) fn parse_reply(
     let mut candidates = Vec::new();
     let mut context = Vec::new();
     let mut unexplored = Vec::new();
+    let mut text_nodes = Vec::new();
     let mut visited = 0_usize;
     collect(
         &mut root_node,
@@ -210,6 +211,7 @@ pub(in crate::agentic) fn parse_reply(
             candidates: &mut candidates,
             context: &mut context,
             unexplored: &mut unexplored,
+            text_nodes: &mut text_nodes,
         },
         0,
         &mut visited,
@@ -233,6 +235,7 @@ pub(in crate::agentic) fn parse_reply(
         candidates,
         context,
         unexplored,
+        text_nodes,
     })
 }
 
@@ -240,6 +243,7 @@ struct Collected<'a> {
     candidates: &'a mut Vec<Candidate>,
     context: &'a mut Vec<String>,
     unexplored: &'a mut Vec<String>,
+    text_nodes: &'a mut Vec<Candidate>,
 }
 
 fn collect(
@@ -252,6 +256,7 @@ fn collect(
     if depth > MAX_TREE_DEPTH || *visited >= MAX_VISITED_NODES {
         return;
     }
+    node.order = *visited;
     *visited = visited.saturating_add(1);
     let label = node
         .name
@@ -266,7 +271,10 @@ fn collect(
         out.unexplored.push(node.ref_id.clone());
     }
     if node.ref_id.is_empty() {
-        remember_text(node, out.context);
+        if !remembers_as_field_content(node) {
+            remember_text(node, out.context);
+        }
+        out.text_nodes.push(node.clone());
     } else {
         out.candidates.push(node.clone());
     }
@@ -277,6 +285,25 @@ fn collect(
     for child in &mut node.children {
         collect(child, &child_path, out, depth.saturating_add(1), visited);
     }
+}
+
+/// Whether a ref-less node's only text is a mirror of a field's contents
+/// rather than screen chrome: static text with no accessible name or
+/// description, sitting inside a rich-text area, that carries only whatever
+/// the field itself holds as its `value`.
+///
+/// Such a node must never reach `context`, which every request shares
+/// regardless of `include_values` — it is field content, so it is left for
+/// [`crate::agentic::flow::ask`]'s gated `field_contents` to read from
+/// [`Screen::text_nodes`] instead.
+fn remembers_as_field_content(node: &Candidate) -> bool {
+    node.name.is_none()
+        && node.description.is_none()
+        && matches!(node.value.as_ref(), Some(Value::String(text)) if !text.trim().is_empty())
+        && node.path.iter().any(|ancestor| {
+            let ancestor = ancestor.to_ascii_lowercase();
+            ancestor.starts_with("webarea") || ancestor.starts_with("document")
+        })
 }
 
 /// Keeps a ref-less node's visible text as context for Jev.
