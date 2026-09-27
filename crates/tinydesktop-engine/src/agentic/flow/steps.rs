@@ -549,7 +549,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         repeat: &RepeatStep,
         path: &str,
     ) -> Result<Ended, Halt> {
-        let condition_text = substitute(&repeat.condition, &self.vars);
+        let condition_text = substitute_safe(&repeat.condition, &self.vars, &self.facts);
         for round in 0..repeat.max.min(MAX_REPEAT) {
             if self.holds(log, &condition_text).await? >= DONE {
                 return Ok(Ended::new(
