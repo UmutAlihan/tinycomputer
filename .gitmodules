@@ -8,3 +8,6 @@
 [submodule "vendor/tinyjevclient"]
 	path = vendor/tinyjevclient
 	url = https://github.com/tinyhumansai/tinyjevclient
+[submodule "vendor/tinyinference"]
+	path = vendor/tinyinference
+	url = https://github.com/tinyhumansai/tinyinference
