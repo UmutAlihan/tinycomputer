@@ -104,7 +104,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         if let (Ok(pattern), Some(session)) = (std::env::var("PROBE_GREP"), surface.session()) {
             let snapshot = runtime.block_on(browser.snapshot(&session, SnapshotRequest::default()));
-            for line in snapshot.map(|snapshot| snapshot.tree).unwrap_or_default().lines() {
+            for line in snapshot
+                .map(|snapshot| snapshot.tree)
+                .unwrap_or_default()
+                .lines()
+            {
                 if line.to_lowercase().contains(&pattern.to_lowercase()) {
                     println!("  raw: {line}");
                 }
