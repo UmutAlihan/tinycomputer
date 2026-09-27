@@ -70,6 +70,10 @@ struct Sim {
     /// Refs of the result cards' "Select" buttons clicked, in order.
     picked: Vec<String>,
     extra_buttons: usize,
+    /// A destination box that opens a search field, as an autocomplete does.
+    destination: bool,
+    /// Whether the destination's search field is open.
+    searching: bool,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -205,6 +209,17 @@ impl App {
                 ));
             }
         }
+        if sim.destination {
+            let widget = [root.as_str(), "group \"Booking\""];
+            candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
+            if sim.searching {
+                candidates.push(node("Search city", "textbox", &["Click", "SetValue"], &widget, 90.0));
+                let typed = sim.fields.get("Search city").cloned().unwrap_or_default();
+                if !typed.is_empty() && "srinagar".starts_with(&typed.to_lowercase()) {
+                    candidates.push(node("Srinagar, SXR", "option", &["Click"], &widget, 95.0));
+                }
+            }
+        }
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
         if sim.obstacle {
@@ -297,6 +312,7 @@ impl AgentBackend for App {
                     "Send" => sim.sent = true,
                     "Keep Editing" => sim.obstacle = false,
                     "Archive" => sim.compose_open = false,
+                    "Going to?" => sim.searching = true,
                     _ => {}
                 }
             }
@@ -1373,6 +1389,42 @@ async fn choose_reveals_the_list_first_when_the_option_is_not_visible() {
     .await;
     assert_eq!(found.result.stop, FlowStopReason::Completed);
     assert_eq!(found.app.sim().clicks, ["Message 7"]);
+}
+
+#[tokio::test]
+async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
+    let run = run_with(
+        App::with(|sim| sim.destination = true),
+        json!({"app": "Mail", "steps": [
+            {"choose": {"what": "the destination box", "option": "Srinagar"}}
+        ]}),
+        |_| {},
+        |id, question, sim| match id {
+            "move" => Some(pick(question, "activate", 0.9)),
+            "done" => Some(noul(if sim.searching { 0.9 } else { 0.05 })),
+            _ if purpose_of(question).contains("search box") => {
+                Some(pick(question, "Search city", 0.9))
+            }
+            _ if purpose_of(question).contains("open the destination") => {
+                Some(pick(question, "Going to?", 0.9))
+            }
+            _ => Some(pick(question, "Srinagar", 0.9)),
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed, "{:?}", run.result.steps);
+    let sim = run.app.sim();
+    assert_eq!(sim.fields["Search city"], "Srinagar");
+    assert_eq!(
+        sim.clicks.last().map(String::as_str),
+        Some("Srinagar, SXR"),
+        "the box itself is never taken for the option: {:?}",
+        sim.clicks
+    );
+}
+
+fn purpose_of(question: &Question) -> String {
+    text_of(question, "purpose")
 }
 
 #[tokio::test]
