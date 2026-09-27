@@ -76,10 +76,7 @@ pub(super) async fn resolve_on_screen<B: AgentBackend>(
         allow_rerank,
         banned,
     } = resolution;
-    let mut offered = screen.clone();
-    offered
-        .candidates
-        .retain(|candidate| !banned.contains(&signature(candidate)));
+    let offered = without(screen, banned);
     let screen = &offered;
     let space = action_space(screen, text.is_some());
     let evaluation = runtime
@@ -120,21 +117,22 @@ pub(super) async fn resolve_on_screen<B: AgentBackend>(
     let confidence = selected
         .as_ref()
         .map_or(operation_confidence, |(_, confidence)| *confidence);
-    if deterministic_destructive(operation, selected.as_ref().map(|(candidate, _)| candidate)) {
+    let chosen = selected.as_ref().map(|(candidate, _)| candidate);
+    if deterministic_destructive(operation, chosen) {
         destructive = 1.0;
     }
-    let mut decision = gate_with_evidence(
-        operation,
-        confidence,
-        destructive,
-        exact_named_match(intent, selected.as_ref().map(|(candidate, _)| candidate)),
-    );
-    if space.targets.contains_key(&operation_name) && selected.is_none() {
-        decision = JevDecisionKind::Abstain;
-    }
-    if operation == JevOperation::TypeText && text.is_none() {
-        decision = JevDecisionKind::NeedsText;
-    }
+    let decision = if space.targets.contains_key(&operation_name) && chosen.is_none() {
+        JevDecisionKind::Abstain
+    } else if operation == JevOperation::TypeText && text.is_none() {
+        JevDecisionKind::NeedsText
+    } else {
+        gate_with_evidence(
+            operation,
+            confidence,
+            destructive,
+            exact_named_match(intent, chosen),
+        )
+    };
     let mut out = JevDecision {
         decision,
         operation,
@@ -167,6 +165,15 @@ pub(super) async fn resolve_on_screen<B: AgentBackend>(
         action_failure,
         selected,
     })
+}
+
+/// `screen` without the elements whose signatures are banned.
+fn without(screen: &Screen, banned: &BTreeSet<String>) -> Screen {
+    let mut offered = screen.clone();
+    offered
+        .candidates
+        .retain(|candidate| !banned.contains(&signature(candidate)));
+    offered
 }
 
 struct RerankInput<'a> {

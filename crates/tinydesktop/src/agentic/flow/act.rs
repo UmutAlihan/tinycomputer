@@ -107,7 +107,7 @@ enum Move {
     /// The step is over.
     Ended(Ended),
     /// An action ran, on this element if it had one.
-    Acted(Option<Candidate>),
+    Acted(Option<Box<Candidate>>),
     /// Nothing ran this turn.
     Skipped,
 }
@@ -154,7 +154,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 Move::Ended(ended) => return Ok(ended),
                 Move::Acted(target) => {
                     state.last = Some(LastAction {
-                        target,
+                        target: target.map(|target| *target),
                         before: screen,
                         progress: judged.progress,
                     });
@@ -285,7 +285,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
             operation => Ok(Move::Acted(
                 self.activate(log, screen, intent, operation, banned)
-                    .await?,
+                    .await?
+                    .map(Box::new),
             )),
         }
     }
