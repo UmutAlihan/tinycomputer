@@ -284,16 +284,3 @@ fn position(candidate: &Candidate) -> f64 {
     };
     coordinate("y") * 10_000.0 + coordinate("x")
 }
-
-fn preview(text: &str) -> String {
-    let words = text
-        .split_whitespace()
-        .take(8)
-        .collect::<Vec<_>>()
-        .join(" ");
-    if text.split_whitespace().count() > 8 {
-        format!("{words}…")
-    } else {
-        words
-    }
-}
