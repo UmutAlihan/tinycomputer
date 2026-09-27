@@ -1,5 +1,7 @@
 //! Tests for points and rectangles.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use super::{Point, Rect};
 
 #[test]
@@ -14,7 +16,10 @@ fn a_rectangle_knows_its_center_and_what_it_contains() {
     assert!(rect.contains(Point::new(10.0, 20.0)));
     assert!(rect.contains(Point::new(110.0, 60.0)));
     assert!(!rect.contains(Point::new(111.0, 40.0)));
-    assert_eq!(Rect::at(Point::new(4.0, 5.0)).center(), Point::new(4.0, 5.0));
+    assert_eq!(
+        Rect::at(Point::new(4.0, 5.0)).center(),
+        Point::new(4.0, 5.0)
+    );
 }
 
 #[test]

@@ -1,6 +1,8 @@
 //! Tests for the virtual mouse: paths end on target, stay bounded, keep
 //! time, and aim inside the element; gestures press and release in order.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use super::path::{OVERSHOOT_MAX_SHARE, SAMPLE_MS, TRAVEL_MS, travel_ms};
 use super::{VirtualMouse, aim, human_path};
 use crate::geometry::{Point, Rect};
@@ -14,7 +16,13 @@ const TO: Point = Point::new(900.0, 150.0);
 #[test]
 fn a_path_ends_exactly_on_its_target_with_strictly_increasing_time() {
     for seed in 0..200 {
-        let path = human_path(FROM, TO, 40.0, MotionProfile::Natural, &mut Rng::seeded(seed));
+        let path = human_path(
+            FROM,
+            TO,
+            40.0,
+            MotionProfile::Natural,
+            &mut Rng::seeded(seed),
+        );
         assert_eq!(path.last().unwrap().point, TO, "seed {seed}");
         assert!(path.windows(2).all(|pair| pair[1].t_ms > pair[0].t_ms));
         assert!(path.len() > 5, "a long reach is sampled many times");
@@ -28,14 +36,23 @@ fn a_path_overshoots_by_at_most_its_bound_and_never_strays_far_sideways() {
     let (dx, dy) = ((TO.x - FROM.x) / distance, (TO.y - FROM.y) / distance);
     let mut overshot = 0;
     for seed in 0..500 {
-        let path = human_path(FROM, TO, 40.0, MotionProfile::Natural, &mut Rng::seeded(seed));
+        let path = human_path(
+            FROM,
+            TO,
+            40.0,
+            MotionProfile::Natural,
+            &mut Rng::seeded(seed),
+        );
         let furthest = path
             .iter()
             .map(|sample| (sample.point.x - FROM.x) * dx + (sample.point.y - FROM.y) * dy)
             .fold(f64::MIN, f64::max);
         let past = furthest - distance;
         // Tremor adds under two pixels on top of the planned landing.
-        assert!(past <= OVERSHOOT_MAX_SHARE * distance + 2.0, "seed {seed}: {past}");
+        assert!(
+            past <= OVERSHOOT_MAX_SHARE * distance + 2.0,
+            "seed {seed}: {past}"
+        );
         if past > 3.0 {
             overshot += 1;
         }
@@ -43,9 +60,15 @@ fn a_path_overshoots_by_at_most_its_bound_and_never_strays_far_sideways() {
             .iter()
             .map(|sample| ((sample.point.x - FROM.x) * -dy + (sample.point.y - FROM.y) * dx).abs())
             .fold(0.0, f64::max);
-        assert!(widest <= 0.25 * distance.min(480.0) + 10.0, "seed {seed}: {widest}");
+        assert!(
+            widest <= 0.25 * distance.min(480.0) + 10.0,
+            "seed {seed}: {widest}"
+        );
     }
-    assert!(overshot > 200, "most long reaches overshoot, {overshot} did");
+    assert!(
+        overshot > 200,
+        "most long reaches overshoot, {overshot} did"
+    );
 }
 
 #[test]
@@ -77,7 +100,8 @@ fn travel_time_follows_fitts_and_scales_with_the_profile() {
     let brisk = human_path(FROM, TO, 40.0, MotionProfile::Brisk, &mut Rng::seeded(3));
     let calm = human_path(FROM, TO, 40.0, MotionProfile::Calm, &mut Rng::seeded(3));
     assert!(brisk.last().unwrap().t_ms < calm.last().unwrap().t_ms);
-    assert!(calm.len() as f64 >= calm.last().unwrap().t_ms / SAMPLE_MS - 1.0);
+    let expected = calm.last().unwrap().t_ms / SAMPLE_MS - 1.0;
+    assert!(f64::from(u32::try_from(calm.len()).unwrap()) >= expected);
 }
 
 #[test]
@@ -99,8 +123,17 @@ fn a_short_reach_does_not_overshoot() {
     let from = Point::new(100.0, 100.0);
     let to = Point::new(140.0, 100.0);
     for seed in 0..100 {
-        let path = human_path(from, to, 20.0, MotionProfile::Natural, &mut Rng::seeded(seed));
-        let furthest = path.iter().map(|sample| sample.point.x).fold(f64::MIN, f64::max);
+        let path = human_path(
+            from,
+            to,
+            20.0,
+            MotionProfile::Natural,
+            &mut Rng::seeded(seed),
+        );
+        let furthest = path
+            .iter()
+            .map(|sample| sample.point.x)
+            .fold(f64::MIN, f64::max);
         assert!(furthest <= to.x + 2.0, "seed {seed}: {furthest}");
     }
 }
@@ -141,7 +174,9 @@ fn a_mouse_with_no_position_enters_from_nearby_and_remembers_where_it_ends() {
     let entry = moves[0];
     let reach = entry.distance(TO);
     assert!(
-        (200.0..=420.0).contains(&reach) || entry.x.abs() < f64::EPSILON || entry.y.abs() < f64::EPSILON,
+        (200.0..=420.0).contains(&reach)
+            || entry.x.abs() < f64::EPSILON
+            || entry.y.abs() < f64::EPSILON,
         "{reach}"
     );
     assert_eq!(*moves.last().unwrap(), TO);
@@ -149,7 +184,11 @@ fn a_mouse_with_no_position_enters_from_nearby_and_remembers_where_it_ends() {
     assert!(plan.duration_ms() > 0.0);
 
     let next = mouse.glide(FROM, 40.0);
-    assert_ne!(next.moves()[0], TO, "the next reach starts from where it is");
+    assert_ne!(
+        next.moves()[0],
+        TO,
+        "the next reach starts from where it is"
+    );
     assert_eq!(*next.moves().last().unwrap(), FROM);
 }
 
@@ -182,7 +221,10 @@ fn a_click_reaches_settles_and_presses_inside_the_target() {
         .collect();
     assert_eq!(presses.len(), 2);
     assert_eq!(
-        steps.iter().filter(|step| **step == Step::Release(Button::Right)).count(),
+        steps
+            .iter()
+            .filter(|step| **step == Step::Release(Button::Right))
+            .count(),
         2
     );
     assert!(matches!(steps[presses[0] - 1], Step::Pause(ms) if ms >= 60.0));
@@ -213,8 +255,14 @@ fn a_drag_grabs_carries_and_drops() {
     let mut mouse = mouse(MotionProfile::Brisk).at(Point::new(0.0, 0.0));
     let plan = mouse.drag(from, to);
     let steps = plan.steps();
-    let press = steps.iter().position(|step| *step == Step::Press(Button::Left)).unwrap();
-    let release = steps.iter().position(|step| *step == Step::Release(Button::Left)).unwrap();
+    let press = steps
+        .iter()
+        .position(|step| *step == Step::Press(Button::Left))
+        .unwrap();
+    let release = steps
+        .iter()
+        .position(|step| *step == Step::Release(Button::Left))
+        .unwrap();
     assert!(press < release);
     let carried: Vec<Point> = steps[press..release]
         .iter()
@@ -225,7 +273,15 @@ fn a_drag_grabs_carries_and_drops() {
         .collect();
     assert!(carried.len() > 3);
     assert!(to.contains(*carried.last().unwrap()));
-    assert!(from.contains(*plan.moves().first().unwrap()) || !plan.moves().is_empty());
+    let grabbed_at = steps[..press]
+        .iter()
+        .rev()
+        .find_map(|step| match step {
+            Step::Move(point) => Some(*point),
+            _ => None,
+        })
+        .unwrap();
+    assert!(from.contains(grabbed_at));
 }
 
 #[test]

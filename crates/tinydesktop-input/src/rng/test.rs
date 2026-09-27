@@ -1,5 +1,7 @@
 //! Tests for the seeded generator.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use super::Rng;
 
 #[test]
@@ -9,7 +11,10 @@ fn a_seed_reproduces_its_sequence() {
     for _ in 0..32 {
         assert_eq!(a.unit().to_bits(), b.unit().to_bits());
     }
-    assert_ne!(Rng::seeded(7).unit().to_bits(), Rng::seeded(8).unit().to_bits());
+    assert_ne!(
+        Rng::seeded(7).unit().to_bits(),
+        Rng::seeded(8).unit().to_bits()
+    );
 }
 
 #[test]

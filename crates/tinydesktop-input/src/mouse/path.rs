@@ -79,7 +79,10 @@ pub fn human_path(
 ) -> Vec<PathSample> {
     let distance = from.distance(to);
     if profile.is_instant() || distance < 1.0 || !from.is_finite() || !to.is_finite() {
-        return vec![PathSample { t_ms: 0.0, point: to }];
+        return vec![PathSample {
+            t_ms: 0.0,
+            point: to,
+        }];
     }
     let total = travel_ms(distance, width, profile, rng);
     let (dx, dy) = ((to.x - from.x) / distance, (to.y - from.y) / distance);
@@ -95,7 +98,11 @@ pub fn human_path(
     } else {
         to
     };
-    let primary = if overshoots { total * PRIMARY_SHARE } else { total };
+    let primary = if overshoots {
+        total * PRIMARY_SHARE
+    } else {
+        total
+    };
 
     let bow_limit = (0.25 * distance).min(120.0);
     let bow = rng.normal(0.0, 0.1 * distance).clamp(-bow_limit, bow_limit);
@@ -113,7 +120,8 @@ pub fn human_path(
     let at = |t: f64| -> Point {
         let base = if t <= primary {
             let tau = t / primary;
-            let lateral = wobble * (TAU * wobble_cycles * tau + wobble_phase).sin() * (PI * tau).sin();
+            let lateral =
+                wobble * (TAU * wobble_cycles * tau + wobble_phase).sin() * (PI * tau).sin();
             bezier(from, control, landing, minimum_jerk(tau)).plus(nx * lateral, ny * lateral)
         } else {
             landing.lerp(to, minimum_jerk((t - primary) / (total - primary)))
@@ -129,7 +137,10 @@ pub fn human_path(
     let mut samples = Vec::new();
     let mut t = SAMPLE_MS;
     while t < total - 1.0 {
-        samples.push(PathSample { t_ms: t, point: at(t) });
+        samples.push(PathSample {
+            t_ms: t,
+            point: at(t),
+        });
         t += SAMPLE_MS;
     }
     samples.push(PathSample {

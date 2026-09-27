@@ -1,5 +1,7 @@
 //! Tests for plans and playing them against a recording sink.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::time::Duration;
 
 use super::{Button, InputSink, Key, Plan, Step, play};
@@ -110,7 +112,10 @@ fn extending_merges_a_trailing_pause_with_a_leading_one() {
     second.push(Step::Pause(6.0));
     second.push(Step::Press(Button::Left));
     first.extend(second);
-    assert_eq!(first.steps(), [Step::Pause(10.0), Step::Press(Button::Left)]);
+    assert_eq!(
+        first.steps(),
+        [Step::Pause(10.0), Step::Press(Button::Left)]
+    );
 }
 
 #[test]

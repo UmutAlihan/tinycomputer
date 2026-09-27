@@ -1,5 +1,7 @@
 //! Tests for motion profiles: names, parsing, and the wire form.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use super::MotionProfile;
 use crate::Error;
 
