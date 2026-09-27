@@ -529,7 +529,8 @@ async fn plan_then_drive(
                 TaskStatus::Failed {
                     step: None,
                     reason: reason.clone(),
-                    hint: "reword the task, or pass a flow written with Describe's guide".to_owned(),
+                    hint: "reword the task, or pass a flow written with Describe's guide"
+                        .to_owned(),
                     recoverable: true,
                 },
                 &format!("Planning failed: {reason}"),

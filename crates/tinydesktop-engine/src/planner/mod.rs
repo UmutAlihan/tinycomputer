@@ -199,8 +199,8 @@ fn parse(text: &str) -> Result<Flow, String> {
     let trimmed = text.trim();
     let start = trimmed.find('{').ok_or("no JSON object")?;
     let end = trimmed.rfind('}').ok_or("no JSON object")? + 1;
-    let value: Value = serde_json::from_str(&trimmed[start..end.max(start)])
-        .map_err(|error| error.to_string())?;
+    let value: Value =
+        serde_json::from_str(&trimmed[start..end.max(start)]).map_err(|error| error.to_string())?;
     serde_json::from_value(value).map_err(|error| error.to_string())
 }
 

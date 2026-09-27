@@ -1477,6 +1477,7 @@ dependencies = [
  "tinydesktop-bus",
  "tinydesktop-core",
  "tinydesktop-desktop",
+ "tinyinference-llm",
  "tinyinference_decisions",
  "tokio",
 ]

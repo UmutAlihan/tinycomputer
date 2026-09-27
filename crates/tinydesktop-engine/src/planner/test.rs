@@ -89,7 +89,11 @@ async fn an_invalid_answer_is_repaired_with_the_errors() {
     let seen = model.seen.lock().unwrap();
     assert_eq!(seen.len(), 3);
     assert!(seen[0][1].text.contains("Facts you may use: none."));
-    assert!(seen[0][1].text.contains("the web browser and desktop applications"));
+    assert!(
+        seen[0][1]
+            .text
+            .contains("the web browser and desktop applications")
+    );
     let repairs = seen[2]
         .iter()
         .filter(|turn| turn.role == Role::User)
@@ -103,11 +107,17 @@ async fn an_invalid_answer_is_repaired_with_the_errors() {
 async fn a_plan_that_never_validates_or_a_failed_model_is_an_error() {
     let never = [Ok(r#"{"app": "", "steps": []}"#); REPAIRS + 1];
     let (planner, _) = planner(&never);
-    let error = planner.plan("x", &[], &[SurfaceKind::Desktop]).await.unwrap_err();
+    let error = planner
+        .plan("x", &[], &[SurfaceKind::Desktop])
+        .await
+        .unwrap_err();
     assert!(error.contains("did not produce a valid flow"), "{error}");
 
     let (planner, _) = planner(&[Err("rate limited")]);
-    assert_eq!(planner.plan("x", &[], &[]).await.unwrap_err(), "rate limited");
+    assert_eq!(
+        planner.plan("x", &[], &[]).await.unwrap_err(),
+        "rate limited"
+    );
     assert!(format!("{planner:?}").contains("Planner"));
 
     let (planner, _) = planner(&[Ok(r#"{"steps": "not a list"}"#), Ok("{"), Ok("{}")]);
