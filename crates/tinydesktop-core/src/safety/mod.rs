@@ -3,8 +3,8 @@
 //! Two deterministic checks every surface runs before it acts, independently
 //! of anything a model decided:
 //!
-//! - [`consequence`] classifies a control by its label. A payment is always
-//!   stopped at; an irreversible action (send, delete, publish, confirm a
+//! - [`consequence`] classifies a control by its label. A payment is never
+//!   made on its own — it is stopped at, or held for approval; an irreversible action (send, delete, publish, confirm a
 //!   booking) needs explicit approval; everything else proceeds. Stepping
 //!   through a booking — "Book", "Select", "Continue" — is deliberately
 //!   *reversible*: those lead to further forms, and the payment check stops

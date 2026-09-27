@@ -9,7 +9,7 @@ deterministic and behaves the same for a desktop application and a web page.
 | `safety/` | `consequence` (reversible, irreversible, payment) and `payment_evidence` (card fields, checkout pages) |
 | `records/` | `Record`, price, clock, duration and stop parsers, and deterministic `rank` |
 | `surface/` | the `Surface` trait decision loops run against, the `Screen` and `Candidate` it observes, fingerprints, change notes, verified text delivery |
-| `facts/` | `Facts`: the caller's values by name, redaction, and refusing card data |
+| `facts/` | `Facts`: the caller's values, shared or secret, redaction, and masking secrets back to `${name}` |
 
 The safety checks are what stop a run before anything irreversible or paid
 happens, whatever a model decided (`docs/specs/unified-agent.md`).

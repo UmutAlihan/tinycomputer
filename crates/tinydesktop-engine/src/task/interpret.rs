@@ -152,7 +152,7 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult, payment: PaymentMode) -> 
         return Next::Stop {
             status: Box::new(TaskStatus::Checkpoint {
                 reason: format!(
-                    "reached the payment step ({target}); payment is always left to you"
+                    "reached the payment step ({target}); paying is left to you"
                 ),
                 location: target,
                 screenshot: None,
