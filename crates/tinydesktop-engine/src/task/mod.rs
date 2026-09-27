@@ -640,46 +640,7 @@ async fn plan_then_drive(
 /// otherwise run past what remains of it.
 async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
     for run in runs {
-        let Some((request, constraints, time_left)) = (|| {
-            let Ok(state) = cell.state.lock() else {
-                return None;
-            };
-            let mut vars = run.flow.vars.clone();
-            for name in state.facts.names() {
-                if let Some(value) = state.facts.get(name) {
-                    vars.insert(name.to_owned(), value.to_owned());
-                }
-            }
-            let max_actions = state
-                .budget
-                .max_actions
-                .unwrap_or(120)
-                .saturating_sub(state.spent.actions);
-            let max_model_calls = state
-                .budget
-                .max_model_calls
-                .unwrap_or(300)
-                .saturating_sub(state.spent.model_calls);
-            let time_left = state
-                .budget
-                .max_elapsed_ms
-                .map(|max| max.saturating_sub(state.spent.elapsed_ms));
-            Some((
-                RunFlowRequest {
-                    flow: run.flow.clone(),
-                    vars,
-                    allow_destructive: run.allow_destructive,
-                    include_values: false,
-                    max_actions,
-                    max_model_calls,
-                    memory: state.memory.clone(),
-                    trace: state.trace,
-                    ..RunFlowRequest::default()
-                },
-                state.constraints.clone(),
-                time_left,
-            ))
-        })() else {
+        let Some((request, constraints, time_left)) = run_request(&cell, &run) else {
             return;
         };
         if time_left == Some(0) {
@@ -689,15 +650,14 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         let id = cell.view.borrow().id.clone();
         let started = Instant::now();
         let run_call = runner.run(&id, &constraints, request);
-        let reply = match time_left {
-            Some(ms) => match tokio::time::timeout(Duration::from_millis(ms), run_call).await {
-                Ok(reply) => reply,
-                Err(_) => {
-                    stop_task(&cell, runner.as_ref(), elapsed_budget_failed());
-                    return;
-                }
-            },
-            None => run_call.await,
+        let reply = if let Some(ms) = time_left {
+            let Ok(reply) = tokio::time::timeout(Duration::from_millis(ms), run_call).await else {
+                stop_task(&cell, runner.as_ref(), elapsed_budget_failed());
+                return;
+            };
+            reply
+        } else {
+            run_call.await
         };
         let spent_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
         let (next, result) = run_outcome(&run.flow, &reply);
