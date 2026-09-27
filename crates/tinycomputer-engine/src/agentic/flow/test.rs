@@ -4232,3 +4232,60 @@ async fn a_hesitant_wide_pick_is_confirmed_before_it_is_pressed() {
         "with nothing to check a hesitant pick against, it is not pressed"
     );
 }
+
+#[tokio::test]
+async fn a_journaled_wide_run_records_its_survey_and_each_turns_decisions() {
+    let app = App::with(|sim| sim.extra_buttons = 60);
+    let scratch = std::env::temp_dir().join(format!(
+        "tinycomputer-wide-journal-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let runtime = runtime(Oracle {
+        app: app.clone(),
+        hook: Box::new(|_, _, _| None),
+        requests: Mutex::new(Vec::new()),
+        fail: false,
+    })
+    .with_journal(&scratch);
+    let request = RunFlowRequest {
+        flow: serde_json::from_value(json!({"app": "Mail", "steps": ["start a new email message"]}))
+            .unwrap(),
+        votes: 1,
+        strategy: tinycomputer_bus::FlowStrategy::Wide,
+        ..RunFlowRequest::default()
+    };
+    let reply = super::run_flow(app, runtime, request).await;
+    assert!(reply.ok, "flow run failed: {:?}", reply.error);
+    let run = std::fs::read_dir(&scratch)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let events = std::fs::read_to_string(run.join(crate::JOURNAL_FILE))
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    std::fs::remove_dir_all(&scratch).unwrap();
+    let survey = events
+        .iter()
+        .find(|event| event["event"] == "survey")
+        .expect("the crowded screen was surveyed");
+    assert_eq!(survey["step"], "1");
+    assert!(survey["regions"].as_u64().unwrap() >= 2);
+    assert_eq!(survey["most_relevant"][0], survey["most_relevant"][0]);
+    assert_eq!(survey["distractions"], 0);
+    let turns = events
+        .iter()
+        .filter(|event| event["event"] == "turn")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        turns[0]["decisions"], 2,
+        "the first turn: the survey and one wide request"
+    );
+}
