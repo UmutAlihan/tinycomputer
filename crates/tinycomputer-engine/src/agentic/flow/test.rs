@@ -4100,9 +4100,8 @@ async fn an_obstacle_in_front_is_cleared_from_the_turns_own_request_and_remember
     )
     .await;
     assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
-    let sim = run.app.sim();
-    assert_eq!(sim.clicks, ["Keep Editing"]);
-    assert!(!sim.clicks.contains(&"Delete Draft".to_owned()));
+    let clicks = run.app.sim().clicks.clone();
+    assert_eq!(clicks, ["Keep Editing"]);
     let Question::Choice(dismiss) = &run.requests[0].questions["dismiss"] else {
         panic!("dismiss is a choice");
     };
@@ -4127,7 +4126,6 @@ async fn an_obstacle_in_front_is_cleared_from_the_turns_own_request_and_remember
         .find(|hint| hint.key == "obstacle sheet")
         .expect("the control that closed the sheet is remembered");
     assert_eq!(hint.name.as_deref(), Some("Keep Editing"));
-    drop(sim);
 
     let again = run_with(
         App::with(|sim| sim.obstacle = true),

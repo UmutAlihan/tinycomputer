@@ -303,6 +303,30 @@ pub fn summarize(events: &[Value]) -> Summary {
     summary
 }
 
+/// The summary's lines about the shape of the Jev calls: how much of the
+/// window the largest used, and how many decisions a turn waited for.
+fn shape(summary: &Summary, out: &mut String) {
+    if summary.max_input_tokens > 0 {
+        let _ = writeln!(
+            *out,
+            "window   largest call {} tokens, {}% of Jev's {} K",
+            summary.max_input_tokens,
+            summary.max_window_percent,
+            JEV_WINDOW / 1000
+        );
+    }
+    if summary.turns > 0 {
+        let _ = writeln!(
+            *out,
+            "turns    {} do turns; decisions in sequence per turn: mean {}.{:02}, most {}",
+            summary.turns,
+            summary.mean_turn_decisions_x100 / 100,
+            summary.mean_turn_decisions_x100 % 100,
+            summary.max_turn_decisions
+        );
+    }
+}
+
 /// `summary` as text for a terminal.
 #[must_use]
 pub fn render(summary: &Summary) -> String {
@@ -331,25 +355,7 @@ pub fn render(summary: &Summary) -> String {
         summary.input_tokens,
         summary.output_tokens,
     );
-    if summary.max_input_tokens > 0 {
-        let _ = writeln!(
-            out,
-            "window   largest call {} tokens, {}% of Jev's {} K",
-            summary.max_input_tokens,
-            summary.max_window_percent,
-            JEV_WINDOW / 1000
-        );
-    }
-    if summary.turns > 0 {
-        let _ = writeln!(
-            out,
-            "turns    {} do turns; decisions in sequence per turn: mean {}.{:02}, most {}",
-            summary.turns,
-            summary.mean_turn_decisions_x100 / 100,
-            summary.mean_turn_decisions_x100 % 100,
-            summary.max_turn_decisions
-        );
-    }
+    shape(summary, &mut out);
     let _ = writeln!(
         out,
         "observe  {} {}  {} reads",
