@@ -87,5 +87,20 @@ pub trait Surface: Clone + Send + 'static {
     }
 }
 
+/// Whether a person would carry out `operation` with the pointer — click,
+/// expand, collapse, check, uncheck — so a surface's virtual mouse reaches
+/// the target before the action lands.
+#[must_use]
+pub fn uses_pointer(operation: JevOperation) -> bool {
+    matches!(
+        operation,
+        JevOperation::Click
+            | JevOperation::Expand
+            | JevOperation::Collapse
+            | JevOperation::Check
+            | JevOperation::Uncheck
+    )
+}
+
 #[cfg(test)]
 mod test;

@@ -24,7 +24,7 @@ use tinydesktop_bus::browser::{
     WaitState,
 };
 use tinydesktop_bus::{DesktopError, DesktopResponse, JevOperation};
-use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface};
+use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
 use tinydesktop_core::{Key, Platform};
 use tinydesktop_input::{MotionProfile, Point, VirtualKeyboard, VirtualMouse};
 
@@ -267,7 +267,7 @@ impl Surface for BrowserSurface {
                 },
             )
         };
-        if let (Some(reference), true) = (&reference, is_pointer(operation)) {
+        if let (Some(reference), true) = (&reference, uses_pointer(operation)) {
             self.approach(reference);
         }
         match operation {
@@ -460,19 +460,6 @@ impl BrowserSurface {
         self.type_keys(text).ok()?;
         Some(DesktopResponse::ok("type-text", json!({"typed": true})))
     }
-}
-
-/// Whether `operation` is carried out with the pointer, so the virtual
-/// mouse approaches its target first.
-fn is_pointer(operation: JevOperation) -> bool {
-    matches!(
-        operation,
-        JevOperation::Click
-            | JevOperation::Expand
-            | JevOperation::Collapse
-            | JevOperation::Check
-            | JevOperation::Uncheck
-    )
 }
 
 fn pause(ms: u64) -> Action {

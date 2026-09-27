@@ -13,7 +13,7 @@ use tinydesktop_bus::{DesktopResponse, JevOperation};
 
 use super::{
     Candidate, Depth, Screen, Surface, change_note, deliver_text, exact_named_match, fingerprint,
-    holds, result_groups, target_payload, tokenized,
+    holds, result_groups, target_payload, tokenized, uses_pointer,
 };
 
 fn clickable_screen() -> Screen {
@@ -430,4 +430,29 @@ fn the_list_is_where_the_most_cards_repeat() {
     let groups = result_groups(&results(cards));
     assert_eq!(groups.len(), 5);
     assert_eq!(groups[4].fields[0], "result 4");
+}
+
+#[test]
+fn only_pointer_operations_use_the_pointer() {
+    let pointer = [
+        JevOperation::Click,
+        JevOperation::Expand,
+        JevOperation::Collapse,
+        JevOperation::Check,
+        JevOperation::Uncheck,
+    ];
+    for operation in pointer {
+        assert!(uses_pointer(operation), "{operation:?}");
+    }
+    for operation in [
+        JevOperation::TypeText,
+        JevOperation::Scroll,
+        JevOperation::Drill,
+        JevOperation::Widen,
+        JevOperation::Wait,
+        JevOperation::Done,
+        JevOperation::Blocked,
+    ] {
+        assert!(!uses_pointer(operation), "{operation:?}");
+    }
 }

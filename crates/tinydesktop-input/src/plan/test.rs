@@ -135,7 +135,10 @@ fn a_pacer_sleeps_only_for_what_the_engine_did_not_already_spend() {
     use std::sync::atomic::{AtomicU64, Ordering};
     static SLEPT_MS: AtomicU64 = AtomicU64::new(0);
     fn record(duration: Duration) {
-        SLEPT_MS.fetch_add(u64::try_from(duration.as_millis()).unwrap(), Ordering::SeqCst);
+        SLEPT_MS.fetch_add(
+            u64::try_from(duration.as_millis()).unwrap(),
+            Ordering::SeqCst,
+        );
     }
     let mut pacer = Pacer::new(record);
     pacer.wait(Duration::from_secs(60));
@@ -143,6 +146,10 @@ fn a_pacer_sleeps_only_for_what_the_engine_did_not_already_spend() {
     assert!((59_000..=60_000).contains(&slept), "{slept}");
     std::thread::sleep(Duration::from_millis(5));
     pacer.wait(Duration::from_millis(1));
-    assert_eq!(SLEPT_MS.load(Ordering::SeqCst), slept, "the engine already spent it");
+    assert_eq!(
+        SLEPT_MS.load(Ordering::SeqCst),
+        slept,
+        "the engine already spent it"
+    );
     assert!(format!("{pacer:?}").contains("Pacer"));
 }
