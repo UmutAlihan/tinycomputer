@@ -1217,3 +1217,18 @@ async fn the_desktop_backend_fails_closed_on_empty_targets_without_touching_inpu
     .await;
     assert!(!clicked.ok);
 }
+
+#[test]
+fn an_app_with_several_windows_counts_as_launched() {
+    use super::backend::running_is_launched;
+    let ambiguous = DesktopResponse::err(
+        "launch",
+        tinydesktop_bus::DesktopError::new("AMBIGUOUS_TARGET", "several windows"),
+    );
+    assert!(running_is_launched(ambiguous).ok);
+    let missing = DesktopResponse::err(
+        "launch",
+        tinydesktop_bus::DesktopError::new("APP_NOT_FOUND", "no such app"),
+    );
+    assert!(!running_is_launched(missing).ok);
+}

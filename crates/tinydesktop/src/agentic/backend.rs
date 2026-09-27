@@ -135,7 +135,7 @@ impl AgentBackend for Desktop {
     fn launch(&self, app: &str) -> DesktopResponse {
         let mut request = LaunchRequest::new(app);
         request.activate = true;
-        Desktop::launch(self, request)
+        running_is_launched(Desktop::launch(self, request))
     }
 
     fn settle(&self) {
@@ -145,6 +145,22 @@ impl AgentBackend for Desktop {
 
 /// How long a field is given to commit text before it is read back again.
 const SETTLE_MS: u64 = 200;
+
+/// Treats "several windows match" as launched: the application is running,
+/// and which of its windows to act in is the next step's decision.
+pub(super) fn running_is_launched(reply: DesktopResponse) -> DesktopResponse {
+    if reply
+        .error
+        .as_ref()
+        .is_some_and(|error| error.code == "AMBIGUOUS_TARGET")
+    {
+        return DesktopResponse::ok(
+            &reply.command,
+            json!({"running": true, "windows": "several"}),
+        );
+    }
+    reply
+}
 
 fn press_at(app: &str, combo: &str) -> PressRequest {
     let mut request = PressRequest::new(combo);
