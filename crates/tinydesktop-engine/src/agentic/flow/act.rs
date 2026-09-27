@@ -255,7 +255,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 self.history.push(
                     "the screen does not yet clearly show this step done; act on it".to_owned(),
                 );
-                judged.next = "activate".to_owned();
+                "activate".clone_into(&mut judged.next);
             }
             let creating = creates_new(intent) && log.actions.is_empty();
             if !creating && let Some(ended) = finished(log, &judged, turn) {
