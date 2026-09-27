@@ -45,6 +45,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     future::Future,
     pin::Pin,
+    time::Instant,
 };
 
 use serde_json::{Value, json};
@@ -56,6 +57,7 @@ use tinydesktop_bus::{
 use tinydesktop_core::Facts;
 use tinyinference_decisions::{Answer, EvaluationRequest, Question};
 
+use super::journal::millis;
 use super::{JevRuntime, merge_metrics, provider_error, response};
 use backend::{AgentBackend, blocking, observe_async};
 use validate::{step_path, substitute_safe};
@@ -90,6 +92,12 @@ pub async fn run_flow<S: AgentBackend + Sync>(
     runtime: JevRuntime,
     request: RunFlowRequest,
 ) -> DesktopResponse {
+    let label = request
+        .flow
+        .name
+        .clone()
+        .unwrap_or_else(|| request.flow.app.clone());
+    let runtime = runtime.begin_run("flow", &label);
     run_flow_with(surface, &runtime, request).await
 }
 
@@ -343,7 +351,9 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let (kind, text) = describe_step(&action, &self.vars, &self.facts);
         let mut log = StepLog::default();
         self.step.clone_from(&path);
+        let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
+        let wall_ms = millis(started.elapsed());
         let (ended, halt) = match result {
             Ok(ended) => (ended, None),
             Err(Halt::Failed(note)) => {
@@ -370,6 +380,22 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         };
         let text = self.secrets.mask(&text);
         let ended = Ended::new(ended.outcome, self.secrets.mask(&ended.note));
+        self.step.clone_from(&path);
+        self.runtime.journal.record("step", || {
+            json!({
+                "step": path,
+                "kind": kind,
+                "text": text,
+                "outcome": ended.outcome,
+                "note": ended.note,
+                "turns": log.turns,
+                "jev_calls": log.calls,
+                "actions": log.actions.len(),
+                "loops": log.loops,
+                "confidence": log.confidence,
+                "wall_ms": wall_ms,
+            })
+        });
         self.history.push(format!(
             "step {path} ({kind} {text:?}): {:?}, {}",
             ended.outcome, ended.note
@@ -457,12 +483,14 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             log.used(FlowLoop::Vote);
         }
         let framings = vote::framings(&request, votes);
+        let asked_at = Instant::now();
         let asked = framings
             .iter()
             .map(|framing| {
-                let client = self.runtime.client.clone();
+                let runtime = self.runtime.clone();
+                let step = self.step.clone();
                 let request = framing.request.clone();
-                tokio::spawn(async move { client.evaluate(&request).await })
+                tokio::spawn(async move { runtime.evaluate(Some(&step), &request).await })
             })
             .collect::<Vec<_>>();
         let mut answered = Vec::new();
@@ -487,6 +515,17 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             }
             _ => vote::merge(&answered),
         };
+        // The decision's wall time: its framings run at once, so this is
+        // the slowest of them plus the merge, which is what the step waited.
+        self.runtime.journal.record("decision", || {
+            json!({
+                "step": self.step,
+                "questions": request.questions.keys().collect::<Vec<_>>(),
+                "framings": votes,
+                "answered": answered.len(),
+                "wall_ms": millis(asked_at.elapsed()),
+            })
+        });
         if self.tracing {
             self.trace.push(JevExchange {
                 step: self.step.clone(),
@@ -619,7 +658,20 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// still make progress; only [`MAX_BLIND_LOOKS`] such looks in a row fail
     /// the step.
     pub(super) async fn look(&mut self) -> Result<Screen, Halt> {
-        match observe_async(self.backend.clone(), self.app.clone(), None, Depth::Full).await {
+        let started = Instant::now();
+        let observed =
+            observe_async(self.backend.clone(), self.app.clone(), None, Depth::Full).await;
+        self.runtime.journal.record("observe", || {
+            json!({
+                "step": self.step,
+                "part": "screen",
+                "wall_ms": millis(started.elapsed()),
+                "ok": observed.is_ok(),
+                "candidates": observed.as_ref().map_or(0, |screen| screen.candidates.len()),
+                "unexplored": observed.as_ref().map_or(0, |screen| screen.unexplored.len()),
+            })
+        });
+        match observed {
             Ok(screen) => {
                 self.blind_looks = 0;
                 Ok(screen)
@@ -660,14 +712,24 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             .into_iter()
             .take(MAX_EXPLORED)
         {
-            if let Ok(part) = observe_async(
+            let started = Instant::now();
+            let part = observe_async(
                 self.backend.clone(),
                 self.app.clone(),
                 Some(root),
                 Depth::Full,
             )
-            .await
-            {
+            .await;
+            self.runtime.journal.record("observe", || {
+                json!({
+                    "step": self.step,
+                    "part": "subtree",
+                    "wall_ms": millis(started.elapsed()),
+                    "ok": part.is_ok(),
+                    "candidates": part.as_ref().map_or(0, |part| part.candidates.len()),
+                })
+            });
+            if let Ok(part) = part {
                 screen.candidates.extend(part.candidates);
                 screen.context.extend(part.context);
                 screen.text_nodes.extend(part.text_nodes);
@@ -690,7 +752,9 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             return Err(Halt::Stop(FlowStopReason::ActionBudget));
         }
         self.actions = self.actions.saturating_add(1);
+        let started = Instant::now();
         let reply = self.backend_call(call).await;
+        let acted_ms = millis(started.elapsed());
         let note = match (&reply.error, &reply.data) {
             (Some(error), _) => error.code.clone(),
             (None, Some(data)) => data
@@ -712,6 +776,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             ok: reply.ok,
             note,
         });
+        let settle_started = Instant::now();
         if reply.ok {
             // Let the surface finish reacting, so the next look sees what the
             // action did rather than the moment before it took effect.
@@ -721,6 +786,18 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             })
             .await;
         }
+        self.runtime.journal.record("action", || {
+            let record = log.actions.last();
+            json!({
+                "step": self.step,
+                "action": action,
+                "target": record.and_then(|record| record.target.as_ref()),
+                "ok": reply.ok,
+                "note": record.map(|record| record.note.as_str()),
+                "wall_ms": acted_ms,
+                "settle_ms": if reply.ok { millis(settle_started.elapsed()) } else { 0 },
+            })
+        });
         Ok(reply)
     }
 
@@ -732,6 +809,14 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     }
 
     fn finish(self, stop: FlowStopReason) -> DesktopResponse {
+        self.runtime.journal.record("end", || {
+            json!({
+                "stop": stop,
+                "actions": self.actions,
+                "metrics": self.metrics,
+                "learned": self.learned.len(),
+            })
+        });
         response(
             "run-flow",
             &FlowRunResult {
