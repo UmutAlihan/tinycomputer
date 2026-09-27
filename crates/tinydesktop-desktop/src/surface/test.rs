@@ -398,7 +398,8 @@ fn a_candidates_screen_bounds_are_read_when_complete_and_positive() {
 fn a_pointer_operation_glides_the_cursor_onto_its_target_first() {
     use tinydesktop_cursor::{CursorPace, OverlayCommand, ScreenCursor};
     let drawn = Drawn::default();
-    let cursor = ScreenCursor::with_sink(CursorPace::Natural, Box::new(drawn.clone()));
+    let cursor =
+        ScreenCursor::with_sink(CursorPace::Natural, Box::new(drawn.clone())).without_waiting();
     let desktop = crate::Desktop::new().with_cursor(std::sync::Arc::new(cursor));
     let target = boxed(json!({"x": 400.0, "y": 300.0, "width": 120.0, "height": 32.0}));
 

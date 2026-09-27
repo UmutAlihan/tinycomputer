@@ -534,7 +534,7 @@ impl OverlaySink for Drawn {
 
 impl Drawn {
     fn cursor(&self, pace: CursorPace) -> Arc<ScreenCursor> {
-        Arc::new(ScreenCursor::with_sink(pace, Box::new(self.clone())))
+        Arc::new(ScreenCursor::with_sink(pace, Box::new(self.clone())).without_waiting())
     }
 
     /// The `[t, x, y]` path of every glide drawn so far.

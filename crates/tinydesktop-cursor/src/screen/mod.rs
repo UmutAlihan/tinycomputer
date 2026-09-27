@@ -177,7 +177,11 @@ impl ScreenCursor {
         match self.send(&OverlayCommand::glide(&glide)) {
             Sent::Delivered { fresh } => {
                 let travel = Duration::from_secs_f64(glide.duration_ms() / 1_000.0);
-                Some(if fresh { travel + HELPER_STARTUP } else { travel })
+                Some(if fresh {
+                    travel + HELPER_STARTUP
+                } else {
+                    travel
+                })
             }
             Sent::Lost => {
                 if let Ok(mut cursor) = self.cursor.lock() {

@@ -91,20 +91,80 @@ fn an_off_cursor_or_an_unusable_target_sends_nothing() {
     ScreenCursor::off().show(MAIL_BUTTON);
 }
 
+/// Records how long `arrive` waited, per test thread.
+fn waited() -> std::time::Duration {
+    WAITED.with(std::cell::Cell::get)
+}
+
+thread_local! {
+    static WAITED: std::cell::Cell<std::time::Duration> =
+        const { std::cell::Cell::new(std::time::Duration::ZERO) };
+}
+
+fn record(pause: std::time::Duration) {
+    WAITED.with(|total| total.set(total.get() + pause));
+}
+
 #[test]
-fn showing_never_waits_for_the_glide() {
+fn arriving_waits_for_the_glide_to_land_and_showing_does_not() {
     let recorder = Recorder::default();
-    let cursor = ScreenCursor::with_sink(CursorPace::Calm, Box::new(recorder));
-    let started = std::time::Instant::now();
-    let mut animated = std::time::Duration::ZERO;
-    for _ in 0..20 {
-        animated += cursor.show(MAIL_BUTTON).unwrap();
-        animated += cursor.show(WEB_BUTTON).unwrap();
+    let mut cursor = ScreenCursor::with_sink(CursorPace::Calm, Box::new(recorder));
+    cursor.wait = record;
+    let travel = cursor.show(MAIL_BUTTON).unwrap();
+    assert_eq!(waited(), std::time::Duration::ZERO, "show never waits");
+    assert!(travel > std::time::Duration::from_millis(100));
+    cursor.arrive(WEB_BUTTON);
+    let landed = waited();
+    assert!(landed > std::time::Duration::from_millis(100));
+    assert!(landed < std::time::Duration::from_secs(3));
+}
+
+#[test]
+fn a_freshly_started_helper_gets_time_to_appear() {
+    let mut cursor = ScreenCursor::with_connect(
+        CursorPace::Brisk,
+        Box::new(|| Some(Box::new(Recorder::default()) as Box<dyn OverlaySink>)),
+    );
+    cursor.wait = record;
+    let first = cursor.show(MAIL_BUTTON).unwrap();
+    let again = cursor.show(MAIL_BUTTON).unwrap();
+    assert!(first >= super::HELPER_STARTUP, "{first:?}");
+    assert!(
+        again < first,
+        "only the first glide waits for the helper to start"
+    );
+}
+
+/// A sink whose queue is always full.
+struct Busy;
+
+impl OverlaySink for Busy {
+    fn send(&mut self, _: &OverlayCommand) -> std::io::Result<()> {
+        Err(std::io::ErrorKind::WouldBlock.into())
     }
-    assert!(animated > std::time::Duration::from_secs(10));
-    // Forty calm glides take tens of seconds to animate; showing them is
-    // instant, because the action never waits for the cursor.
-    assert!(started.elapsed() < std::time::Duration::from_secs(1));
+}
+
+#[test]
+fn a_glide_the_sink_could_not_take_is_never_waited_for() {
+    fn never(_: std::time::Duration) {
+        panic!("an undrawn glide must not delay the action");
+    }
+    let mut busy = ScreenCursor::with_sink(CursorPace::Calm, Box::new(Busy));
+    busy.wait = never;
+    busy.arrive(MAIL_BUTTON);
+    busy.arrive(WEB_BUTTON);
+    let mut failing = ScreenCursor::with_sink(
+        CursorPace::Calm,
+        Box::new(Recorder {
+            fail: true,
+            ..Recorder::default()
+        }),
+    );
+    failing.wait = never;
+    failing.arrive(MAIL_BUTTON);
+    ScreenCursor::off().arrive(MAIL_BUTTON);
+    let _instant = ScreenCursor::with_sink(CursorPace::Natural, Box::new(Recorder::default()))
+        .without_waiting();
 }
 
 #[test]
