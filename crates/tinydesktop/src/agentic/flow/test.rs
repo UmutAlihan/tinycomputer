@@ -318,8 +318,7 @@ impl Evaluator for Oracle {
                 .questions
                 .iter()
                 .map(|(id, question)| {
-                    let answer = (self.hook)(id, question, &sim)
-                        .unwrap_or_else(|| default_answer(id, question, &sim));
+                    let answer = self.answer(request, id, question, &sim);
                     (id.clone(), answer)
                 })
                 .collect::<BTreeMap<_, _>>();
@@ -334,6 +333,31 @@ impl Evaluator for Oracle {
                 latency: Duration::from_millis(1),
             })
         })
+    }
+}
+
+impl Oracle {
+    /// The hooked or default answer; a negated question is answered as the
+    /// inverse of its positive twin, so hooks only ever name the positive one.
+    fn answer(
+        &self,
+        request: &EvaluationRequest,
+        id: &str,
+        question: &Question,
+        sim: &Sim,
+    ) -> Answer {
+        let twin = match id {
+            "not_done" => Some("done"),
+            "negated" => Some("holds"),
+            _ => None,
+        };
+        if let Some(twin) = twin
+            && let Some(positive) = request.questions.get(twin)
+            && let Answer::Noul(answer) = self.answer(request, twin, positive, sim)
+        {
+            return noul(1.0 - answer.noul);
+        }
+        (self.hook)(id, question, sim).unwrap_or_else(|| default_answer(id, question, sim))
     }
 }
 

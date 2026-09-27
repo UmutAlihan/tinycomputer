@@ -98,7 +98,11 @@ impl Author {
     /// # Errors
     ///
     /// Fails when the model call fails or never produces a valid flow.
-    pub async fn continue_after(&mut self, host: &Host, summary: &str) -> Result<Authored, LabError> {
+    pub async fn continue_after(
+        &mut self,
+        host: &Host,
+        summary: &str,
+    ) -> Result<Authored, LabError> {
         self.messages.push(Message::user(format!(
             "The flow ran. What happened:\n{summary}\n\nIf the task is now complete, reply {{\"done\": true}}. \
 Otherwise reply with a flow for only the remaining work."
@@ -111,7 +115,11 @@ Otherwise reply with a flow for only the remaining work."
     /// # Errors
     ///
     /// Fails when the model call fails.
-    pub async fn looks_true(&mut self, png_base64: &str, condition: &str) -> Result<bool, LabError> {
+    pub async fn looks_true(
+        &mut self,
+        png_base64: &str,
+        condition: &str,
+    ) -> Result<bool, LabError> {
         self.calls += 1;
         let request = ModelRequest {
             messages: vec![Message::User(UserMessage {

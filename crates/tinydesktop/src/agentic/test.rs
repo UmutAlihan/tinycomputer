@@ -1173,9 +1173,7 @@ async fn the_desktop_backend_fails_closed_on_empty_targets_without_touching_inpu
     assert!(!AgentBackend::paste(&desktop, "", &empty, "text").ok);
     assert!(!AgentBackend::press(&desktop, "", "").ok);
     assert!(!AgentBackend::launch(&desktop, "").ok);
-    assert!(
-        AgentBackend::observe(&desktop, "__tinydesktop_missing__", None, Depth::Full).is_err()
-    );
+    assert!(AgentBackend::observe(&desktop, "__tinydesktop_missing__", None, Depth::Full).is_err());
     let typed = execute_operation(
         desktop.clone(),
         String::new(),

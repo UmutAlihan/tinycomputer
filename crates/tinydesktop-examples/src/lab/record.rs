@@ -175,7 +175,8 @@ pub fn scorecard(records: &[RunRecord]) -> String {
     );
     for ((scenario, mode), runs) in groups {
         let count = f64::from(u32::try_from(runs.len()).unwrap_or(u32::MAX));
-        let mean = |field: fn(&RunRecord) -> f64| runs.iter().map(|run| field(run)).sum::<f64>() / count;
+        let mean =
+            |field: fn(&RunRecord) -> f64| runs.iter().map(|run| field(run)).sum::<f64>() / count;
         let _ = writeln!(
             out,
             "| {scenario} | {mode} | {}/{} | {:.1} | {:.1} | {:.1} | {:.1} |",
@@ -204,7 +205,10 @@ pub fn load_memory(path: &Path) -> Vec<tinydesktop_bus::GroundingHint> {
 /// # Errors
 ///
 /// Fails when the file cannot be written.
-pub fn save_memory(path: &Path, learned: &[tinydesktop_bus::GroundingHint]) -> Result<(), LabError> {
+pub fn save_memory(
+    path: &Path,
+    learned: &[tinydesktop_bus::GroundingHint],
+) -> Result<(), LabError> {
     let mut hints = load_memory(path);
     for hint in learned {
         hints.retain(|existing| !(existing.app == hint.app && existing.key == hint.key));

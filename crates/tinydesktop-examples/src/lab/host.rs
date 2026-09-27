@@ -61,7 +61,9 @@ impl Host {
         let module_host = ModuleHost::new(broker);
         let info = module_host.load_file(module)?;
         if info.name != "tinydesktop" {
-            return Err(io::Error::other(format!("loaded unexpected module `{}`", info.name)).into());
+            return Err(
+                io::Error::other(format!("loaded unexpected module `{}`", info.name)).into(),
+            );
         }
         let client = Connection::connect(bus.connect().await?).await?;
         wait_for_module(&client).await?;

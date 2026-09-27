@@ -82,7 +82,10 @@ async fn main() -> Result<(), LabError> {
         "validate" => {
             let host = load(&options).await?;
             let flow = serde_json::from_str(&std::fs::read_to_string(&target)?)?;
-            println!("{}", serde_json::to_string_pretty(&host.validate(&flow).await?)?);
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&host.validate(&flow).await?)?
+            );
             host.shutdown();
             Ok(())
         }
@@ -166,7 +169,11 @@ async fn run_once(
             let request = RunGoalRequest {
                 app: scenario.app.to_owned(),
                 goal: scenario.goal.to_owned(),
-                text: scenario.texts.iter().map(|text| (*text).to_owned()).collect(),
+                text: scenario
+                    .texts
+                    .iter()
+                    .map(|text| (*text).to_owned())
+                    .collect(),
                 include_values: true,
                 ..RunGoalRequest::default()
             };
@@ -177,7 +184,12 @@ async fn run_once(
             std::fs::write(dir.join("timeline.txt"), &timeline)?;
             println!("{timeline}");
             let actions = u32::try_from(result.turns.len()).unwrap_or(u32::MAX);
-            (None, format!("{:?}", result.stop), actions, result.metrics.calls)
+            (
+                None,
+                format!("{:?}", result.stop),
+                actions,
+                result.metrics.calls,
+            )
         }
         "authored" => authored(host, scenario, options, &dir, &mut llm_calls).await?,
         _ => {
@@ -279,7 +291,10 @@ async fn authored(
         let Authored::Flow(flow) = answer else {
             break;
         };
-        println!("authored flow, round {round}:\n{}", serde_json::to_string_pretty(&flow)?);
+        println!(
+            "authored flow, round {round}:\n{}",
+            serde_json::to_string_pretty(&flow)?
+        );
         write_json(dir, &format!("authored-{round}.json"), &flow)?;
         let result = run_flow(host, flow, options, dir, &format!("-{round}")).await?;
         actions += result.actions;
@@ -294,9 +309,10 @@ async fn authored(
         answer = author.continue_after(host, &summary).await?;
     }
     *llm_calls = author.calls;
-    let stop = last
-        .as_ref()
-        .map_or_else(|| "NoFlow".to_owned(), |result| format!("{:?}", result.stop));
+    let stop = last.as_ref().map_or_else(
+        || "NoFlow".to_owned(),
+        |result| format!("{:?}", result.stop),
+    );
     Ok((last, stop, actions, jev_calls))
 }
 
@@ -319,7 +335,11 @@ fn parse(args: &[String]) -> Result<Options, LabError> {
         memory: true,
         ..Options::default()
     };
-    let skip = if args.first().map(String::as_str) == Some("call") { 3 } else { 2 };
+    let skip = if args.first().map(String::as_str) == Some("call") {
+        3
+    } else {
+        2
+    };
     let mut rest = args.iter().skip(skip);
     while let Some(flag) = rest.next() {
         let mut value = || {

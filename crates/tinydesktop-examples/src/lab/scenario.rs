@@ -75,7 +75,9 @@ pub const SCENARIOS: &[Scenario] = &[
         brief: include_str!("../../scenarios/textedit/brief.md"),
         flow: include_str!("../../scenarios/textedit/flow.json"),
         goal: "Start a new blank TextEdit document and type the supplied paragraph into it.",
-        texts: &["Desktop flows describe what to do, not how. Jev grounds every step on the live screen. This paragraph was written by a tinydesktop flow."],
+        texts: &[
+            "Desktop flows describe what to do, not how. Jev grounds every step on the live screen. This paragraph was written by a tinydesktop flow.",
+        ],
         check: Check::TextEditContains("This paragraph was written by a tinydesktop flow."),
     },
     Scenario {
@@ -93,7 +95,9 @@ pub const SCENARIOS: &[Scenario] = &[
         brief: include_str!("../../scenarios/notes/brief.md"),
         flow: include_str!("../../scenarios/notes/flow.json"),
         goal: "Create a new note titled tinydesktop lab note with the supplied text.",
-        texts: &["tinydesktop lab note\nWritten by a Jev intent flow.\nSecond line: each step was grounded on the live screen."],
+        texts: &[
+            "tinydesktop lab note\nWritten by a Jev intent flow.\nSecond line: each step was grounded on the live screen.",
+        ],
         check: Check::NoteNamed("tinydesktop lab note"),
     },
     Scenario {
@@ -136,7 +140,9 @@ pub const SCENARIOS: &[Scenario] = &[
         brief: include_str!("../../scenarios/mail-reply/brief.md"),
         flow: include_str!("../../scenarios/mail-reply/flow.json"),
         goal: "Open the newest Inbox message, start a reply, type the supplied text, and stop before sending.",
-        texts: &["Thanks for your note. I have read it and will follow up properly by tomorrow.\n\nBest,\nAlex"],
+        texts: &[
+            "Thanks for your note. I have read it and will follow up properly by tomorrow.\n\nBest,\nAlex",
+        ],
         check: Check::MailReplyDraft,
     },
     Scenario {
@@ -178,14 +184,23 @@ impl Scenario {
     ) -> Result<Verdict, LabError> {
         match self.check {
             Check::TextEditContains(text) => Ok(contains(
-                &osascript(r#"tell application "TextEdit" to if (count of documents) > 0 then get text of front document"#),
+                &osascript(
+                    r#"tell application "TextEdit" to if (count of documents) > 0 then get text of front document"#,
+                ),
                 text,
             )),
             Check::CalculatorShows(value) => {
                 let tree = snapshot_text(host, self.app).await?;
                 Ok(Verdict {
                     passed: tree.contains(value) || tree.contains(&thousands(value)),
-                    detail: format!("the Calculator tree {} {value}", if tree.contains(value) { "shows" } else { "does not show" }),
+                    detail: format!(
+                        "the Calculator tree {} {value}",
+                        if tree.contains(value) {
+                            "shows"
+                        } else {
+                            "does not show"
+                        }
+                    ),
                 })
             }
             Check::NoteNamed(name) => Ok(contains(
@@ -204,7 +219,11 @@ impl Scenario {
                 let dark = osascript(
                     r#"tell application "System Events" to tell appearance preferences to get dark mode"#,
                 );
-                let expected = if dark.trim() == "true" { "dark" } else { "light" };
+                let expected = if dark.trim() == "true" {
+                    "dark"
+                } else {
+                    "light"
+                };
                 let read = flow
                     .and_then(|result| result.vars.get("mode"))
                     .map(|mode| mode.to_ascii_lowercase())
@@ -237,7 +256,10 @@ impl Scenario {
                 let playing = tree.contains("\"Pause\"");
                 Ok(Verdict {
                     passed: playing,
-                    detail: format!("a Pause control is {}", if playing { "showing" } else { "absent" }),
+                    detail: format!(
+                        "a Pause control is {}",
+                        if playing { "showing" } else { "absent" }
+                    ),
                 })
             }
         }
@@ -248,7 +270,9 @@ impl Scenario {
 #[must_use]
 pub fn osascript(script: &str) -> String {
     match Command::new("osascript").arg("-e").arg(script).output() {
-        Ok(output) if output.status.success() => String::from_utf8_lossy(&output.stdout).into_owned(),
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).into_owned()
+        }
         Ok(output) => format!("error: {}", String::from_utf8_lossy(&output.stderr).trim()),
         Err(error) => format!("error: {error}"),
     }
