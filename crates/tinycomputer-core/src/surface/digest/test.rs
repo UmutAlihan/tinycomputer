@@ -221,7 +221,7 @@ fn a_tight_budget_keeps_the_relevant_region_and_collapses_the_rest() {
         .iter()
         .map(|region| region["id"].as_str().unwrap().to_owned())
         .collect::<Vec<_>>();
-    assert_eq!(shown, [list.clone()]);
+    assert_eq!(shown, std::slice::from_ref(&list));
     let collapsed = view(&rendered)["collapsed"].as_array().unwrap();
     assert!(
         collapsed
