@@ -341,11 +341,20 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .push(format!("pressed {combo} ({name}), ok={}", reply.ok));
                 Ok(Move::Acted(None))
             }
-            operation => Ok(Move::Acted(
+            operation @ ("activate" | "expand" | "scroll") => Ok(Move::Acted(
                 self.activate(log, screen, intent, operation, banned)
                     .await?
                     .map(Box::new),
             )),
+            other => {
+                // A malformed or prompt-injected answer must fail closed
+                // rather than default to a click: only the moves above are
+                // ever offered to Jev.
+                self.history.push(format!(
+                    "ignored an unrecognized move {other:?}; only activate, shortcut, expand, scroll, wait, finished, and stuck are valid"
+                ));
+                Ok(Move::Skipped)
+            }
         }
     }
 
