@@ -844,12 +844,16 @@ async fn disabled_loops_are_not_asked_and_the_move_falls_back_to_pressing() {
                 FlowLoop::Obstacles,
                 FlowLoop::Completion,
             ];
-            request.max_actions = 2;
         },
         |_, _, _| None,
     )
     .await;
-    assert_eq!(blind.result.stop, FlowStopReason::ActionBudget);
+    assert_eq!(
+        blind.result.stop,
+        FlowStopReason::StepFailed,
+        "without the completion judge a step cannot recognise its own success"
+    );
+    assert_eq!(blind.app.sim().clicks, ["New Message"]);
 }
 
 #[tokio::test]
