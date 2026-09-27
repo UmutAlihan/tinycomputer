@@ -10,15 +10,17 @@
 //! picked from things every application offers — pressing a visible control,
 //! a standard shortcut, scrolling, waiting.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::json;
 use tinycomputer_bus::{FlowLoop, JevOperation, StepOutcome};
+use tinyinference_decisions::Answer;
 
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
     memory::{learn, remember},
+    wide::{Dismissal, Prepared},
     view::{Candidate, Screen, change_note, fingerprint, is_destructive, label, signature},
 };
 
@@ -667,6 +669,27 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         intent: &str,
         last: Option<&str>,
     ) -> Result<Judgement, Halt> {
+        let questions = self.judge_questions(log, intent, last);
+        if questions.is_empty() {
+            return Ok(Judgement::activate());
+        }
+        let answers = self
+            .ask(
+                log,
+                ask::request(self.model(), self.state(screen, intent), questions),
+            )
+            .await?;
+        Ok(Judgement::read(&answers))
+    }
+
+    /// The questions that judge a turn: completion and its negation,
+    /// progress, obstacles, whether the last action helped, and the move.
+    pub(super) fn judge_questions(
+        &self,
+        log: &mut StepLog,
+        intent: &str,
+        last: Option<&str>,
+    ) -> Questions {
         let mut questions = Questions::default();
         if self.enabled(FlowLoop::Completion) {
             log.used(FlowLoop::Completion);
@@ -715,17 +738,32 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     ),
                 );
         }
-        if questions.is_empty() {
-            return Ok(Judgement::activate());
-        }
-        let answers = self
-            .ask(
-                log,
-                ask::request(self.model(), self.state(screen, intent), questions),
-            )
-            .await?;
-        let next = chosen(&answers, "move").map_or_else(|| "activate".to_owned(), |(next, _)| next);
-        let shortcut = chosen(&answers, "shortcut")
+        questions
+    }
+}
+
+/// One turn's reading of the screen.
+#[derive(Debug, Clone)]
+pub(super) struct Judgement {
+    pub(super) done: Option<f64>,
+    pub(super) progress: Option<f64>,
+    pub(super) blocked: Option<f64>,
+    pub(super) helped: Option<f64>,
+    pub(super) next: String,
+    pub(super) shortcut: Option<(&'static str, &'static str)>,
+    /// Under the wide strategy: a target already chosen for each move that
+    /// needs one, from the same request.
+    pub(super) prepared: BTreeMap<&'static str, Prepared>,
+    /// Under the wide strategy: how to clear what is in front, if it is in
+    /// the way.
+    pub(super) dismissal: Option<Dismissal>,
+}
+
+impl Judgement {
+    /// Reads the judging questions' answers.
+    pub(super) fn read(answers: &BTreeMap<String, Answer>) -> Self {
+        let next = chosen(answers, "move").map_or_else(|| "activate".to_owned(), |(next, _)| next);
+        let shortcut = chosen(answers, "shortcut")
             .filter(|(_, probability)| *probability >= SHORTCUT_FLOOR)
             .and_then(|(key, _)| {
                 SHORTCUTS
@@ -733,31 +771,20 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .find(|(name, _, _)| *name == key)
                     .map(|(name, combo, _)| (*combo, *name))
             });
-        Ok(Judgement {
-            done: ask::calibrated(&answers, "done", "not_done").map(|done| {
-                ask::combined(Some(done), ask::top_level(&answers, "progress")).unwrap_or(done)
+        Self {
+            done: ask::calibrated(answers, "done", "not_done").map(|done| {
+                ask::combined(Some(done), ask::top_level(answers, "progress")).unwrap_or(done)
             }),
-            progress: level(&answers, "progress"),
-            blocked: probability(&answers, "blocked"),
-            helped: probability(&answers, "helped"),
+            progress: level(answers, "progress"),
+            blocked: probability(answers, "blocked"),
+            helped: probability(answers, "helped"),
             next,
             shortcut,
-        })
+            prepared: BTreeMap::new(),
+            dismissal: None,
+        }
     }
-}
 
-/// One turn's reading of the screen.
-#[derive(Debug, Clone)]
-struct Judgement {
-    done: Option<f64>,
-    progress: Option<f64>,
-    blocked: Option<f64>,
-    helped: Option<f64>,
-    next: String,
-    shortcut: Option<(&'static str, &'static str)>,
-}
-
-impl Judgement {
     /// The judgement when every judging loop is disabled: just press something.
     fn activate() -> Self {
         Self {
@@ -767,6 +794,8 @@ impl Judgement {
             helped: None,
             next: "activate".to_owned(),
             shortcut: None,
+            prepared: BTreeMap::new(),
+            dismissal: None,
         }
     }
 }
