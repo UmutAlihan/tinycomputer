@@ -683,7 +683,7 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
             return;
         };
         if time_left == Some(0) {
-            stop_task(&cell, runner.as_ref(), elapsed_budget_failed()).await;
+            stop_task(&cell, runner.as_ref(), elapsed_budget_failed());
             return;
         }
         let id = cell.view.borrow().id.clone();
