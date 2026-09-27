@@ -29,10 +29,14 @@
 //! (`docs/specs/unified-agent.md`).
 
 mod agentic;
+mod planner;
 mod task;
 mod workspace;
 
 pub use agentic::{JevRuntime, flow_guide, resolve_intent, run_flow, run_goal, validate_flow};
+pub use planner::{Completion, LanguageModel, Planner, REPAIRS, Role, Turn};
+#[cfg(feature = "planner")]
+pub use planner::{PLANNER_MODEL, PlannerConfig, open_router};
 pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks, capabilities};
 pub use tinydesktop_bus::DesktopResponse;
 use tinydesktop_desktop::Desktop;

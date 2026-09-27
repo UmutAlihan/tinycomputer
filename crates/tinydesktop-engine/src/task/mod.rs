@@ -29,8 +29,8 @@ use std::time::Duration;
 
 use tinydesktop_bus::agent::{
     AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputField, InputKind,
-    StartTaskRequest, StepView, TaskBudget, TaskConstraints, TaskId, TaskReport, TaskStatus,
-    TaskView,
+    PlanTaskRequest, StartTaskRequest, StepView, TaskBudget, TaskConstraints, TaskId, TaskPlan,
+    TaskReport, TaskStatus, TaskView,
 };
 use tinydesktop_bus::{
     DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowStep, GroundingHint, JevExchange,
@@ -60,6 +60,7 @@ pub const MAX_AWAIT_MS: u64 = 60_000;
 /// The task controller.
 pub struct Tasks {
     runner: Arc<dyn FlowRunner>,
+    planner: Option<crate::planner::Planner>,
     cells: Mutex<BTreeMap<u64, Arc<Cell>>>,
     counter: AtomicU64,
 }
@@ -104,8 +105,42 @@ impl Tasks {
     pub fn new(runner: Arc<dyn FlowRunner>) -> Self {
         Self {
             runner,
+            planner: None,
             cells: Mutex::new(BTreeMap::new()),
             counter: AtomicU64::new(0),
+        }
+    }
+
+    /// This controller, turning plain-language tasks into flows with
+    /// `planner`.
+    #[must_use]
+    pub fn with_planner(mut self, planner: crate::planner::Planner) -> Self {
+        self.planner = Some(planner);
+        self
+    }
+
+    /// Whether a planner is configured.
+    #[must_use]
+    pub fn planner_configured(&self) -> bool {
+        self.planner.is_some()
+    }
+
+    /// Drafts a flow for a plain-language task without acting.
+    pub async fn plan(&self, request: &PlanTaskRequest) -> AgentResponse<TaskPlan> {
+        let Some(planner) = &self.planner else {
+            return AgentResponse::err(no_planner());
+        };
+        match planner
+            .plan(&request.task, &request.fact_names, &request.surfaces)
+            .await
+        {
+            Ok(plan) => AgentResponse::ok(plan),
+            Err(reason) => AgentResponse::err(AgentError::new(
+                "PLAN_FAILED",
+                reason,
+                "reword the task, or write the flow yourself with Describe's guide",
+                true,
+            )),
         }
     }
 
@@ -128,6 +163,9 @@ impl Tasks {
             }
         };
         let Some(flow) = request.flow.clone() else {
+            if let (Some(task), Some(planner)) = (&request.task, &self.planner) {
+                return self.start_planned(request, facts, task, planner.clone());
+            }
             if request.task.is_some() {
                 return self.register_planless(request);
             }
@@ -421,6 +459,35 @@ impl Tasks {
         AgentResponse::ok(cell.view.borrow().clone())
     }
 
+    fn start_planned(
+        &self,
+        request: &StartTaskRequest,
+        facts: Facts,
+        task: &str,
+        planner: crate::planner::Planner,
+    ) -> AgentResponse<TaskView> {
+        let placeholder = Flow {
+            app: String::new(),
+            vars: BTreeMap::new(),
+            steps: Vec::new(),
+        };
+        let Some(cell) = self.register(&placeholder, facts, request) else {
+            return too_many();
+        };
+        publish(&cell, TaskStatus::Running, "Planning the task.");
+        let worker = tokio::spawn(plan_then_drive(
+            cell.clone(),
+            self.runner.clone(),
+            planner,
+            task.to_owned(),
+            request.constraints.surfaces.clone(),
+        ));
+        if let Ok(mut slot) = cell.worker.lock() {
+            *slot = Some(worker.abort_handle());
+        }
+        AgentResponse::ok(cell.view.borrow().clone())
+    }
+
     fn spawn(&self, cell: &Arc<Cell>, runs: Vec<Run>) {
         publish(cell, TaskStatus::Running, "The task is running.");
         let worker = tokio::spawn(drive(cell.clone(), self.runner.clone(), runs));
@@ -432,6 +499,69 @@ impl Tasks {
     fn find(&self, id: &TaskId) -> Option<Arc<Cell>> {
         let number = id.0.strip_prefix("t-")?.parse().ok()?;
         self.cells.lock().ok()?.get(&number).cloned()
+    }
+}
+
+/// Plans the task, then runs the plan — or asks for what it needs first.
+async fn plan_then_drive(
+    cell: Arc<Cell>,
+    runner: Arc<dyn FlowRunner>,
+    planner: crate::planner::Planner,
+    task: String,
+    surfaces: Vec<tinydesktop_bus::agent::SurfaceKind>,
+) {
+    let names = cell.state.lock().map_or_else(
+        |_| Vec::new(),
+        |state| {
+            state
+                .facts
+                .names()
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        },
+    );
+    let plan = match planner.plan(&task, &names, &surfaces).await {
+        Ok(plan) => plan,
+        Err(reason) => {
+            publish(
+                &cell,
+                TaskStatus::Failed {
+                    step: None,
+                    reason: reason.clone(),
+                    hint: "reword the task, or pass a flow written with Describe's guide".to_owned(),
+                    recoverable: true,
+                },
+                &format!("Planning failed: {reason}"),
+            );
+            return;
+        }
+    };
+    let allow = {
+        let Ok(mut state) = cell.state.lock() else {
+            return;
+        };
+        state.flow = plan.flow.clone();
+        state.constraints.allow_destructive
+    };
+    if plan.questions.is_empty() {
+        drive(
+            cell,
+            runner,
+            vec![Run {
+                flow: plan.flow,
+                allow_destructive: allow,
+            }],
+        )
+        .await;
+    } else {
+        publish(
+            &cell,
+            TaskStatus::NeedsInput {
+                fields: plan.questions,
+            },
+            "The plan needs values before it can start.",
+        );
     }
 }
 
@@ -647,6 +777,15 @@ fn state_name(status: &TaskStatus) -> &'static str {
         TaskStatus::Failed { .. } => "failed",
         TaskStatus::Cancelled => "cancelled",
     }
+}
+
+fn no_planner() -> AgentError {
+    AgentError::new(
+        "PLANNER_NOT_CONFIGURED",
+        "no planner is configured in this module",
+        "write a flow with Describe's guide and pass it as StartTask.flow",
+        false,
+    )
 }
 
 fn no_such_task<T>(id: &TaskId) -> AgentResponse<T> {

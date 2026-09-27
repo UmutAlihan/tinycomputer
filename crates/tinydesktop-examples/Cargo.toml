@@ -19,7 +19,7 @@ tokio = { workspace = true }
 # writes flows from a brief and checks screenshots. Lab-only on purpose — the
 # shipped module stays Jev-only and never links it. Vendored as the
 # `vendor/tinyinference` submodule and pinned by its gitlink.
-tinyinference-llm = { path = "../../vendor/tinyinference/crates/tinyinference-llm", optional = true }
+tinyinference-llm = { workspace = true, optional = true }
 
 [features]
 default = ["inference"]

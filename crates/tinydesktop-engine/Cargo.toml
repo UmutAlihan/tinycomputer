@@ -29,6 +29,16 @@ getrandom = { workspace = true }
 # Blocking engine calls run on `spawn_blocking`; loops sleep between looks.
 tokio = { workspace = true }
 
+# The planner's OpenRouter model, only with the `planner` feature. The shipped
+# module links it, but it stays inert until private configuration supplies a
+# key.
+tinyinference-llm = { workspace = true, optional = true }
+
+[features]
+default = []
+# An LLM planner that turns plain-language tasks into flows.
+planner = ["dep:tinyinference-llm"]
+
 [dev-dependencies]
 tokio = { workspace = true }
 

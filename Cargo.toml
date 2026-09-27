@@ -46,6 +46,9 @@ tinydesktop-engine = { path = "crates/tinydesktop-engine" }
 # so provider validation and retry behavior are reproducible. Only this crate
 # of TinyInference is linked into the module.
 tinyinference_decisions = { path = "vendor/tinyinference/crates/tinyinference_decisions" }
+# The optional LLM planner's model client (engine `planner` feature) and the
+# lab's author.
+tinyinference-llm = { path = "vendor/tinyinference/crates/tinyinference-llm" }
 # The desktop automation engine this module wraps: accessibility-tree
 # observation, ref allocation, and the command implementations behind every
 # member of the bus interface. Vendored as the `vendor/agent-desktop` submodule
