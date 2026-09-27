@@ -169,7 +169,7 @@ impl Planner {
 }
 
 fn plan_for(flow: Flow, known: &BTreeSet<String>) -> TaskPlan {
-    let questions = crate::agentic::missing_inputs(&flow, known)
+    let questions = crate::agentic::missing_inputs(&flow, known, known)
         .into_iter()
         .map(|name| InputField {
             why: format!("the plan uses ${{{name}}}"),
