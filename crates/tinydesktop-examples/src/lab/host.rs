@@ -24,7 +24,7 @@ pub type LabError = Box<dyn std::error::Error + Send + Sync>;
 /// A loaded, configured tinydesktop module and a proxy to it.
 pub struct Host {
     proxy: tinybus::Proxy,
-    broker: tokio::task::JoinHandle<()>,
+    broker: tokio::task::JoinHandle<tinybus::Result<()>>,
     _client: Connection,
 }
 
