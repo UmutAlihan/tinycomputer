@@ -42,7 +42,7 @@ pub(crate) const TTL: Duration = Duration::from_secs(300);
 
 /// How often the sweeper looks for outputs to drop.
 ///
-/// A fraction of [`TTL`], so an abandoned output is released within a minute or
+/// A fraction of the five-minute output lifetime, so an abandoned output is released within a minute or
 /// so of expiring rather than at some unbounded later moment.
 pub const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
 
