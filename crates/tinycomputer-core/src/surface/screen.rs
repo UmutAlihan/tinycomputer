@@ -1,6 +1,8 @@
 //! What a surface shows: candidates, context, and the judgements made about
 //! them without asking a model — fingerprints, change notes, labels.
 
+use std::fmt::Write as _;
+
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tinycomputer_bus::JevTarget;
@@ -151,6 +153,24 @@ pub fn signature(node: &Candidate) -> String {
         node.states,
         node.path.join(">")
     )
+}
+
+/// One element as a line of the state Jev reads: its label, what it holds
+/// when `include_values` is set (up to 80 characters), and its states.
+#[must_use]
+pub fn element_line(node: &Candidate, include_values: bool) -> String {
+    let mut line = label(node);
+    if include_values
+        && let Some(value) = node.value.as_ref().and_then(Value::as_str)
+        && !value.is_empty()
+    {
+        let shown: String = value.chars().take(80).collect();
+        let _ = write!(line, " = {shown:?}");
+    }
+    if !node.states.is_empty() {
+        let _ = write!(line, " [{}]", node.states.join(", "));
+    }
+    line
 }
 
 /// A short human label for an element: role plus accessible name.

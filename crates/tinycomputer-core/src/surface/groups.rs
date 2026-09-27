@@ -44,6 +44,22 @@ pub fn result_groups(screen: &Screen) -> Vec<Group> {
 /// strip of dates above the flights themselves.
 #[must_use]
 pub fn result_families(screen: &Screen) -> Vec<Vec<Group>> {
+    let nodes = ordered(screen);
+    list_levels(&nodes)
+        .into_iter()
+        .map(|(depth, parent)| cards(&nodes, depth, &parent))
+        .filter(|groups| !groups.is_empty())
+        .collect()
+}
+
+/// The cards of the list under `parent` whose containers sit at `depth`,
+/// in reading order.
+pub(super) fn cards_at(screen: &Screen, depth: usize, parent: &[String]) -> Vec<Group> {
+    cards(&ordered(screen), depth, parent)
+}
+
+/// Every node on `screen`, actionable or not, in document order.
+fn ordered(screen: &Screen) -> Vec<(&Candidate, bool)> {
     let mut nodes = screen
         .candidates
         .iter()
@@ -51,11 +67,7 @@ pub fn result_families(screen: &Screen) -> Vec<Vec<Group>> {
         .chain(screen.text_nodes.iter().map(|node| (node, false)))
         .collect::<Vec<_>>();
     nodes.sort_by_key(|(node, _)| node.order);
-    list_levels(&nodes)
-        .into_iter()
-        .map(|(depth, parent)| cards(&nodes, depth, &parent))
-        .filter(|groups| !groups.is_empty())
-        .collect()
+    nodes
 }
 
 /// The cards under `parent`, one per ordinal container at `depth`.
@@ -121,7 +133,7 @@ fn list_levels(nodes: &[(&Candidate, bool)]) -> Vec<(usize, Vec<String>)> {
 }
 
 /// `("listitem", 3)` for `listitem #3`, or for `listitem "Name" #3`.
-fn ordinal(label: &str) -> Option<(&str, usize)> {
+pub(super) fn ordinal(label: &str) -> Option<(&str, usize)> {
     let (head, number) = label.rsplit_once(" #")?;
     let number = number.parse().ok()?;
     let role = head.split(' ').next().unwrap_or(head);
