@@ -418,7 +418,7 @@ async fn an_approval_nested_in_an_if_resumes_the_whole_branch_and_what_follows()
                     "",
                 ),
                 step(
-                    "4.1",
+                    "3.1",
                     "stop_before",
                     "sending the email",
                     StepOutcome::Gated,
