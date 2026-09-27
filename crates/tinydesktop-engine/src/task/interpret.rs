@@ -154,8 +154,20 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult) -> Next {
             resume: None,
         };
     }
-    let index = gated.and_then(|step| top_index(&step.path));
-    let rest = index.map_or_else(Vec::new, |index| flow.steps[index + 1..].to_vec());
+    let path = gated.map(|step| step.path.as_str());
+    let index = path.and_then(top_index);
+    // A top-level `stop_before` has fully finished once it is approved, so
+    // the rest resumes right after it. One nested in an `if` or
+    // `repeat_until` (path `4.2` or `4.r1.2`) has not: that whole top-level
+    // step is still in progress, and which branch or round it was in is not
+    // recoverable from the path alone, so the containing step is resumed
+    // from its own start rather than silently dropped along with everything
+    // that follows it.
+    let rest = match (index, path) {
+        (Some(index), Some(path)) if path.contains('.') => flow.steps[index..].to_vec(),
+        (Some(index), _) => flow.steps[index + 1..].to_vec(),
+        (None, _) => Vec::new(),
+    };
     Next::Stop {
         status: Box::new(TaskStatus::NeedsApproval {
             action: phrase.clone(),
