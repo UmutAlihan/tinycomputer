@@ -20,7 +20,7 @@ use super::{
     AgentBackend, FlowRun, Halt, StepLog,
     ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
     memory::recall,
-    view::{ACT, Candidate, Screen, exact_named_match, label, named_first},
+    view::{ACT, Candidate, Screen, distinct, exact_named_match, label, named_first},
 };
 
 /// Least probability an exact-name match needs to be used without re-asking.
@@ -60,6 +60,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if pool.is_empty() {
             return Ok(None);
         }
+        pool = distinct(pool, self.include_values);
         if self.wide() {
             named_first(purpose, &mut pool);
         }

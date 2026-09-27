@@ -4571,3 +4571,28 @@ fn survey_answers_follow_a_region_by_name_when_its_id_moves() {
     assert!(distractions.contains(&ad_id));
     assert_eq!(relevance.len(), 1, "the new listbox has no answer yet");
 }
+
+#[test]
+fn lookalikes_are_offered_once_and_the_first_in_page_order_is_kept() {
+    let search = |order: usize, y: f64| Candidate {
+        ref_id: format!("@s:search-{order}"),
+        role: "combobox".to_owned(),
+        available_actions: vec!["SetValue".to_owned()],
+        bounds: Some(json!({"x": 10.0, "y": y})),
+        path: vec!["main".to_owned(), "button \"destinationCity\"".to_owned()],
+        order,
+        ..Candidate::default()
+    };
+    let named = node("Pax Selection", "combobox", &["SetValue"], &["main"], 5.0);
+    let pool = super::view::distinct(
+        vec![
+            search(1, 10.0),
+            named.clone(),
+            search(2, 20.0),
+            search(3, 0.0),
+        ],
+        false,
+    );
+    let refs = pool.iter().map(|c| c.ref_id.as_str()).collect::<Vec<_>>();
+    assert_eq!(refs, ["@s:search-1", "@s:Pax Selection"]);
+}

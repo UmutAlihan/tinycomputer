@@ -42,8 +42,8 @@ use super::{
     ledger::Context,
     memory::{learn, recall, remember},
     view::{
-        ACT, Candidate, Digest, Rendering, Screen, digest, exact_named_match, is_destructive,
-        label, named_first, signature,
+        ACT, Candidate, Digest, Rendering, Screen, digest, distinct, exact_named_match,
+        is_destructive, label, named_first, signature,
     },
 };
 
@@ -219,15 +219,21 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let mut plans = Vec::new();
         if self.enabled(FlowLoop::Moves) {
             for (operation, capability, verb) in TARGETED {
-                let pool = ranked
-                    .iter()
-                    .filter_map(|index| screen.candidates.get(*index))
-                    .filter(|candidate| {
-                        supports(candidate, capability) && !banned.contains(&signature(candidate))
-                    })
-                    .take(WIDE_POOL)
-                    .cloned()
-                    .collect::<Vec<_>>();
+                let pool = distinct(
+                    ranked
+                        .iter()
+                        .filter_map(|index| screen.candidates.get(*index))
+                        .filter(|candidate| {
+                            supports(candidate, capability)
+                                && !banned.contains(&signature(candidate))
+                        })
+                        .cloned()
+                        .collect(),
+                    self.include_values,
+                )
+                .into_iter()
+                .take(WIDE_POOL)
+                .collect::<Vec<_>>();
                 if pool.is_empty() {
                     continue;
                 }
