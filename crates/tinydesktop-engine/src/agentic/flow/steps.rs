@@ -338,41 +338,57 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     ));
                 }
             }
-            match attempt {
-                0 => {
-                    // Revealing is one way among several; when it fails the
-                    // next attempt tries another rather than giving up.
-                    let revealed = self
-                        .accomplish(
-                            log,
-                            &format!("open {what} so its options show"),
-                            REVEAL_TURNS,
-                        )
-                        .await;
-                    match revealed {
-                        Err(Halt::Failed(note)) => self.history.push(format!(
-                            "could not open {what} ({note}); trying another way"
-                        )),
-                        other => {
-                            other?;
-                        }
-                    }
-                }
-                1 if looks_like_date(option) => self.page_to(log, option).await?,
-                // An opened autocomplete holds the focus in its search input,
-                // often unnamed; type there before anything moves the focus.
-                1 if into_focus => self.type_into_focus(log, option).await?,
-                2 if !looks_like_date(option) => {
-                    self.type_to_filter(log, &screen, what, option).await?;
-                }
-                _ => {}
-            }
+            self.another_way(log, attempt, &screen, what, option, into_focus)
+                .await?;
         }
         Err(Halt::Failed(if private {
             format!("the value was not found in {what}")
         } else {
             format!("{option:?} was not found in {what}")
         }))
+    }
+
+    /// The next way to make `option` show after attempt `attempt` found
+    /// nothing: open `what`, page a calendar, or type the option to filter.
+    async fn another_way(
+        &mut self,
+        log: &mut StepLog,
+        attempt: usize,
+        screen: &Screen,
+        what: &str,
+        option: &str,
+        into_focus: bool,
+    ) -> Result<(), Halt> {
+        match attempt {
+            0 => {
+                // Revealing is one way among several; when it fails the
+                // next attempt tries another rather than giving up.
+                let revealed = self
+                    .accomplish(
+                        log,
+                        &format!("open {what} so its options show"),
+                        REVEAL_TURNS,
+                    )
+                    .await;
+                match revealed {
+                    Err(Halt::Failed(note)) => self.history.push(format!(
+                        "could not open {what} ({note}); trying another way"
+                    )),
+                    other => {
+                        other?;
+                    }
+                }
+            }
+            1 if looks_like_date(option) => self.page_to(log, option).await?,
+            // An opened autocomplete holds the focus in its search input,
+            // often unnamed; type there before anything moves the focus.
+            1 if into_focus => self.type_into_focus(log, option).await?,
+            2 if !looks_like_date(option) => {
+                self.type_to_filter(log, screen, what, option).await?;
+            }
+            _ => {}
+        }
+        Ok(())
     }
 
     /// The option control on `screen` that fits `option` read as a
