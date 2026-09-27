@@ -805,6 +805,27 @@ async fn human_wall(cell: &Cell, runner: &dyn FlowRunner, status: TaskStatus) ->
     status
 }
 
+/// Ends a task outright with `status`, without a flow run to interpret: its
+/// time budget ran out before a run of it could even start, or a run of it
+/// had to be cut off mid-flight to keep from spending past what remains.
+fn stop_task(cell: &Cell, runner: &dyn FlowRunner, status: TaskStatus) {
+    let summary = stopped_summary(&status);
+    publish(cell, status, &summary);
+    runner.release(&cell.view.borrow().id);
+}
+
+/// The task-level failure `stop_task` reports when `budget.max_elapsed_ms`
+/// is spent: never recoverable by a resume, the same as an action or model
+/// budget running out inside a run.
+fn elapsed_budget_failed() -> TaskStatus {
+    TaskStatus::Failed {
+        step: None,
+        reason: "the task's time budget ran out".to_owned(),
+        hint: "raise budget.max_elapsed_ms".to_owned(),
+        recoverable: true,
+    }
+}
+
 fn stopped_summary(status: &TaskStatus) -> String {
     match status {
         TaskStatus::NeedsHuman { reason, .. } => format!("A person is needed: {reason}."),
