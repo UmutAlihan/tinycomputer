@@ -150,9 +150,8 @@ fn examples() -> Vec<Example> {
                         {"enter": {"where from": "${from}", "where to": "${to}", "departure date": "${date}"}},
                         "search for flights",
                         {"wait_for": "flight results are listed"},
-                        "sort the results by price, lowest first",
-                        {"read": {"what": "the first flight's airline, times, and price", "into": "cheapest"}},
-                        "choose the first flight and continue to booking",
+                        {"pick": {"from": "the flight results", "by": "lowest price", "into": "cheapest"}},
+                        "continue to booking",
                         {"enter": {"first name": "${first name}", "last name": "${last name}", "email": "${email}", "phone": "${phone}"}},
                         {"stop_before": "paying for the booking"}
                     ]
