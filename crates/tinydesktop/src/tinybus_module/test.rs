@@ -497,3 +497,17 @@ fn a_planner_is_configured_from_private_configuration_only_with_a_key() {
     assert!(DesktopService::from_config(&json!({"planner": {"api_key": " "}})).is_err());
     assert!(DesktopService::from_config(&json!({"planner": {"model": "m"}})).is_err());
 }
+
+#[tokio::test]
+async fn the_runner_keeps_one_workspace_per_task_until_released() {
+    use tinydesktop_bus::agent::TaskId;
+    use tinydesktop_engine::FlowRunner;
+
+    let runner = super::runner::WorkspaceRunner::new(crate::Desktop::new(), None);
+    let task = TaskId::new("t-1");
+    // Nothing observed yet, so there is nothing to read.
+    assert!(runner.visible_text(&task).await.is_empty());
+    assert_eq!(runner.workspaces.lock().unwrap().len(), 1);
+    runner.release(&task);
+    assert!(runner.workspaces.lock().unwrap().is_empty());
+}

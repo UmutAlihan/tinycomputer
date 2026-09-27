@@ -87,10 +87,8 @@ impl DesktopService {
                 })
             })
             .transpose()?;
-        let mut tasks = agentic::Tasks::new(Arc::new(WorkspaceRunner {
-            desktop: desktop.clone(),
-            jev: jev.clone(),
-        }));
+        let mut tasks =
+            agentic::Tasks::new(Arc::new(WorkspaceRunner::new(desktop.clone(), jev.clone())));
         if let Some(planner) = planner {
             tasks = tasks.with_planner(planner);
         }

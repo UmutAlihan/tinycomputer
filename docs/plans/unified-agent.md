@@ -68,7 +68,13 @@ contract commands and the per-file coverage gate green.
 - [x] `pick {from, by, into}`: result cards grouped from ordinal-labelled
       containers (`core::surface::result_groups`), ranked exactly for prices,
       times, durations, and stops, judged by Jev otherwise, then opened.
-- [ ] `extract` and `in` steps; `needs_human` detection; `tinydesktop-skills`.
+- [x] `needs_human`: a recoverable failure in front of a captcha, one-time
+      code, two-factor prompt, or login wall pauses for a person and retries
+      the step; each task keeps its own workspace across runs and releases it
+      when it ends (not at a payment checkpoint, which the person finishes).
+- [x] A static travel fixture (`crates/tinydesktop-examples/fixtures/travel`)
+      for end-to-end runs in the Docker lab.
+- [ ] `extract` and `in` steps; `tinydesktop-skills`.
 
 ## Phase 6 — planner
 
