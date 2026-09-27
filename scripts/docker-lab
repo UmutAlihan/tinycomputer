@@ -36,7 +36,8 @@ fi
 
 dir="/src${workdir:+/$workdir}"
 tty=()
-[ -t 0 ] && [ -t 1 ] && tty=(-it)
+color=never
+[ -t 0 ] && [ -t 1 ] && tty=(-it) && color=always
 [ $# -eq 0 ] && set -- bash
 
 exec docker run --rm "${tty[@]+"${tty[@]}"}" --init --shm-size=2g \
@@ -44,5 +45,5 @@ exec docker run --rm "${tty[@]+"${tty[@]}"}" --init --shm-size=2g \
   -v tinydesktop-lab-cargo:/usr/local/cargo/registry \
   -w "$dir" \
   -e CARGO_TARGET_DIR="$dir/target/docker-lab" \
-  -e CARGO_TERM_COLOR=always \
+  -e CARGO_TERM_COLOR="$color" \
   "$image" "$@"
