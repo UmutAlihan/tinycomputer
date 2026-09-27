@@ -358,7 +358,7 @@ not.
 |---|---|
 | `open` | launches the app (or brings it forward), then checks up to ten times for a readable window, waiting between checks |
 | `browse` | switches the flow to the browser, opens a session if needed, and navigates |
-| `choose` | grounds the option among clickable, non-destructive elements and clicks it; if that fails, runs a three-turn `do` loop to "open {what} so its options show" and tries once more |
+| `choose` | grounds the option among clickable, non-destructive elements (preferring ones inside the region `what` names, when the page carries one) and clicks it; failing that, reveals it with a three-turn `do` loop, then either pages a date picker's calendar forward to the requested day or types the option into the field that just gained focus to filter an autocomplete, retrying up to four times; a private option (a value `enter` could not type) is picked the same way but never asked about, so Jev never sees it |
 | `read` | offers every readable element and context line as options, 60 at a time, and stores the chosen text in a variable if Jev is at least 0.5 sure |
 | `extract` | finds the repeated cards on screen and stores them as JSON rows of their text; no Jev call |
 | `pick` | finds the repeated cards, ranks them exactly when the criterion parses, otherwise asks Jev, stores the winner's text, and clicks its primary control |
