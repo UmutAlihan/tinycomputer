@@ -185,15 +185,11 @@ impl DesktopService {
 
     /// Starts a task and returns at once with its first view.
     #[tinybus(confidential)]
-    #[expect(
-        clippy::unused_async,
-        reason = "tinybus interface members must be `async fn`; this one answers from memory"
-    )]
     async fn start_task(
         &self,
         request: StartTaskRequest,
     ) -> TinyBusResult<AgentResponse<TaskView>> {
-        Ok(self.tasks.start(&request))
+        self.on_tasks(move |tasks| tasks.start(&request)).await
     }
 
     /// Waits until a task needs something, finishes, or the timeout passes.
@@ -206,43 +202,28 @@ impl DesktopService {
 
     /// Answers what a paused task asked for, and resumes it.
     #[tinybus(confidential)]
-    #[expect(
-        clippy::unused_async,
-        reason = "tinybus interface members must be `async fn`; this one answers from memory"
-    )]
     async fn continue_task(
         &self,
         request: ContinueTaskRequest,
     ) -> TinyBusResult<AgentResponse<TaskView>> {
-        Ok(self.tasks.continue_task(request))
+        self.on_tasks(move |tasks| tasks.continue_task(request))
+            .await
     }
 
     /// Stops a task.
-    #[expect(
-        clippy::unused_async,
-        reason = "tinybus interface members must be `async fn`; this one answers from memory"
-    )]
     async fn cancel_task(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskView>> {
-        Ok(self.tasks.cancel(&request.id))
+        self.on_tasks(move |tasks| tasks.cancel(&request.id)).await
     }
 
     /// Everything a task did.
     #[tinybus(confidential)]
-    #[expect(
-        clippy::unused_async,
-        reason = "tinybus interface members must be `async fn`; this one answers from memory"
-    )]
     async fn task_report(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskReport>> {
-        Ok(self.tasks.report(&request.id))
+        self.on_tasks(move |tasks| tasks.report(&request.id)).await
     }
 
     /// The tasks this module holds, newest first.
-    #[expect(
-        clippy::unused_async,
-        reason = "tinybus interface members must be `async fn`; this one answers from memory"
-    )]
     async fn list_tasks(&self) -> TinyBusResult<AgentResponse<Vec<TaskView>>> {
-        Ok(self.tasks.list())
+        self.on_tasks(agentic::Tasks::list).await
     }
 
     /// Walks an accessibility tree and allocates a ref per element.
@@ -538,6 +519,20 @@ impl DesktopService {
 }
 
 impl DesktopService {
+    /// Runs a task-store call on a blocking thread, as every member runs its
+    /// work off the dispatch task: the store takes locks, and starting a task
+    /// spawns its worker from there.
+    async fn on_tasks<T, F>(&self, call: F) -> TinyBusResult<T>
+    where
+        F: FnOnce(&agentic::Tasks) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let tasks = self.tasks.clone();
+        tokio::task::spawn_blocking(move || call(&tasks))
+            .await
+            .map_err(|error| TinyBusError::failed(format!("task call failed: {error}")))
+    }
+
     fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
         self.jev.clone()
     }
