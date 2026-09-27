@@ -22,4 +22,5 @@ the contract; production code still belongs under `src/`.
 
 See [`desktop-module-contract.md`](desktop-module-contract.md) for a complete
 example, [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime, and
-[`unified-agent.md`](unified-agent.md) for browser and desktop behind one task API.
+[`unified-agent.md`](unified-agent.md) for browser and desktop behind one task API,
+and [`virtual-input.md`](virtual-input.md) for the human-like virtual mouse and keyboard.
