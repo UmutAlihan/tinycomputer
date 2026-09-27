@@ -22,6 +22,7 @@ use std::sync::Arc;
 use serde_json::Value;
 use tinydesktop_bus::agent::{InputField, SurfaceKind, TaskPlan};
 use tinydesktop_bus::{FLOW_GUIDE, Flow};
+use tinydesktop_core::is_sensitive_name;
 
 #[cfg(feature = "planner")]
 pub use openrouter::{PLANNER_MODEL, PlannerConfig, open_router};
