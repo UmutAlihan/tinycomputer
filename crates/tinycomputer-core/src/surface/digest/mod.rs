@@ -361,7 +361,10 @@ fn region(screen: &Screen, members: Vec<usize>, list: Option<(usize, Vec<String>
         .first()
         .map(|index| &screen.candidates[*index].path)
         .is_some_and(|path| {
+            // The root is the window or page itself: its title says nothing
+            // about which part of it is noise.
             path.iter()
+                .skip(1)
                 .any(|label| words(label).any(|word| NOISE_WORDS.contains(&word.as_str())))
         });
     Region {
@@ -402,10 +405,12 @@ fn overlay_of(candidate: &Candidate) -> Option<String> {
     candidate
         .path
         .iter()
-        .position(|label| {
+        .enumerate()
+        .position(|(level, label)| {
             let role = label.split(' ').next().unwrap_or_default().to_lowercase();
+            // A root titled "Newsletter" is the page, not something over it.
             FRONT_ROLES.contains(&role.as_str())
-                || words(label).any(|word| FRONT_WORDS.contains(&word.as_str()))
+                || (level > 0 && words(label).any(|word| FRONT_WORDS.contains(&word.as_str())))
         })
         .map(|at| candidate.path[at.saturating_sub(1)..=at].join(" > "))
 }
