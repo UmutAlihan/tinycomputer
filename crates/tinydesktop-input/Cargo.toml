@@ -1,0 +1,27 @@
+[package]
+name = "tinydesktop-input"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "A virtual mouse and keyboard: human-like pointer paths, aim points, and typing cadence, planned deterministically and played against any input sink."
+documentation = "https://docs.rs/tinydesktop-input"
+readme = "README.md"
+keywords = ["automation", "mouse", "keyboard", "humanize"]
+categories = ["os"]
+publish = false
+
+[dependencies]
+# `MotionProfile` is read from module configuration and task options.
+serde = { workspace = true }
+# Derive macros for the crate-wide error type in `src/error/`.
+thiserror = { workspace = true }
+# Seeds an unseeded run's motion, so two runs never trace the same path.
+getrandom = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
