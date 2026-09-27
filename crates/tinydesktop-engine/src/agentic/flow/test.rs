@@ -32,6 +32,7 @@ use super::{
     backend::AgentBackend,
     enter, flow_guide, ground, memory, run_flow_with, validate, validate_flow,
     view::{Candidate, Depth, Screen},
+    vote,
 };
 
 // ---------------------------------------------------------------- simulator
@@ -2847,8 +2848,14 @@ async fn every_question_is_briefed_on_the_goal_the_person_and_the_plan() {
         .unwrap();
     let plan = brief_of(entering)["plan"].clone();
     assert_eq!(plan[1], "2. [done] do: start a new email message");
-    assert!(plan[2].as_str().unwrap().starts_with("3. [now] enter:"), "{plan}");
-    assert!(plan[3].as_str().unwrap().starts_with("4. [next] verify:"), "{plan}");
+    assert!(
+        plan[2].as_str().unwrap().starts_with("3. [now] enter:"),
+        "{plan}"
+    );
+    assert!(
+        plan[3].as_str().unwrap().starts_with("4. [next] verify:"),
+        "{plan}"
+    );
     let verifying = run
         .requests
         .iter()
@@ -2868,7 +2875,9 @@ async fn an_unbriefed_run_sends_no_brief_but_its_plan() {
     )
     .await;
     assert!(
-        run.requests.iter().all(|request| brief_of(request).is_null()),
+        run.requests
+            .iter()
+            .all(|request| brief_of(request).is_null()),
         "a one-step flow with no brief adds nothing to the state"
     );
 }
@@ -2927,8 +2936,14 @@ async fn a_shared_value_may_be_named_in_a_step_and_reaches_jev() {
     )
     .await;
     assert!(run.requests.iter().any(|request| {
-        text_of(request.questions.get("holds").unwrap_or(&ask::condition("")), "condition")
-            .contains("sam@example.com")
+        text_of(
+            request
+                .questions
+                .get("holds")
+                .unwrap_or(&ask::condition("")),
+            "condition",
+        )
+        .contains("sam@example.com")
     }));
 }
 
@@ -3074,7 +3089,10 @@ fn framings_relabel_label_keys_and_keep_word_keys() {
     );
     let framings = vote::framings(&request, 4);
     assert_eq!(framings.len(), 4);
-    assert_eq!(framings[0].request, request, "the first framing is the request");
+    assert_eq!(
+        framings[0].request, request,
+        "the first framing is the request"
+    );
     let firsts = framings
         .iter()
         .map(|framing| {
@@ -3102,7 +3120,13 @@ fn framings_relabel_label_keys_and_keep_word_keys() {
         target.criteria.keys().collect::<Vec<_>>(),
         ["A", "B", "C", "none"]
     );
-    assert_eq!(target.instructions["perspective"].as_str().unwrap().is_empty(), false);
+    assert_eq!(
+        target.instructions["perspective"]
+            .as_str()
+            .unwrap()
+            .is_empty(),
+        false
+    );
     let Question::Choice(moves) = &framings[1].request.questions["move"] else {
         panic!()
     };
@@ -3165,8 +3189,14 @@ fn merged_answers_average_under_the_original_keys() {
         ])
     };
     let answered = vec![
-        (framings[0].clone(), answer(&framings[0], "option 7", 0.9, 4)),
-        (framings[1].clone(), answer(&framings[1], "option 7", 0.5, 2)),
+        (
+            framings[0].clone(),
+            answer(&framings[0], "option 7", 0.9, 4),
+        ),
+        (
+            framings[1].clone(),
+            answer(&framings[1], "option 7", 0.5, 2),
+        ),
     ];
     let merged = vote::merge(&answered);
     let Answer::Choice(target) = &merged["target"] else {
@@ -3179,8 +3209,14 @@ fn merged_answers_average_under_the_original_keys() {
     assert!((ask::top_level(&merged, "progress").unwrap() - 0.5).abs() < 1e-9);
 
     let split = vote::merge(&[
-        (framings[0].clone(), answer(&framings[0], "option 7", 0.9, 4)),
-        (framings[1].clone(), answer(&framings[1], "option 9", 0.9, 4)),
+        (
+            framings[0].clone(),
+            answer(&framings[0], "option 7", 0.9, 4),
+        ),
+        (
+            framings[1].clone(),
+            answer(&framings[1], "option 9", 0.9, 4),
+        ),
     ]);
     let Answer::Choice(split) = &split["target"] else {
         panic!()
@@ -3262,16 +3298,25 @@ async fn a_field_the_form_flags_is_entered_again_and_then_gives_up() {
     ]});
     let asked = Arc::new(Mutex::new(0));
     let counter = asked.clone();
-    let recovered = run_with(App::default(), flow.clone(), |_| {}, move |id, _, _| {
-        (id == "error_0").then(|| {
-            let mut asked = counter.lock().unwrap();
-            *asked += 1;
-            noul(if *asked == 1 { 0.9 } else { 0.05 })
-        })
-    })
+    let recovered = run_with(
+        App::default(),
+        flow.clone(),
+        |_| {},
+        move |id, _, _| {
+            (id == "error_0").then(|| {
+                let mut asked = counter.lock().unwrap();
+                *asked += 1;
+                noul(if *asked == 1 { 0.9 } else { 0.05 })
+            })
+        },
+    )
     .await;
     assert_eq!(recovered.result.stop, FlowStopReason::Completed);
-    assert!(recovered.result.steps[2].loops.contains(&FlowLoop::Validation));
+    assert!(
+        recovered.result.steps[2]
+            .loops
+            .contains(&FlowLoop::Validation)
+    );
     let fills = recovered.result.steps[2]
         .actions
         .iter()
@@ -3279,13 +3324,18 @@ async fn a_field_the_form_flags_is_entered_again_and_then_gives_up() {
         .count();
     assert_eq!(fills, 2, "the flagged field is entered twice");
 
-    let stuck = run_with(App::default(), flow, |_| {}, |id, _, _| {
-        (id == "error_0").then(|| noul(0.9))
-    })
+    let stuck = run_with(
+        App::default(),
+        flow,
+        |_| {},
+        |id, _, _| (id == "error_0").then(|| noul(0.9)),
+    )
     .await;
     assert_eq!(stuck.result.stop, FlowStopReason::StepFailed);
     assert!(
-        stuck.result.steps[2].note.contains("still shows an error about: subject"),
+        stuck.result.steps[2]
+            .note
+            .contains("still shows an error about: subject"),
         "{}",
         stuck.result.steps[2].note
     );
