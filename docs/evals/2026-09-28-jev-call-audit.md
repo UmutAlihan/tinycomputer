@@ -61,3 +61,40 @@ Every decision in a turn resends the same `state`; only the questions differ.
   above for crowded desktop screens come from the code and the calculator
   run in [`2026-09-27-first-runs.md`](2026-09-27-first-runs.md) (30 calls
   for 9 key presses).
+
+## After: the wide strategy
+
+Same fixture, same code, both strategies (`TINYCOMPUTER_FLOW_STRATEGY`):
+
+| | narrow | wide |
+|---|---|---|
+| outcome | pass, stopped at payment | pass, stopped at payment |
+| decisions / calls | 14 / 70 | 13 / 65 |
+| decisions per `do` turn | mean 1.33, most 2 | mean 1.00, most 1 |
+| mean request | 7.0 KB | 10.7 KB |
+| largest call | 4,556 tokens (14%) | 5,614 tokens (17%) |
+| wall | 26.7 s (Jev 6.0 s) | 28.2 s (Jev 5.8 s) |
+
+The fixture's pages are small, so the wide turn's gain there is one round
+trip per hesitant turn; settling still dominates the wall time.
+
+What the first wide runs found, each fixed and pinned by a simulator test:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| a payment page judged "seat selection skipped" at 0.48 (narrow: 0.97) | the ledger kept one line per finished step, dropping the previous step's clicks — the only evidence the seat page was dealt with | `recent_actions` reaches back across steps; 0.95 on replay |
+| a target Jev answered `none` was asked again through narrow grounding | no record that it had been asked | `Prepared::Nothing` |
+| `stop_before` could not find the Pay button (both strategies borderline) | asked to "perform: paying", Jev weighed the brief's rule to stop before paying (0.44); position bias put Pay last (0.01) | ask to *find, without pressing it* (1.00 on replay); purpose-named elements first in wide pools |
+
+## The Kashmir task (live, Google Flights and goindigo.in)
+
+`tasks/run kashmir`, the planner's 28-step flow replayed with `FLOW_FILE`
+for both strategies. No run reached the payment checkpoint; each fix below
+moved both strategies further:
+
+| Stopped at | Cause | Fix |
+|---|---|---|
+| step 4, `pick` on Google Flights: "could not open the picked item" | the card's own duration text covers its "Select flight" link; the label is rendered twice (a hidden tab) and carries a double space, so the same-card check never matched; `pick` had no covered-click recovery | the check finds the target by its label under the point with whitespace collapsed; `pick` uses the `do` loop's uncover-and-retry and reports the engine's reason |
+| step 10, "open the destination city search box" (wide) | the purpose names the destination button, so it led the options and was pressed again, closing the dropdown; its name grows once open | the element pressed last turn goes last, matched by a label one extends the other by |
+| step 10, a request at 28,362 tokens (88% of the window) | a 40,000-byte digest and an 80-candidate knockout on a dense page | 24,000 bytes and 40 candidates; the survey keeps answers by region name and is not re-asked when a dropdown opens |
+| step 11, `enter` "no field was found for: destination city search" (both) | nine unnamed, identical search boxes in the dropdown: the unnamed one could not be told apart from other dropdowns', and, once described, the voted framings each picked a different lookalike | an unnamed element is described by its nearest named container (`near`); lookalikes are offered once |
