@@ -4,9 +4,11 @@
 //! temperature and no sample count, so the variety has to come from how a
 //! question is framed. Each framing of a request:
 //!
-//! - presents every Choice's options in a different order, under a
-//!   different style of key (`01`…, `A`…), which undoes any bias toward the
-//!   first option or a particular label;
+//! - presents every Choice whose keys are mere labels (`1`, `2`, … or `A`,
+//!   `B`, …) in a different order, under a different style of key (`01`…,
+//!   `A`…), which undoes any bias toward the first option or a particular
+//!   label. A Choice keyed by meaningful words (`shortcut`, `new_item`) keeps
+//!   its keys, since the word is part of what is asked;
 //! - adds a short perspective to every question's instructions, so the same
 //!   question is read with a different emphasis.
 //!
@@ -62,9 +64,11 @@ fn frame(request: &EvaluationRequest, index: usize) -> Framing {
         match question {
             Question::Choice(choice) => {
                 add_perspective(&mut choice.instructions, perspective);
-                let (criteria, mapping) = reorder(&choice.criteria, index);
-                choice.criteria = criteria;
-                keys.insert(id.clone(), mapping);
+                if labelled(&choice.criteria) {
+                    let (criteria, mapping) = reorder(&choice.criteria, index);
+                    choice.criteria = criteria;
+                    keys.insert(id.clone(), mapping);
+                }
             }
             Question::Noul(noul) => add_perspective(&mut noul.instructions, perspective),
             Question::Score(score) => add_perspective(&mut score.instructions, perspective),
@@ -80,6 +84,16 @@ fn add_perspective(instructions: &mut Value, perspective: &str) {
     if let Value::Object(fields) = instructions {
         fields.insert("perspective".to_owned(), Value::from(perspective));
     }
+}
+
+/// Whether every key but `none` is a bare label — digits, or capital
+/// letters — that can be swapped for another without changing the question.
+fn labelled(criteria: &BTreeMap<String, Option<Value>>) -> bool {
+    criteria.keys().filter(|key| *key != "none").all(|key| {
+        !key.is_empty()
+            && (key.chars().all(|character| character.is_ascii_digit())
+                || key.chars().all(|character| character.is_ascii_uppercase()))
+    })
 }
 
 /// `criteria` presented in framing `index`'s order and key style. `none`
