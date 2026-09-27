@@ -17,6 +17,11 @@
 //! - `TASK_MAX_MINUTES` — optional: cancel the task after this long (20).
 //! - `TINYDESKTOP_BROWSER_EXECUTABLE`, `TINYDESKTOP_BROWSER_USER_AGENT`, and
 //!   `TINYDESKTOP_BROWSER_ARGS` (space-separated) — how the browser launches.
+//! - `TASK_CURSOR` — optional: the agent's on-screen cursor pace (`off`,
+//!   `brisk`, `natural`, `calm`; default `natural`). It is drawn by the
+//!   `tinydesktop-cursor-overlay` helper, found beside this binary once built
+//!   with `cargo build -p tinydesktop-cursor --features overlay`, over a
+//!   browser window on this screen — an attached Chrome, or a headed one.
 //! - `TINYDESKTOP_BROWSER_ENDPOINT` — attach to a running Chrome instead
 //!   (`http://127.0.0.1:9222`); booking sites turn away a fresh headless
 //!   browser but serve a person's own. Closing the run only disconnects.
@@ -32,7 +37,9 @@ use std::time::{Duration, Instant};
 
 use serde_json::json;
 use tinydesktop::Desktop;
-use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
+use tinydesktop_browser::{
+    AgentBrowser, Browser, BrowserSurface, CursorPace, ScreenCursor, SessionOptions,
+};
 use tinydesktop_bus::agent::{
     AwaitTaskRequest, PlanTaskRequest, StartTaskRequest, SurfaceKind, TaskBudget, TaskConstraints,
     TaskId, TaskStatus, TaskView,
@@ -103,7 +110,8 @@ async fn main() -> Result<(), Failure> {
             ..SessionOptions::default()
         },
         tokio::runtime::Handle::current(),
-    );
+    )
+    .with_cursor(Arc::new(cursor()?));
     let tasks = Tasks::new(Arc::new(Live {
         workspace: Workspace::new(None, Some(surface.clone())),
         jev,
@@ -320,4 +328,15 @@ mod tests {
         assert_eq!(next_wait(LIMIT, LIMIT), None);
         assert_eq!(next_wait(Duration::from_secs(20 * 60 + 1), LIMIT), None);
     }
+}
+
+/// The agent's cursor at the `TASK_CURSOR` pace.
+fn cursor() -> Result<ScreenCursor, Failure> {
+    let pace: CursorPace =
+        std::env::var("TASK_CURSOR").map_or(Ok(CursorPace::default()), |pace| pace.parse())?;
+    Ok(if pace.is_off() {
+        ScreenCursor::off()
+    } else {
+        ScreenCursor::new(pace, None)
+    })
 }
