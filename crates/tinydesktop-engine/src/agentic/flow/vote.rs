@@ -97,8 +97,9 @@ fn labelled(criteria: &BTreeMap<String, Option<Value>>) -> bool {
 }
 
 /// `criteria` presented in framing `index`'s order and key style. `none`
-/// keeps its key; the other options are rotated, reversed on odd framings,
-/// and keyed so that the keys sort in the new order.
+/// keeps its key. Framing `index` leads with the option `index` places down
+/// the original order, so as many framings as there are options each put a
+/// different one first; odd framings also reverse the rest.
 fn reorder(
     criteria: &BTreeMap<String, Option<Value>>,
     index: usize,
@@ -109,11 +110,11 @@ fn reorder(
         .cloned()
         .collect::<Vec<_>>();
     if !options.is_empty() {
-        let shift = (index * options.len()).div_ceil(MAX_VOTES as usize) % options.len();
-        options.rotate_left(shift);
-    }
-    if index % 2 == 1 {
-        options.reverse();
+        let lead = index % options.len();
+        options.rotate_left(lead);
+        if index % 2 == 1 {
+            options[1..].reverse();
+        }
     }
     let labels = keys_for(options.len(), index);
     let mut framed = BTreeMap::new();
