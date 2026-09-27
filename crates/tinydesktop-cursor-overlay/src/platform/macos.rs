@@ -115,7 +115,6 @@ impl Overlay {
             self.primary_height() - picture.origin.y - side,
         );
         self.window.setFrameOrigin(origin);
-        eprintln!("frame {:?} visible={}", self.window.frame(), self.window.isVisible());
         if self.shown.map(|shown| shown.sprite_frame) != Some(picture.sprite_frame)
             && let Some(image) = self.images.get(picture.sprite_frame)
         {
@@ -150,9 +149,7 @@ pub(crate) fn run(driver: Driver) {
             return;
         };
         let (driver, overlay) = &mut *state;
-        let tick = driver.tick();
-        eprintln!("tick {tick:?} images={}", overlay.images.len());
-        match tick {
+        match driver.tick() {
             Tick::Show(picture) => overlay.show(picture),
             Tick::Hidden => overlay.hide(),
             Tick::Quit => std::process::exit(0),
