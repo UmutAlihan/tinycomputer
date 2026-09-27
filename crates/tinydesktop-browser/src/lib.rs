@@ -17,8 +17,10 @@
 //! Every browser contract type is re-exported, so `tinydesktop_browser::Action`
 //! is the same type as `tinydesktop_bus::browser::Action`.
 
+mod convert;
 mod error;
 mod outputs;
+mod reply;
 
 pub use error::{Error, Result};
 pub use tinydesktop_bus::browser::*;
