@@ -96,6 +96,14 @@ do.
 6. **Do not guess the interface.** If you are unsure whether a panel is open,
    say what you need ("show the formatting options"); do not script how to get
    there.
+7. **A caller's personal details are typed, never described.** If a `${name}`
+   stands for a fact the caller supplied (an email, a phone number, a name), it
+   may appear only in an `enter` value, or in a `browse` address or `open`
+   application name. Putting it anywhere else — a `do`, `verify`, `wait_for`,
+   or `stop_before` text, a `choose`'s `what`/`option`, a `read`/`extract`'s
+   `what`, a `pick`'s `from`/`by`, a condition, or an `enter` slot's own name —
+   fails validation, because that text is what the module reasons about; it
+   never sees a fact's value, only its name.
 
 ## A full example
 
