@@ -17,6 +17,8 @@ its rationale are in `docs/specs/jev-intent-flows.md`.
 | `enter.rs` | slot matching and verified delivery, top to bottom |
 | `steps.rs` | `open`, `choose`, `read`, `verify`, `wait_for`, `stop_before`, `if`, `repeat_until` |
 | `memory.rs` | grounding hints: remember, recall, learn |
+| `view/` | the flow's own observation: candidates, static-text context, truncated subtrees, window disambiguation, fingerprints, change notes |
+| `backend/` | the engine surface behind a trait tests fake; verified text delivery (set-value, settled read-back, paste) |
 | `test.rs` | a simulated mail app and an oracle Jev that answers from its state |
 
 ## Operational constraints

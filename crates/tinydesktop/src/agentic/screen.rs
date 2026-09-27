@@ -2,18 +2,17 @@
 
 use serde::Deserialize;
 use serde_json::{Value, json};
-use tinydesktop_bus::{DesktopResponse, ListWindowsRequest, SnapshotRequest, Surface};
+use std::hash::{Hash, Hasher};
+use tinydesktop_bus::{DesktopResponse, SnapshotRequest, Surface};
 
 use crate::Desktop;
 
 const MAX_TREE_DEPTH: usize = 64;
 const MAX_VISITED_NODES: usize = 4_096;
-/// Most actionable candidates one observation offers.
-pub(super) const MAX_CANDIDATES: usize = 254;
-/// Most static-text lines one observation keeps as context.
-const MAX_CONTEXT_LINES: usize = 60;
-/// Longest static-text line kept as context, in characters.
-const MAX_CONTEXT_CHARS: usize = 160;
+const MAX_FINGERPRINT_NODES: usize = MAX_VISITED_NODES;
+const MAX_FINGERPRINT_ITEMS: usize = 16;
+const MAX_FINGERPRINT_BYTES: usize = 128;
+const MAX_FINGERPRINT_VALUE_DEPTH: usize = 4;
 
 /// One ref-bearing accessibility node offered to Jev.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -23,16 +22,40 @@ pub(super) struct Candidate {
     pub(super) role: String,
     pub(super) name: Option<String>,
     pub(super) description: Option<String>,
+    pub(super) native_id: Option<NativeId>,
     pub(super) value: Option<Value>,
     pub(super) states: Vec<String>,
     pub(super) available_actions: Vec<String>,
     pub(super) children_count: Option<usize>,
     pub(super) bounds: Option<Value>,
     pub(super) children: Vec<Candidate>,
-    /// Whether the engine cut this node's subtree short to stay in budget.
-    pub(super) subtree_truncated: bool,
     #[serde(skip)]
     pub(super) path: Vec<String>,
+}
+
+/// Engine-provided platform identifier for an otherwise unlabeled element.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub(super) struct NativeId {
+    pub(super) kind: String,
+    pub(super) value: String,
+}
+
+impl Candidate {
+    pub(super) fn labels(&self) -> impl Iterator<Item = &str> {
+        [
+            self.name.as_deref(),
+            self.description.as_deref(),
+            self.native_id.as_ref().map(|id| id.value.as_str()),
+        ]
+        .into_iter()
+        .flatten()
+        .filter(|label| !label.is_empty())
+    }
+
+    pub(super) fn label(&self) -> Option<&str> {
+        self.labels().next()
+    }
 }
 
 /// Parsed current surface.
@@ -40,61 +63,22 @@ pub(super) struct Candidate {
 pub(super) struct Screen {
     pub(super) app: String,
     pub(super) window: Option<String>,
+    pub(super) window_id: Option<String>,
     pub(super) surface: String,
     pub(super) root: Option<String>,
     pub(super) candidates: Vec<Candidate>,
-    /// Visible non-actionable text (labels, headings, status), in tree order.
-    pub(super) context: Vec<String>,
-    /// `(kept, total)` when more candidates existed than were offered.
-    pub(super) truncated: Option<(usize, usize)>,
-    /// Refs of subtrees the engine cut short; observing one as a root reads
-    /// what the budget left out.
-    pub(super) unexplored: Vec<String>,
-}
-
-/// How much of the tree one observation reads.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) enum Depth {
-    /// The engine's default depth.
-    #[default]
-    Full,
-    /// A shallow overview whose cut-off containers can be drilled into.
-    Skeleton,
+    pub(super) observed: Vec<Candidate>,
 }
 
 pub(super) fn observe(
     desktop: &Desktop,
     app: &str,
+    window_id: Option<&str>,
     root: Option<&str>,
-    depth: Depth,
 ) -> Result<Screen, Box<DesktopResponse>> {
-    let request = SnapshotRequest {
-        app: Some(app.to_owned()),
-        include_bounds: true,
-        compact: true,
-        skeleton: depth == Depth::Skeleton && root.is_none(),
-        root_ref: root.map(str::to_owned),
-        ..SnapshotRequest::default()
-    };
-    let mut reply = desktop.snapshot(request.clone());
-    if root.is_none()
-        && let Some(error) = reply
-            .error
-            .as_ref()
-            .filter(|error| error.code == "AMBIGUOUS_TARGET")
-        && let Some(window_id) = error
-            .details
-            .as_ref()
-            .and_then(|details| details.get("candidates"))
-            .and_then(|candidates| front_of(candidates.as_array()?))
-            .or_else(|| front_window(desktop, app))
-    {
-        reply = desktop.snapshot(SnapshotRequest {
-            window_id: Some(window_id),
-            ..request
-        });
-    }
-    if !reply.ok && root.is_none() {
+    let request = snapshot_request(app, window_id, root);
+    let mut reply = desktop.snapshot(request);
+    if !reply.ok && root.is_none() && window_id.is_none() {
         reply = desktop.snapshot(SnapshotRequest {
             app: Some(app.to_owned()),
             max_depth: Some(4),
@@ -103,45 +87,29 @@ pub(super) fn observe(
             ..SnapshotRequest::default()
         });
     }
-    parse_reply(desktop, app, root, reply)
+    parse_reply(desktop, app, window_id, root, reply)
 }
 
-/// The window to observe when an application has several, from its own
-/// window list.
-fn front_window(desktop: &Desktop, app: &str) -> Option<String> {
-    let reply = desktop.list_windows(ListWindowsRequest {
+pub(super) fn snapshot_request(
+    app: &str,
+    window_id: Option<&str>,
+    root: Option<&str>,
+) -> SnapshotRequest {
+    SnapshotRequest {
         app: Some(app.to_owned()),
-    });
-    front_of(reply.data?.as_array()?)
-}
-
-/// The focused window, else the first visible one with a title, else the
-/// first visible one.
-pub(super) fn front_of(windows: &[Value]) -> Option<String> {
-    let flag = |window: &Value, key: &str| window.get(key).and_then(Value::as_bool) == Some(true);
-    let titled = |window: &&Value| {
-        window
-            .get("title")
-            .and_then(Value::as_str)
-            .is_some_and(|title| !title.trim().is_empty())
-    };
-    windows
-        .iter()
-        .find(|window| flag(window, "is_focused"))
-        .or_else(|| {
-            windows
-                .iter()
-                .filter(|window| flag(window, "visible"))
-                .find(titled)
-        })
-        .or_else(|| windows.iter().find(|window| flag(window, "visible")))
-        .and_then(|window| window.get("id").and_then(Value::as_str))
-        .map(str::to_owned)
+        window_id: window_id.map(str::to_owned),
+        include_bounds: true,
+        interactive_only: false,
+        compact: true,
+        root_ref: root.map(str::to_owned),
+        ..SnapshotRequest::default()
+    }
 }
 
 pub(super) fn parse_reply(
     desktop: &Desktop,
     app: &str,
+    window_id: Option<&str>,
     root: Option<&str>,
     mut reply: DesktopResponse,
 ) -> Result<Screen, Box<DesktopResponse>> {
@@ -161,6 +129,7 @@ pub(super) fn parse_reply(
         };
         let scoped = desktop.snapshot(SnapshotRequest {
             app: Some(app.to_owned()),
+            window_id: window_id.map(str::to_owned),
             include_bounds: true,
             compact: true,
             surface: overlay,
@@ -180,24 +149,11 @@ pub(super) fn parse_reply(
     let tree = data.get("tree").cloned().unwrap_or(Value::Null);
     let mut root_node: Candidate = serde_json::from_value(tree).unwrap_or_default();
     let mut candidates = Vec::new();
-    let mut context = Vec::new();
-    let mut unexplored = Vec::new();
     let mut visited = 0_usize;
-    collect(
-        &mut root_node,
-        &[],
-        &mut Collected {
-            candidates: &mut candidates,
-            context: &mut context,
-            unexplored: &mut unexplored,
-        },
-        0,
-        &mut visited,
-    );
-    candidates.retain(offerable);
-    let total = candidates.len();
-    candidates.truncate(MAX_CANDIDATES);
-    let truncated = (total > MAX_CANDIDATES).then_some((MAX_CANDIDATES, total));
+    collect(&mut root_node, &[], &mut candidates, 0, &mut visited);
+    let observed = candidates.clone();
+    candidates.retain(|node| !node.ref_id.is_empty() && offerable(node));
+    candidates.truncate(254);
 
     Ok(Screen {
         app: data
@@ -210,25 +166,22 @@ pub(super) fn parse_reply(
             .and_then(|window| window.get("title"))
             .and_then(Value::as_str)
             .map(str::to_owned),
+        window_id: data
+            .get("window")
+            .and_then(|window| window.get("id"))
+            .and_then(Value::as_str)
+            .map(str::to_owned),
         surface,
         root: root.map(str::to_owned),
         candidates,
-        context,
-        truncated,
-        unexplored,
+        observed,
     })
-}
-
-struct Collected<'a> {
-    candidates: &'a mut Vec<Candidate>,
-    context: &'a mut Vec<String>,
-    unexplored: &'a mut Vec<String>,
 }
 
 fn collect(
     node: &mut Candidate,
     path: &[String],
-    out: &mut Collected<'_>,
+    out: &mut Vec<Candidate>,
     depth: usize,
     visited: &mut usize,
 ) {
@@ -236,59 +189,31 @@ fn collect(
         return;
     }
     *visited = visited.saturating_add(1);
-    let label = node
-        .name
-        .as_deref()
-        .or(node.description.as_deref())
-        .map_or_else(
-            || node.role.clone(),
-            |name| format!("{} {name:?}", node.role),
-        );
+    let label = node.label().map_or_else(
+        || node.role.clone(),
+        |name| format!("{} {name:?}", node.role),
+    );
     node.path = path.to_vec();
-    if node.subtree_truncated && !node.ref_id.is_empty() {
-        out.unexplored.push(node.ref_id.clone());
-    }
-    if node.ref_id.is_empty() {
-        remember_text(node, out.context);
-    } else {
-        out.candidates.push(node.clone());
-    }
+    out.push(Candidate {
+        ref_id: node.ref_id.clone(),
+        role: node.role.clone(),
+        name: node.name.clone(),
+        description: node.description.clone(),
+        native_id: node.native_id.clone(),
+        value: node.value.clone(),
+        states: node.states.clone(),
+        available_actions: node.available_actions.clone(),
+        children_count: node.children_count,
+        bounds: node.bounds.clone(),
+        children: Vec::new(),
+        path: node.path.clone(),
+    });
     let mut child_path = path.to_vec();
     if !node.children.is_empty() {
         child_path.push(label);
     }
     for child in &mut node.children {
         collect(child, &child_path, out, depth.saturating_add(1), visited);
-    }
-}
-
-/// Keeps a ref-less node's visible text as context for Jev.
-///
-/// Labels, headings, and status text are what tell a decision model where it
-/// is ("New Message", "Now playing"), and none of them carry a ref because none
-/// of them can be acted on.
-fn remember_text(node: &Candidate, context: &mut Vec<String>) {
-    if context.len() >= MAX_CONTEXT_LINES {
-        return;
-    }
-    let text = node
-        .name
-        .as_deref()
-        .or(node.description.as_deref())
-        .map(str::to_owned)
-        .or_else(|| match node.value.as_ref() {
-            Some(Value::String(value)) => Some(value.clone()),
-            _ => None,
-        });
-    let Some(text) = text.map(|text| text.split_whitespace().collect::<Vec<_>>().join(" ")) else {
-        return;
-    };
-    if text.is_empty() {
-        return;
-    }
-    let line: String = text.chars().take(MAX_CONTEXT_CHARS).collect();
-    if !context.contains(&line) {
-        context.push(line);
     }
 }
 
@@ -335,9 +260,7 @@ pub(super) fn describe(node: &Candidate, include_values: bool) -> Value {
         "what": format!(
             "{}{}",
             node.role,
-            node.name
-                .as_deref()
-                .or(node.description.as_deref())
+            node.label()
                 .map_or_else(String::new, |name| format!(" {name:?}"))
         ),
         "where": if node.path.is_empty() { "top level".to_owned() } else { node.path.join(" > ") },
@@ -352,8 +275,7 @@ pub(super) fn describe(node: &Candidate, include_values: bool) -> Value {
     if let Some(count) = node.children_count {
         value["contains"] = json!(count);
     }
-    if node.name.is_none()
-        && node.description.is_none()
+    if node.label().is_none()
         && node.value.is_none()
         && let Some(bounds) = &node.bounds
     {
@@ -362,64 +284,79 @@ pub(super) fn describe(node: &Candidate, include_values: bool) -> Value {
     json!({"untrusted_accessibility_data": value})
 }
 
-/// Identifies what is on screen independently of ref allocation.
-///
-/// Refs are re-minted by every snapshot, so a fingerprint that included them
-/// would report a change on every turn and stall detection would never fire.
 pub(super) fn fingerprint(screen: &Screen) -> String {
-    let mut parts = screen.candidates.iter().map(signature).collect::<Vec<_>>();
-    parts.push(format!(
-        "window:{}",
-        screen.window.as_deref().unwrap_or_default()
-    ));
-    parts.push(format!("surface:{}", screen.surface));
-    parts.extend(screen.context.iter().map(|line| format!("text:{line}")));
-    parts.join("|")
-}
-
-/// A ref-free identity for one element: role, label, value, states, and where
-/// it sits.
-pub(super) fn signature(node: &Candidate) -> String {
-    format!(
-        "{}:{}:{}:{:?}:{}",
-        node.role,
-        node.name
-            .as_deref()
-            .or(node.description.as_deref())
-            .unwrap_or_default(),
-        node.value
-            .as_ref()
-            .map(Value::to_string)
-            .unwrap_or_default(),
-        node.states,
-        node.path.join(">")
-    )
-}
-
-/// A short human label for an element: role plus accessible name.
-pub(super) fn label(node: &Candidate) -> String {
-    node.name
-        .as_deref()
-        .or(node.description.as_deref())
-        .map_or_else(
-            || node.role.clone(),
-            |name| format!("{} {name:?}", node.role),
-        )
-}
-
-/// Element labels present in `after` but not `before`, and the reverse.
-pub(super) fn difference(before: &Screen, after: &Screen) -> (Vec<String>, Vec<String>) {
-    let labels = |screen: &Screen| {
-        screen
-            .candidates
-            .iter()
-            .map(label)
-            .chain(screen.context.iter().cloned())
-            .collect::<std::collections::BTreeSet<_>>()
+    let visible = if screen.observed.is_empty() {
+        &screen.candidates
+    } else {
+        &screen.observed
     };
-    let (before, after) = (labels(before), labels(after));
-    (
-        after.difference(&before).cloned().collect(),
-        before.difference(&after).cloned().collect(),
-    )
+    let mut hash = std::collections::hash_map::DefaultHasher::new();
+    visible.len().hash(&mut hash);
+    for node in visible.iter().take(MAX_FINGERPRINT_NODES) {
+        hash_text(&node.role, &mut hash);
+        hash_text(node.label().unwrap_or_default(), &mut hash);
+        hash_texts(&node.path, &mut hash);
+        hash_texts(&node.states, &mut hash);
+        hash_texts(&node.available_actions, &mut hash);
+        node.children_count.hash(&mut hash);
+        hash_value(node.value.as_ref(), 0, &mut hash);
+    }
+    format!("{:016x}", hash.finish())
 }
+
+fn hash_text(text: &str, hash: &mut impl Hasher) {
+    text.len().hash(hash);
+    let mut end = text.len().min(MAX_FINGERPRINT_BYTES);
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    text[..end].hash(hash);
+}
+
+fn hash_texts(texts: &[String], hash: &mut impl Hasher) {
+    texts.len().hash(hash);
+    for text in texts.iter().take(MAX_FINGERPRINT_ITEMS) {
+        hash_text(text, hash);
+    }
+}
+
+fn hash_value(value: Option<&Value>, depth: usize, hash: &mut impl Hasher) {
+    if depth >= MAX_FINGERPRINT_VALUE_DEPTH {
+        return;
+    }
+    match value {
+        None => 0_u8.hash(hash),
+        Some(Value::Null) => 1_u8.hash(hash),
+        Some(Value::Bool(value)) => {
+            2_u8.hash(hash);
+            value.hash(hash);
+        }
+        Some(Value::Number(value)) => {
+            3_u8.hash(hash);
+            value.to_string().hash(hash);
+        }
+        Some(Value::String(value)) => {
+            4_u8.hash(hash);
+            hash_text(value, hash);
+        }
+        Some(Value::Array(values)) => {
+            5_u8.hash(hash);
+            values.len().hash(hash);
+            for value in values.iter().take(MAX_FINGERPRINT_ITEMS) {
+                hash_value(Some(value), depth + 1, hash);
+            }
+        }
+        Some(Value::Object(values)) => {
+            6_u8.hash(hash);
+            values.len().hash(hash);
+            for (key, value) in values.iter().take(MAX_FINGERPRINT_ITEMS) {
+                hash_text(key, hash);
+                hash_value(Some(value), depth + 1, hash);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "screen_tests.rs"]
+mod tests;

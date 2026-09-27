@@ -3,9 +3,9 @@
 mod types;
 
 pub use types::{
-    JevConfig, JevConfiguration, JevDecision, JevDecisionKind, JevMetrics, JevOperation,
-    JevProvider, JevRunResult, JevStopReason, JevTarget, JevTurn, ResolveIntentRequest,
-    RunGoalRequest,
+    GoalContinuation, JevConfig, JevConfiguration, JevDecision, JevDecisionKind, JevMetrics,
+    JevObservation, JevOperation, JevPredicateResult, JevProvider, JevRunResult, JevStopReason,
+    JevTarget, JevTurn, ResolveIntentRequest, RunGoalRequest, VisiblePredicate,
 };
 
 #[cfg(test)]

@@ -17,13 +17,10 @@ use serde_json::json;
 use tinydesktop_bus::FlowLoop;
 
 use super::{
-    super::{
-        policy::{ACT, exact_named_match},
-        screen::{Candidate, Screen, label},
-    },
     AgentBackend, FlowRun, Halt, StepLog,
     ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
     memory::recall,
+    view::{ACT, Candidate, Screen, exact_named_match, label},
 };
 
 /// Least probability an exact-name match needs to be used without re-asking.
@@ -211,7 +208,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         purpose: &str,
         mut pool: Vec<Candidate>,
     ) -> Result<Option<Grounded>, Halt> {
-        pool.truncate(super::super::screen::MAX_CANDIDATES);
+        pool.truncate(super::view::MAX_CANDIDATES);
         if pool.is_empty() {
             return Ok(None);
         }

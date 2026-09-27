@@ -1309,7 +1309,7 @@ dependencies = [
 
 [[package]]
 name = "tinybus"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "async-trait",
  "flate2",
@@ -1328,7 +1328,7 @@ dependencies = [
 
 [[package]]
 name = "tinybus-macros"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1337,7 +1337,7 @@ dependencies = [
 
 [[package]]
 name = "tinybus-module"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "async-trait",
  "serde",
@@ -1349,12 +1349,13 @@ dependencies = [
 
 [[package]]
 name = "tinydesktop"
-version = "0.2.1"
+version = "0.5.1"
 dependencies = [
  "agent-desktop-core",
  "agent-desktop-linux",
  "agent-desktop-macos",
  "agent-desktop-windows",
+ "getrandom 0.4.3",
  "serde",
  "serde_json",
  "thiserror",
@@ -1367,7 +1368,7 @@ dependencies = [
 
 [[package]]
 name = "tinydesktop-bus"
-version = "0.2.1"
+version = "0.5.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1375,7 +1376,7 @@ dependencies = [
 
 [[package]]
 name = "tinydesktop-examples"
-version = "0.2.1"
+version = "0.5.1"
 dependencies = [
  "serde",
  "serde_json",

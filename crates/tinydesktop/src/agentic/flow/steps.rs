@@ -7,15 +7,12 @@ use tinydesktop_bus::{
 };
 
 use super::{
-    super::{
-        screen::{Candidate, label},
-        target_payload,
-    },
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     act::DONE,
     ask::{self, Questions, chosen, condition, numbered},
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute},
+    view::{Candidate, label, target_payload},
 };
 
 /// Turns a `do` step may spend.
@@ -86,18 +83,18 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// launched one takes a moment to.
     async fn await_window(&self) -> bool {
         for _ in 0..WINDOW_CHECKS {
-            if super::super::backend::observe_async(
+            if super::backend::observe_async(
                 self.backend.clone(),
                 self.app.clone(),
                 None,
-                super::super::screen::Depth::Skeleton,
+                super::view::Depth::Skeleton,
             )
             .await
             .is_ok()
             {
                 return true;
             }
-            let _ = super::super::backend::blocking(self.backend.clone(), |backend| {
+            let _ = super::backend::blocking(self.backend.clone(), |backend| {
                 backend.execute(JevOperation::Wait, None, None)
             })
             .await;

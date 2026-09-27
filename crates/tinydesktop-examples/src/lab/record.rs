@@ -150,8 +150,8 @@ pub fn goal_timeline(result: &JevRunResult) -> String {
             .unwrap_or_default();
         let _ = writeln!(
             out,
-            "[{}] {:?}{target} conf={:.2} ok={} changed={} {}",
-            turn.step, turn.operation, turn.confidence, turn.ok, turn.changed, turn.note
+            "[{}] {:?}{target} conf={:.2} ok={} changed={}",
+            turn.step, turn.operation, turn.confidence, turn.ok, turn.changed
         );
     }
     if let Some(pending) = &result.pending {

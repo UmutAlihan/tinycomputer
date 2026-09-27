@@ -20,11 +20,13 @@
 
 mod act;
 mod ask;
+mod backend;
 mod enter;
 mod ground;
 mod memory;
 mod steps;
 mod validate;
+mod view;
 
 #[cfg(test)]
 mod test;
@@ -43,15 +45,11 @@ use tinydesktop_bus::{
 };
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
-use super::{
-    JevRuntime,
-    backend::{AgentBackend, blocking, observe_async},
-    merge_metrics, provider_error, response,
-    screen::{Candidate, Depth, Screen},
-    target_payload,
-};
+use super::{JevRuntime, merge_metrics, provider_error, response};
 use crate::Desktop;
+use backend::{AgentBackend, blocking, observe_async};
 use validate::{step_path, substitute};
+use view::{Candidate, Depth, Screen, target_payload};
 
 /// Upper bound on [`RunFlowRequest::max_actions`].
 const MAX_ACTIONS: u32 = 120;
@@ -369,12 +367,10 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                     app: self.app.clone(),
                     window: None,
                     surface: "none".to_owned(),
-                    root: None,
                     candidates: Vec::new(),
                     context: vec![format!(
                         "No window of the application can be read right now ({reason}). A keyboard shortcut may still work."
                     )],
-                    truncated: None,
                     unexplored: Vec::new(),
                 })
             }

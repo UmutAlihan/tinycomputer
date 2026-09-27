@@ -66,7 +66,7 @@ is a `do` intent; an object has exactly one key naming its kind:
 
 ### Members
 
-Contract 1.2 adds:
+Contract 1.6 adds:
 
 - `RunFlow(RunFlowRequest) -> FlowRunResult` — confidential, like `RunGoal`.
 - `ValidateFlow(ValidateFlowRequest) -> FlowValidation` — takes raw JSON so a

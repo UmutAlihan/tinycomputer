@@ -13,13 +13,13 @@ use tinydesktop_bus::{
 };
 
 use super::{
-    internal_error,
-    screen::{Candidate, Depth, Screen, observe},
+    super::internal_error,
+    view::{Candidate, Depth, Screen, observe},
 };
 use crate::Desktop;
 
 /// The engine surface the Jev loops depend on.
-pub(super) trait AgentBackend: Clone + Send + 'static {
+pub(in crate::agentic) trait AgentBackend: Clone + Send + 'static {
     /// Reads the current surface of `app`, optionally rooted at a container.
     fn observe(
         &self,
@@ -148,7 +148,7 @@ const SETTLE_MS: u64 = 200;
 
 /// Treats "several windows match" as launched: the application is running,
 /// and which of its windows to act in is the next step's decision.
-pub(super) fn running_is_launched(reply: DesktopResponse) -> DesktopResponse {
+pub(in crate::agentic) fn running_is_launched(reply: DesktopResponse) -> DesktopResponse {
     if reply
         .error
         .as_ref()
@@ -168,7 +168,7 @@ fn press_at(app: &str, combo: &str) -> PressRequest {
     request
 }
 
-pub(super) async fn observe_async<B: AgentBackend>(
+pub(in crate::agentic) async fn observe_async<B: AgentBackend>(
     backend: B,
     app: String,
     root: Option<String>,
@@ -184,7 +184,7 @@ pub(super) async fn observe_async<B: AgentBackend>(
 }
 
 /// Runs a blocking backend call off the async executor.
-pub(super) async fn blocking<B, F, T>(backend: B, call: F) -> T
+pub(in crate::agentic) async fn blocking<B, F, T>(backend: B, call: F) -> T
 where
     B: AgentBackend,
     F: FnOnce(B) -> T + Send + 'static,
@@ -199,27 +199,6 @@ where
         })
 }
 
-pub(super) async fn execute_operation<B: AgentBackend>(
-    backend: B,
-    app: String,
-    operation: JevOperation,
-    target: Option<Candidate>,
-    text: Option<String>,
-) -> DesktopResponse {
-    if operation == JevOperation::TypeText
-        && let (Some(target), Some(text)) = (target.clone(), text.clone())
-    {
-        return blocking(backend, move |backend| {
-            deliver_text(&backend, &app, &target, &text)
-        })
-        .await;
-    }
-    blocking(backend, move |backend| {
-        backend.execute(operation, target, text)
-    })
-    .await
-}
-
 /// Puts `text` into `target` and proves it arrived.
 ///
 /// The accessibility set-value path is fast and headless but silently no-ops
@@ -227,7 +206,7 @@ pub(super) async fn execute_operation<B: AgentBackend>(
 /// and on a mismatch the text is pasted instead and read back again. The reply
 /// names which path delivered it; an unreadable field is reported as
 /// delivered-but-unverified rather than as a failure.
-pub(super) fn deliver_text<B: AgentBackend>(
+pub(in crate::agentic) fn deliver_text<B: AgentBackend>(
     backend: &B,
     app: &str,
     target: &Candidate,
@@ -283,7 +262,7 @@ fn delivered(path: &str, verified: bool) -> DesktopResponse {
 /// A token field (a mail recipient list) turns each typed address into an
 /// attachment and reports it as U+FFFC, the object replacement character, so
 /// its value can never be compared with what was typed.
-pub(super) fn tokenized(held: &str) -> bool {
+pub(in crate::agentic) fn tokenized(held: &str) -> bool {
     held.contains('\u{fffc}')
         && held.chars().all(|character| {
             character == '\u{fffc}' || character == ',' || character.is_whitespace()
@@ -294,13 +273,13 @@ pub(super) fn tokenized(held: &str) -> bool {
 ///
 /// Whitespace is collapsed on both sides: editors rewrap lines and turn a
 /// newline into a paragraph break, and neither changes what was written.
-pub(super) fn holds(held: &str, text: &str) -> bool {
+pub(in crate::agentic) fn holds(held: &str, text: &str) -> bool {
     let normalize = |value: &str| value.split_whitespace().collect::<Vec<_>>().join(" ");
     let (held, text) = (normalize(held), normalize(text));
     !text.is_empty() && held.contains(&text)
 }
 
-pub(super) fn execute_desktop(
+pub(in crate::agentic) fn execute_desktop(
     desktop: &Desktop,
     operation: JevOperation,
     target: Option<&Candidate>,
@@ -323,11 +302,6 @@ pub(super) fn execute_desktop(
             Direction::Down,
             3,
         )),
-        JevOperation::ScrollUp => desktop.scroll(ScrollRequest::new(
-            ref_id.unwrap_or_default(),
-            Direction::Up,
-            3,
-        )),
         JevOperation::Wait => desktop.wait(WaitRequest::sleep(500)),
         JevOperation::Drill | JevOperation::Widen => {
             DesktopResponse::ok("look", json!({"root": ref_id}))
@@ -337,3 +311,6 @@ pub(super) fn execute_desktop(
         }
     }
 }
+
+#[cfg(test)]
+mod test;

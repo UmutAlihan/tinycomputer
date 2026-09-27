@@ -29,7 +29,8 @@ distributable without also shipping the TinyBus host runtime.
 
 CI exercises the bus interface through TinyBus's in-memory transport, enforces
 90% line coverage in every source file, and builds the `cdylib`. The release
-workflow builds each native module from the tagged source and records its exact
+workflow opens a checked version pull request before tagging and builds each
+native module from the tagged source, recording its exact
 digest in the adjacent allowlist. After publishing, it downloads the Ubuntu
 x86_64 archive through TinyBus's GitHub release API and calls `Version` over an
 in-memory bus. `Version` is chosen because it needs no granted permission and

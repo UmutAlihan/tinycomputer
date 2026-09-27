@@ -31,6 +31,7 @@ thiserror = { workspace = true }
 # builds them and the envelope carries them without this crate reshaping them.
 serde_json = { workspace = true }
 serde = { workspace = true }
+getrandom = { workspace = true }
 # The desktop automation engine. Platform-neutral; the accessibility backend
 # arrives through the target-specific dependencies below.
 agent-desktop-core = { workspace = true }

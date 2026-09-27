@@ -27,11 +27,11 @@ use tinyinference_decisions::{
 };
 
 use super::{
-    super::{
-        AgentBackend, Evaluator, JevRuntime,
-        screen::{Candidate, Depth, Screen},
-    },
-    ask, enter, flow_guide, ground, memory, run_flow_with, validate, validate_flow,
+    super::{Evaluator, JevRuntime},
+    ask,
+    backend::AgentBackend,
+    enter, flow_guide, ground, memory, run_flow_with, validate, validate_flow,
+    view::{Candidate, Depth, Screen},
 };
 
 // ---------------------------------------------------------------- simulator
@@ -190,10 +190,8 @@ impl App {
             app: "Mail".to_owned(),
             window: Some(window.to_owned()),
             surface,
-            root: None,
             candidates,
             context: vec![format!("{window} heading")],
-            truncated: None,
             unexplored: Vec::new(),
         }
     }
@@ -523,6 +521,7 @@ fn runtime(oracle: Oracle) -> JevRuntime {
             model: "jev-latest".to_owned(),
             endpoint_url: None,
         },
+        pending: Arc::default(),
     }
 }
 
@@ -551,6 +550,7 @@ async fn run_with(
             model: "jev-latest".to_owned(),
             endpoint_url: None,
         },
+        pending: Arc::default(),
     };
     let mut request = RunFlowRequest {
         flow: serde_json::from_value(flow).unwrap(),
@@ -1488,7 +1488,7 @@ fn a_rich_text_area_reports_the_text_inside_it_as_its_contents() {
         available_actions: vec!["SetFocus".to_owned()],
         ..Candidate::default()
     };
-    let area = super::super::screen::label(&body);
+    let area = super::view::label(&body);
     screen.candidates.push(body);
     for line in ["Hi Sam,", "See you Friday."] {
         screen.candidates.push(Candidate {
@@ -1544,7 +1544,7 @@ fn a_named_control_with_a_numeric_value_reads_as_its_name() {
 
 #[test]
 fn the_front_window_is_the_focused_then_the_first_visible_titled_one() {
-    use super::super::screen::front_of;
+    use super::view::front_of;
     let windows = [
         json!({"id": "w-1", "title": "", "visible": true}),
         json!({"id": "w-2", "title": "Desktop", "visible": true}),

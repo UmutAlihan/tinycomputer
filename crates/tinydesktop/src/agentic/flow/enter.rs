@@ -12,14 +12,12 @@ use serde_json::Value;
 use tinydesktop_bus::{FlowLoop, Slot, StepOutcome};
 
 use super::{
-    super::{
-        backend::deliver_text,
-        screen::{Candidate, Screen, label, signature},
-    },
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, CAP, Questions, chosen, elements, numbered},
+    backend::deliver_text,
     memory::{learn, recall, remember},
     validate::substitute,
+    view::{Candidate, Screen, label, signature},
 };
 
 /// Least probability a slot assignment needs.

@@ -99,11 +99,32 @@ The Jev provider, endpoint, model, and API key arrive under the module config's
 sensitive host-control traffic, so monitors never receive it and serialized
 ABI buffers are zeroized after use. Reinitialization replaces the served
 `DesktopService` only after the entire new configuration validates.
+For the TinyHumans proxy, the host supplies `jev.sdk_name`; the Jev client
+sanitizes it and sends `x-sdk-name` only to that exact backend endpoint.
 
 Jev receives a closed choice of operations and compatible accessibility refs;
 it never generates text or bypasses desktop delivery checks. Existing field
-values are withheld unless the caller opts in. Actions judged hard to undo
-always stop with `confirmation_required`.
+values are withheld unless the caller opts in. A host can send one bounded
+`RunGoal` task with an exact window, allowed operations and target labels,
+named prepared text, and accessibility-visible success predicates. The module
+checks the predicates independently after every action. An action uses a fresh
+snapshot and must still match the selected target before mutation.
+
+By default, actions judged hard to undo stop with `confirmation_required`.
+When a host explicitly sets `require_confirmations: false`, consequential
+actions inside the caller's scope continue in the same bounded call. The OS
+permission preflight and delivery safeguards still apply. A timed-out or
+uncertain mutation stops without replay.
+
+`RunGoal` returns a `confirmation_id` with the pending operation and target.
+After showing those details to a person, the host calls the same confidential
+member with `continuation: {"id": "...", "approve": true}` or `approve: false`.
+The handle expires after ten minutes, is consumed once, and is lost when the
+module is reinitialized. Approval takes a fresh accessibility snapshot and
+executes only if exactly one element still matches the original application,
+window, role, label, path, bounds, state, and required action. A changed or
+ambiguous target returns `stale_target` without acting. Decline returns
+`cancelled`; an expired or replayed handle returns `CONFIRMATION_EXPIRED`.
 
 ### Intent flows
 
@@ -266,10 +287,11 @@ belongs in a live suite gated behind an environment variable.
 ## Releasing
 
 Run the **Release** workflow from the Actions tab with a `patch`, `minor`, or
-`major` bump. Use `current` only to resume an interrupted release whose version
-commit and tag already exist. The workflow revalidates the workspace, versions
-and tags it — one `[workspace.package]` version that every member inherits —
-builds `crates/tinydesktop` as a TinyBus `cdylib`, and creates a GitHub release.
+`major` bump. It validates the workspace and opens a version pull request for
+the one `[workspace.package]` version every member inherits. Merge that PR
+after required checks pass, then run the workflow with `current` to tag the
+checked version, build `crates/tinydesktop` as a TinyBus `cdylib`, and create
+the GitHub release. Use `current` again to resume an interrupted tagged release.
 Assets follow `tinydesktop-<version>-<platform>.<tar.gz|zip>` and contain the
 native module, its SHA-256 `modules.toml`, license, and
 [`MODULE.md`](MODULE.md). Every release also publishes `checksum.toml`, which

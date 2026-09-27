@@ -9,10 +9,7 @@ use std::{collections::BTreeMap, fmt::Write as _};
 use serde_json::{Value, json};
 use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
 
-use super::super::{
-    policy::untrusted_context,
-    screen::{Candidate, Screen, describe, label},
-};
+use super::view::{Candidate, Screen, describe, label, untrusted_context};
 
 /// Most options one Choice offers before narrowing takes over.
 pub(super) const CAP: usize = 20;

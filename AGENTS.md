@@ -314,13 +314,15 @@ explicitly declined with a reason.
 ## Releases
 
 Releases run from `.github/workflows/release.yml` via a manual
-`workflow_dispatch` with a `patch` / `minor` / `major` bump; `current` resumes
-an interrupted release after its version commit and tag exist. The workflow
+`workflow_dispatch` with a `patch` / `minor` / `major` bump. The workflow
 re-runs the full validation suite, computes the next version, updates
-the root `[workspace.package]` version and `Cargo.lock`, commits and tags
-`vX.Y.Z`, builds `crates/tinydesktop` as a TinyBus module for every supported
-platform, pushes, and creates an immutable GitHub release with installable
-native packages.
+the root `[workspace.package]` version and `Cargo.lock`, then opens a version
+pull request so branch protection can run its required checks. After merging
+that pull request, dispatch `current`: it revalidates the checked version,
+creates or reuses its `vX.Y.Z` tag, builds `crates/tinydesktop` as a TinyBus
+module for every supported platform, and creates an immutable GitHub release
+with installable native packages. `current` also resumes an interrupted
+release when its tag already exists.
 
 Consequently:
 

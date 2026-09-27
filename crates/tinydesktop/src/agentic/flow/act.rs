@@ -16,14 +16,10 @@ use serde_json::json;
 use tinydesktop_bus::{FlowLoop, JevOperation, StepOutcome};
 
 use super::{
-    super::{
-        goal::change_note,
-        policy::destructive_label,
-        screen::{Candidate, Screen, fingerprint, label, signature},
-    },
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
     memory::{learn, remember},
+    view::{Candidate, Screen, change_note, destructive_label, fingerprint, label, signature},
 };
 
 /// Completion probability that ends a step after acting.
@@ -435,10 +431,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let mut options = keys
             .iter()
             .cloned()
-            .zip(
-                pool.iter()
-                    .map(|node| super::super::screen::describe(node, false)),
-            )
+            .zip(pool.iter().map(|node| super::view::describe(node, false)))
             .collect::<Vec<_>>();
         options.push(("escape".to_owned(), json!("Press Escape to close it.")));
         let answers = self

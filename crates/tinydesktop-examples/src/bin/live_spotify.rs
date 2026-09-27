@@ -206,6 +206,7 @@ async fn wait_for_module(connection: &Connection) -> tinybus::Result<()> {
 }
 
 async fn wait_for_spotify(proxy: &tinybus::Proxy) -> Result<(), Box<dyn std::error::Error>> {
+    let mut reported_error = false;
     tokio::time::timeout(Duration::from_secs(15), async {
         loop {
             let reply: DesktopResponse = proxy
@@ -220,6 +221,15 @@ async fn wait_for_spotify(proxy: &tinybus::Proxy) -> Result<(), Box<dyn std::err
                 .await?;
             if reply.ok {
                 return tinybus::Result::Ok(());
+            }
+            if !reported_error {
+                if let Some(error) = &reply.error {
+                    eprintln!(
+                        "Spotify snapshot preflight: {}: {}",
+                        error.code, error.message
+                    );
+                }
+                reported_error = true;
             }
             let _: DesktopResponse = proxy
                 .call(

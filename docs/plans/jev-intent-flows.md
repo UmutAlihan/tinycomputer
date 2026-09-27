@@ -5,32 +5,20 @@ Every behavior change lands behind a failing test first; the fakes are
 `agentic/test.rs` (`FakeBackend`, scripted evaluations) and
 `agentic/flow/test.rs` (a simulated mail app and an oracle Jev).
 
-## Phase A — the Jev step foundation (`crates/tinydesktop/src/agentic/`)
+## Phase A — the Jev step foundation (superseded)
 
-- [x] `screen.rs`: ref-free `fingerprint`; static text as `context`;
-      `truncated` marker; `Depth::Skeleton`. Tests:
-      `a_fingerprint_ignores_ref_churn_between_snapshots`,
-      `static_text_is_kept_as_context_and_truncation_is_reported`.
-- [x] Split `mod.rs` into `backend.rs`, `resolve.rs`, and `goal.rs`.
-- [x] `backend.rs`: `deliver_text` (set-value, settled read-back, paste),
-      token fields, rich-text paste at the caret. Tests:
-      `a_silently_ignored_set_value_falls_back_to_paste`,
-      `a_field_that_commits_late_is_verified_on_the_settled_re_read`,
-      `a_token_field_is_delivered_unverified_rather_than_pasted_over`.
-- [x] `goal.rs`: reuse the post-action snapshot; `max_retries`; ban an element
-      after two failures; change notes in history. Tests:
-      `a_failed_action_is_retried_and_the_element_banned_after_two_strikes`,
-      `a_low_confidence_turn_is_retried_before_the_run_gives_up`.
-- [x] `policy.rs`: destructive gating on the target only; `SCROLL_UP`; remove
-      the Spotify heuristics. Test:
-      `a_goal_mentioning_send_does_not_make_every_click_destructive`.
-- [x] Contract: `RunGoalRequest.{max_retries, skeleton}`, `JevTurn.note`,
-      `JevOperation::ScrollUp`, with wire pins.
+This branch first reworked the `RunGoal` loop (ref-free stall detection,
+context, read-back, retries). Upstream redesigned `RunGoal` in parallel as a
+scoped task with visible success predicates, exact window binding, and
+confirmation handles (tinydesktop #11–#17), which covers the same ground. The
+merge keeps upstream's `RunGoal` and `ResolveIntent` unchanged; the flow
+runtime keeps its own observation and delivery in `agentic/flow/view/` and
+`agentic/flow/backend/`, with their tests beside them.
 
 ## Phase B — flows (`crates/tinydesktop-bus/src/flow/`, `agentic/flow/`)
 
 - [x] Contract types, order-preserving step parsing, `guide.md`; members
-      `RunFlow`, `ValidateFlow`, `FlowGuide`; contract version 1.2.
+      `RunFlow`, `ValidateFlow`, `FlowGuide`; contract version 1.6.
 - [x] `validate.rs`, `ask.rs`, `ground.rs`, `act.rs`, `enter.rs`, `steps.rs`,
       `memory.rs`; dispatch wiring; manifest and sweep updates.
 - [x] Negation-calibrated conditions and completion; coverage and progress

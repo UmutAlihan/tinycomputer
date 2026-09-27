@@ -7,7 +7,7 @@
 
 use tinydesktop_bus::GroundingHint;
 
-use super::{super::screen::Candidate, validate::normalize};
+use super::{validate::normalize, view::Candidate};
 
 /// Ancestor labels compared when matching a hint; deeper ones are more stable.
 const PATH_TAIL: usize = 2;

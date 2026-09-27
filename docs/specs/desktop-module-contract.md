@@ -43,21 +43,26 @@ engine's argument types, the permission preflight, and the bus surface.
   reinitialization; the module never returns, logs, or traces its API key.
 - Jev chooses only from module-supplied operations and compatible refs. Text is
   caller-supplied, ordinary field values are withheld by default, and a
-  destructive result always stops for confirmation. A local check of the
-  *target's* label also forces confirmation for delete, send, purchase,
-  payment, submission, overwrite, unsafe quit, trash, and sign-out actions; the
-  goal's wording no longer does, so "write and send" still opens the compose
-  window without confirmation.
+  destructive result stops for confirmation by default. A host can explicitly
+  disable confirmations for a bounded, scoped `RunGoal` task. Local label/goal checks
+  also force confirmation for delete, send, purchase, payment, submission,
+  overwrite, unsafe quit, trash, and sign-out actions.
 - Exact endpoint overrides are limited to the selected provider's published
   route. Accessibility content is labeled as untrusted data, and observation
   visits at most 4,096 nodes and 64 levels before returning a bounded view.
 - Execution gates on the selected option's probability, not Jev's distribution
-  concentration. Exact accessible names may add deterministic identity evidence
-  but never bypass risk checks.
-- Goal runs stop at 40 actions, 80 evaluations, or three turns that changed
-  nothing (compared without refs, which every snapshot re-mints). A failed
-  action or a low-confidence turn is fed back and retried up to `max_retries`
-  (default 2, at most 5); an element that fails twice is not offered again.
+  concentration. Exact accessible names and explicitly requested first/topmost
+  rows may add deterministic identity evidence but never bypass risk checks.
+- A scoped goal binds an exact app and optional window ID/title, allowed operations and
+  exact target labels, prepared named text, and all-of visible success predicates.
+  A supplied window ID is included in every snapshot, and a missing or different
+  window stops execution without falling back to a newly focused window.
+  The module reobserves immediately before every mutation, checks operation and
+  target probabilities separately, and verifies completion from the accessibility
+  tree rather than accepting Jev's `DONE` alone. A task stops at 40 actions,
+  80 evaluations, three unchanged turns, or its five-minute-capped elapsed budget.
+  Uncertain mutations are never replayed. Absence is not a valid success predicate:
+  the bounded snapshot cannot prove it.
 
 ### The envelope
 
