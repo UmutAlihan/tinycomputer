@@ -44,6 +44,9 @@ impl WorkspaceRunner {
     /// browser. Needs a Tokio runtime, which every caller runs on.
     fn workspace(&self, task: &TaskId, constraints: &TaskConstraints) -> TaskWorkspace {
         let fresh = || {
+            let desktop = (constraints.surfaces.is_empty()
+                || constraints.surfaces.contains(&SurfaceKind::Desktop))
+            .then(|| self.desktop.clone());
             let browser = (constraints.surfaces.is_empty()
                 || constraints.surfaces.contains(&SurfaceKind::Browser))
             .then(|| {
@@ -59,10 +62,7 @@ impl WorkspaceRunner {
                     tokio::runtime::Handle::current(),
                 )
             });
-            (
-                Workspace::new(self.desktop.clone(), browser.clone()),
-                browser,
-            )
+            (Workspace::new(desktop, browser.clone()), browser)
         };
         self.workspaces.lock().map_or_else(
             |_| fresh().0,
