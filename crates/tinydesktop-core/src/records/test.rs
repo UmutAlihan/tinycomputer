@@ -36,6 +36,35 @@ fn a_price_is_read_next_to_its_currency_not_from_a_flight_number() {
 }
 
 #[test]
+fn a_written_out_currency_reads_the_amount_before_it() {
+    let card = "From 7339 Indian rupees. 1 stop flight with IndiGo. Leaves at 8:00 AM";
+    assert_eq!(price(card), (7339.0, Some("INR")));
+    assert_eq!(price("12,450 rupees"), (12450.0, Some("INR")));
+    assert_eq!(price("about 300 US dollars"), (300.0, Some("USD")));
+    let unpriced = "Total price is unavailable. Nonstop flight. Leaves at 9:55 AM";
+    assert_eq!(price(unpriced), (9.0, None), "no currency, so never ranked");
+    assert_eq!(
+        price("rupees 5 later"),
+        (5.0, None),
+        "the amount must come first"
+    );
+}
+
+#[test]
+fn cards_priced_in_words_rank_by_price() {
+    let cards = [
+        "From 8588 Indian rupees. Nonstop flight with Air India.",
+        "Total price is unavailable. Nonstop flight with Air India Express. Leaves at 9:55 AM",
+        "From 7339 Indian rupees. 1 stop flight with IndiGo.",
+    ];
+    let records = cards
+        .iter()
+        .map(|text| Record::from_pairs([("field 0", *text)]))
+        .collect::<Vec<_>>();
+    assert_eq!(rank(&records, Criterion::LowestPrice), Some(vec![2, 0, 1]));
+}
+
+#[test]
 fn clock_times_read_twelve_and_twenty_four_hour_forms() {
     assert_eq!(parse_clock("06:45"), Some(6 * 60 + 45));
     assert_eq!(parse_clock("Departs 6:45 PM"), Some(18 * 60 + 45));

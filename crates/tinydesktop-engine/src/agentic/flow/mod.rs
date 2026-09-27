@@ -210,7 +210,16 @@ fn collect_stop_before(steps: &[FlowStep], phrases: &mut Vec<String>) {
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     fn new(backend: B, runtime: &'r JevRuntime, request: &RunFlowRequest) -> Self {
-        let mut vars = request.flow.vars.clone();
+        // A flow's own definitions may name the caller's values
+        // (`"first_name": "${first name}"`), so they are expanded once
+        // against them. The caller's values are never rescanned: one that
+        // happens to contain `${…}` stays as written.
+        let mut vars = request
+            .flow
+            .vars
+            .iter()
+            .map(|(name, value)| (name.clone(), validate::substitute(value, &request.vars)))
+            .collect::<BTreeMap<_, _>>();
         vars.extend(request.vars.clone());
         Self {
             backend,
@@ -218,7 +227,9 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             app: request.flow.app.clone(),
             stop_before: stop_before_phrases(&request.flow.steps),
             vars,
-            facts: request.facts.clone(),
+            // A flow variable defined from a fact now holds that fact's
+            // value, so it is kept out of model-facing text the same way.
+            facts: validate::carrying_facts(&request.flow.vars, &request.facts),
             allow_destructive: request.allow_destructive,
             include_values: request.include_values,
             max_actions: request.max_actions.min(MAX_ACTIONS),
@@ -480,6 +491,15 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             ok: reply.ok,
             note,
         });
+        if reply.ok {
+            // Let the surface finish reacting, so the next look sees what the
+            // action did rather than the moment before it took effect.
+            self.backend_call(|backend| {
+                backend.settle();
+                DesktopResponse::ok("settle", serde_json::json!({}))
+            })
+            .await;
+        }
         Ok(reply)
     }
 

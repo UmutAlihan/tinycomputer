@@ -16,7 +16,7 @@
 //!   surface-agnostic [`Screen`](crate::surface::Screen), so every surface's
 //!   destructive-click gate can apply the same page-level check.
 
-use crate::surface::Screen;
+use crate::surface::{Candidate, Screen};
 
 /// What pressing a control commits the user to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -215,60 +215,110 @@ pub fn payment_evidence(
     (!reasons.is_empty()).then_some(PaymentEvidence { reasons })
 }
 
+/// Card wording strong enough to mark a payment form from text beside a
+/// field; promotions say "credit card" or "UPI", never "CVV".
+const STRONG_CARD_WORDS: &[&str] = &[
+    "card number",
+    "cardholder",
+    "name on card",
+    "cvv",
+    "cvc",
+    "cvv2",
+    "security code",
+    "card verification",
+    "expiry date",
+    "expiration date",
+    "valid thru",
+];
+
 /// Whether the screen a flow is looking at is a payment step, from its
 /// candidates and text alone.
 ///
 /// A generic [`Screen`](crate::surface::Screen) carries no URL and no HTML
 /// `autocomplete` attribute — those are web-specific, and this check must
-/// hold for the desktop too — so only the field-label signal applies here.
-/// That signal is enough on its own: [`payment_evidence`]'s URL-plus-control
-/// branch only ever strengthens a case the field labels already make, per its
-/// own doctest.
+/// hold for the desktop too — so it reads fields: an input labelled like a
+/// card field, or an input with strong card wording (CVV, card number)
+/// beside it. Card words on links, buttons, or promotional text alone
+/// ("save 10% with your credit card") do not make a payment page.
 ///
 /// ```
 /// use tinydesktop_core::surface::{Candidate, Screen};
 /// use tinydesktop_core::screen_payment_evidence;
 ///
+/// let field = |name: &str| Candidate {
+///     role: "textbox".to_owned(),
+///     name: Some(name.to_owned()),
+///     available_actions: vec!["SetValue".to_owned()],
+///     ..Candidate::default()
+/// };
 /// let mut screen = Screen {
 ///     app: "browser".to_owned(),
 ///     window: None,
 ///     surface: "window".to_owned(),
-///     candidates: vec![Candidate {
-///         name: Some("Continue".to_owned()),
-///         ..Candidate::default()
-///     }],
-///     context: vec!["Card number".to_owned()],
+///     candidates: vec![field("Card number")],
+///     context: Vec::new(),
 ///     unexplored: Vec::new(),
 ///     text_nodes: Vec::new(),
 /// };
 /// assert!(screen_payment_evidence(&screen).is_some());
-/// screen.context = vec!["Traveller name".to_owned()];
+/// screen.candidates = vec![field("Traveller name")];
+/// screen.context = vec!["Pay less with your credit card".to_owned()];
 /// assert!(screen_payment_evidence(&screen).is_none());
 /// ```
 #[must_use]
 pub fn screen_payment_evidence(screen: &Screen) -> Option<PaymentEvidence> {
-    let fields = screen
+    let inputs = screen
         .candidates
         .iter()
-        .chain(screen.text_nodes.iter())
-        .filter_map(|candidate| {
-            candidate
-                .name
-                .as_deref()
-                .or(candidate.description.as_deref())
+        .filter(|candidate| is_input(candidate))
+        .collect::<Vec<_>>();
+    if inputs.is_empty() {
+        return None;
+    }
+    let labelled = inputs.iter().filter_map(|candidate| {
+        candidate
+            .name
+            .as_deref()
+            .or(candidate.description.as_deref())
+            .map(|label| FieldHint {
+                label: label.to_owned(),
+                ..FieldHint::default()
+            })
+    });
+    let beside = screen
+        .context
+        .iter()
+        .map(String::as_str)
+        .chain(
+            screen
+                .text_nodes
+                .iter()
+                .filter_map(|node| node.name.as_deref()),
+        )
+        .filter(|text| {
+            let words = normalize(text);
+            STRONG_CARD_WORDS
+                .iter()
+                .any(|term| has_phrase(&words, term))
         })
-        .chain(screen.context.iter().map(String::as_str))
-        .map(|label| FieldHint {
-            label: label.to_owned(),
+        .map(|text| FieldHint {
+            label: text.to_owned(),
             ..FieldHint::default()
-        })
-        .collect::<Vec<_>>();
-    let controls = screen
-        .candidates
+        });
+    let fields = labelled.chain(beside).collect::<Vec<_>>();
+    payment_evidence("", &fields, &[])
+}
+
+/// Whether a candidate takes typed input, on either surface.
+fn is_input(candidate: &Candidate) -> bool {
+    candidate
+        .available_actions
         .iter()
-        .filter_map(|candidate| candidate.name.as_deref())
-        .collect::<Vec<_>>();
-    payment_evidence("", &fields, &controls)
+        .any(|action| action == "SetValue" || action == "TypeText")
+        || matches!(
+            candidate.role.as_str(),
+            "textbox" | "searchbox" | "combobox" | "spinbutton" | "textfield"
+        )
 }
 
 /// What only a person can get past, by the words a page shows for it.

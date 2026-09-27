@@ -53,6 +53,9 @@ enum Quirk {
     NoAddresses,
     /// The compose fields sit in a subtree the budgeted snapshot cut short.
     HiddenEditor,
+    /// A side drawer lies over the page: every click is refused as covered
+    /// until Escape closes it.
+    Drawer,
 }
 
 #[derive(Debug, Default)]
@@ -69,13 +72,120 @@ struct Sim {
     results: Vec<(&'static str, &'static str, &'static str)>,
     /// Refs of the result cards' "Select" buttons clicked, in order.
     picked: Vec<String>,
+    /// Days in a date strip above the results, a longer list than they are.
+    date_strip: usize,
     extra_buttons: usize,
+    /// A booking form with an autocomplete destination and a calendar.
+    booking: Option<Booking>,
     quirks: BTreeSet<Quirk>,
 }
 
 impl Sim {
     fn has(&self, quirk: Quirk) -> bool {
         self.quirks.contains(&quirk)
+    }
+}
+
+const MONTH_NAMES: [&str; 12] = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+];
+
+/// A booking form: a destination box that opens a search field, as an
+/// autocomplete does, and a departure date picked only from a calendar.
+#[derive(Debug, Default)]
+struct Booking {
+    /// Whether the destination's search field is open.
+    searching: bool,
+    /// `Some(month)` while the calendar is open on that month (0 = January).
+    calendar: Option<usize>,
+}
+
+/// What pressing `name` does to the booking form.
+fn press_booking(sim: &mut Sim, name: &str) {
+    let Some(booking) = sim.booking.as_mut() else {
+        return;
+    };
+    match name {
+        "Going to?" => booking.searching = true,
+        "Departure" => booking.calendar = Some(8),
+        "Next Month" => booking.calendar = booking.calendar.map(|month| (month + 1) % 12),
+        day if booking.calendar.is_some() && day.ends_with(" 2026") => {
+            booking.calendar = None;
+            sim.fields.insert("Departure".to_owned(), day.to_owned());
+        }
+        _ => {}
+    }
+}
+
+/// The booking form's controls, as they stand.
+fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec<Candidate>) {
+    let widget = [root, "group \"Booking\""];
+    candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
+    // The destination's own container names its recent searches, so it
+    // mentions the option without being it; pressing it chooses nothing.
+    candidates.push(node(
+        "destinationCity Empty RECENT SEARCHES Srinagar Srinagar International Airport SXR \
+         POPULAR DESTINATIONS Mumbai Chhatrapati Shivaji Maharaj International Airport BOM",
+        "button",
+        &["Click"],
+        &widget,
+        81.0,
+    ));
+    if booking.searching {
+        // A suggestion row that claims to take text but does not, as
+        // IndiGo's comboboxes do.
+        candidates.push(node(
+            "Mumbai, BOM",
+            "combobox",
+            &["Click", "SetValue"],
+            &widget,
+            85.0,
+        ));
+        let typed = sim.fields.get("Search city").cloned().unwrap_or_default();
+        // The box shows what was typed, so it "mentions" the option too.
+        let mut search = node(
+            "Search city",
+            "textbox",
+            &["Click", "SetValue"],
+            &widget,
+            90.0,
+        );
+        search.value = Some(json!(typed));
+        candidates.push(search);
+        if !typed.is_empty() && "srinagar".starts_with(&typed.to_lowercase()) {
+            candidates.push(node("Srinagar, SXR", "option", &["Click"], &widget, 95.0));
+        }
+    }
+    candidates.push(node("Departure", "button", &["Click"], &widget, 120.0));
+    if let Some(month) = booking.calendar {
+        // The date field's own label lists the whole open calendar.
+        let listing = (1..=28)
+            .map(|day| format!("{day} {} 2026", MONTH_NAMES[month]))
+            .collect::<Vec<_>>()
+            .join(" ");
+        candidates.push(node(
+            &format!("departureDate Previous Month Next Month {listing}"),
+            "button",
+            &["Click"],
+            &widget,
+            125.0,
+        ));
+        candidates.push(node("Next Month", "button", &["Click"], &widget, 130.0));
+        for day in 1..=28 {
+            let name = format!("{day} {} 2026", MONTH_NAMES[month]);
+            candidates.push(node(&name, "button", &["Click"], &widget, 140.0));
+        }
     }
 }
 
@@ -136,6 +246,29 @@ fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<C
             available_actions: vec!["Click".to_owned()],
             path,
             order: order + 5,
+            ..Candidate::default()
+        });
+    }
+    for day in 0..sim.date_strip {
+        let path = vec![
+            root.to_owned(),
+            "list \"Dates\"".to_owned(),
+            format!("listitem #{}", day + 1),
+        ];
+        text_nodes.push(Candidate {
+            role: "text".to_owned(),
+            value: Some(json!("--")),
+            path: path.clone(),
+            order: 500 + day * 10,
+            ..Candidate::default()
+        });
+        candidates.push(Candidate {
+            ref_id: format!("@s:day-{}", day + 1),
+            role: "button".to_owned(),
+            name: Some(format!("Please Select Date for {} Oct", day + 12)),
+            available_actions: vec!["Click".to_owned()],
+            path,
+            order: 500 + day * 10 + 5,
             ..Candidate::default()
         });
     }
@@ -204,6 +337,9 @@ impl App {
                     60.0 + f64::from(u32::try_from(index).unwrap()),
                 ));
             }
+        }
+        if let Some(booking) = &sim.booking {
+            booking_widget(&sim, booking, &root, &mut candidates);
         }
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
@@ -282,6 +418,15 @@ impl AgentBackend for App {
             .as_ref()
             .and_then(|target| target.name.clone())
             .unwrap_or_default();
+        if sim.has(Quirk::Drawer) && operation == JevOperation::Click {
+            return DesktopResponse::err(
+                "click",
+                tinydesktop_bus::DesktopError::new(
+                    "NOT_ACTIONABLE",
+                    format!("Element '@s:{name}' is covered by <div.drawer> at its click point"),
+                ),
+            );
+        }
         match operation {
             JevOperation::Click => {
                 if let Some(reference) = target
@@ -297,8 +442,16 @@ impl AgentBackend for App {
                     "Send" => sim.sent = true,
                     "Keep Editing" => sim.obstacle = false,
                     "Archive" => sim.compose_open = false,
+                    _ if sim.booking.is_some() => press_booking(&mut sim, &name),
                     _ => {}
                 }
+            }
+            JevOperation::TypeText if name == "Mumbai, BOM" => {}
+            // Text with no target goes to the focused field: the booking
+            // form's search box once it is open.
+            JevOperation::TypeText if target.is_none() => {
+                sim.fields
+                    .insert("Search city".to_owned(), text.unwrap_or_default());
             }
             JevOperation::TypeText if !(name == "Body" && sim.has(Quirk::BodyIgnoresSetValue)) => {
                 sim.fields.insert(name, text.unwrap_or_default());
@@ -328,7 +481,10 @@ impl AgentBackend for App {
         }
         match combo {
             "cmd+n" => sim.compose_open = true,
-            "escape" => sim.obstacle = false,
+            "escape" => {
+                sim.obstacle = false;
+                sim.quirks.remove(&Quirk::Drawer);
+            }
             _ => {}
         }
         DesktopResponse::ok("press", json!({}))
@@ -982,6 +1138,82 @@ async fn an_obstacle_is_dismissed_with_a_safe_control_only() {
     assert!(escaped.app.sim().presses.contains(&"escape".to_owned()));
 }
 
+/// Answers that press "Keep Editing" and never judge the step done, so only
+/// the screen can end it.
+fn press_keep_editing(id: &str, question: &Question, _: &Sim) -> Option<Answer> {
+    match id {
+        "done" | "blocked" => Some(noul(0.05)),
+        "move" => Some(pick(question, "activate", 0.9)),
+        _ if id == "target" || id == "region" || id.starts_with("group_") => {
+            Some(pick(question, "Keep Editing", 0.9))
+        }
+        _ => None,
+    }
+}
+
+#[tokio::test]
+async fn pressing_the_named_control_that_closes_an_overlay_ends_the_step() {
+    for step in [
+        "close the dialog by keeping editing",
+        "dismiss the save prompt",
+    ] {
+        let run = run_with(
+            App::with(|sim| sim.obstacle = true),
+            json!({"app": "Mail", "steps": [step]}),
+            |_| {},
+            press_keep_editing,
+        )
+        .await;
+        assert_eq!(run.result.stop, FlowStopReason::Completed, "{step}");
+        assert_eq!(run.app.sim().clicks, ["Keep Editing"], "{step}");
+        assert!(
+            run.result.steps[0].note.contains("closed"),
+            "{}",
+            run.result.steps[0].note
+        );
+    }
+    let unrelated = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["archive the message"]}),
+        |request| request.max_actions = 1,
+        press_keep_editing,
+    )
+    .await;
+    assert_ne!(
+        unrelated.result.stop,
+        FlowStopReason::Completed,
+        "closing an overlay the step never mentions does not finish it"
+    );
+}
+
+#[tokio::test]
+async fn a_covered_click_closes_what_covers_it_and_tries_again() {
+    let run = run_with(
+        App::quirky(Quirk::Drawer),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |_| {},
+        |id, question, _| (id == "move").then(|| pick(question, "activate", 0.9)),
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    let sim = run.app.sim();
+    assert!(sim.compose_open);
+    assert_eq!(sim.presses, ["escape"]);
+    let actions = &run.result.steps[0].actions;
+    assert_eq!(
+        actions
+            .iter()
+            .map(|action| action.action.as_str())
+            .collect::<Vec<_>>(),
+        ["click", "press escape (uncover)", "click"],
+    );
+}
+
 #[tokio::test]
 async fn a_regression_is_undone_and_the_element_is_not_tried_again() {
     let run = run_with(
@@ -1368,6 +1600,152 @@ async fn choose_reveals_the_list_first_when_the_option_is_not_visible() {
 }
 
 #[tokio::test]
+async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
+    let run = run_with(
+        App::with(|sim| sim.booking = Some(Booking::default())),
+        json!({"app": "Mail", "steps": [
+            {"choose": {"what": "the destination box", "option": "Srinagar"}}
+        ]}),
+        |_| {},
+        |id, question, sim| match id {
+            "move" => Some(pick(question, "activate", 0.9)),
+            "done" => Some(noul(
+                if sim
+                    .booking
+                    .as_ref()
+                    .is_some_and(|booking| booking.searching)
+                {
+                    0.9
+                } else {
+                    0.05
+                },
+            )),
+            _ if !matches!(question, Question::Choice(_)) => None,
+            _ if purpose_of(question).contains("search box") => Some(pick(question, "Mumbai", 0.9)),
+            _ if purpose_of(question).contains("open the destination") => {
+                Some(pick(question, "Going to?", 0.9))
+            }
+            _ => Some(pick(question, "Srinagar", 0.9)),
+        },
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    let sim = run.app.sim();
+    assert_eq!(
+        sim.fields["Search city"], "Srinagar",
+        "a row that takes no text leaves the typing to the focused box"
+    );
+    assert!(!sim.clicks.contains(&"Mumbai, BOM".to_owned()));
+    assert_eq!(
+        sim.clicks.last().map(String::as_str),
+        Some("Srinagar, SXR"),
+        "the box itself is never taken for the option: {:?}",
+        sim.clicks
+    );
+}
+
+fn purpose_of(question: &Question) -> String {
+    text_of(question, "purpose")
+}
+
+#[tokio::test]
+async fn enter_picks_a_date_from_a_calendar_without_telling_jev_the_date() {
+    let run = run_with(
+        App::with(|sim| sim.booking = Some(Booking::default())),
+        json!({"app": "Mail", "steps": [{"enter": {"departure date": "Sunday, 18 October 2026"}}]}),
+        |_| {},
+        |id, question, sim| match id {
+            "move" => Some(pick(question, "activate", 0.9)),
+            "done" => Some(noul(
+                if sim
+                    .booking
+                    .as_ref()
+                    .is_some_and(|booking| booking.calendar.is_some())
+                {
+                    0.9
+                } else {
+                    0.05
+                },
+            )),
+            _ if !matches!(question, Question::Choice(_)) => None,
+            _ if id.starts_with("slot_") => Some(pick(question, "none", 0.9)),
+            _ if purpose_of(question).contains("value being entered") => {
+                Some(pick(question, "18 October", 0.9))
+            }
+            _ => Some(pick(question, "Departure", 0.9)),
+        },
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    let sim = run.app.sim();
+    assert_eq!(sim.fields["Departure"], "18 October 2026");
+    assert_eq!(
+        sim.clicks
+            .iter()
+            .filter(|click| *click == "Next Month")
+            .count(),
+        1,
+        "paged from September to October: {:?}",
+        sim.clicks
+    );
+    for request in &run.requests {
+        for question in request.questions.values() {
+            for field in ["purpose", "step", "task"] {
+                assert!(
+                    !text_of(question, field).contains("18 october"),
+                    "the value reached a question: {}",
+                    text_of(question, field)
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_date_is_told_from_other_options_and_containers_give_way() {
+    use super::steps::{closest, looks_like_date};
+    assert!(looks_like_date("Sunday 18 October 2026"));
+    assert!(looks_like_date("october 3"));
+    assert!(!looks_like_date("18 oct"), "a month must be spelled out");
+    assert!(!looks_like_date("October"), "a month alone is no day");
+    assert!(!looks_like_date("Srinagar 40"));
+
+    let day = node("Sunday, 18 October 2026", "button", &["Click"], &[], 0.0);
+    let month = node(
+        &format!("departureDate {}", "Sunday, 18 October 2026 ".repeat(20)),
+        "button",
+        &["Click"],
+        &[],
+        0.0,
+    );
+    let names = |kept: Vec<Candidate>| {
+        kept.into_iter()
+            .filter_map(|node| node.name)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        names(closest(vec![month.clone(), day.clone()])),
+        [day.name.clone().unwrap()]
+    );
+    assert_eq!(
+        names(closest(vec![month.clone()])).len(),
+        1,
+        "a lone match stays"
+    );
+    assert!(closest(Vec::new()).is_empty());
+}
+
+#[tokio::test]
 async fn choose_never_clicks_an_irreversible_option() {
     // "Send" is clickable and matches the requested option by name, but it is
     // irreversible; `choose` must fail the step through the usual `stop_before`
@@ -1744,6 +2122,104 @@ fn validation_tracks_variables_along_execution_order() {
             .iter()
             .any(|error| error.contains("${name}") && error.contains("not defined")),
         "a `repeat_until` body can run zero times, so its reads must not survive it"
+    );
+}
+
+#[tokio::test]
+async fn a_flow_definition_naming_a_caller_value_is_expanded_once() {
+    let run = run_with(
+        App::with(|sim| sim.compose_open = true),
+        json!({
+            "app": "Mail",
+            "vars": {"subject_line": "${topic}"},
+            "steps": [{"enter": {"subject": "${subject_line}", "body": "${note}"}}]
+        }),
+        |request| {
+            request.vars = BTreeMap::from([
+                ("topic".to_owned(), "Kashmir".to_owned()),
+                ("note".to_owned(), "${topic}".to_owned()),
+            ]);
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    let sim = run.app.sim();
+    assert_eq!(
+        sim.fields["Subject"], "Kashmir",
+        "the definition names the caller's value"
+    );
+    assert_eq!(
+        sim.fields["Body"], "${topic}",
+        "a caller's value is text, never rescanned for references"
+    );
+}
+
+#[tokio::test]
+async fn a_flow_definition_naming_a_fact_is_typed_but_never_reaches_a_jev_request() {
+    let run = run_with(
+        App::with(|sim| sim.compose_open = true),
+        json!({
+            "app": "Mail",
+            "vars": {"subject_line": "${topic}"},
+            "steps": [{"enter": {"subject": "${subject_line}"}}]
+        }),
+        |request| {
+            request.vars = BTreeMap::from([("topic".to_owned(), "Kashmir".to_owned())]);
+            request.facts = BTreeSet::from(["topic".to_owned()]);
+            request.include_values = false;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    assert_eq!(
+        run.app.sim().fields["Subject"],
+        "Kashmir",
+        "the definition carries the fact into the field"
+    );
+    let leaked = run
+        .requests
+        .iter()
+        .any(|request| serde_json::to_string(request).unwrap().contains("Kashmir"));
+    assert!(!leaked, "a fact's value must never reach a Jev request");
+}
+
+#[test]
+fn validation_treats_a_flow_definition_naming_a_fact_as_a_fact() {
+    let facts = BTreeSet::from(["email".to_owned()]);
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "Mail",
+        "vars": {"recipient": "${email}", "topic": "the budget"},
+        "steps": [
+            {"do": "write to ${recipient} about ${topic}"},
+            {"enter": {"to": "${recipient}"}}
+        ]
+    }))
+    .unwrap();
+    let validation = validate::check(&flow, &facts, &facts);
+    assert_eq!(
+        validation.errors,
+        vec![
+            "step 1: `${recipient}` is a fact; use an enter step to type it — Jev only sees slot names"
+                .to_owned()
+        ],
+        "only the model-facing use of the fact-bearing definition is rejected"
+    );
+    assert_eq!(
+        validate::carrying_facts(&flow.vars, &facts),
+        BTreeSet::from(["email".to_owned(), "recipient".to_owned()]),
+        "a definition naming a fact carries it; one that does not stays ordinary"
     );
 }
 
@@ -2203,6 +2679,28 @@ async fn pick_ranks_a_measurable_criterion_exactly_and_opens_the_winner() {
             "a measurable criterion needs no judgement"
         );
     }
+}
+
+#[tokio::test]
+async fn pick_ranks_the_list_that_has_prices_not_the_longest_one() {
+    let app = flights();
+    app.sim().date_strip = 7;
+    let run = run(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "lowest price", "into": "flight"}}
+        ]}),
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    assert_eq!(run.app.sim().picked, ["@s:select-1"]);
+    assert!(run.result.vars["flight"].starts_with("IndiGo"));
+    assert!(run.result.steps[0].note.contains("ranked"));
 }
 
 #[tokio::test]

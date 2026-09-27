@@ -5,7 +5,10 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{Consequence, FieldHint, consequence, human_needed, payment_evidence};
+use super::{
+    Consequence, FieldHint, consequence, human_needed, payment_evidence, screen_payment_evidence,
+};
+use crate::surface::{Candidate, Screen};
 
 #[test]
 fn payment_controls_are_recognised_in_any_wording() {
@@ -123,6 +126,72 @@ fn a_traveller_form_is_not_a_payment_page() {
     ];
     assert!(
         payment_evidence("https://ota.test/traveller-details", &fields, &["Continue"]).is_none()
+    );
+}
+
+fn screen_of(candidates: Vec<Candidate>, context: &[&str]) -> Screen {
+    Screen {
+        app: "browser".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates,
+        context: context.iter().map(|text| (*text).to_owned()).collect(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    }
+}
+
+fn control(role: &str, name: &str, actions: &[&str]) -> Candidate {
+    Candidate {
+        role: role.to_owned(),
+        name: Some(name.to_owned()),
+        available_actions: actions.iter().map(|action| (*action).to_owned()).collect(),
+        ..Candidate::default()
+    }
+}
+
+#[test]
+fn a_card_input_on_either_surface_marks_a_payment_screen() {
+    for field in [
+        control("textbox", "Card number", &["Click", "SetValue"]),
+        control("textfield", "CVV", &["TypeText"]),
+        control("spinbutton", "Expiry date", &[]),
+    ] {
+        let screen = screen_of(vec![field.clone()], &[]);
+        assert!(screen_payment_evidence(&screen).is_some(), "{field:?}");
+    }
+    let unlabelled = Candidate {
+        role: "textbox".to_owned(),
+        ..Candidate::default()
+    };
+    let beside = screen_of(
+        vec![unlabelled],
+        &["Enter the CVV on the back of your card"],
+    );
+    let evidence = screen_payment_evidence(&beside).unwrap();
+    assert!(evidence.reasons[0].contains("cvv"), "{evidence:?}");
+}
+
+#[test]
+fn card_promotions_on_a_home_page_are_not_a_payment_screen() {
+    let links = screen_of(
+        vec![
+            control("link", "IndiGo credit card", &["Click"]),
+            control("button", "Accept Essential Only", &["Click"]),
+        ],
+        &["Save 10% with your debit card", "Card number"],
+    );
+    assert!(
+        screen_payment_evidence(&links).is_none(),
+        "no field takes input, so nothing here can collect a card"
+    );
+    let search = screen_of(
+        vec![control("textbox", "Where to?", &["SetValue"])],
+        &["Pay less with HDFC credit card", "UPI offers"],
+    );
+    assert!(
+        screen_payment_evidence(&search).is_none(),
+        "promotional card wording beside a search box is not a card form"
     );
 }
 

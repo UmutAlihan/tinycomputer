@@ -5,7 +5,7 @@ use tinydesktop_bus::{
     ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
     RepeatStep, StepOutcome,
 };
-use tinydesktop_core::surface::{Group, result_groups};
+use tinydesktop_core::surface::{Group, result_families, result_groups};
 use tinydesktop_core::{Criterion, Record, rank};
 
 use crate::workspace::BROWSER;
@@ -14,9 +14,11 @@ use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     act::DONE,
     ask::{self, Questions, chosen, condition, numbered},
+    backend::deliver_text,
+    ground::Grounded,
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute_safe},
-    view::{Candidate, is_destructive, label, target_payload},
+    view::{Candidate, Screen, is_destructive, label, target_payload},
 };
 
 /// Turns a `do` step may spend.
@@ -223,16 +225,62 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
+        // `what` and `option` are shown to Jev, so a fact is never
+        // expanded into them; validation already rejects one there.
         let what = substitute_safe(&choose.what, &self.vars, &self.facts);
         let option = substitute_safe(&choose.option, &self.vars, &self.facts);
-        let purpose = format!("pick the option {option:?} in {what}");
-        for attempt in 0..2 {
+        self.pick_option(log, &what, &option, false).await
+    }
+
+    /// Picks `option` in `what` as a person works a list, an autocomplete
+    /// box, or a date picker: take the option if it shows, else open the
+    /// control, page a calendar forward to a date, or type the option to
+    /// filter it. Only an element that shows the option is ever pressed, so
+    /// a list that never shows it fails the step rather than picking another.
+    ///
+    /// A `private` option — a value `enter` could not type into a field — is
+    /// never written into a question: only elements that already show it are
+    /// offered, so Jev sees nothing the page does not.
+    pub(super) async fn pick_option(
+        &mut self,
+        log: &mut StepLog,
+        what: &str,
+        option: &str,
+        private: bool,
+    ) -> Result<Ended, Halt> {
+        let purpose = if private {
+            format!("pick the option in {what} that shows the value being entered")
+        } else {
+            format!("pick the option {option:?} in {what}")
+        };
+        for attempt in 0..4 {
             let screen = self.look().await?;
             let pool = clickable(&screen.candidates)
                 .into_iter()
                 .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
                 .collect::<Vec<_>>();
-            if let Some(grounded) = self.ground(log, &screen, &purpose, &purpose, pool).await? {
+            // A field that holds the typed option is where it was typed,
+            // not one of the options it offers.
+            let pool = closest(
+                pool.into_iter()
+                    .filter(|candidate| {
+                        mentions(candidate, option)
+                            && !editable(candidate)
+                            && !lists_more_than(candidate, option)
+                    })
+                    .collect(),
+            );
+            // Matches that all name one option leave nothing to judge; a
+            // private option is never judged, since Jev is not told it.
+            let grounded = if private || one_option(&pool) {
+                plainest(pool).map(|candidate| Grounded {
+                    candidate,
+                    confidence: 1.0,
+                })
+            } else {
+                self.ground(log, &screen, &purpose, &purpose, pool).await?
+            };
+            if let Some(grounded) = grounded {
                 log.confidence = Some(grounded.confidence);
                 let target = grounded.candidate;
                 let clicked = target.clone();
@@ -244,20 +292,123 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 if reply.ok {
                     learn(&mut self.learned, remember(&self.app, &purpose, &target));
                     self.history
-                        .push(format!("chose {option:?} with {}", label(&target)));
-                    return Ok(Ended::new(StepOutcome::Done, format!("chose {option:?}")));
+                        .push(format!("chose an option with {}", label(&target)));
+                    return Ok(Ended::new(
+                        StepOutcome::Done,
+                        if private {
+                            format!("chose the value in {what}")
+                        } else {
+                            format!("chose {option:?}")
+                        },
+                    ));
                 }
             }
-            if attempt == 0 {
-                self.accomplish(
-                    log,
-                    &format!("open {what} so its options show"),
-                    REVEAL_TURNS,
-                )
-                .await?;
+            match attempt {
+                0 => {
+                    self.accomplish(
+                        log,
+                        &format!("open {what} so its options show"),
+                        REVEAL_TURNS,
+                    )
+                    .await?;
+                }
+                1 if looks_like_date(option) => self.page_to(log, option).await?,
+                // An opened autocomplete holds the focus in its search input,
+                // often unnamed; type there before anything moves the focus.
+                1 => self.type_into_focus(log, option).await?,
+                2 if !looks_like_date(option) => {
+                    self.type_to_filter(log, &screen, what, option).await?;
+                }
+                _ => {}
             }
         }
-        Err(Halt::Failed(format!("{option:?} was not found in {what}")))
+        Err(Halt::Failed(if private {
+            format!("the value was not found in {what}")
+        } else {
+            format!("{option:?} was not found in {what}")
+        }))
+    }
+
+    /// Pages a calendar forward, one month at a time, until a control shows
+    /// `date`; stops at [`MAX_MONTHS`] or where there is no next month.
+    async fn page_to(&mut self, log: &mut StepLog, date: &str) -> Result<(), Halt> {
+        for _ in 0..MAX_MONTHS {
+            let screen = self.look().await?;
+            if screen
+                .candidates
+                .iter()
+                .any(|candidate| mentions(candidate, date))
+            {
+                return Ok(());
+            }
+            let Some(next) = clickable(&screen.candidates)
+                .into_iter()
+                .find(|candidate| candidate.name.as_deref().is_some_and(is_next_month))
+            else {
+                return Ok(());
+            };
+            let clicked = next.clone();
+            let reply = self
+                .act(log, "click", Some(&next), move |backend| {
+                    backend.execute(JevOperation::Click, Some(clicked), None)
+                })
+                .await?;
+            if !reply.ok {
+                return Ok(());
+            }
+        }
+        Ok(())
+    }
+
+    /// Types `option` wherever the focus is.
+    async fn type_into_focus(&mut self, log: &mut StepLog, option: &str) -> Result<(), Halt> {
+        let text = option.to_owned();
+        self.act(log, "type to filter", None, move |backend| {
+            backend.execute(JevOperation::TypeText, None, Some(text))
+        })
+        .await?;
+        self.history
+            .push("typed into the focused field to filter it".to_owned());
+        Ok(())
+    }
+
+    /// Types `option` into the search box of `what`, so an autocomplete
+    /// lists it; nothing happens when no field takes text.
+    async fn type_to_filter(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        what: &str,
+        option: &str,
+    ) -> Result<(), Halt> {
+        let fields = screen
+            .candidates
+            .iter()
+            .filter(|candidate| {
+                candidate
+                    .available_actions
+                    .iter()
+                    .any(|action| action == "SetValue")
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let purpose = format!("the search box that filters the options of {what}");
+        if let Some(grounded) = self.ground(log, screen, &purpose, &purpose, fields).await? {
+            let app = self.app.clone();
+            let target = grounded.candidate;
+            let field = target.clone();
+            let text = option.to_owned();
+            let reply = self
+                .act(log, "type to filter", Some(&target), move |backend| {
+                    deliver_text(&backend, &app, &field, &text)
+                })
+                .await?;
+            if reply.ok {
+                self.history
+                    .push(format!("typed into {} to filter it", label(&target)));
+            }
+        }
+        Ok(())
     }
 
     async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
@@ -360,29 +511,25 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let by = substitute_safe(&pick.by, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
-        let groups = result_groups(&screen);
-        if groups.is_empty() {
+        let families = result_families(&screen);
+        if families.is_empty() {
             return Err(Halt::Failed(format!("no list of {from} is showing")));
         }
-        let records = groups
-            .iter()
-            .map(|group| Record {
-                fields: group
-                    .fields
-                    .iter()
-                    .enumerate()
-                    .map(|(index, text)| (format!("field {index}"), text.clone()))
-                    .collect(),
+        // A page can repeat several things (a strip of dates above the
+        // flights); a measurable criterion ranks the first list that has
+        // the measure, and judgement falls to the longest.
+        let ranked = Criterion::parse(&by).and_then(|criterion| {
+            families.iter().find_map(|groups| {
+                rank(&records_of(groups), criterion).map(|order| (groups, order[0]))
             })
-            .collect::<Vec<_>>();
-        let (best, how) =
-            match Criterion::parse(&by).and_then(|criterion| rank(&records, criterion)) {
-                Some(order) => (order[0], "ranked"),
-                None => (
-                    self.judge_pick(log, &screen, &from, &by, &groups).await?,
-                    "judged",
-                ),
-            };
+        });
+        let (groups, best, how) = if let Some((groups, best)) = ranked {
+            (groups, best, "ranked")
+        } else {
+            let groups = &families[0];
+            let best = self.judge_pick(log, &screen, &from, &by, groups).await?;
+            (groups, best, "judged")
+        };
         let group = &groups[best];
         let summary: String = group
             .fields
@@ -599,6 +746,174 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             format!("took the {taken} branch (confidence {held:.2})"),
         ))
     }
+}
+
+/// The months a date picker is paged forward at most.
+const MAX_MONTHS: usize = 12;
+
+/// Month names, as a date option spells them.
+const MONTHS: &[&str] = &[
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+];
+
+/// Whether `option` names a calendar day: a month name and a day number.
+pub(super) fn looks_like_date(option: &str) -> bool {
+    let lower = option.to_lowercase();
+    let words = lower
+        .split(|character: char| !character.is_alphanumeric())
+        .collect::<Vec<_>>();
+    words.iter().any(|word| MONTHS.contains(word))
+        && words
+            .iter()
+            .any(|word| word.parse::<u8>().is_ok_and(|day| (1..=31).contains(&day)))
+}
+
+/// Whether a control's label says only that it shows the next month; a
+/// date field whose label lists the whole calendar says much more.
+fn is_next_month(name: &str) -> bool {
+    let words = plain(name);
+    words.contains("next month") && words.split(' ').count() <= 4
+}
+
+/// The matches whose labels say little besides the option: a container
+/// whose label strings together everything inside it (a calendar button
+/// named with every day of the month) is dropped when a plainer match exists.
+pub(super) fn closest(matches: Vec<Candidate>) -> Vec<Candidate> {
+    let length = |candidate: &Candidate| candidate.name.as_deref().map_or(0, str::len);
+    let Some(shortest) = matches.iter().map(length).min() else {
+        return matches;
+    };
+    matches
+        .into_iter()
+        .filter(|candidate| length(candidate) <= shortest.saturating_mul(3).max(shortest + 40))
+        .collect()
+}
+
+/// Lower-case words joined by single spaces, so `Sunday, 18 October` and
+/// `sunday 18 october` compare equal.
+fn plain(text: &str) -> String {
+    text.split(|character: char| !character.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(str::to_lowercase)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// The day, month, and year (when given) a date option names, as words.
+fn date_words(option: &str) -> Vec<String> {
+    plain(option)
+        .split(' ')
+        .filter(|word| {
+            MONTHS.contains(word)
+                || word.parse::<u16>().is_ok_and(|number| {
+                    (1..=31).contains(&number) || (1900..=2100).contains(&number)
+                })
+        })
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Each card's text as a record, its fields numbered in reading order.
+fn records_of(groups: &[Group]) -> Vec<Record> {
+    groups
+        .iter()
+        .map(|group| Record {
+            fields: group
+                .fields
+                .iter()
+                .enumerate()
+                .map(|(index, text)| (format!("field {index}"), text.clone()))
+                .collect(),
+        })
+        .collect()
+}
+
+/// Words beyond the option's own that a label may carry and still be the
+/// option ("Srinagar, SXR Srinagar International Airport").
+const OPTION_EXTRA_WORDS: usize = 12;
+
+/// Whether a label says far more than the option: a control whose name
+/// strings together a whole list (recent searches, every day of a month)
+/// mentions the option without being it.
+fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
+    let words = |text: &str| {
+        plain(text)
+            .split(' ')
+            .filter(|word| !word.is_empty())
+            .count()
+    };
+    candidate
+        .name
+        .as_deref()
+        .is_some_and(|name| words(name) > words(option) + OPTION_EXTRA_WORDS)
+}
+
+/// Whether an element takes typed text.
+fn editable(candidate: &Candidate) -> bool {
+    candidate
+        .available_actions
+        .iter()
+        .any(|action| action == "SetValue")
+}
+
+/// Whether every match carries the same label, as a day's button and its
+/// grid cell do.
+fn one_option(matches: &[Candidate]) -> bool {
+    let mut labels = matches
+        .iter()
+        .map(|candidate| plain(candidate.name.as_deref().unwrap_or_default()));
+    labels
+        .next()
+        .is_some_and(|first| labels.all(|label| label == first))
+}
+
+/// The match to press without judgement: a button, option, or link before a
+/// cell or container, then the shortest label.
+fn plainest(matches: Vec<Candidate>) -> Option<Candidate> {
+    let rank = |candidate: &Candidate| {
+        let role = match candidate.role.as_str() {
+            "button" | "option" | "menuitem" | "link" | "radio" => 0,
+            _ => 1,
+        };
+        (role, candidate.name.as_deref().map_or(0, str::len))
+    };
+    matches.into_iter().min_by_key(rank)
+}
+
+/// Whether an element shows `option` in its name, value, or description. A
+/// date matches by its day, month, and year, whatever the weekday or order
+/// (`Sunday, 18 October 2026` shows `18 October 2026`).
+fn mentions(candidate: &Candidate, option: &str) -> bool {
+    let wanted = plain(option);
+    let date = looks_like_date(option).then(|| date_words(option));
+    !wanted.is_empty()
+        && [
+            candidate.name.clone(),
+            candidate.description.clone(),
+            candidate.value.as_ref().map(ToString::to_string),
+        ]
+        .into_iter()
+        .flatten()
+        .any(|text| {
+            let shown = format!(" {} ", plain(&text));
+            match &date {
+                Some(words) => words
+                    .iter()
+                    .all(|word| shown.contains(&format!(" {word} "))),
+                None => shown.contains(&format!(" {wanted} ")),
+            }
+        })
 }
 
 /// Elements that can be pressed.

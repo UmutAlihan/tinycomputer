@@ -66,8 +66,23 @@ const CURRENCIES: &[(&str, &str)] = &[
     ("aed", "AED"),
 ];
 
-/// Reads the first price in `text`, such as `₹6,840`, `$1,234.56`, or
-/// `1.234,50 €`.
+/// Currency names written out, as screen readers hear prices (`From 7339
+/// Indian rupees`); the amount always comes before them. Longest first.
+const NAMED_CURRENCIES: &[(&str, &str)] = &[
+    ("indian rupees", "INR"),
+    ("rupees", "INR"),
+    ("rupee", "INR"),
+    ("us dollars", "USD"),
+    ("dollars", "USD"),
+    ("euros", "EUR"),
+    ("british pounds", "GBP"),
+    ("pounds sterling", "GBP"),
+    ("japanese yen", "JPY"),
+    ("dirhams", "AED"),
+];
+
+/// Reads the first price in `text`, such as `₹6,840`, `$1,234.56`,
+/// `1.234,50 €`, or `7339 Indian rupees`.
 ///
 /// Separators are resolved by position: when both `.` and `,` appear, the
 /// later one is the decimal mark; a lone `,` followed by exactly two digits
@@ -89,17 +104,29 @@ pub fn parse_price(text: &str) -> Option<Price> {
             .find(|(at, _)| standalone(&lower, *at, marker))
             .map(|(at, _)| (at, at + marker.len(), *code))
     });
-    let (number, currency) = match marked {
-        // The amount sits right after the marker (`₹6,840`), else right
-        // before it (`1.234,50 €`).
-        Some((start, end, code)) => (
+    let named = || {
+        NAMED_CURRENCIES.iter().find_map(|(name, code)| {
+            lower
+                .match_indices(name)
+                .filter(|(at, _)| standalone(&lower, *at, name))
+                .find_map(|(at, _)| number_before(&text[..at]))
+                .map(|number| (number, *code))
+        })
+    };
+    // The amount sits right after a marker (`₹6,840`), else right before it
+    // (`1.234,50 €`); a written-out name always follows its amount.
+    let (number, currency) = if let Some((start, end, code)) = marked {
+        (
             number_after(&text[end..]).or_else(|| number_before(&text[..start]))?,
             Some(code),
-        ),
-        None => (
+        )
+    } else if let Some((number, code)) = named() {
+        (number, Some(code))
+    } else {
+        (
             digits(&text[text.find(|character: char| character.is_ascii_digit())?..]),
             None,
-        ),
+        )
     };
     Some(Price {
         amount: decimal(&number)?,

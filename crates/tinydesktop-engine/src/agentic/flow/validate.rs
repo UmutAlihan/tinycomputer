@@ -56,13 +56,14 @@ pub(crate) fn check(
     }
     let mut defined = known.clone();
     defined.extend(flow.vars.keys().cloned());
+    let facts = carrying_facts(&flow.vars, facts);
     let mut count = 0;
     walk(
         &flow.steps,
         "",
         0,
         &mut defined,
-        facts,
+        &facts,
         &mut count,
         &mut errors,
     );
@@ -274,6 +275,27 @@ fn undefined(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeS
             ));
         }
     }
+}
+
+/// `facts`, plus every flow variable whose own definition names one.
+///
+/// The runtime expands a flow's `vars` against the caller's values once, so
+/// `"first_name": "${first name}"` holds the fact's value from then on and
+/// must be kept out of model-facing text exactly like the fact itself.
+/// Expansion is a single pass against the caller's values, so one level of
+/// definitions is all that can carry a fact.
+pub(super) fn carrying_facts(
+    flow_vars: &BTreeMap<String, String>,
+    facts: &BTreeSet<String>,
+) -> BTreeSet<String> {
+    let mut carrying = facts.clone();
+    carrying.extend(
+        flow_vars
+            .iter()
+            .filter(|(_, value)| references(value).iter().any(|name| facts.contains(name)))
+            .map(|(name, _)| name.clone()),
+    );
+    carrying
 }
 
 /// The variables `flow` uses before anything defines them, in first-use
