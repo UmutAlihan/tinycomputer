@@ -133,6 +133,15 @@ fn press_booking(sim: &mut Sim, name: &str) {
     }
 }
 
+/// The preselected fare radio, when the simulator shows one.
+fn checked_fare(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
+    if let Some(fare) = sim.checked_fare {
+        let mut radio = node(fare, "radio", &["Click"], &[root, "group \"Fares\""], 200.0);
+        radio.states = vec!["checked".to_owned()];
+        candidates.push(radio);
+    }
+}
+
 /// The booking form's controls, as they stand.
 fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec<Candidate>) {
     let widget = [root, "group \"Booking\""];
@@ -313,17 +322,7 @@ impl App {
                 40.0,
             ));
         } else {
-            if let Some(fare) = sim.checked_fare {
-                let mut radio = node(
-                    fare,
-                    "radio",
-                    &["Click"],
-                    &[&root, "group \"Fares\""],
-                    200.0,
-                );
-                radio.states = vec!["checked".to_owned()];
-                candidates.push(radio);
-            }
+            checked_fare(&sim, &root, &mut candidates);
             candidates.push(node(
                 "New Message",
                 "button",
