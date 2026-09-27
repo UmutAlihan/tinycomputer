@@ -184,13 +184,16 @@ is `goal`, `app`, `window`, `surface`, and the last eight `recent_actions`.
 
 | Id | Type | Given | Answer used as |
 |---|---|---|---|
-| `operation` | Choice | `WAIT`, `DONE`, `BLOCKED`, `WIDEN` (when scoped), and each operation some element supports: `CLICK`, `TYPE_TEXT`, `CHECK`, `UNCHECK`, `EXPAND`, `COLLAPSE`, `SCROLL`, `DRILL` | the next operation; under 0.55 it does not act, unless the target's name is in the goal and it is at least 0.45 |
+| `operation` | Choice | `WAIT`, `DONE`, `BLOCKED`, `WIDEN` (when scoped), and each operation some element supports: `CLICK`, `TYPE_TEXT`, `CHECK`, `UNCHECK`, `EXPAND`, `COLLAPSE`, `SCROLL`, `DRILL` | the next operation; see the gate below |
 | `destructive` | Noul | the goal | at 0.50, the action needs confirmation |
 | `click_target`, `type_text_target`, … | Choice per operation | the elements that support it | the element for the chosen operation |
 | `target` (rerank) | Choice | a shortlist from a close first call | breaks a tie under 0.70 |
 
-The goal loop never lets Jev end the task: only the caller's accessibility
-predicates do.
+The gate (`policy::gate`) turns the answers into one decision: `DONE` and
+`BLOCKED` need 0.70; any other operation abstains under 0.55 (0.45 when the
+target's name appears in the goal); a `destructive` of 0.50 or more asks for
+confirmation; and it acts at 0.70, or below that only on a named match.
+`DONE` is advisory: only the caller's accessibility predicates end the task.
 
 ## What to expect from Jev
 
