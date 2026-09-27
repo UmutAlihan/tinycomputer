@@ -201,7 +201,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// The final Choice, re-asked and corroborated when it is not confident.
-    async fn decide(
+    pub(super) async fn decide(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,

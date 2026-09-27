@@ -594,6 +594,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             };
             log.confidence = Some(confidence);
             self.vars.insert(read.into.clone(), text.clone());
+            self.read_into(&read.into);
             self.history
                 .push(format!("read {what} from {source} into {}", read.into));
             return Ok(Ended::new(
@@ -646,6 +647,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .collect();
         if let Some(into) = &pick.into {
             self.vars.insert(into.clone(), summary.clone());
+            self.read_into(into);
         }
         let Some(primary) = group.primary.clone() else {
             return Err(Halt::Failed(format!(
