@@ -16,7 +16,7 @@ pub(super) enum Next {
     /// Stop with this status. For an approval, `resume` holds what to run
     /// once it is granted.
     Stop {
-        status: TaskStatus,
+        status: Box<TaskStatus>,
         resume: Option<Resume>,
     },
 }
@@ -123,7 +123,7 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult) -> Next {
     if consequence(&target) == Consequence::Payment || consequence(&phrase) == Consequence::Payment
     {
         return Next::Stop {
-            status: TaskStatus::Checkpoint {
+            status: Box::new(TaskStatus::Checkpoint {
                 reason: format!(
                     "reached the payment step ({target}); payment is always left to you"
                 ),
@@ -131,18 +131,18 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult) -> Next {
                 screenshot: None,
                 summary: summary(result),
                 continuable: false,
-            },
+            }),
             resume: None,
         };
     }
     let index = gated.and_then(|step| top_index(&step.path));
     let rest = index.map_or_else(Vec::new, |index| flow.steps[index + 1..].to_vec());
     Next::Stop {
-        status: TaskStatus::NeedsApproval {
+        status: Box::new(TaskStatus::NeedsApproval {
             action: phrase.clone(),
             target,
             screenshot: None,
-        },
+        }),
         resume: Some(Resume {
             phrase,
             app: app_at(flow, index.unwrap_or(flow.steps.len())),
@@ -199,12 +199,12 @@ pub(super) fn finished(steps: &[StepReport]) -> usize {
 
 fn failed(step: Option<usize>, reason: String, hint: String, recoverable: bool) -> Next {
     Next::Stop {
-        status: TaskStatus::Failed {
+        status: Box::new(TaskStatus::Failed {
             step,
             reason,
             hint,
             recoverable,
-        },
+        }),
         resume: None,
     }
 }

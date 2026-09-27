@@ -97,7 +97,7 @@ fn flow(value: serde_json::Value) -> Flow {
 }
 
 fn start(tasks: &Tasks, flow_value: serde_json::Value, facts: &[(&str, &str)]) -> TaskView {
-    let reply = tasks.start(StartTaskRequest {
+    let reply = tasks.start(&StartTaskRequest {
         flow: Some(flow(flow_value)),
         facts: facts
             .iter()
@@ -259,22 +259,22 @@ async fn missing_values_are_asked_for_before_anything_runs() {
 #[tokio::test]
 async fn requests_that_cannot_start_are_refused_with_a_hint() {
     let (tasks, _) = controller(Vec::new());
-    let card = tasks.start(StartTaskRequest {
+    let card = tasks.start(&StartTaskRequest {
         flow: Some(flow(json!({"app": "Mail", "steps": ["x"]}))),
         facts: BTreeMap::from([("notes".to_owned(), "4111 1111 1111 1111".to_owned())]),
         ..StartTaskRequest::default()
     });
     assert_eq!(code(&card), "CARD_DATA_REFUSED");
-    let nothing = tasks.start(StartTaskRequest::default());
+    let nothing = tasks.start(&StartTaskRequest::default());
     assert_eq!(code(&nothing), "INVALID_REQUEST");
-    let invalid = tasks.start(StartTaskRequest {
+    let invalid = tasks.start(&StartTaskRequest {
         flow: Some(flow(json!({"app": "", "steps": []}))),
         ..StartTaskRequest::default()
     });
     assert_eq!(code(&invalid), "INVALID_FLOW");
     assert!(!invalid.error.unwrap().hint.is_empty());
 
-    let planless = tasks.start(StartTaskRequest {
+    let planless = tasks.start(&StartTaskRequest {
         task: Some("book the cheapest flight to Srinagar".to_owned()),
         ..StartTaskRequest::default()
     });
@@ -531,7 +531,7 @@ async fn the_store_is_bounded_and_drops_finished_tasks_first() {
     for _ in 1..MAX_TASKS {
         start(&tasks, waiting.clone(), &[]);
     }
-    let full = tasks.start(StartTaskRequest {
+    let full = tasks.start(&StartTaskRequest {
         flow: Some(flow(waiting.clone())),
         ..StartTaskRequest::default()
     });

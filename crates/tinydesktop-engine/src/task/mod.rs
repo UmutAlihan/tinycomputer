@@ -58,7 +58,7 @@ pub const MAX_AWAIT_MS: u64 = 60_000;
 /// The task controller.
 pub struct Tasks {
     runner: Arc<dyn FlowRunner>,
-    tasks: Mutex<BTreeMap<u64, Arc<Cell>>>,
+    cells: Mutex<BTreeMap<u64, Arc<Cell>>>,
     counter: AtomicU64,
 }
 
@@ -102,7 +102,7 @@ impl Tasks {
     pub fn new(runner: Arc<dyn FlowRunner>) -> Self {
         Self {
             runner,
-            tasks: Mutex::new(BTreeMap::new()),
+            cells: Mutex::new(BTreeMap::new()),
             counter: AtomicU64::new(0),
         }
     }
@@ -113,7 +113,7 @@ impl Tasks {
     ///
     /// When called outside a Tokio runtime: the task runs on a spawned worker.
     #[must_use]
-    pub fn start(&self, request: StartTaskRequest) -> AgentResponse<TaskView> {
+    pub fn start(&self, request: &StartTaskRequest) -> AgentResponse<TaskView> {
         let facts = match Facts::new(request.facts.clone()) {
             Ok(facts) => facts,
             Err(error) => {
@@ -152,7 +152,7 @@ impl Tasks {
                 true,
             ));
         }
-        let Some(cell) = self.register(&flow, facts, &request) else {
+        let Some(cell) = self.register(&flow, facts, request) else {
             return too_many();
         };
         let missing = crate::agentic::missing_inputs(&flow, &known);
@@ -253,7 +253,7 @@ impl Tasks {
     /// Every task held, newest first.
     #[must_use]
     pub fn list(&self) -> AgentResponse<Vec<TaskView>> {
-        let Ok(tasks) = self.tasks.lock() else {
+        let Ok(tasks) = self.cells.lock() else {
             return poisoned();
         };
         AgentResponse::ok(
@@ -388,7 +388,7 @@ impl Tasks {
             }),
             worker: Mutex::new(None),
         });
-        let mut tasks = self.tasks.lock().ok()?;
+        let mut tasks = self.cells.lock().ok()?;
         while tasks.len() >= MAX_TASKS {
             let oldest_final = tasks
                 .iter()
@@ -400,13 +400,13 @@ impl Tasks {
         Some(cell)
     }
 
-    fn register_planless(&self, request: StartTaskRequest) -> AgentResponse<TaskView> {
+    fn register_planless(&self, request: &StartTaskRequest) -> AgentResponse<TaskView> {
         let flow = Flow {
             app: String::new(),
             vars: BTreeMap::new(),
             steps: Vec::new(),
         };
-        let Some(cell) = self.register(&flow, Facts::default(), &request) else {
+        let Some(cell) = self.register(&flow, Facts::default(), request) else {
             return too_many();
         };
         publish(
@@ -429,7 +429,7 @@ impl Tasks {
 
     fn find(&self, id: &TaskId) -> Option<Arc<Cell>> {
         let number = id.0.strip_prefix("t-")?.parse().ok()?;
-        self.tasks.lock().ok()?.get(&number).cloned()
+        self.cells.lock().ok()?.get(&number).cloned()
     }
 }
 
@@ -485,7 +485,7 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         };
         if let Next::Stop { status, .. } = next {
             let summary = redacted.redact(&stopped_summary(&status));
-            publish(&cell, status, &summary);
+            publish(&cell, *status, &summary);
             return;
         }
     }
