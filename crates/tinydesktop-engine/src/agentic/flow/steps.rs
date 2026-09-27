@@ -225,7 +225,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
-        // `what` and `option` are shown to Jev, so a fact is never
+        // `what` and `option` are shown to Jev, so a secret is never
         // expanded into them; validation already rejects one there.
         let what = substitute_safe(&choose.what, &self.vars, &self.facts);
         let option = substitute_safe(&choose.option, &self.vars, &self.facts);
@@ -293,6 +293,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     learn(&mut self.learned, remember(&self.app, &purpose, &target));
                     self.history
                         .push(format!("chose an option with {}", label(&target)));
+                    self.remember_choice(if private {
+                        format!("chose the value in {what}")
+                    } else {
+                        format!("chose {option:?} in {what}")
+                    });
                     return Ok(Ended::new(
                         StepOutcome::Done,
                         if private {
@@ -564,6 +569,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         self.history
             .push(format!("picked {summary} ({how} by {by})"));
+        self.remember_choice(format!("picked from {from} by {by}: {summary}"));
         Ok(Ended::new(
             StepOutcome::Done,
             format!("picked {summary} ({how} by {by}, out of {})", groups.len()),
