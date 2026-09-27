@@ -97,7 +97,7 @@ impl Overlay {
         })
     }
 
-    /// The height of the primary display, which AppKit's bottom-left origin
+    /// The height of the primary display, which `AppKit`'s bottom-left origin
     /// is measured from.
     fn primary_height(&self) -> f64 {
         NSScreen::screens(self.mtm)

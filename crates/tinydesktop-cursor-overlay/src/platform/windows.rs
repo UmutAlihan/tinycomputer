@@ -73,7 +73,7 @@ impl Overlay {
         };
         // SAFETY: `class_info` is fully initialized and `class` outlives the
         // call (Windows copies the name).
-        if unsafe { RegisterClassW(&class_info) } == 0 {
+        if unsafe { RegisterClassW(&raw const class_info) } == 0 {
             return None;
         }
         let sprite = Sprite::render(SCALE);
@@ -147,12 +147,12 @@ impl Overlay {
             UpdateLayeredWindow(
                 self.window,
                 self.screen,
-                &origin,
-                &size,
+                &raw const origin,
+                &raw const size,
                 frame.dc,
-                &source,
+                &raw const source,
                 0,
-                &blend,
+                &raw const blend,
                 ULW_ALPHA,
             );
             if self.shown.is_none() {
@@ -197,8 +197,16 @@ fn bitmap(screen: HDC, side: i32, bgra: &[u8]) -> Option<Bitmap> {
     let mut bits: *mut c_void = null_mut();
     // SAFETY: `info` describes a `side` × `side` 32-bit DIB; Windows
     // allocates it and writes its address to `bits`.
-    let dib: HBITMAP =
-        unsafe { CreateDIBSection(screen, &info, DIB_RGB_COLORS, &mut bits, null_mut(), 0) };
+    let dib: HBITMAP = unsafe {
+        CreateDIBSection(
+            screen,
+            &raw const info,
+            DIB_RGB_COLORS,
+            &raw mut bits,
+            null_mut(),
+            0,
+        )
+    };
     if dib.is_null() || bits.is_null() {
         return None;
     }
@@ -244,7 +252,7 @@ pub(crate) fn run(mut driver: Driver) {
     // SAFETY: `MSG` is plain data that `GetMessageW` fills in.
     let mut message: MSG = unsafe { std::mem::zeroed() };
     // SAFETY: the standard message loop over this thread's queue.
-    while unsafe { GetMessageW(&mut message, null_mut(), 0, 0) } > 0 {
+    while unsafe { GetMessageW(&raw mut message, null_mut(), 0, 0) } > 0 {
         if message.message == WM_TIMER {
             match driver.tick() {
                 Tick::Show(picture) => overlay.show(picture),
@@ -255,8 +263,8 @@ pub(crate) fn run(mut driver: Driver) {
         }
         // SAFETY: `message` was just filled in by `GetMessageW`.
         unsafe {
-            TranslateMessage(&message);
-            DispatchMessageW(&message);
+            TranslateMessage(&raw const message);
+            DispatchMessageW(&raw const message);
         }
     }
 }
