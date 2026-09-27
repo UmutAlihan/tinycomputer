@@ -93,4 +93,25 @@ fn is_destructive_gates_a_generic_control_on_a_payment_screen() {
         ..Candidate::default()
     });
     assert!(is_destructive(&continue_button, &screen, &[]));
+    // Filling that form commits to nothing, so its fields and choices are
+    // not gated: only the button that submits it is.
+    for (role, name) in [
+        ("textbox", "Card number"),
+        ("combobox", "Expiry month"),
+        ("option", "12"),
+        ("radio", "Saved card ending 1111"),
+    ] {
+        let control = Candidate {
+            role: role.to_owned(),
+            name: Some(name.to_owned()),
+            ..Candidate::default()
+        };
+        assert!(!is_destructive(&control, &screen, &[]), "{role} {name}");
+    }
+    let pay = Candidate {
+        role: "button".to_owned(),
+        name: Some("Pay ₹7,346".to_owned()),
+        ..Candidate::default()
+    };
+    assert!(is_destructive(&pay, &screen, &[]));
 }

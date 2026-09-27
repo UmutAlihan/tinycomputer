@@ -687,6 +687,79 @@ async fn a_declined_action_cancels_and_a_payment_is_always_a_checkpoint() {
 }
 
 #[tokio::test]
+async fn filling_the_payment_form_waits_for_approval_to_pay() {
+    let (tasks, script) = controller(vec![
+        gated("Pay ₹6,840", "paying for the booking"),
+        finished_run(FlowStopReason::Completed, vec![], &[], None),
+        finished_run(FlowStopReason::Completed, vec![], &[], None),
+    ]);
+    let started = tasks.start(&StartTaskRequest {
+        task: Some("book the cheapest flight to Srinagar and pay with my card".to_owned()),
+        flow: Some(flow(mail_flow())),
+        facts: BTreeMap::from([
+            ("first name".to_owned(), "Asha".to_owned()),
+            ("card number".to_owned(), "4111111111111111".to_owned()),
+        ]),
+        constraints: TaskConstraints {
+            payment: PaymentMode::FillThenApprove,
+            origins: vec!["https://.airline.test".to_owned()],
+            ..TaskConstraints::default()
+        },
+        budget: tinydesktop_bus::agent::TaskBudget {
+            votes: Some(7),
+            ..tinydesktop_bus::agent::TaskBudget::default()
+        },
+        ..StartTaskRequest::default()
+    });
+    let view = started.data.unwrap();
+    let paused = settle(&tasks, &view.id).await;
+    let TaskStatus::NeedsApproval { target, .. } = &paused.status else {
+        panic!("{:?}", paused.status);
+    };
+    assert_eq!(target, "Pay ₹6,840");
+    {
+        let requests = script.requests.lock().unwrap();
+        let request = &requests[0];
+        assert_eq!(request.votes, 7);
+        assert_eq!(
+            request.brief.goal,
+            "book the cheapest flight to Srinagar and pay with my card"
+        );
+        assert_eq!(request.brief.details["first name"], "Asha");
+        assert_eq!(request.brief.secrets, ["card number"]);
+        assert!(
+            !serde_json::to_string(&request.brief)
+                .unwrap()
+                .contains("4111")
+        );
+        assert!(
+            request
+                .brief
+                .rules
+                .iter()
+                .any(|rule| rule.contains("Fill the payment form")),
+            "{:?}",
+            request.brief.rules
+        );
+    }
+    let paid = tasks
+        .continue_task(ContinueTaskRequest {
+            id: view.id.clone(),
+            approve: Some(true),
+            ..ContinueTaskRequest::default()
+        })
+        .data
+        .unwrap();
+    assert_eq!(paid.status, TaskStatus::Running);
+    settle(&tasks, &view.id).await;
+    let requests = script.requests.lock().unwrap();
+    assert!(
+        requests[1].allow_destructive,
+        "only the approval lets the pay control be pressed"
+    );
+}
+
+#[tokio::test]
 async fn failures_carry_the_step_the_reason_and_what_to_change() {
     let failure = |reply: DesktopResponse| async move {
         let (tasks, _) = controller(vec![reply]);
