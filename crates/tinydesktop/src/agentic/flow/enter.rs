@@ -162,11 +162,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 questions = questions.with(
                     &format!("slot_{index}"),
                     elements(
-                        &format!(
-                            "type the {} into it (the text begins {:?})",
-                            slots[*index].slot,
-                            preview(&slots[*index].text)
-                        ),
+                        &format!("type the {} into it", slots[*index].slot),
                         &offered,
                         &keys,
                         self.include_values,
