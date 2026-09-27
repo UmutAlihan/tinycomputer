@@ -17,6 +17,9 @@ adapters with Jev, TypeSafe's decision model:
 configuration. The crate holds no bus; `tinydesktop` serves these functions over
 TinyBus.
 
+- `docs/jev-harness.md` maps every layer between a request and a Jev call,
+  and `docs/jev-journal.md` the debug journal (`TINYDESKTOP_JEV_JOURNAL`)
+  that records each call and timing to disk.
 - `src/agentic/README.md` covers `RunGoal` and `ResolveIntent`.
 - `src/agentic/flow/README.md` maps the flow runtime's files, and
   `docs/decision-loops.md` explains how it grounds each step.

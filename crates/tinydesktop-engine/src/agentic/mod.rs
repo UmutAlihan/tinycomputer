@@ -5,6 +5,7 @@
 //! mapping.
 
 mod flow;
+mod journal;
 mod policy;
 mod screen;
 mod task;
@@ -44,6 +45,8 @@ use verify::{exact_label, satisfied, verify};
 
 pub(crate) use flow::{check_flow, missing_inputs};
 pub use flow::{flow_guide, run_flow, validate_flow};
+use journal::Journal;
+pub use journal::{DEFAULT_DIR as JOURNAL_DEFAULT_DIR, JOURNAL_ENV, JOURNAL_FILE};
 
 /// Configured Jev transport and non-secret policy metadata.
 #[derive(Clone)]
@@ -51,6 +54,7 @@ pub struct JevRuntime {
     client: Arc<dyn Evaluator>,
     configuration: JevConfiguration,
     pending: Arc<Mutex<HashMap<String, PendingRun>>>,
+    journal: Journal,
 }
 
 #[derive(Debug)]
@@ -65,6 +69,7 @@ struct PendingRun {
     history: Vec<String>,
     unchanged: u32,
     metrics: JevMetrics,
+    journal: Journal,
 }
 
 impl std::fmt::Debug for JevRuntime {
@@ -74,6 +79,7 @@ impl std::fmt::Debug for JevRuntime {
             .field("client", &"[configured]")
             .field("configuration", &self.configuration)
             .field("pending", &"[redacted]")
+            .field("journal", &self.journal)
             .finish()
     }
 }
@@ -125,7 +131,62 @@ impl JevRuntime {
                 endpoint_url: request.endpoint_url.clone(),
             },
             pending: Arc::new(Mutex::new(HashMap::new())),
+            journal: Journal::from_env(),
         })
+    }
+
+    /// This runtime with the debug journal written under `dir`, whatever
+    /// [`JOURNAL_ENV`] says.
+    ///
+    /// Every Jev exchange of every run, with its latency, and the time each
+    /// flow spends observing, acting, and on each step, is appended to
+    /// `<dir>/<run id>/journal.jsonl`. See `docs/jev-journal.md`.
+    #[must_use]
+    pub fn with_journal(mut self, dir: impl Into<std::path::PathBuf>) -> Self {
+        self.journal = Journal::at(dir);
+        self
+    }
+
+    /// This runtime writing its journal to the run named `run_id`, so the
+    /// several runs of one task — a flow and each continuation — share one
+    /// journal file. Does nothing when the journal is off.
+    #[must_use]
+    pub fn journaled_as(&self, run_id: &str) -> Self {
+        Self {
+            journal: self.journal.named(run_id),
+            ..self.clone()
+        }
+    }
+
+    /// The directory this runtime's current run journal is written to, if
+    /// the journal is on and a run has begun.
+    #[must_use]
+    pub fn journal_dir(&self) -> Option<std::path::PathBuf> {
+        self.journal.run_dir()
+    }
+
+    /// This runtime writing to `journal`.
+    fn within(self, journal: Journal) -> Self {
+        Self { journal, ..self }
+    }
+
+    /// This runtime with a run of `kind` begun in its journal.
+    fn begin_run(&self, kind: &str, label: &str) -> Self {
+        Self {
+            journal: self.journal.begin(kind, label, &self.configuration.model),
+            ..self.clone()
+        }
+    }
+
+    /// Asks Jev one request, journaling the exchange against `step`.
+    async fn evaluate(
+        &self,
+        step: Option<&str>,
+        request: &EvaluationRequest,
+    ) -> std::result::Result<EvaluationResult, EvaluationFailure> {
+        let outcome = self.client.evaluate(request).await;
+        self.journal.exchange(step, request, outcome.as_ref());
+        outcome
     }
 }
 
@@ -202,6 +263,7 @@ async fn resolve_intent_with<B: AgentBackend>(
     runtime: JevRuntime,
     request: ResolveIntentRequest,
 ) -> DesktopResponse {
+    let runtime = runtime.begin_run("intent", &format!("{}: {}", request.app, request.intent));
     let result = resolve(
         &backend,
         &runtime,
@@ -240,6 +302,7 @@ async fn run_goal_with<B: AgentBackend>(
     if let Some(continuation) = request.continuation.clone() {
         return continue_goal(backend, runtime, continuation).await;
     }
+    let runtime = runtime.begin_run("goal", &format!("{}: {}", request.app, request.goal));
     run_goal_fresh(backend, runtime, request, Vec::new(), 0).await
 }
 
@@ -369,6 +432,10 @@ async fn continue_goal<B: AgentBackend>(
         Ok(pending) => pending,
         Err(reply) => return *reply,
     };
+    // A continuation writes to the journal of the run it continues.
+    let runtime = runtime
+        .within(pending.journal.clone())
+        .begin_run("goal-continuation", &pending.request.goal);
     let (fresh, delivered_unverified) = match execute_pending_action(&backend, &pending).await {
         Ok(executed) => executed,
         Err(reply) => return *reply,
@@ -914,15 +981,17 @@ async fn resolve_on_screen<B: AgentBackend>(
     }
     let space = scoped_action_space(screen, text.is_some(), scope);
     let evaluation = runtime
-        .client
-        .evaluate(&policy::request(
-            &runtime.configuration.model,
-            intent,
-            screen,
-            &space,
-            history,
-            include_values,
-        ))
+        .evaluate(
+            Some(intent),
+            &policy::request(
+                &runtime.configuration.model,
+                intent,
+                screen,
+                &space,
+                history,
+                include_values,
+            ),
+        )
         .await
         .map_err(|error| provider_error(&error))?;
     let answers = &evaluation.response.answers;
@@ -1143,15 +1212,17 @@ async fn rerank(
     }
     let evaluation = input
         .runtime
-        .client
-        .evaluate(&policy::rerank_request(
-            &input.runtime.configuration.model,
-            input.intent,
-            input.screen,
-            input.operation,
-            &candidates,
-            input.include_values,
-        ))
+        .evaluate(
+            Some(input.intent),
+            &policy::rerank_request(
+                &input.runtime.configuration.model,
+                input.intent,
+                input.screen,
+                input.operation,
+                &candidates,
+                input.include_values,
+            ),
+        )
         .await
         .map_err(|error| provider_error(&error))?;
     let selected =

@@ -26,9 +26,11 @@ its rationale are in `docs/specs/jev-intent-flows.md`, and
 
 - Every Choice offers at most 20 options plus `none`; a pool larger than that
   is narrowed, never silently truncated.
-- Budgets: `max_actions` (≤ 120) and `max_model_calls` (≤ 300) per run; a `do`
+- Budgets: `max_actions` (≤ 120) and `max_model_calls` (≤ 5000, every voted framing
+  counting as one) per run; a `do`
   step takes at most 8 turns.
 - Irreversible controls are pressed only by `stop_before` with
   `allow_destructive`.
-- The runtime holds no files and no state between runs; grounding hints travel
-  in the request and the result.
+- The runtime holds no state between runs; grounding hints travel in the
+  request and the result. The only files it writes are the opt-in debug
+  journal's (`../journal/`), best effort, never read back.

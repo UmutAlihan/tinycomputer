@@ -2093,8 +2093,8 @@ dependencies = [
  "tinydesktop-bus",
  "tinydesktop-core",
  "tinydesktop-desktop",
+ "tinyinference-decisions",
  "tinyinference-llm",
- "tinyinference_decisions",
  "tokio",
 ]
 
@@ -2133,6 +2133,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinyinference-decisions"
+version = "0.3.0"
+dependencies = [
+ "async-trait",
+ "httpdate",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "tokio",
+]
+
+[[package]]
 name = "tinyinference-llm"
 version = "0.3.0"
 dependencies = [
@@ -2148,18 +2161,6 @@ dependencies = [
  "tinytools-agent",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "tinyinference_decisions"
-version = "0.3.0"
-dependencies = [
- "httpdate",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.20",
- "tokio",
 ]
 
 [[package]]

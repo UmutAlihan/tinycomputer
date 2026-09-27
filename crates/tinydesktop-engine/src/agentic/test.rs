@@ -480,6 +480,7 @@ fn runtime_recording(
                 endpoint_url: None,
             },
             pending: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            journal: super::journal::Journal::default(),
         },
         requests,
     )

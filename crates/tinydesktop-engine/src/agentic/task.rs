@@ -288,6 +288,7 @@ impl<B: AgentBackend> GoalLoop<B> {
         queue_confirmation(
             &self.runtime,
             PendingRun {
+                journal: self.runtime.journal.clone(),
                 created: Instant::now(),
                 started: self.started,
                 request: RunGoalRequest {

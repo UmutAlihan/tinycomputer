@@ -20,7 +20,7 @@ tinydesktop-core = { workspace = true }
 # The desktop surface the runtime observes and acts on.
 tinydesktop-desktop = { workspace = true }
 # The Jev decisions client every loop asks.
-tinyinference_decisions = { workspace = true }
+tinyinference-decisions = { workspace = true }
 # Snapshots, replies, and Jev state are JSON values throughout.
 serde_json = { workspace = true }
 serde = { workspace = true }

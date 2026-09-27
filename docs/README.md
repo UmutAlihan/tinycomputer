@@ -11,6 +11,7 @@ where it cannot drift.
 docs/
 ├── README.md      # this index
 ├── architecture.md, decision-loops.md, tasks.md   # how the system works
+├── jev-harness.md, jev-journal.md                  # the Jev stack; debugging it
 ├── lab.md, docker-lab.md                          # live runs
 ├── evals/         # recorded live results
 ├── specs/         # behavior and architecture specifications
@@ -35,8 +36,13 @@ Start with these, in order:
 
 - [`architecture.md`](architecture.md): the crates, how a call travels from
   the bus to a click, threading, configuration, and the safety checks.
+- [`jev-harness.md`](jev-harness.md): the map of the Jev stack — every layer
+  from a request to a Jev call, what each adds, where the time goes, and how
+  each is tested and observed.
 - [`decision-loops.md`](decision-loops.md): how the flow runtime grounds each
   step on a live screen, every question it asks Jev, and every threshold.
+- [`jev-journal.md`](jev-journal.md): the debug journal — every Jev exchange
+  and timing of a run on disk — and how to use it to find latency.
 - [`tasks.md`](tasks.md): the task API for outside agents, pausing and
   resuming, private values, budgets, and the planner.
 - [`lab.md`](lab.md) and [`docker-lab.md`](docker-lab.md): running flows on a

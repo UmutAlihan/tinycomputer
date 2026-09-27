@@ -89,9 +89,12 @@ impl FlowRunner for WorkspaceRunner {
         constraints: &TaskConstraints,
         request: tinydesktop_bus::RunFlowRequest,
     ) -> FlowFuture {
-        let Some(runtime) = self.jev.clone() else {
+        let Some(runtime) = self.jev.as_ref() else {
             return Box::pin(async { jev_not_configured("run-flow") });
         };
+        // Every run of one task — the first flow and each continuation —
+        // journals to one file, so a task reads back as one story.
+        let runtime = runtime.journaled_as(&format!("task-{task}"));
         Box::pin(tinydesktop_engine::run_flow(
             self.workspace(task, constraints),
             runtime,
