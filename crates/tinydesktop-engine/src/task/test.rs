@@ -1048,3 +1048,28 @@ async fn extracted_rows_become_structured_records() {
     assert_eq!(records["flights"].len(), 2);
     assert_eq!(records["flights"][1]["field 2"], "₹7,210");
 }
+
+#[tokio::test]
+async fn a_run_gets_the_callers_values_and_the_flow_keeps_its_own_definitions() {
+    let (tasks, script) = controller(Vec::new());
+    start(
+        &tasks,
+        json!({"app": "browser", "vars": {"first_name": "${first name}"}, "steps": [
+            {"enter": {"first name": "${first_name}"}}
+        ]}),
+        &[("first name", "Asha")],
+    );
+    for _ in 0..50 {
+        if !script.requests.lock().unwrap().is_empty() {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+    let request = &script.requests.lock().unwrap()[0];
+    assert_eq!(request.vars["first name"], "Asha");
+    assert!(
+        !request.vars.contains_key("first_name"),
+        "a definition passed as a caller value would shadow its expansion"
+    );
+    assert_eq!(request.flow.vars["first_name"], "${first name}");
+}
