@@ -193,6 +193,7 @@ impl App {
             candidates,
             context: vec![format!("{window} heading")],
             unexplored: Vec::new(),
+            text_nodes: Vec::new(),
         }
     }
 }
