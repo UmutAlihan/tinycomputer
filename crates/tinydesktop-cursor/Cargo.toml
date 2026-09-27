@@ -17,11 +17,10 @@ publish = false
 serde = { workspace = true }
 # Derive macros for the crate-wide error type in `src/error/`.
 thiserror = { workspace = true }
+# The overlay protocol: one JSON command per line.
+serde_json = { workspace = true }
 # Seeds an unseeded cursor, so two runs never trace the same path.
 getrandom = { workspace = true }
-
-[dev-dependencies]
-serde_json = { workspace = true }
 
 [lints]
 workspace = true
