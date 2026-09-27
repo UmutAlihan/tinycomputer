@@ -6,12 +6,12 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::{Arc, Mutex};
 
 use serde_json::json;
 use tinydesktop_bus::agent::{
-    AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputKind, StartTaskRequest,
+    AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputKind, PaymentMode, StartTaskRequest,
     TaskConstraints, TaskId, TaskStatus, TaskView,
 };
 use tinydesktop_bus::{
@@ -386,7 +386,11 @@ async fn requests_that_cannot_start_are_refused_with_a_hint() {
         facts: BTreeMap::from([("email".to_owned(), "sam@example.com".to_owned())]),
         ..StartTaskRequest::default()
     });
-    assert!(shared.ok, "a shared fact may be named in any step: {:?}", shared.error);
+    assert!(
+        shared.ok,
+        "a shared fact may be named in any step: {:?}",
+        shared.error
+    );
 
     let planless = tasks.start(&StartTaskRequest {
         task: Some("book the cheapest flight to Srinagar".to_owned()),
