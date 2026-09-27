@@ -80,6 +80,8 @@ struct Sim {
     extra_buttons: usize,
     /// A booking form with an autocomplete destination and a calendar.
     booking: Option<Booking>,
+    /// A fare radio shown already checked, as a fare page preselects one.
+    checked_fare: Option<&'static str>,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -311,6 +313,17 @@ impl App {
                 40.0,
             ));
         } else {
+            if let Some(fare) = sim.checked_fare {
+                let mut radio = node(
+                    fare,
+                    "radio",
+                    &["Click"],
+                    &[&root, "group \"Fares\""],
+                    200.0,
+                );
+                radio.states = vec!["checked".to_owned()];
+                candidates.push(radio);
+            }
             candidates.push(node(
                 "New Message",
                 "button",
@@ -3618,4 +3631,19 @@ async fn a_reveal_that_fails_leaves_the_other_ways_to_try() {
         "every way was tried before giving up: {}",
         run.result.steps[0].note
     );
+}
+
+#[tokio::test]
+async fn an_option_already_chosen_is_not_clicked_again() {
+    let run = run(
+        App::with(|sim| {
+            sim.checked_fare = Some("Saver fare ₹7,346 with 15 kg check-in bag allowance and more");
+        }),
+        json!({"app": "Mail", "steps": [{"choose": {"what": "the fare type", "option": "Saver"}}]}),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::AlreadyDone);
+    assert!(run.app.sim().clicks.is_empty());
+    assert!(run.requests.is_empty(), "nothing needed asking");
 }
