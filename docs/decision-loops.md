@@ -9,14 +9,11 @@ it applies without asking anyone.
 If you only want to write flows, read the authoring guide
 ([`crates/tinycomputer-bus/src/flow/guide.md`](../crates/tinycomputer-bus/src/flow/guide.md))
 instead. This page is for people changing the runtime or trying to work out why
-a run did what it did. Three companions go deeper:
-
-- [`jev-questions.md`](jev-questions.md): every input Jev receives and every
-  question id, with its type, its options, and how its answer is used;
-- [`flow-examples.md`](flow-examples.md): real flows traced decision by
-  decision, what each step kind costs, and what failures look like;
-- [`jev-harness.md`](jev-harness.md): the layers around these loops, and
-  where their time goes.
+a run did what it did. Companions: [`jev-questions.md`](jev-questions.md)
+(every Jev input and question id, and how each answer is used),
+[`flow-examples.md`](flow-examples.md) (real flows traced decision by
+decision), and [`jev-harness.md`](jev-harness.md) (the layers around these
+loops, and where their time goes).
 
 ## The division of labour
 
@@ -67,14 +64,9 @@ flow ──► step driver ──► one step ──► its loops ──► Flow
 | `stop_before` | grounding, then a condition | `target`, …, then `holds` | which control is irreversible; whether it acted |
 | `open`, `browse` | none | none | nothing: launch or navigate |
 
-On the web every request also carries `page_kind`. Jev answers each question
-with one of three shapes:
-
-| Type | Answer | Read as |
-|---|---|---|
-| Noul | `{"noul": 0.82}` | a probability, often calibrated against a negated twin |
-| Score | `{"probabilities": {"0": …, "4": …}}` over ordered levels | the top level's probability, or the expected level |
-| Choice | `{"choice": "3", "probabilities": {…}}` | the chosen key and its probability; `none` means nothing fits |
+On the web every request also carries `page_kind`. Each answer is a Noul's
+probability, a Score's per-level probabilities, or a Choice's key with its
+probabilities; [`jev-questions.md`](jev-questions.md) shows the wire shapes.
 
 ## What Jev is shown
 
