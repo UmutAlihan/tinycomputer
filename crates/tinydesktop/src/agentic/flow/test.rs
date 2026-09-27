@@ -36,21 +36,38 @@ use super::{
 
 // ---------------------------------------------------------------- simulator
 
+/// Fixed behaviours a test gives the simulated app.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Quirk {
+    /// Set-value on the body is silently ignored, as in a rich-text editor.
+    BodyIgnoresSetValue,
+    /// Every extra row sits in one list instead of three.
+    OneRegion,
+    /// No action changes anything.
+    Frozen,
+    /// Observation fails.
+    FailObserve,
+    /// Launching fails.
+    FailLaunch,
+}
+
 #[derive(Debug, Default)]
 struct Sim {
     compose_open: bool,
-    fields: BTreeMap<String, String>,
     sent: bool,
+    obstacle: bool,
+    fields: BTreeMap<String, String>,
     presses: Vec<String>,
     clicks: Vec<String>,
     launched: Vec<String>,
-    body_ignores_set_value: bool,
     extra_buttons: usize,
-    one_region: bool,
-    obstacle: bool,
-    frozen: bool,
-    fail_observe: bool,
-    fail_launch: bool,
+    quirks: BTreeSet<Quirk>,
+}
+
+impl Sim {
+    fn has(&self, quirk: Quirk) -> bool {
+        self.quirks.contains(&quirk)
+    }
 }
 
 #[derive(Clone, Default)]
@@ -128,7 +145,7 @@ impl App {
                 40.0,
             ));
             for index in 0..sim.extra_buttons {
-                let region = if sim.one_region {
+                let region = if sim.has(Quirk::OneRegion) {
                     "list \"Messages\"".to_owned()
                 } else {
                     format!("list \"Region {}\"", index % 3)
@@ -180,7 +197,7 @@ impl AgentBackend for App {
         _root: Option<&str>,
         _depth: Depth,
     ) -> Result<Screen, Box<DesktopResponse>> {
-        if self.sim().fail_observe {
+        if self.sim().has(Quirk::FailObserve) {
             return Err(Box::new(DesktopResponse::err(
                 "snapshot",
                 tinydesktop_bus::DesktopError::new("APP_NOT_FOUND", "no such app"),
@@ -196,7 +213,7 @@ impl AgentBackend for App {
         text: Option<String>,
     ) -> DesktopResponse {
         let mut sim = self.sim();
-        if sim.frozen {
+        if sim.has(Quirk::Frozen) {
             return DesktopResponse::ok("fake", json!({}));
         }
         let name = target
@@ -214,10 +231,8 @@ impl AgentBackend for App {
                     _ => {}
                 }
             }
-            JevOperation::TypeText => {
-                if !(name == "Body" && sim.body_ignores_set_value) {
-                    sim.fields.insert(name, text.unwrap_or_default());
-                }
+            JevOperation::TypeText if !(name == "Body" && sim.has(Quirk::BodyIgnoresSetValue)) => {
+                sim.fields.insert(name, text.unwrap_or_default());
             }
             _ => {}
         }
@@ -239,7 +254,7 @@ impl AgentBackend for App {
     fn press(&self, _app: &str, combo: &str) -> DesktopResponse {
         let mut sim = self.sim();
         sim.presses.push(combo.to_owned());
-        if sim.frozen {
+        if sim.has(Quirk::Frozen) {
             return DesktopResponse::ok("press", json!({}));
         }
         match combo {
@@ -253,7 +268,7 @@ impl AgentBackend for App {
     fn launch(&self, app: &str) -> DesktopResponse {
         let mut sim = self.sim();
         sim.launched.push(app.to_owned());
-        if sim.fail_launch {
+        if sim.has(Quirk::FailLaunch) {
             return DesktopResponse::err(
                 "launch",
                 tinydesktop_bus::DesktopError::new("APP_NOT_FOUND", "no such app"),
@@ -534,7 +549,7 @@ fn choice_sizes(requests: &[EvaluationRequest]) -> Vec<usize> {
 
 #[tokio::test]
 async fn a_mail_compose_flow_fills_every_field_and_stops_in_front_of_send() {
-    let app = App::with(|sim| sim.body_ignores_set_value = true);
+    let app = App::with(|sim| sim.quirks.insert(Quirk::BodyIgnoresSetValue));
     let run = run(app, mail_flow()).await;
 
     assert_eq!(run.result.stop, FlowStopReason::StoppedBeforeDestructive);
@@ -686,7 +701,7 @@ async fn one_crowded_region_falls_back_to_a_knockout() {
     let run = run_with(
         App::with(|sim| {
             sim.extra_buttons = 45;
-            sim.one_region = true;
+            sim.quirks.insert(Quirk::OneRegion);
         }),
         json!({"app": "Mail", "steps": ["open message 7"]}),
         |_| {},
@@ -808,7 +823,7 @@ async fn a_regression_is_undone_and_the_element_is_not_tried_again() {
 #[tokio::test]
 async fn actions_that_change_nothing_fail_the_step() {
     let run = run(
-        App::with(|sim| sim.frozen = true),
+        App::with(|sim| sim.quirks.insert(Quirk::Frozen)),
         json!({"app": "Mail", "steps": ["start a new email message"]}),
     )
     .await;
@@ -965,7 +980,7 @@ async fn control_steps_branch_repeat_read_and_wait() {
 #[tokio::test]
 async fn a_repeat_that_never_holds_and_a_failing_verify_fail_the_flow() {
     let repeat = run(
-        App::with(|sim| sim.frozen = true),
+        App::with(|sim| sim.quirks.insert(Quirk::Frozen)),
         json!({"app": "Mail", "steps": [
             {"repeat_until": {"condition": "a compose window is open",
                               "steps": [{"wait_for": "nothing"}], "max": 1}}
@@ -1091,7 +1106,7 @@ async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
     assert_eq!(calls.result.stop, FlowStopReason::ModelBudget);
 
     let unopened = run(
-        App::with(|sim| sim.fail_launch = true),
+        App::with(|sim| sim.quirks.insert(Quirk::FailLaunch)),
         json!({"app": "Mail", "steps": [{"open": "Nope"}]}),
     )
     .await;
@@ -1099,7 +1114,7 @@ async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
     assert!(unopened.result.steps[0].note.contains("APP_NOT_FOUND"));
 
     let unreadable = run(
-        App::with(|sim| sim.fail_observe = true),
+        App::with(|sim| sim.quirks.insert(Quirk::FailObserve)),
         json!({"app": "Mail", "steps": ["anything"]}),
     )
     .await;
@@ -1302,10 +1317,10 @@ fn memory_matches_by_role_name_and_path_tail_and_replaces_old_hints() {
     let hint = memory::remember("Mail", "The Subject", &field);
     assert_eq!(hint.key, "the subject");
     let pool = [field.clone()];
-    assert!(memory::recall(&[hint.clone()], "Mail", "the subject!", &pool).is_some());
-    assert!(memory::recall(&[hint.clone()], "Notes", "the subject", &pool).is_none());
+    assert!(memory::recall(std::slice::from_ref(&hint), "Mail", "the subject!", &pool).is_some());
+    assert!(memory::recall(std::slice::from_ref(&hint), "Notes", "the subject", &pool).is_none());
     let moved = node("Subject", "textfield", &[], &["elsewhere"], 0.0);
-    assert!(memory::recall(&[hint.clone()], "Mail", "the subject", &[moved]).is_none());
+    assert!(memory::recall(std::slice::from_ref(&hint), "Mail", "the subject", &[moved]).is_none());
     let mut hints = vec![hint.clone()];
     memory::learn(&mut hints, hint);
     assert_eq!(hints.len(), 1);
