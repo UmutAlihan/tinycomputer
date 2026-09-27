@@ -56,7 +56,9 @@ has `""`, and goal and intent runs carry their goal or intent text.
 |---|---|---|
 | `run` | a run begins | `kind` (`flow`, `goal`, `goal-continuation`, `intent`), `label`, `model`, `pid` |
 | `exchange` | every Jev call, one per framing | `step`, `questions` (ids), `request_bytes`, `request` (the exact `EvaluationRequest`), `ok`, `latency_ms`, `attempts`; on success `request_id`, `model`, `input_tokens`, `output_tokens`, `answers`; on failure `error` |
-| `decision` | a flow decision is merged | `step`, `questions`, `framings`, `answered`, `wall_ms` — what the step actually waited |
+| `decision` | a flow decision is merged | `step`, `questions`, `framings`, `answered`, `request_bytes`, `wall_ms` — what the step actually waited |
+| `turn` | a `do` turn ends | `step`, `turn`, `decisions` (made one after another in that turn), `wall_ms` |
+| `survey` | the wide strategy surveys a crowded screen | `step`, `regions` asked about, `most_relevant` (region ids), `distractions` |
 | `observe` | a flow reads the screen | `step`, `part` (`screen` or `subtree`), `wall_ms`, `ok`, `candidates`, `unexplored` |
 | `action` | a flow acts | `step`, `action`, `target`, `ok`, `note`, `wall_ms`, `settle_ms` |
 | `step` | a flow step ends | `step`, `kind`, `text`, `outcome`, `note`, `turns`, `jev_calls`, `actions`, `loops`, `confidence`, `wall_ms` |

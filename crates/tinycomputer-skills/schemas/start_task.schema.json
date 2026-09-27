@@ -33,7 +33,8 @@
         "max_actions": {"type": "integer"},
         "max_model_calls": {"type": "integer"},
         "max_elapsed_ms": {"type": "integer"},
-        "votes": {"type": "integer", "description": "How many ways each decision is asked before its answers are averaged."}
+        "votes": {"type": "integer", "description": "How many ways each decision is asked before its answers are averaged."},
+        "strategy": {"type": "string", "enum": ["narrow", "wide"], "description": "How each decision is asked: many small requests (narrow, the default), or one request per turn over a digest of the screen with a working memory (wide)."}
       }
     },
     "trace": {"type": "boolean"}
