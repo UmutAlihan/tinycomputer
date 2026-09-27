@@ -186,20 +186,22 @@ pub fn data<T: DeserializeOwned>(reply: DesktopResponse) -> Result<T, LabError> 
 }
 
 async fn wait_for_module(client: &Connection) -> Result<(), LabError> {
-    let mut remaining = 50;
-    loop {
-        match client.name_has_owner(names::INTERFACE).await {
-            Ok(true) => return Ok(()),
-            Ok(false) if remaining > 0 => {
-                remaining -= 1;
-                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        loop {
+            if client
+                .list_names()
+                .await?
+                .iter()
+                .any(|name| name.as_str() == names::INTERFACE)
+            {
+                return Ok::<(), tinybus::Error>(());
             }
-            Ok(false) => {
-                return Err(io::Error::other("tinydesktop never claimed its interface").into());
-            }
-            Err(error) => return Err(error.into()),
+            tokio::task::yield_now().await;
         }
-    }
+    })
+    .await
+    .map_err(|_| io::Error::other("timed out waiting for tinydesktop"))??;
+    Ok(())
 }
 
 fn verify_allowlisted(module: &Path) -> Result<(), LabError> {
