@@ -1351,17 +1351,13 @@ dependencies = [
 name = "tinydesktop"
 version = "0.5.1"
 dependencies = [
- "agent-desktop-core",
- "agent-desktop-linux",
- "agent-desktop-macos",
- "agent-desktop-windows",
  "getrandom 0.4.3",
  "serde",
  "serde_json",
- "thiserror",
  "tinybus",
  "tinybus-module",
  "tinydesktop-bus",
+ "tinydesktop-desktop",
  "tinyinference_decisions",
  "tokio",
 ]
@@ -1372,6 +1368,19 @@ version = "0.5.1"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "tinydesktop-desktop"
+version = "0.5.1"
+dependencies = [
+ "agent-desktop-core",
+ "agent-desktop-linux",
+ "agent-desktop-macos",
+ "agent-desktop-windows",
+ "serde_json",
+ "thiserror",
+ "tinydesktop-bus",
 ]
 
 [[package]]
