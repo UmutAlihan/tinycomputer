@@ -40,36 +40,36 @@ const SETTLE_MS: u64 = 400;
 /// that polls forever is never idle, so this is a cap, not an expectation.
 const NETWORK_IDLE_MS: u64 = 2_000;
 
-/// Whether what covers a point is the target's own card click layer, so the
-/// click may go through it. Many result lists lay a transparent click layer
-/// over each card, so the card's own controls are always "covered" — by the
-/// card itself. Two shapes of layer are accepted:
+/// Whether what covers a point belongs to the same result card as the
+/// element that was meant, so the click may go through it. Many result lists
+/// lay a transparent click layer, or the card's own text, over each card's
+/// link, so the card's own controls are always "covered" — by the card
+/// itself.
 ///
-/// - the cover sits inside the same card (`li`, `listitem`, `row`,
-///   `article`) as the target;
-/// - the cover is an empty, non-interactive layer outside any dialog —
-///   Google Flights renders its card layer as a text-less `div` straight
-///   under `<body>` — so nothing a person could read or press is in the way.
-///
-/// Either way the target itself must be in the stack of elements at the
-/// point: `elementsFromPoint` returns every element stacked there, topmost
-/// first, and the target's name must *exactly* match one of them (a short
-/// name such as "Select" appears in almost any card, so containment is not
-/// enough). A dialog, banner, or anything with text or a role still blocks.
+/// The target is found by its name, *exactly*: among the elements stacked at
+/// the point (`elementsFromPoint`, topmost first), or, when the card's
+/// content sits over it — Google Flights puts each card's duration text
+/// above its "Select flight" link — as the one element on the page whose
+/// `aria-label` is that name. A short name such as "Select" appears in
+/// almost any card, so containment is never enough, and a label shared by
+/// two elements matches neither. The click goes through only when what is
+/// on top sits inside the target's own card (`li`, `listitem`, `row`,
+/// `article`) and inside no dialog; a banner or dialog in front still
+/// blocks it.
 const SAME_CARD_JS: &str = r#"((x, y, name) => {
   if (!name) return false;
   const stack = document.elementsFromPoint(x, y);
   const top = stack[0];
   if (!top) return false;
   const shown = (element) => (element.getAttribute('aria-label') || element.innerText || '').trim();
-  const target = stack.find((element) => shown(element) === name);
+  const labelled = [...document.querySelectorAll('[aria-label]')]
+    .filter((element) => element.getAttribute('aria-label').trim() === name);
+  const target = stack.find((element) => shown(element) === name)
+    || (labelled.length === 1 ? labelled[0] : null);
   if (!target || target === top) return false;
-  const card = top.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
-  if (card && card.contains(target)) return true;
+  const card = target.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
   const modal = top.closest('dialog,[role="dialog"],[role="alertdialog"],[aria-modal="true"]');
-  const interactive = top.closest('a,button,input,select,textarea,[role],[tabindex],[contenteditable="true"]');
-  const text = (top.innerText || '').trim() + (top.getAttribute('aria-label') || '');
-  return !modal && !interactive && text === '';
+  return Boolean(card && card.contains(top) && !modal);
 })"#;
 
 /// One browser session, lazily opened, as a [`Surface`].
