@@ -1648,6 +1648,7 @@ fn validation_tracks_variables_along_execution_order() {
         }))
         .unwrap(),
         &BTreeSet::new(),
+        &BTreeSet::new(),
     );
     assert!(
         only_in_untaken_branch
