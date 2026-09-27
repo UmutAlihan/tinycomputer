@@ -223,7 +223,11 @@ impl Digest {
             || rendering
                 .distractions
                 .is_some_and(|distractions| distractions.contains(&region.id));
-        distracting && relevance(region, rendering) < 0.5
+        let rescued = rendering
+            .relevance
+            .and_then(|relevance| relevance.get(&region.id))
+            .is_some_and(|relevance| *relevance >= 0.5);
+        distracting && !rescued
     }
 
     /// The lines a region is shown as: one per element, or one per card of
@@ -312,12 +316,17 @@ fn summary(screen: &Screen, region: &Region) -> String {
 }
 
 /// Splits `members` into regions of at most [`REGION_SIZE`], one ancestor
-/// level at a time, keeping a list of repeated cards whole.
+/// level at a time, keeping a list of repeated cards whole and apart from
+/// whatever sits beside it.
 fn split(screen: &Screen, members: Vec<usize>, level: usize, out: &mut Vec<Region>) {
     if members.is_empty() {
         return;
     }
-    if members.len() <= REGION_SIZE || level >= MAX_DEPTH {
+    if let Some(list) = list_at(screen, &members, level) {
+        out.push(region(screen, members, Some(list)));
+        return;
+    }
+    if level >= MAX_DEPTH || (members.len() <= REGION_SIZE && !holds_a_list(screen, &members)) {
         out.push(region(screen, members, None));
         return;
     }
@@ -329,30 +338,51 @@ fn split(screen: &Screen, members: Vec<usize>, level: usize, out: &mut Vec<Regio
             None => groups.push((key, vec![index])),
         }
     }
-    if groups.len() == 1 {
-        let (_, members) = groups.remove(0);
-        split(screen, members, level + 1, out);
-        return;
-    }
-    let ordinals = groups
-        .iter()
-        .filter(|(key, _)| {
-            key.as_deref()
-                .is_some_and(|key| groups::ordinal(key).is_some())
-        })
-        .count();
-    if ordinals >= 2 && ordinals * 2 >= groups.len() {
-        let members = groups
-            .into_iter()
-            .flat_map(|(_, members)| members)
-            .collect::<Vec<_>>();
-        let parent = screen.candidates[members[0]].path[..level].to_vec();
-        out.push(region(screen, members, Some((level, parent))));
-        return;
-    }
     for (_, group) in groups {
         split(screen, group, level + 1, out);
     }
+}
+
+/// The list `members` form at `level`: every member sits under the same
+/// ancestors and then under one of at least two ordinal containers
+/// (`listitem #3`) there.
+fn list_at(screen: &Screen, members: &[usize], level: usize) -> Option<(usize, Vec<String>)> {
+    let first = &screen.candidates[*members.first()?].path;
+    let parent = first.get(..level)?;
+    let mut containers = Vec::new();
+    for index in members {
+        let path = &screen.candidates[*index].path;
+        let container = path.get(level)?;
+        if path.get(..level)? != parent || groups::ordinal(container).is_none() {
+            return None;
+        }
+        if !containers.contains(&container) {
+            containers.push(container);
+        }
+    }
+    (containers.len() >= 2).then(|| (level, parent.to_vec()))
+}
+
+/// Whether two or more of `members` sit in different ordinal containers
+/// under the same ancestors: a list that needs a region of its own.
+fn holds_a_list(screen: &Screen, members: &[usize]) -> bool {
+    let mut seen: BTreeMap<(usize, &[String]), &String> = BTreeMap::new();
+    for index in members {
+        let path = &screen.candidates[*index].path;
+        for (level, label) in path.iter().enumerate() {
+            if groups::ordinal(label).is_none() {
+                continue;
+            }
+            match seen.get(&(level, &path[..level])) {
+                Some(other) if *other != label => return true,
+                Some(_) => {}
+                None => {
+                    seen.insert((level, &path[..level]), label);
+                }
+            }
+        }
+    }
+    false
 }
 
 fn region(screen: &Screen, members: Vec<usize>, list: Option<(usize, Vec<String>)>) -> Region {
