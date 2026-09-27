@@ -53,6 +53,9 @@ enum Quirk {
     NoAddresses,
     /// The compose fields sit in a subtree the budgeted snapshot cut short.
     HiddenEditor,
+    /// A side drawer lies over the page: every click is refused as covered
+    /// until Escape closes it.
+    Drawer,
 }
 
 #[derive(Debug, Default)]
@@ -71,9 +74,6 @@ struct Sim {
     picked: Vec<String>,
     /// Days in a date strip above the results, a longer list than they are.
     date_strip: usize,
-    /// A side drawer lies over the page: every click is refused as covered
-    /// until Escape closes it.
-    drawer: bool,
     extra_buttons: usize,
     /// A booking form with an autocomplete destination and a calendar.
     booking: Option<Booking>,
@@ -418,7 +418,7 @@ impl AgentBackend for App {
             .as_ref()
             .and_then(|target| target.name.clone())
             .unwrap_or_default();
-        if sim.drawer && operation == JevOperation::Click {
+        if sim.has(Quirk::Drawer) && operation == JevOperation::Click {
             return DesktopResponse::err(
                 "click",
                 tinydesktop_bus::DesktopError::new(
@@ -483,7 +483,7 @@ impl AgentBackend for App {
             "cmd+n" => sim.compose_open = true,
             "escape" => {
                 sim.obstacle = false;
-                sim.drawer = false;
+                sim.quirks.remove(&Quirk::Drawer);
             }
             _ => {}
         }
@@ -1149,7 +1149,7 @@ async fn pressing_the_named_control_that_closes_an_overlay_ends_the_step() {
 #[tokio::test]
 async fn a_covered_click_closes_what_covers_it_and_tries_again() {
     let run = run_with(
-        App::with(|sim| sim.drawer = true),
+        App::quirky(Quirk::Drawer),
         json!({"app": "Mail", "steps": ["start a new email message"]}),
         |_| {},
         |id, question, _| (id == "move").then(|| pick(question, "activate", 0.9)),
