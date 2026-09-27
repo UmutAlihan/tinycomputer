@@ -381,7 +381,7 @@ fn repeated_cards_become_records_with_their_opening_control() {
 
 #[test]
 fn nothing_repeating_is_no_records() {
-    assert_eq!(result_groups(&clickable_screen()), Vec::<Group>::new());
+    assert!(result_groups(&clickable_screen()).is_empty());
     let single = results(vec![card(&["Only one"], "Select", "listitem #1", 0)]);
     assert!(result_groups(&single).is_empty());
     let mut unlabeled = results(vec![

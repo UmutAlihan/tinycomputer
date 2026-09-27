@@ -19,7 +19,7 @@ const OPENERS: &[&str] = &[
 ];
 
 /// One repeated card.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Group {
     /// The container's label, such as `listitem #3`.
     pub label: String,
