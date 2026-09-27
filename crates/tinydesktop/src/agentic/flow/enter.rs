@@ -244,7 +244,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 }
 
 /// Fields that accept text, top to bottom.
-fn editable(screen: &Screen) -> Vec<Candidate> {
+pub(super) fn editable(screen: &Screen) -> Vec<Candidate> {
     let mut fields = screen
         .candidates
         .iter()
@@ -283,9 +283,4 @@ fn preview(text: &str) -> String {
     } else {
         words
     }
-}
-
-#[cfg(test)]
-pub(super) fn editable_for_test(screen: &Screen) -> Vec<Candidate> {
-    editable(screen)
 }

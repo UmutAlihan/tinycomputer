@@ -4,8 +4,10 @@
 //! - `policy` builds Jev questions and holds the deterministic gates.
 //! - `backend` is the engine surface, behind a trait tests fake.
 //! - `resolve` is one gated decision; `goal` loops it for `RunGoal`.
+//! - `flow` runs high-level intent flows with Jev decision loops.
 
 mod backend;
+mod flow;
 mod goal;
 mod policy;
 mod resolve;
@@ -26,6 +28,7 @@ use tinyjevclient::{
 
 use crate::Desktop;
 use backend::AgentBackend;
+pub(crate) use flow::{flow_guide, run_flow, validate_flow};
 use resolve::{Resolution, resolve};
 use screen::Candidate;
 

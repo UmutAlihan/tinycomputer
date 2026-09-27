@@ -20,8 +20,9 @@ use tinydesktop_bus::{
     JevConfig, LaunchRequest, ListAppsRequest, ListNotificationsRequest, ListSurfacesRequest,
     ListWindowsRequest, MouseClickRequest, MouseMoveRequest, MouseWheelRequest, MoveWindowRequest,
     NotificationActionRequest, PermissionsRequest, PressRequest, RefRequest, ResizeWindowRequest,
-    ResolveIntentRequest, RunGoalRequest, ScreenshotRequest, ScrollRequest, SelectRequest,
-    SetValueRequest, SnapshotRequest, TypeRequest, WaitRequest, WindowRequest,
+    ResolveIntentRequest, RunFlowRequest, RunGoalRequest, ScreenshotRequest, ScrollRequest, SelectRequest,
+    SetValueRequest, SnapshotRequest, TypeRequest, ValidateFlowRequest, WaitRequest,
+    WindowRequest,
 };
 
 use crate::{Desktop, Result, agentic};
@@ -102,6 +103,25 @@ impl DesktopService {
             return Ok(jev_not_configured("run-goal"));
         };
         Ok(agentic::run_goal(self.desktop.clone(), runtime, request).await)
+    }
+
+    /// Runs a high-level intent flow with Jev decision loops.
+    #[tinybus(confidential)]
+    async fn run_flow(&self, request: RunFlowRequest) -> TinyBusResult<DesktopResponse> {
+        let Some(runtime) = self.jev_runtime() else {
+            return Ok(jev_not_configured("run-flow"));
+        };
+        Ok(agentic::run_flow(self.desktop.clone(), runtime, request).await)
+    }
+
+    /// Checks a flow without touching the desktop or Jev.
+    async fn validate_flow(&self, request: ValidateFlowRequest) -> TinyBusResult<DesktopResponse> {
+        Ok(agentic::validate_flow(&request))
+    }
+
+    /// Returns the flow authoring guide as prompt text.
+    async fn flow_guide(&self) -> TinyBusResult<DesktopResponse> {
+        Ok(agentic::flow_guide())
     }
 
     /// Walks an accessibility tree and allocates a ref per element.

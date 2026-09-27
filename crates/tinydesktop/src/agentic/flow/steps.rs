@@ -13,7 +13,7 @@ use super::{
     },
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     act::DONE,
-    ask::{self, CAP, Questions, chosen, condition, numbered, probability},
+    ask::{self, Questions, chosen, condition, numbered, probability},
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute},
 };
@@ -22,10 +22,8 @@ use super::{
 const DO_TURNS: u32 = 8;
 /// Turns spent opening the thing a `choose` step picks from.
 const REVEAL_TURNS: u32 = 3;
-/// Times a `wait_for` checks its condition.
+/// Times a `wait_for` checks its condition, waiting between checks.
 const WAIT_CHECKS: u32 = 10;
-/// Pause between `wait_for` checks, in milliseconds.
-const WAIT_MS: u64 = 700;
 /// Least probability a `read` or `stop_before` target needs.
 const LOCATE_FLOOR: f64 = 0.5;
 
@@ -120,7 +118,6 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 backend.execute(JevOperation::Wait, None, None)
             })
             .await?;
-            let _ = WAIT_MS;
         }
         Err(Halt::Failed(format!(
             "still not true after {WAIT_CHECKS} checks"
@@ -318,7 +315,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 }
 
-/// Elements that can be pressed, at most [`CAP`] per region later on.
+/// Elements that can be pressed.
 fn clickable(candidates: &[Candidate]) -> Vec<Candidate> {
     candidates
         .iter()
@@ -343,6 +340,3 @@ fn readable(candidate: &Candidate) -> Option<String> {
         .or_else(|| candidate.name.clone())
         .filter(|text| !text.trim().is_empty())
 }
-
-#[allow(dead_code)]
-const _: usize = CAP;

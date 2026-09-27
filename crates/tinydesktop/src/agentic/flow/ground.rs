@@ -298,7 +298,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
 /// Groups `pool` by the first ancestor level, at or below `from`, that splits
 /// it into more than one region. Regions beyond `CAP - 1` are merged.
-fn split(pool: &[Candidate], from: usize) -> Option<(usize, Vec<(String, Vec<Candidate>)>)> {
+pub(super) fn split(pool: &[Candidate], from: usize) -> Option<(usize, Vec<(String, Vec<Candidate>)>)> {
     for level in from..MAX_REGION_DEPTH {
         let mut regions: BTreeMap<String, Vec<Candidate>> = BTreeMap::new();
         for candidate in pool {
@@ -325,12 +325,4 @@ fn split(pool: &[Candidate], from: usize) -> Option<(usize, Vec<(String, Vec<Can
         return Some((level, regions));
     }
     None
-}
-
-#[cfg(test)]
-pub(super) fn split_for_test(
-    pool: &[Candidate],
-    from: usize,
-) -> Option<(usize, Vec<(String, Vec<Candidate>)>)> {
-    split(pool, from)
 }

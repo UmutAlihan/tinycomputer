@@ -16,6 +16,8 @@ use super::super::{
 
 /// Most options one Choice offers before narrowing takes over.
 pub(super) const CAP: usize = 20;
+/// Most pieces of text a `read` step chooses among.
+pub(super) const MAX_READ_SOURCES: usize = 60;
 /// Most element labels described in the shared state.
 const MAX_STATE_ELEMENTS: usize = 120;
 /// Recent history lines shared with Jev.
@@ -139,7 +141,7 @@ pub(super) fn obstacle(intent: &str) -> Question {
 }
 
 /// A Choice among described options plus `none`.
-pub(super) fn options<'a>(
+pub(super) fn options(
     instructions: Value,
     options: impl IntoIterator<Item = (String, Value)>,
 ) -> Question {

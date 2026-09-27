@@ -26,6 +26,14 @@ pub mod methods {
     /// Runs a bounded Jev desktop-control loop. Requires confidential delivery.
     /// Takes a [`crate::RunGoalRequest`].
     pub const RUN_GOAL: &str = "RunGoal";
+    /// Runs a high-level intent flow with Jev decision loops. Requires
+    /// confidential delivery. Takes a [`crate::RunFlowRequest`].
+    pub const RUN_FLOW: &str = "RunFlow";
+    /// Checks a flow without touching the desktop or Jev.
+    /// Takes a [`crate::ValidateFlowRequest`].
+    pub const VALIDATE_FLOW: &str = "ValidateFlow";
+    /// Returns the flow authoring guide as prompt text. Takes no argument.
+    pub const FLOW_GUIDE: &str = "FlowGuide";
 
     /// Walks an accessibility tree and allocates a ref per element.
     /// Takes a [`crate::SnapshotRequest`].
@@ -202,6 +210,9 @@ pub mod methods {
 pub const METHODS: &[&str] = &[
     methods::RESOLVE_INTENT,
     methods::RUN_GOAL,
+    methods::RUN_FLOW,
+    methods::VALIDATE_FLOW,
+    methods::FLOW_GUIDE,
     methods::SNAPSHOT,
     methods::FIND,
     methods::GET,
