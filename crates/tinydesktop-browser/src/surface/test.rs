@@ -377,16 +377,19 @@ fn a_click_glides_the_virtual_pointer_onto_its_target_first() {
     assert!((400.0..=520.0).contains(&x) && (300.0..=332.0).contains(&y));
     assert_eq!(fake.last("click")["selector"], "@e5");
 
-    // The pointer stays where it ended: the next reach starts from there.
-    let before = fake.actions().len();
+    // The pointer stays where it ended: the next reach starts from there
+    // rather than entering from somewhere new.
+    let before = fake.sent().len();
     surface.execute(JevOperation::Check, Some(node("e5", &["Toggle"])), None);
-    let first_move = fake.actions()[before..]
+    let next = fake.sent()[before..]
         .iter()
-        .position(|action| action == "mousemove")
+        .find(|command| command["action"] == "mousemove")
+        .cloned()
         .unwrap();
+    let step = (next["x"].as_f64().unwrap() - x).hypot(next["y"].as_f64().unwrap() - y);
     assert!(
-        first_move > 0,
-        "a known pointer needs no entry move before the box"
+        step < 60.0,
+        "the second reach starts where the first ended: {step}"
     );
 }
 
