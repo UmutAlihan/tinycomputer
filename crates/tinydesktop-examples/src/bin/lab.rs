@@ -216,7 +216,7 @@ async fn run_once(
                 Some(path) => serde_json::from_str(&std::fs::read_to_string(path)?)?,
                 None => scenario.flow_json()?,
             };
-            let result = run_flow(host, flow, options, &dir, "", &run).await?;
+            let result = run_flow(host, flow, options, &dir, "", &run, mode).await?;
             let summary = (result.stop, result.actions, result.metrics.calls);
             (
                 Some(result),
