@@ -117,7 +117,21 @@ async fn main() -> Result<(), LabError> {
                         println!("\n=== {} / {mode} / trial {}", scenario.name, trial + 1);
                         match run_once(&host, scenario, mode, &options).await {
                             Ok(record) => records.push(record),
-                            Err(error) => println!("run failed: {error}"),
+                            Err(error) => {
+                                println!("run failed: {error}");
+                                records.push(RunRecord {
+                                    scenario: scenario.name.to_owned(),
+                                    mode: mode.clone(),
+                                    passed: false,
+                                    detail: format!("run failed: {error}"),
+                                    stop: "Error".to_owned(),
+                                    actions: 0,
+                                    jev_calls: 0,
+                                    llm_calls: 0,
+                                    seconds: 0.0,
+                                    dir: PathBuf::new(),
+                                });
+                            }
                         }
                     }
                 }
