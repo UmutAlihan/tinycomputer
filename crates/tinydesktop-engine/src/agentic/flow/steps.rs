@@ -217,8 +217,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
-        let what = substitute(&choose.what, &self.vars);
-        let option = substitute(&choose.option, &self.vars);
+        let what = substitute_safe(&choose.what, &self.vars, &self.facts);
+        let option = substitute_safe(&choose.option, &self.vars, &self.facts);
         let purpose = format!("pick the option {option:?} in {what}");
         for attempt in 0..2 {
             let screen = self.look().await?;
