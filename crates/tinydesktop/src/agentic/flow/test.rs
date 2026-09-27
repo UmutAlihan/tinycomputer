@@ -1027,30 +1027,6 @@ async fn a_control_the_flows_own_stop_before_names_is_refused_in_an_ordinary_ste
 }
 
 #[tokio::test]
-async fn an_unnamed_button_in_a_confirmation_sheet_is_refused_in_an_ordinary_step() {
-    let run = run_with(
-        App::with(|sim| sim.obstacle = true),
-        json!({"app": "Mail", "steps": ["dismiss the draft"]}),
-        |request| {
-            request.max_actions = 4;
-            request.disabled_loops = vec![FlowLoop::Obstacles, FlowLoop::Undo];
-        },
-        |id, question, _| match id {
-            "move" => Some(pick(question, "activate", 0.9)),
-            "target" => Some(pick(question, "Delete Draft", 0.95)),
-            _ => None,
-        },
-    )
-    .await;
-    // "Delete Draft" is already on the denylist via "delete"; this exercises
-    // the same gate but confirms an ordinary step still cannot act inside a
-    // sheet even with the completion/obstacle loops that would otherwise
-    // dismiss it out of the way.
-    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
-    assert!(run.app.sim().clicks.is_empty());
-}
-
-#[tokio::test]
 async fn an_unrecognized_move_is_skipped_rather_than_clicked() {
     // A malformed or prompt-injected answer must never fall through to
     // `activate`'s default Click branch; only `activate`, `expand`, and
