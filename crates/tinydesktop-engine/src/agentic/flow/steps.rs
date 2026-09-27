@@ -94,7 +94,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Opens `url` in the browser and moves the flow onto the page.
     async fn browse(&mut self, log: &mut StepLog, url: &str) -> Result<Ended, Halt> {
-        let url = substitute(url, &self.vars);
+        // Same reasoning as `open`: the address ends up in this step's note
+        // in `history`, so it goes through the fact-safe substitution too.
+        let url = substitute_safe(url, &self.vars, &self.facts);
         BROWSER.clone_into(&mut self.app);
         let address = url.clone();
         let reply = self
