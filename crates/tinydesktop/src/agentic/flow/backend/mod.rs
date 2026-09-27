@@ -96,10 +96,10 @@ impl AgentBackend for Desktop {
     }
 
     fn paste(&self, app: &str, target: &Candidate, text: &str) -> DesktopResponse {
-        let previous = self
-            .clipboard_get(ClipboardGetRequest::default())
-            .data
-            .and_then(|data| data.get("text").and_then(Value::as_str).map(str::to_owned));
+        let previous = self.clipboard_get(ClipboardGetRequest {
+            format: Some(ClipboardFormat::Auto),
+            out: None,
+        });
         let focused = self.focus(RefRequest::new(target.ref_id.clone()));
         if !focused.ok {
             let clicked = self.click(RefRequest::new(target.ref_id.clone()));
@@ -122,8 +122,11 @@ impl AgentBackend for Desktop {
         };
         let pasted = self.press(press_at(app, "cmd+v"));
         let _settled = self.wait(WaitRequest::sleep(150));
-        if let Some(previous) = previous {
-            let _restored = self.clipboard_set(ClipboardSetRequest::text(previous));
+        if let Some(restore) = restore_plan(&previous) {
+            let _restored = match restore {
+                Restore::Set(request) => self.clipboard_set(request),
+                Restore::Clear => self.clipboard_clear(),
+            };
         }
         if selected.ok { pasted } else { selected }
     }
