@@ -102,6 +102,18 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 }
             }
         }
+        // A value with no field to type into is picked instead, as a date
+        // from a calendar or a city from a list of suggestions.
+        for index in pending.clone() {
+            let slot = &slots[index];
+            if self
+                .pick_option(log, &slot.slot, &slot.text, true)
+                .await
+                .is_ok()
+            {
+                pending.remove(&index);
+            }
+        }
         if pending.is_empty() {
             Ok(Ended::new(
                 StepOutcome::Done,

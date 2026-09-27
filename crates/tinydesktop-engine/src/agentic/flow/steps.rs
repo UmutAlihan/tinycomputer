@@ -759,9 +759,19 @@ fn closest(matches: Vec<Candidate>) -> Vec<Candidate> {
         .collect()
 }
 
+/// Lower-case words joined by single spaces, so `Sunday, 18 October` and
+/// `sunday 18 october` compare equal.
+fn plain(text: &str) -> String {
+    text.split(|character: char| !character.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(str::to_lowercase)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Whether an element shows `option` in its name, value, or description.
 fn mentions(candidate: &Candidate, option: &str) -> bool {
-    let option = option.trim().to_lowercase();
+    let option = plain(option);
     !option.is_empty()
         && [
             candidate.name.clone(),
@@ -770,7 +780,7 @@ fn mentions(candidate: &Candidate, option: &str) -> bool {
         ]
         .into_iter()
         .flatten()
-        .any(|text| text.to_lowercase().contains(&option))
+        .any(|text| format!(" {} ", plain(&text)).contains(&format!(" {option} ")))
 }
 
 /// Elements that can be pressed.

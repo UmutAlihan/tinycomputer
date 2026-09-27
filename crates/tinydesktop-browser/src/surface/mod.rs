@@ -248,6 +248,16 @@ impl Surface for BrowserSurface {
                     _ => reply,
                 }
             }
+            // Without a target the text goes where the focus is, as into an
+            // autocomplete's unnamed input once it has been opened.
+            JevOperation::TypeText if reference.is_none() => self.perform(
+                "type-text",
+                Action::Type {
+                    target: None,
+                    text: text.unwrap_or_default(),
+                    delay_ms: None,
+                },
+            ),
             JevOperation::TypeText => targeted("type-text", |target, text| Action::Fill {
                 target,
                 value: text.unwrap_or_default(),
