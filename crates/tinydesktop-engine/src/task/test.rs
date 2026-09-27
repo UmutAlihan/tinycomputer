@@ -392,6 +392,76 @@ async fn an_approved_irreversible_action_is_performed_and_the_rest_runs() {
 }
 
 #[tokio::test]
+async fn an_approval_nested_in_an_if_resumes_the_whole_branch_and_what_follows() {
+    // The gated `stop_before` is nested one level inside the `if` at
+    // top-level index 3 (path "4.1"), so approving it must not silently drop
+    // the rest of that branch, or "finish another email" after it.
+    let flow_value = json!({"app": "Notes", "steps": [
+        {"open": "Mail"},
+        "start a new email message",
+        {"if": {
+            "condition": "a draft is open",
+            "then": [{"stop_before": "sending the email"}],
+        }},
+        "finish another email message"
+    ]});
+    let (tasks, script) = controller(vec![
+        finished_run(
+            FlowStopReason::StoppedBeforeDestructive,
+            vec![
+                step("1", "open", "Mail", StepOutcome::Done, ""),
+                step(
+                    "2",
+                    "do",
+                    "start a new email message",
+                    StepOutcome::Done,
+                    "",
+                ),
+                step(
+                    "4.1",
+                    "stop_before",
+                    "sending the email",
+                    StepOutcome::Gated,
+                    "found it",
+                ),
+            ],
+            &[],
+            Some("Send"),
+        ),
+        finished_run(FlowStopReason::Completed, vec![], &[], None),
+        finished_run(FlowStopReason::Completed, vec![], &[], None),
+    ]);
+    let view = start(&tasks, flow_value, &[]);
+    settle(&tasks, &view.id).await;
+    let approved = tasks.continue_task(ContinueTaskRequest {
+        id: view.id.clone(),
+        approve: Some(true),
+        ..ContinueTaskRequest::default()
+    });
+    assert!(approved.ok);
+    assert!(matches!(
+        settle(&tasks, &view.id).await.status,
+        TaskStatus::Done { .. }
+    ));
+    let requests = script.requests.lock().unwrap();
+    assert_eq!(requests.len(), 3);
+    // The whole `if` (its own continuation is not recoverable from the
+    // path) and the step after it both still run.
+    assert_eq!(
+        requests[2].flow.steps,
+        [
+            flow(json!({"if": {
+                "condition": "a draft is open",
+                "then": [{"stop_before": "sending the email"}],
+            }}))
+            .steps
+            .remove(0),
+            FlowStep::Action(FlowAction::Do("finish another email message".to_owned())),
+        ]
+    );
+}
+
+#[tokio::test]
 async fn a_declined_action_cancels_and_a_payment_is_always_a_checkpoint() {
     let (tasks, _) = controller(vec![gated("Send", "sending the email")]);
     let view = start(&tasks, mail_flow(), &[]);
