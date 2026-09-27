@@ -111,10 +111,15 @@ fn walk(
 /// Checks one step's action, recursing into `walk` for `if` and
 /// `repeat_until` bodies.
 ///
-/// `local` allows a fact's value: it is only ever used to launch an
-/// application or navigate the browser, never shown to Jev. `model` is
-/// everything Jev is asked to reason about, so a fact there is rejected
-/// outright rather than silently expanded at run time.
+/// `model` is every text a Jev evaluation may end up seeing — directly, in a
+/// question, or later in `recent_actions` once the step it drove is
+/// reported — so a fact there is rejected outright rather than silently
+/// expanded at run time. That includes `open` and `browse`: the launched
+/// application becomes `screen.app`, and both leave a note in the run's
+/// history, so even though the value they act on never reaches Jev as
+/// *input*, letting a fact through would still surface it as *state* on
+/// every later step. Only an `enter` step's typed value is delivered without
+/// ever being echoed back this way, so it alone may carry one.
 fn check_step(
     action: &FlowAction,
     path: &str,
@@ -124,16 +129,13 @@ fn check_step(
     count: &mut usize,
     errors: &mut Vec<String>,
 ) {
-    let local = |errors: &mut Vec<String>, label: &str, value: &str| {
-        check_text(errors, path, label, value, defined);
-    };
     let model = |errors: &mut Vec<String>, label: &str, value: &str| {
         check_text(errors, path, label, value, defined);
         forbid_facts(errors, path, value, facts);
     };
     match action {
-        FlowAction::Open(value) => local(errors, "the application", value),
-        FlowAction::Browse(value) => local(errors, "the address", value),
+        FlowAction::Open(value) => model(errors, "the application", value),
+        FlowAction::Browse(value) => model(errors, "the address", value),
         FlowAction::Do(value) => model(errors, "the intent", value),
         FlowAction::Verify(value) | FlowAction::WaitFor(value) => {
             model(errors, "the condition", value);
