@@ -180,7 +180,15 @@ fn check_step(
             }
             // A round may never run, so what it defines does not survive it.
             let mut inner = defined.clone();
-            walk(&repeat.steps, path, depth + 1, &mut inner, facts, count, errors);
+            walk(
+                &repeat.steps,
+                path,
+                depth + 1,
+                &mut inner,
+                facts,
+                count,
+                errors,
+            );
         }
         FlowAction::If(branch) => {
             model(errors, "the condition", &branch.condition);
