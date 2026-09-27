@@ -8,7 +8,10 @@
 //! whether it is advertising, an upsell, or decoration. The answers rank the
 //! regions for the rest of the step — the most relevant shown in full and
 //! offered first as targets, distractions collapsed and offered last — and
-//! are kept until the page's shape changes or the step ends.
+//! are kept, by region name, until the step ends. When the page changes, only
+//! regions not seen before are asked about, and only when they are more than
+//! [`NEW_SHARE`] of the page: opening a dropdown adds a region or two and is
+//! not worth another survey.
 //!
 //! A screen small enough to show in full is never surveyed: there is nothing
 //! to rank that the turn's own request cannot see.
@@ -32,6 +35,9 @@ pub(super) const CROWDED: usize = 40;
 const SURVEY_REGIONS: usize = 24;
 /// Distraction probability at which a region is collapsed and ranked last.
 pub(super) const DISTRACTION: f64 = 0.7;
+/// Share of a page's regions that must be new to it before it is surveyed
+/// again in the same step.
+pub(super) const NEW_SHARE: f64 = 0.3;
 /// Example labels a region is described by.
 const EXAMPLES: usize = 6;
 
@@ -44,17 +50,37 @@ const RELEVANCE_LEVELS: [&str; 5] = [
     "The step clearly happens here.",
 ];
 
-/// What a survey found, for one step on one page shape.
-#[derive(Debug, Clone)]
+/// What the surveys of one step found, by region name.
+#[derive(Debug, Clone, Default)]
 pub(super) struct Attention {
-    /// The digest layout it was asked on.
-    pub(super) layout: String,
     /// The step it was asked for.
     pub(super) step: String,
-    /// How much each region matters, 0 to 1, by region id.
+    /// How much each region matters, 0 to 1, by region name.
     pub(super) relevance: BTreeMap<String, f64>,
-    /// Regions judged to be distraction.
+    /// Regions judged to be distraction, by name.
     pub(super) distractions: BTreeSet<String>,
+}
+
+impl Attention {
+    /// Whether the region named `name` was asked about.
+    fn knows(&self, name: &str) -> bool {
+        self.relevance.contains_key(name) || self.distractions.contains(name)
+    }
+
+    /// The answers for `digest`'s regions, keyed by their ids in it.
+    pub(super) fn for_digest(&self, digest: &Digest) -> (BTreeMap<String, f64>, BTreeSet<String>) {
+        let mut relevance = BTreeMap::new();
+        let mut distractions = BTreeSet::new();
+        for region in &digest.regions {
+            if let Some(matters) = self.relevance.get(&region.name) {
+                relevance.insert(region.id.clone(), *matters);
+            }
+            if self.distractions.contains(&region.name) {
+                distractions.insert(region.id.clone());
+            }
+        }
+        (relevance, distractions)
+    }
 }
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
@@ -73,22 +99,34 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         {
             return Ok(());
         }
-        let layout = digest.layout();
-        if self
+        let known = self
             .attention
-            .as_ref()
-            .is_some_and(|attention| attention.layout == layout && attention.step == self.step)
+            .clone()
+            .filter(|attention| attention.step == self.step)
+            .unwrap_or_else(|| Attention {
+                step: self.step.clone(),
+                ..Attention::default()
+            });
+        let unknown = digest
+            .regions
+            .iter()
+            .filter(|region| region.kind != RegionKind::Front && !known.knows(&region.name))
+            .collect::<Vec<_>>();
+        let page = digest
+            .regions
+            .iter()
+            .filter(|region| region.kind != RegionKind::Front)
+            .count();
+        #[allow(clippy::cast_precision_loss)]
+        let new_share = unknown.len() as f64 / page.max(1) as f64;
+        if unknown.is_empty()
+            || (known.relevance.len() + known.distractions.len() > 0 && new_share <= NEW_SHARE)
         {
             return Ok(());
         }
         log.used(FlowLoop::Survey);
         let used_before = self.regions_used_before(screen, digest);
-        let asked = digest
-            .regions
-            .iter()
-            .filter(|region| region.kind != RegionKind::Front)
-            .take(SURVEY_REGIONS)
-            .collect::<Vec<_>>();
+        let asked = unknown.into_iter().take(SURVEY_REGIONS).collect::<Vec<_>>();
         let mut questions = Questions::default();
         for region in &asked {
             let described = json!({"untrusted_accessibility_data": {
@@ -135,18 +173,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 ask::request(self.model(), self.state(screen, intent), questions),
             )
             .await?;
+        let mut attention = known;
         let mut relevance = BTreeMap::new();
-        let mut distractions = BTreeSet::new();
         for region in &asked {
             if let Some(matters) = level(&answers, &format!("relevance_{}", region.id)) {
                 relevance.insert(region.id.clone(), matters);
+                attention.relevance.insert(region.name.clone(), matters);
             }
             if probability(&answers, &format!("distraction_{}", region.id))
                 .is_some_and(|distracting| distracting >= DISTRACTION)
             {
-                distractions.insert(region.id.clone());
+                attention.distractions.insert(region.name.clone());
             }
         }
+        let distractions = asked
+            .iter()
+            .filter(|region| attention.distractions.contains(&region.name))
+            .count();
         self.runtime.journal.record("survey", || {
             let mut ranked = relevance.iter().collect::<Vec<_>>();
             ranked.sort_by(|left, right| right.1.total_cmp(left.1));
@@ -154,15 +197,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 "step": self.step,
                 "regions": asked.len(),
                 "most_relevant": ranked.iter().take(3).map(|(id, _)| id).collect::<Vec<_>>(),
-                "distractions": distractions.len(),
+                "distractions": distractions,
             })
         });
-        self.attention = Some(Attention {
-            layout,
-            step: self.step.clone(),
-            relevance,
-            distractions,
-        });
+        self.attention = Some(attention);
         Ok(())
     }
 

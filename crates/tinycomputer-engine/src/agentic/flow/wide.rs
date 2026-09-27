@@ -47,12 +47,15 @@ use super::{
     },
 };
 
-/// Bytes of screen a wide request shows before regions are collapsed: about
-/// ten thousand tokens, a third of Jev's window, leaving room for the
-/// questions, the brief, and the memory.
-pub(super) const DIGEST_BUDGET: usize = 40_000;
-/// Most candidates one move's knockout offers: four Choices of [`CAP`].
-const WIDE_POOL: usize = CAP * 4;
+/// Bytes of screen a wide request shows before regions are collapsed.
+/// Dense page text runs near 2.7 bytes a token, so this is about nine
+/// thousand tokens: at 40,000 a live booking page reached 28,000 tokens of
+/// Jev's 32,000 once the questions were added.
+pub(super) const DIGEST_BUDGET: usize = 24_000;
+/// Most candidates one move is offered: two Choices of [`CAP`]. The survey
+/// ranks the relevant regions first, and a larger knockout mostly added a
+/// final round.
+const WIDE_POOL: usize = CAP * 2;
 /// The moves that need an element, with the action it must support and the
 /// verb its purpose is phrased with.
 const TARGETED: [(&str, &str, &str); 3] = [
@@ -114,9 +117,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             if self.enabled(FlowLoop::Digest) {
                 let digest = digest(screen);
                 fields.remove("elements");
+                let (relevance, distractions) = self.attention_for(&digest);
                 fields.insert(
                     "screen".to_owned(),
-                    digest.render(screen, &self.rendering(&digest)),
+                    digest.render(screen, &self.rendering(&relevance, &distractions)),
                 );
             }
             fields.insert("memory".to_owned(), self.memory_view(purpose));
@@ -124,18 +128,30 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         state
     }
 
-    /// How `digest` is rendered and ranked: by the step's survey when it was
-    /// asked on this page shape.
-    pub(super) fn rendering(&self, digest: &Digest) -> Rendering<'_> {
-        let attention = self
-            .attention
+    /// The step's survey answers for `digest`'s regions, by region id:
+    /// empty when the step has not surveyed.
+    pub(super) fn attention_for(
+        &self,
+        digest: &Digest,
+    ) -> (BTreeMap<String, f64>, BTreeSet<String>) {
+        self.attention
             .as_ref()
-            .filter(|attention| attention.step == self.step && attention.layout == digest.layout());
+            .filter(|attention| attention.step == self.step)
+            .map(|attention| attention.for_digest(digest))
+            .unwrap_or_default()
+    }
+
+    /// How a digest is rendered and ranked, given the survey's answers.
+    pub(super) fn rendering<'a>(
+        &self,
+        relevance: &'a BTreeMap<String, f64>,
+        distractions: &'a BTreeSet<String>,
+    ) -> Rendering<'a> {
         Rendering {
             include_values: self.include_values,
             budget: DIGEST_BUDGET,
-            relevance: attention.map(|attention| &attention.relevance),
-            distractions: attention.map(|attention| &attention.distractions),
+            relevance: Some(relevance),
+            distractions: Some(distractions),
         }
     }
 
@@ -179,7 +195,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ) -> Result<Judgement, Halt> {
         let digest = digest(screen);
         self.survey(log, screen, &digest, intent).await?;
-        let ranked = digest.ranked(&self.rendering(&digest));
+        let (relevance, distractions) = self.attention_for(&digest);
+        let ranked = digest.ranked(&self.rendering(&relevance, &distractions));
         let last = pressed.map(label);
         let mut questions = self.judge_questions(log, intent, last.as_deref());
 
