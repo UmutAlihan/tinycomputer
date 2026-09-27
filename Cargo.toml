@@ -49,6 +49,10 @@ tinyinference_decisions = { path = "vendor/tinyinference/crates/tinyinference_de
 # The optional LLM planner's model client (engine `planner` feature) and the
 # lab's author.
 tinyinference-llm = { path = "vendor/tinyinference/crates/tinyinference-llm" }
+# The browser automation engine, linked as a library: `execute_command` over a
+# `DaemonState`. Vendored from the tinyhumansai fork until
+# vercel-labs/agent-browser#2008 lands upstream.
+agent-browser = { path = "vendor/agent-browser/cli" }
 # The desktop automation engine this module wraps: accessibility-tree
 # observation, ref allocation, and the command implementations behind every
 # member of the bus interface. Vendored as the `vendor/agent-desktop` submodule

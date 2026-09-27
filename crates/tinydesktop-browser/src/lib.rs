@@ -17,6 +17,8 @@
 //!   engine implements it over agent-browser's dispatcher.
 //! - [`BrowserSurface`] — one session as a `tinydesktop_core` surface, so the
 //!   engine's decision loops drive a web page as they drive a desktop app.
+//! - `AgentBrowser` (feature `agent-browser`) — the [`Launcher`] for
+//!   agent-browser linked in-process.
 //! - [`Error`] — what can go wrong, as a taxonomy of what a caller should do
 //!   next, each variant mapped to one published wire name.
 //!
@@ -28,12 +30,16 @@ mod engine;
 mod error;
 #[cfg(test)]
 mod fake;
+#[cfg(feature = "agent-browser")]
+mod linked;
 mod outputs;
 mod reply;
 mod sessions;
 mod surface;
 
 pub use engine::{Engine, Launcher, Reply};
+#[cfg(feature = "agent-browser")]
+pub use linked::AgentBrowser;
 pub use error::{Error, Result};
 pub use outputs::SWEEP_INTERVAL;
 pub use sessions::{Browser, MAX_SESSIONS};

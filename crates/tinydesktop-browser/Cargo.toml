@@ -32,6 +32,15 @@ tinydesktop-core = { workspace = true }
 # blocking surface call runs the async browser on.
 tokio = { workspace = true, features = ["sync", "rt"] }
 
+# The linked engine, with the `agent-browser` feature. Without it the crate
+# is the adapter alone, for hosts that bring their own `Launcher`.
+agent-browser = { workspace = true, optional = true }
+
+[features]
+default = []
+# Link agent-browser in-process and provide `AgentBrowser`, its `Launcher`.
+agent-browser = ["dep:agent-browser"]
+
 [dev-dependencies]
 tokio = { workspace = true }
 
