@@ -18,9 +18,6 @@ publish = false
 tinydesktop-bus = { workspace = true }
 # The surface trait and screen model `Desktop` implements for the engine.
 tinydesktop-core = { workspace = true }
-# The virtual mouse: in headed mode the real pointer glides onto an element
-# along a human path before a pointer action lands on it.
-tinydesktop-input = { workspace = true }
 # Derive macros for the crate-wide error type in `src/error/`.
 thiserror = { workspace = true }
 # Command replies are `serde_json::Value` the whole way through: the engine

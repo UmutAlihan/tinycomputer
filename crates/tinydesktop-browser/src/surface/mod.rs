@@ -6,17 +6,10 @@
 //! (`spawn_blocking`); each one here runs the async [`Browser`] call to
 //! completion on the runtime handle the surface was built with. The session
 //! opens lazily, on the first call that needs a page.
-//!
-//! Clicks and typing go through the page's virtual mouse and keyboard
-//! (`tinydesktop-input`): the pointer glides onto an element and settles
-//! before the engine clicks it, and text is typed key by key, unless the
-//! surface's [`MotionProfile`] is `Instant`.
 
-mod input;
 mod tree;
 
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use serde_json::{Value, json};
 use tinydesktop_bus::browser::{
@@ -24,9 +17,8 @@ use tinydesktop_bus::browser::{
     WaitState,
 };
 use tinydesktop_bus::{DesktopError, DesktopResponse, JevOperation};
-use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
+use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface};
 use tinydesktop_core::{Key, Platform};
-use tinydesktop_input::{MotionProfile, Point, VirtualKeyboard, VirtualMouse};
 
 use crate::error::{Error, Result};
 use crate::sessions::Browser;
@@ -58,10 +50,6 @@ const SAME_CARD_JS: &str = r#"((x, y, name) => {
 /// How much of a target's name identifies it inside its card.
 const CARD_NAME_CHARS: usize = 80;
 
-/// The longest text typed key by key; anything longer is filled at once,
-/// since a person would paste it and a run should not spend minutes typing.
-const MAX_TYPED_CHARS: usize = 400;
-
 /// One browser session, lazily opened, as a [`Surface`].
 #[derive(Clone)]
 pub struct BrowserSurface {
@@ -70,10 +58,6 @@ pub struct BrowserSurface {
     session: Arc<Mutex<Option<SessionId>>>,
     handle: tokio::runtime::Handle,
     platform: Platform,
-    motion: MotionProfile,
-    mouse: Arc<Mutex<VirtualMouse>>,
-    keyboard: Arc<Mutex<VirtualKeyboard>>,
-    wait: fn(Duration),
 }
 
 impl std::fmt::Debug for BrowserSurface {
@@ -82,15 +66,13 @@ impl std::fmt::Debug for BrowserSurface {
             .debug_struct("BrowserSurface")
             .field("session", &self.session)
             .field("platform", &self.platform)
-            .field("motion", &self.motion)
             .finish_non_exhaustive()
     }
 }
 
 impl BrowserSurface {
     /// A surface that opens its session on `browser` with `options`, and
-    /// runs browser calls on `handle`. Its virtual mouse and keyboard move at
-    /// the natural profile; see [`BrowserSurface::with_motion`].
+    /// runs browser calls on `handle`.
     #[must_use]
     pub fn new(
         browser: Arc<Browser>,
@@ -103,36 +85,7 @@ impl BrowserSurface {
             session: Arc::new(Mutex::new(None)),
             handle,
             platform: Platform::current(),
-            motion: MotionProfile::default(),
-            mouse: Arc::new(Mutex::new(VirtualMouse::new(MotionProfile::default()))),
-            keyboard: Arc::new(Mutex::new(VirtualKeyboard::new(MotionProfile::default()))),
-            wait: std::thread::sleep,
         }
-    }
-
-    /// The same surface, with its virtual mouse and keyboard moving at
-    /// `profile`. [`MotionProfile::Instant`] turns them off: clicks and text
-    /// go straight to the engine, as they did before virtual input.
-    #[must_use]
-    pub fn with_motion(mut self, profile: MotionProfile) -> Self {
-        self.motion = profile;
-        self.mouse = Arc::new(Mutex::new(VirtualMouse::new(profile)));
-        self.keyboard = Arc::new(Mutex::new(VirtualKeyboard::new(profile)));
-        self
-    }
-
-    /// The profile the virtual mouse and keyboard move at.
-    #[must_use]
-    pub const fn motion(&self) -> MotionProfile {
-        self.motion
-    }
-
-    /// The same surface, playing gestures without sleeping, so tests of a
-    /// moving profile run at full speed.
-    #[cfg(test)]
-    pub(crate) fn without_waiting(mut self) -> Self {
-        self.wait = |_| {};
-        self
     }
 
     /// The session this surface drives, once one is open.
@@ -205,7 +158,21 @@ impl BrowserSurface {
         if same_card.get("result") != Some(&Value::Bool(true)) {
             return None;
         }
-        self.click_at(Point::new(x, y)).ok()?;
+        for event in ["mouseMoved", "mousePressed", "mouseReleased"] {
+            let pressed = event != "mouseMoved";
+            self.block(self.browser.command(
+                &id,
+                json!({
+                    "action": "mouse",
+                    "eventType": event,
+                    "x": x,
+                    "y": y,
+                    "button": if pressed { "left" } else { "none" },
+                    "clickCount": i32::from(pressed),
+                }),
+            ))
+            .ok()?;
+        }
         Some(DesktopResponse::ok(
             "click",
             json!({"clicked": selector, "through": "its own card's click layer"}),
@@ -267,9 +234,6 @@ impl Surface for BrowserSurface {
                 },
             )
         };
-        if let (Some(reference), true) = (&reference, uses_pointer(operation)) {
-            self.approach(reference);
-        }
         match operation {
             JevOperation::Click | JevOperation::Expand | JevOperation::Collapse => {
                 let reply = targeted("click", |target, _| Action::Click {
@@ -286,11 +250,6 @@ impl Surface for BrowserSurface {
             }
             // Without a target the text goes where the focus is, as into an
             // autocomplete's unnamed input once it has been opened.
-            JevOperation::TypeText if reference.is_none() && self.types(text.as_deref()) => reply(
-                "type-text",
-                self.type_keys(text.as_deref().unwrap_or_default())
-                    .map(|()| json!({"typed": true})),
-            ),
             JevOperation::TypeText if reference.is_none() => self.perform(
                 "type-text",
                 Action::Type {
@@ -299,18 +258,10 @@ impl Surface for BrowserSurface {
                     delay_ms: None,
                 },
             ),
-            JevOperation::TypeText => reference
-                .as_deref()
-                .filter(|_| self.types(text.as_deref()))
-                .and_then(|reference| {
-                    self.type_into(reference, text.as_deref().unwrap_or_default())
-                })
-                .unwrap_or_else(|| {
-                    targeted("type-text", |target, text| Action::Fill {
-                        target,
-                        value: text.unwrap_or_default(),
-                    })
-                }),
+            JevOperation::TypeText => targeted("type-text", |target, text| Action::Fill {
+                target,
+                value: text.unwrap_or_default(),
+            }),
             JevOperation::Check => targeted("check", |target, _| Action::Check {
                 target,
                 checked: true,
@@ -433,32 +384,6 @@ impl Surface for BrowserSurface {
             "navigate",
             page.map(|page| json!({"url": page.url, "title": page.title})),
         )
-    }
-}
-
-impl BrowserSurface {
-    /// Whether `text` is typed key by key rather than filled at once.
-    fn types(&self, text: Option<&str>) -> bool {
-        !self.motion.is_instant()
-            && text.is_some_and(|text| !text.is_empty() && text.chars().count() <= MAX_TYPED_CHARS)
-    }
-
-    /// Types `text` into `reference` the way a person replaces a field's
-    /// contents: click into it, select what it holds, and type over it.
-    /// `None` when any step fails, so the caller can fill the field instead.
-    fn type_into(&self, reference: &str, text: &str) -> Option<DesktopResponse> {
-        let clicked = self.perform(
-            "click",
-            Action::Click {
-                target: Target::reference(reference),
-                new_tab: false,
-            },
-        );
-        if !clicked.ok || !self.press("", "cmd+a").ok {
-            return None;
-        }
-        self.type_keys(text).ok()?;
-        Some(DesktopResponse::ok("type-text", json!({"typed": true})))
     }
 }
 

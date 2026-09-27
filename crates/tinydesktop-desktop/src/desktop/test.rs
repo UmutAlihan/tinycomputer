@@ -66,31 +66,12 @@ fn every_recognized_configuration_field_is_read() {
         "trace_path": "/tmp/run.jsonl",
         "trace_strict": true,
         "headed": true,
-        "motion": "calm",
     }))
     .expect("a full configuration is accepted");
 
     assert_eq!(desktop.session_id(), Some("run-42"));
     assert_eq!(desktop.trace_path(), Some(Path::new("/tmp/run.jsonl")));
     assert!(desktop.is_headed());
-    assert_eq!(desktop.motion(), tinydesktop_input::MotionProfile::Calm);
-}
-
-#[test]
-fn motion_defaults_to_natural_and_rejects_anything_but_a_profile_name() {
-    let natural = Desktop::from_config(&json!({"motion": null})).expect("null is the default");
-    assert_eq!(natural.motion(), tinydesktop_input::MotionProfile::Natural);
-    for wrong in [json!("frantic"), json!(3)] {
-        let error = Desktop::from_config(&json!({ "motion": wrong }))
-            .expect_err("only a profile name is a motion");
-        assert!(matches!(
-            error,
-            crate::Error::ConfigFieldType {
-                field: "motion",
-                ..
-            }
-        ));
-    }
 }
 
 #[test]

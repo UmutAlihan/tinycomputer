@@ -77,4 +77,3 @@ pub use desktop::Desktop;
 pub use error::{Error, Result};
 pub use tinydesktop_bus;
 pub use tinydesktop_bus::*;
-pub use tinydesktop_input::MotionProfile;

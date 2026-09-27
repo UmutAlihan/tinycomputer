@@ -52,12 +52,10 @@ mod system;
 mod waiting;
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 use agent_desktop_core::{AppError, PermissionReport, PlatformAdapter, context::CommandContext};
 use serde_json::Value;
 use tinydesktop_bus::DesktopResponse;
-use tinydesktop_input::{MotionProfile, VirtualMouse};
 
 use crate::{Error, Result};
 use permission::Need;
@@ -86,25 +84,6 @@ pub struct Desktop {
     trace_path: Option<PathBuf>,
     trace_strict: bool,
     headed: bool,
-    motion: MotionProfile,
-    pointer: Pointer,
-}
-
-/// The virtual mouse every clone of a [`Desktop`] shares: there is one real
-/// pointer, so there is one record of where it was left.
-#[derive(Debug, Clone)]
-pub(crate) struct Pointer(pub(crate) Arc<Mutex<VirtualMouse>>);
-
-impl Pointer {
-    fn new(profile: MotionProfile) -> Self {
-        Self(Arc::new(Mutex::new(VirtualMouse::new(profile))))
-    }
-}
-
-impl Default for Pointer {
-    fn default() -> Self {
-        Self::new(MotionProfile::default())
-    }
 }
 
 impl Desktop {
@@ -182,48 +161,12 @@ impl Desktop {
         self
     }
 
-    /// Returns this `Desktop` moving the real pointer at `profile` in headed
-    /// mode.
-    ///
-    /// A headed `Desktop` glides the pointer onto an element along a human
-    /// path — curved, overshooting and correcting, at Fitts's-law speed —
-    /// before clicking, checking, expanding, or collapsing it, so the
-    /// application sees the pointer arrive and hover the way it does under a
-    /// hand. [`MotionProfile::Instant`] turns that off. Headless mode never
-    /// moves the pointer, whatever the profile.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use tinydesktop_desktop::{Desktop, MotionProfile};
-    /// let desktop = Desktop::new().with_motion(MotionProfile::Calm);
-    /// assert_eq!(desktop.motion(), MotionProfile::Calm);
-    /// assert_eq!(Desktop::new().motion(), MotionProfile::Natural);
-    /// ```
-    #[must_use]
-    pub fn with_motion(mut self, profile: MotionProfile) -> Self {
-        self.motion = profile;
-        self.pointer = Pointer::new(profile);
-        self
-    }
-
-    /// The profile the real pointer moves at in headed mode.
-    #[must_use]
-    pub const fn motion(&self) -> MotionProfile {
-        self.motion
-    }
-
-    pub(crate) fn pointer(&self) -> &Pointer {
-        &self.pointer
-    }
-
     /// Builds a `Desktop` from the configuration blob the module loader
     /// supplies.
     ///
     /// Every field is optional; `null` and `{}` both yield
     /// [`Desktop::default`]. The recognized fields are `session_id` and
-    /// `trace_path` (strings), `trace_strict` and `headed` (booleans), and
-    /// `motion` (`instant`, `brisk`, `natural`, or `calm`). An
+    /// `trace_path` (strings), and `trace_strict` and `headed` (booleans). An
     /// unrecognized field is ignored, so a newer host configuring a field this
     /// version does not know about still loads.
     ///
@@ -259,10 +202,7 @@ impl Desktop {
             trace_path: text(object.get("trace_path"), "trace_path")?.map(PathBuf::from),
             trace_strict: flag(object.get("trace_strict"), "trace_strict")?,
             headed: flag(object.get("headed"), "headed")?,
-            motion: MotionProfile::default(),
-            pointer: Pointer::default(),
-        }
-        .with_motion(motion(object.get("motion"))?))
+        })
     }
 
     /// The session refs allocated through this `Desktop` belong to.
@@ -379,21 +319,6 @@ fn text(value: Option<&Value>, field: &'static str) -> Result<Option<String>> {
                 field,
                 expected: "a string",
             }),
-    }
-}
-
-/// Reads the optional `motion` field, defaulting to the natural profile.
-fn motion(value: Option<&Value>) -> Result<MotionProfile> {
-    let invalid = Error::ConfigFieldType {
-        field: "motion",
-        expected: "one of instant, brisk, natural, or calm",
-    };
-    match value {
-        None | Some(Value::Null) => Ok(MotionProfile::default()),
-        Some(value) => value
-            .as_str()
-            .and_then(|name| name.parse().ok())
-            .ok_or(invalid),
     }
 }
 
