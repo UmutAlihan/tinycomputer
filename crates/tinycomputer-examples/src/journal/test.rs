@@ -55,7 +55,10 @@ fn a_summary_splits_wall_time_by_where_it_went() {
     assert_eq!(summary.latency_max_ms, 500);
     assert_eq!(summary.mean_request_bytes, 2000);
     assert_eq!((summary.input_tokens, summary.output_tokens), (50, 2));
-    assert_eq!((summary.max_input_tokens, summary.max_window_percent), (50, 0));
+    assert_eq!(
+        (summary.max_input_tokens, summary.max_window_percent),
+        (50, 0)
+    );
     assert_eq!(
         (
             summary.turns,
@@ -197,4 +200,17 @@ fn runs_are_found_by_latest_by_part_of_their_id_or_by_path() {
     std::fs::remove_dir_all(&root).unwrap();
     assert!(runs(&root).is_err());
     assert!(find(&PathBuf::from("/nonexistent-journal-root"), "latest").is_err());
+}
+
+#[test]
+fn a_strategy_is_parsed_by_its_wire_name() {
+    assert_eq!(
+        crate::parse_strategy(" wide "),
+        Some(tinycomputer_bus::FlowStrategy::Wide)
+    );
+    assert_eq!(
+        crate::parse_strategy("narrow"),
+        Some(tinycomputer_bus::FlowStrategy::Narrow)
+    );
+    assert_eq!(crate::parse_strategy("fastest"), None);
 }

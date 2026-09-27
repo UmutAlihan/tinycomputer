@@ -154,7 +154,10 @@ fn a_long_list_is_one_region_shown_as_cards() {
         .as_array()
         .unwrap()
         .clone();
-    assert_eq!(lines[0], "card 1: Airline 0 · Select → e4 button \"Select\"");
+    assert_eq!(
+        lines[0],
+        "card 1: Airline 0 · Select → e4 button \"Select\""
+    );
     assert_eq!(lines.len(), super::LIST_CARDS + 1);
     assert_eq!(lines.last().unwrap(), "and 8 more cards like these");
 }
@@ -295,7 +298,10 @@ fn an_empty_screen_digests_to_nothing_and_renders_an_empty_map() {
     let digest = digest(&page);
     assert_eq!(digest, Digest::default());
     let rendered = digest.render(&page, &Rendering::default());
-    assert_eq!(rendered, json!({"untrusted_accessibility_data": {"regions": []}}));
+    assert_eq!(
+        rendered,
+        json!({"untrusted_accessibility_data": {"regions": []}})
+    );
 }
 
 #[test]

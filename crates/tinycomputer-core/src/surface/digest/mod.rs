@@ -205,9 +205,7 @@ impl Digest {
             };
             key(left)
                 .cmp(&key(right))
-                .then_with(|| {
-                    relevance(right, rendering).total_cmp(&relevance(left, rendering))
-                })
+                .then_with(|| relevance(right, rendering).total_cmp(&relevance(left, rendering)))
                 .then_with(|| left_at.cmp(right_at))
         });
         regions.into_iter().map(|(_, region)| region).collect()
@@ -421,7 +419,11 @@ fn region_name(screen: &Screen, members: &[usize]) -> String {
         return "top level".to_owned();
     };
     let shared = (0..first.len())
-        .take_while(|level| paths.iter().all(|path| path.get(*level) == first.get(*level)))
+        .take_while(|level| {
+            paths
+                .iter()
+                .all(|path| path.get(*level) == first.get(*level))
+        })
         .count();
     if shared == 0 {
         return "top level".to_owned();

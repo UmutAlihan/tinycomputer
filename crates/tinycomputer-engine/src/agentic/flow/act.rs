@@ -23,8 +23,8 @@ use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
     memory::{learn, remember},
-    wide::{Dismissal, Prepared},
     view::{Candidate, Screen, change_note, fingerprint, is_destructive, label, signature},
+    wide::{Dismissal, Prepared},
 };
 
 /// Completion probability that ends a step after acting.
@@ -320,8 +320,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         .to_owned(),
                 );
             }
-            if self.recover(log, state, &screen, intent, &judged).await?
-            {
+            if self.recover(log, state, &screen, intent, &judged).await? {
                 continue;
             }
             if judged.next == "wait" && state.idle_waits >= MAX_IDLE_WAITS {
@@ -398,8 +397,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             state.unchanged = state.unchanged.saturating_add(1);
             if let Some(target) = &previous.target {
                 state.banned.insert(signature(target));
-                self.ledger
-                    .tried(format!("pressed {}: nothing on screen changed", label(target)));
+                self.ledger.tried(format!(
+                    "pressed {}: nothing on screen changed",
+                    label(target)
+                ));
             }
         }
         self.history.push(format!("after the last action: {note}"));
@@ -463,8 +464,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         log.used(FlowLoop::Undo);
         if let Some(target) = &target {
             state.banned.insert(signature(target));
-            self.ledger
-                .tried(format!("pressed {}: it made things worse ({why})", label(target)));
+            self.ledger.tried(format!(
+                "pressed {}: it made things worse ({why})",
+                label(target)
+            ));
         }
         let app = self.app.clone();
         self.act(log, "press escape (undo)", None, move |backend| {

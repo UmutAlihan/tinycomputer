@@ -124,9 +124,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// How `digest` is rendered and ranked: by the step's survey when it was
     /// asked on this page shape.
     pub(super) fn rendering(&self, digest: &Digest) -> Rendering<'_> {
-        let attention = self.attention.as_ref().filter(|attention| {
-            attention.step == self.step && attention.layout == digest.layout()
-        });
+        let attention = self
+            .attention
+            .as_ref()
+            .filter(|attention| attention.step == self.step && attention.layout == digest.layout());
         Rendering {
             include_values: self.include_values,
             budget: DIGEST_BUDGET,
@@ -254,7 +255,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .flat_map(|region| region.members.iter())
             .filter_map(|index| screen.candidates.get(*index))
             .filter(|candidate| {
-                supports(candidate, "Click") && !is_destructive(candidate, screen, &self.stop_before)
+                supports(candidate, "Click")
+                    && !is_destructive(candidate, screen, &self.stop_before)
             })
             .take(CAP)
             .cloned()
@@ -398,20 +400,22 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 confidence,
             }));
         }
-        let consistency = answers.contains_key(&format!("again_{operation}")).then(|| {
-            let mut reversed = only.clone();
-            reversed.reverse();
-            chosen(answers, &format!("again_{operation}"))
-                .and_then(|(key, _)| {
-                    let letters = lettered(reversed.len());
-                    letters
-                        .iter()
-                        .position(|letter| *letter == key)
-                        .and_then(|index| reversed.get(index))
-                        .map(|again| again.ref_id == first.ref_id)
-                })
-                .unwrap_or(false)
-        });
+        let consistency = answers
+            .contains_key(&format!("again_{operation}"))
+            .then(|| {
+                let mut reversed = only.clone();
+                reversed.reverse();
+                chosen(answers, &format!("again_{operation}"))
+                    .and_then(|(key, _)| {
+                        let letters = lettered(reversed.len());
+                        letters
+                            .iter()
+                            .position(|letter| *letter == key)
+                            .and_then(|index| reversed.get(index))
+                            .map(|again| again.ref_id == first.ref_id)
+                    })
+                    .unwrap_or(false)
+            });
         Some(Prepared::Unsure {
             candidate: first,
             confidence,

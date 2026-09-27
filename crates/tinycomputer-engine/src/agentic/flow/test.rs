@@ -3990,7 +3990,14 @@ async fn a_wide_turn_judges_and_chooses_its_target_in_one_request() {
         "wide: one request judges the screen and chooses the control, one judges the result"
     );
     let first = &broad.requests[0];
-    for id in ["done", "not_done", "progress", "move", "target_activate", "again_activate"] {
+    for id in [
+        "done",
+        "not_done",
+        "progress",
+        "move",
+        "target_activate",
+        "again_activate",
+    ] {
         assert!(first.questions.contains_key(id), "the turn asks {id}");
     }
 }
@@ -4164,15 +4171,29 @@ async fn a_crowded_screen_is_surveyed_once_and_ranked_instead_of_narrowed() {
         1,
         "one survey for the step's page shape, reused on later turns"
     );
-    assert_eq!(asked(&run.requests, "region"), 0, "no region-by-region narrowing");
+    assert_eq!(
+        asked(&run.requests, "region"),
+        0,
+        "no region-by-region narrowing"
+    );
     assert!(run.result.steps[0].loops.contains(&FlowLoop::Survey));
 
     let survey = run
         .requests
         .iter()
-        .find(|request| request.questions.keys().any(|id| id.starts_with("relevance_")))
+        .find(|request| {
+            request
+                .questions
+                .keys()
+                .any(|id| id.starts_with("relevance_"))
+        })
         .unwrap();
-    assert!(survey.questions.keys().any(|id| id.starts_with("distraction_")));
+    assert!(
+        survey
+            .questions
+            .keys()
+            .any(|id| id.starts_with("distraction_"))
+    );
     let turn = run
         .requests
         .iter()
@@ -4252,8 +4273,10 @@ async fn a_journaled_wide_run_records_its_survey_and_each_turns_decisions() {
     })
     .with_journal(&scratch);
     let request = RunFlowRequest {
-        flow: serde_json::from_value(json!({"app": "Mail", "steps": ["start a new email message"]}))
-            .unwrap(),
+        flow: serde_json::from_value(
+            json!({"app": "Mail", "steps": ["start a new email message"]}),
+        )
+        .unwrap(),
         votes: 1,
         strategy: tinycomputer_bus::FlowStrategy::Wide,
         ..RunFlowRequest::default()

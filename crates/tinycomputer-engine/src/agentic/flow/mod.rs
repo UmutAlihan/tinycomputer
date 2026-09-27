@@ -58,8 +58,8 @@ use std::{
 use serde_json::{Value, json};
 use tinycomputer_bus::{
     DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowBrief,
-    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint, JevExchange, JevMetrics,
-    JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
+    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint, JevExchange,
+    JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
 use tinycomputer_core::Facts;
 use tinyinference_decisions::{Answer, EvaluationRequest, Question};
