@@ -104,105 +104,112 @@ fn walk(
     for (index, step) in steps.iter().enumerate() {
         *count += 1;
         let path = step_path(prefix, index);
-        // `local` allows a fact's value: it is only ever used to launch an
-        // application or navigate the browser, never shown to Jev. `model`
-        // is everything Jev is asked to reason about, so a fact there is
-        // rejected outright rather than silently expanded at run time.
-        let local = |errors: &mut Vec<String>, label: &str, value: &str| {
-            check_text(errors, &path, label, value, defined);
-        };
-        let model = |errors: &mut Vec<String>, label: &str, value: &str| {
-            check_text(errors, &path, label, value, defined);
-            forbid_facts(errors, &path, value, facts);
-        };
-        match step.action() {
-            FlowAction::Open(value) => local(errors, "the application", &value),
-            FlowAction::Browse(value) => local(errors, "the address", &value),
-            FlowAction::Do(value) => model(errors, "the intent", &value),
-            FlowAction::Verify(value) | FlowAction::WaitFor(value) => {
-                model(errors, "the condition", &value);
+        check_step(&step.action(), &path, depth, defined, facts, count, errors);
+    }
+}
+
+/// Checks one step's action, recursing into `walk` for `if` and
+/// `repeat_until` bodies.
+///
+/// `local` allows a fact's value: it is only ever used to launch an
+/// application or navigate the browser, never shown to Jev. `model` is
+/// everything Jev is asked to reason about, so a fact there is rejected
+/// outright rather than silently expanded at run time.
+fn check_step(
+    action: &FlowAction,
+    path: &str,
+    depth: usize,
+    defined: &mut BTreeSet<String>,
+    facts: &BTreeSet<String>,
+    count: &mut usize,
+    errors: &mut Vec<String>,
+) {
+    let local = |errors: &mut Vec<String>, label: &str, value: &str| {
+        check_text(errors, path, label, value, defined);
+    };
+    let model = |errors: &mut Vec<String>, label: &str, value: &str| {
+        check_text(errors, path, label, value, defined);
+        forbid_facts(errors, path, value, facts);
+    };
+    match action {
+        FlowAction::Open(value) => local(errors, "the application", value),
+        FlowAction::Browse(value) => local(errors, "the address", value),
+        FlowAction::Do(value) => model(errors, "the intent", value),
+        FlowAction::Verify(value) | FlowAction::WaitFor(value) => {
+            model(errors, "the condition", value);
+        }
+        FlowAction::StopBefore(value) => model(errors, "the irreversible action", value),
+        FlowAction::Enter(slots) => {
+            if slots.0.is_empty() {
+                errors.push(format!("step {path}: `enter` needs at least one slot"));
             }
-            FlowAction::StopBefore(value) => model(errors, "the irreversible action", &value),
-            FlowAction::Enter(slots) => {
-                if slots.0.is_empty() {
-                    errors.push(format!("step {path}: `enter` needs at least one slot"));
-                }
-                for slot in &slots.0 {
-                    // The slot name labels a field for Jev; the text is typed
-                    // into it locally and never shown, so only the name is
-                    // checked against `facts`.
-                    model(errors, "a slot name", &slot.slot);
-                    undefined(errors, &path, &slot.text, defined);
-                }
+            for slot in &slots.0 {
+                // The slot name labels a field for Jev; the text is typed
+                // into it locally and never shown, so only the name is
+                // checked against `facts`.
+                model(errors, "a slot name", &slot.slot);
+                undefined(errors, path, &slot.text, defined);
             }
-            FlowAction::Choose(choose) => {
-                model(errors, "`what`", &choose.what);
-                model(errors, "`option`", &choose.option);
+        }
+        FlowAction::Choose(choose) => {
+            model(errors, "`what`", &choose.what);
+            model(errors, "`option`", &choose.option);
+        }
+        FlowAction::Read(read) | FlowAction::Extract(read) => {
+            model(errors, "`what`", &read.what);
+            define(errors, path, read.into, defined);
+        }
+        FlowAction::Pick(pick) => {
+            model(errors, "`from`", &pick.from);
+            model(errors, "`by`", &pick.by);
+            if let Some(into) = pick.into.clone() {
+                define(errors, path, into, defined);
             }
-            FlowAction::Read(read) | FlowAction::Extract(read) => {
-                model(errors, "`what`", &read.what);
-                define(errors, &path, read.into, defined);
+        }
+        FlowAction::RepeatUntil(repeat) => {
+            model(errors, "the condition", &repeat.condition);
+            if !(1..=MAX_REPEAT).contains(&repeat.max) {
+                errors.push(format!(
+                    "step {path}: `max` must be between 1 and {MAX_REPEAT}"
+                ));
             }
-            FlowAction::Pick(pick) => {
-                model(errors, "`from`", &pick.from);
-                model(errors, "`by`", &pick.by);
-                if let Some(into) = pick.into {
-                    define(errors, &path, into, defined);
-                }
+            if repeat.steps.is_empty() {
+                errors.push(format!(
+                    "step {path}: `repeat_until` needs at least one step"
+                ));
             }
-            FlowAction::RepeatUntil(repeat) => {
-                model(errors, "the condition", &repeat.condition);
-                if !(1..=MAX_REPEAT).contains(&repeat.max) {
-                    errors.push(format!(
-                        "step {path}: `max` must be between 1 and {MAX_REPEAT}"
-                    ));
-                }
-                if repeat.steps.is_empty() {
-                    errors.push(format!(
-                        "step {path}: `repeat_until` needs at least one step"
-                    ));
-                }
-                // A round may never run, so what it defines does not survive it.
-                let mut inner = defined.clone();
-                walk(
-                    &repeat.steps,
-                    &path,
-                    depth + 1,
-                    &mut inner,
-                    facts,
-                    count,
-                    errors,
-                );
+            // A round may never run, so what it defines does not survive it.
+            let mut inner = defined.clone();
+            walk(&repeat.steps, path, depth + 1, &mut inner, facts, count, errors);
+        }
+        FlowAction::If(branch) => {
+            model(errors, "the condition", &branch.condition);
+            if branch.then.is_empty() && branch.otherwise.is_empty() {
+                errors.push(format!(
+                    "step {path}: `if` needs a `then` or an `else` branch"
+                ));
             }
-            FlowAction::If(branch) => {
-                model(errors, "the condition", &branch.condition);
-                if branch.then.is_empty() && branch.otherwise.is_empty() {
-                    errors.push(format!(
-                        "step {path}: `if` needs a `then` or an `else` branch"
-                    ));
-                }
-                // Only one branch runs, so neither one's variables survive it.
-                let mut then_defined = defined.clone();
-                walk(
-                    &branch.then,
-                    &path,
-                    depth + 1,
-                    &mut then_defined,
-                    facts,
-                    count,
-                    errors,
-                );
-                let mut else_defined = defined.clone();
-                walk(
-                    &branch.otherwise,
-                    &path,
-                    depth + 1,
-                    &mut else_defined,
-                    facts,
-                    count,
-                    errors,
-                );
-            }
+            // Only one branch runs, so neither one's variables survive it.
+            let mut then_defined = defined.clone();
+            walk(
+                &branch.then,
+                path,
+                depth + 1,
+                &mut then_defined,
+                facts,
+                count,
+                errors,
+            );
+            let mut else_defined = defined.clone();
+            walk(
+                &branch.otherwise,
+                path,
+                depth + 1,
+                &mut else_defined,
+                facts,
+                count,
+                errors,
+            );
         }
     }
 }
