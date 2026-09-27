@@ -15,9 +15,13 @@
 //! - `TASK_MAX_MINUTES` — optional: cancel the task after this long (20).
 //! - `TINYDESKTOP_BROWSER_EXECUTABLE`, `TINYDESKTOP_BROWSER_USER_AGENT`, and
 //!   `TINYDESKTOP_BROWSER_ARGS` (space-separated) — how the browser launches.
+//! - `TINYDESKTOP_BROWSER_ENDPOINT` — attach to a running Chrome instead
+//!   (`http://127.0.0.1:9222`); booking sites turn away a fresh headless
+//!   browser but serve a person's own. Closing the run only disconnects.
 //!
-//! Run it in the Docker lab, never on the host:
-//! `scripts/docker-lab -- crates/tinydesktop-examples/scenarios/run kashmir`.
+//! Launching a browser runs in the Docker lab, never on the host:
+//! `scripts/docker-lab -- crates/tinydesktop-examples/tasks/run kashmir`.
+//! Attaching to your own Chrome runs on the host, since that is where it is.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -89,6 +93,7 @@ async fn main() -> Result<(), Failure> {
     let surface = BrowserSurface::new(
         browser.clone(),
         SessionOptions {
+            endpoint: std::env::var("TINYDESKTOP_BROWSER_ENDPOINT").ok(),
             executable: std::env::var("TINYDESKTOP_BROWSER_EXECUTABLE").ok(),
             user_agent: std::env::var("TINYDESKTOP_BROWSER_USER_AGENT").ok(),
             args: std::env::var("TINYDESKTOP_BROWSER_ARGS")
