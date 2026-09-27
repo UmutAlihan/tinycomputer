@@ -521,6 +521,7 @@ fn describe_step(action: &FlowAction, vars: &BTreeMap<String, String>) -> (&'sta
         FlowAction::Choose(choose) => ("choose", format!("{} in {}", choose.option, choose.what)),
         FlowAction::Read(read) => ("read", format!("{} into {}", read.what, read.into)),
         FlowAction::Pick(pick) => ("pick", format!("{} by {}", pick.from, pick.by)),
+        FlowAction::Extract(read) => ("extract", format!("{} into {}", read.what, read.into)),
         FlowAction::Verify(condition) => ("verify", condition.clone()),
         FlowAction::WaitFor(condition) => ("wait_for", condition.clone()),
         FlowAction::StopBefore(action) => ("stop_before", action.clone()),

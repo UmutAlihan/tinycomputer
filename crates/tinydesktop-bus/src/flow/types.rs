@@ -101,6 +101,7 @@ impl<'de> Visitor<'de> for StepVisitor {
             "choose" => FlowAction::Choose(access.next_value().map_err(context)?),
             "read" => FlowAction::Read(access.next_value().map_err(context)?),
             "pick" => FlowAction::Pick(access.next_value().map_err(context)?),
+            "extract" => FlowAction::Extract(access.next_value().map_err(context)?),
             "verify" => FlowAction::Verify(access.next_value().map_err(context)?),
             "wait_for" => FlowAction::WaitFor(access.next_value().map_err(context)?),
             "stop_before" => FlowAction::StopBefore(access.next_value().map_err(context)?),
@@ -131,6 +132,7 @@ pub const STEP_KINDS: &[&str] = &[
     "choose",
     "read",
     "pick",
+    "extract",
     "verify",
     "wait_for",
     "stop_before",
@@ -157,6 +159,8 @@ pub enum FlowAction {
     Read(ReadStep),
     /// Choose the best of a list of results by a criterion, and open it.
     Pick(PickStep),
+    /// Capture every item of a list of results into a variable.
+    Extract(ReadStep),
     /// Require a natural-language condition to hold; the flow fails if not.
     Verify(String),
     /// Wait until a natural-language condition holds.

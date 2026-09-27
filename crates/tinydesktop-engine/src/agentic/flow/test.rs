@@ -2074,3 +2074,28 @@ fn pick_validates_its_fields_and_defines_its_variable() {
     ]}));
     assert_eq!(errors.len(), 3, "{errors:?}");
 }
+
+#[tokio::test]
+async fn extract_stores_every_item_of_the_list() {
+    let run = run(
+        flights(),
+        json!({"app": "Mail", "steps": [
+            {"extract": {"what": "the flight results", "into": "flights"}}
+        ]}),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    let rows: Vec<Vec<String>> = serde_json::from_str(&run.result.vars["flights"]).unwrap();
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[0][..2], ["IndiGo 6E-2135", "₹6,840"]);
+    assert!(run.app.sim().picked.is_empty(), "extracting opens nothing");
+
+    let nothing = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": [{"extract": {"what": "results", "into": "rows"}}]}),
+        |_| {},
+        |_, _, _| None,
+    )
+    .await;
+    assert!(nothing.result.steps[0].note.contains("no list of results"));
+}

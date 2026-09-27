@@ -48,6 +48,7 @@ pub(super) async fn run<B: AgentBackend + Sync>(
         FlowAction::Choose(choose) => run.choose(log, choose).await,
         FlowAction::Read(read) => run.read(log, read).await,
         FlowAction::Pick(pick) => run.pick(log, pick).await,
+        FlowAction::Extract(read) => run.extract(read).await,
         FlowAction::Verify(_) => run.verify(log, text).await,
         FlowAction::WaitFor(_) => run.wait_for(log, text).await,
         FlowAction::StopBefore(_) => run.stop_before(log, text).await,
@@ -413,6 +414,34 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(Ended::new(
             StepOutcome::Done,
             format!("picked {summary} ({how} by {by}, out of {})", groups.len()),
+        ))
+    }
+
+    /// Stores every item of the list showing as JSON rows of their text.
+    async fn extract(&mut self, read: &ReadStep) -> Result<Ended, Halt> {
+        let what = substitute(&read.what, &self.vars);
+        let mut screen = self.look().await?;
+        self.explore(&mut screen).await;
+        let groups = result_groups(&screen);
+        if groups.is_empty() {
+            return Err(Halt::Failed(format!("no list of {what} is showing")));
+        }
+        let rows = groups
+            .iter()
+            .map(|group| group.fields.clone())
+            .collect::<Vec<_>>();
+        self.vars.insert(
+            read.into.clone(),
+            serde_json::to_string(&rows).unwrap_or_default(),
+        );
+        self.history.push(format!(
+            "extracted {} items of {what} into {}",
+            rows.len(),
+            read.into
+        ));
+        Ok(Ended::new(
+            StepOutcome::Done,
+            format!("extracted {} items into {}", rows.len(), read.into),
         ))
     }
 

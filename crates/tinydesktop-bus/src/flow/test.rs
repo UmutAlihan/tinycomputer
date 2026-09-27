@@ -82,6 +82,7 @@ fn control_steps_pin_their_wire_form() {
             {"open": "Finder"},
             {"browse": "https://flights.test"},
             {"pick": {"from": "the flight results", "by": "lowest price", "into": "flight"}},
+            {"extract": {"what": "the flight results", "into": "flights"}},
             {"do": "y"}
         ]
     }))

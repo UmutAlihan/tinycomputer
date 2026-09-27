@@ -877,3 +877,19 @@ async fn a_budget_failure_is_never_mistaken_for_a_human_wall() {
         TaskStatus::Failed { .. }
     ));
 }
+
+#[tokio::test]
+async fn extracted_rows_become_structured_records() {
+    let (tasks, _) = controller(vec![finished_run(
+        FlowStopReason::Completed,
+        vec![],
+        &[("flights", r#"[["IndiGo","₹6,840"],["Vistara","₹7,210"]]"#)],
+        None,
+    )]);
+    let view = start(&tasks, json!({"app": "browser", "steps": ["a"]}), &[]);
+    let TaskStatus::Done { records, .. } = settle(&tasks, &view.id).await.status else {
+        panic!("done");
+    };
+    assert_eq!(records["flights"].len(), 2);
+    assert_eq!(records["flights"][1]["field 2"], "₹7,210");
+}

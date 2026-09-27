@@ -828,10 +828,22 @@ fn records(reads: &BTreeMap<String, String>) -> BTreeMap<String, Vec<BTreeMap<St
     reads
         .iter()
         .map(|(name, value)| {
-            (
-                name.clone(),
-                vec![BTreeMap::from([("value".to_owned(), value.clone())])],
-            )
+            // An `extract` stores JSON rows of text; anything else is one value.
+            let rows = serde_json::from_str::<Vec<Vec<String>>>(value).map_or_else(
+                |_| vec![BTreeMap::from([("value".to_owned(), value.clone())])],
+                |rows| {
+                    rows.into_iter()
+                        .map(|fields| {
+                            fields
+                                .into_iter()
+                                .enumerate()
+                                .map(|(index, field)| (format!("field {}", index + 1), field))
+                                .collect()
+                        })
+                        .collect()
+                },
+            );
+            (name.clone(), rows)
         })
         .collect()
 }

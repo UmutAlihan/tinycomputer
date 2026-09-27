@@ -108,7 +108,7 @@ fn walk(
                 text(errors, "`what`", &choose.what);
                 text(errors, "`option`", &choose.option);
             }
-            FlowAction::Read(read) => {
+            FlowAction::Read(read) | FlowAction::Extract(read) => {
                 text(errors, "`what`", &read.what);
                 define(errors, &path, read.into, defined);
             }
