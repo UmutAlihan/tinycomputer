@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::ptr::NonNull;
 
 use block2::RcBlock;
-use objc2::MainThreadMarker;
+use objc2::{AnyThread, MainThreadMarker, MainThreadOnly};
 use objc2::rc::Retained;
 use objc2_app_kit::{
     NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSColor, NSImage,
