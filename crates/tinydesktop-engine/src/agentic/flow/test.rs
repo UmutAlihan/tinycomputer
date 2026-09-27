@@ -30,7 +30,9 @@ use super::{
     super::{Evaluator, JevRuntime},
     ask,
     backend::AgentBackend,
-    enter, flow_guide, ground, memory, run_flow_with, validate, validate_flow,
+    enter, flow_guide, ground, memory, run_flow_with,
+    steps::{in_region, looks_like_date, redacted},
+    validate, validate_flow,
     view::{Candidate, Depth, Screen},
 };
 
@@ -2798,4 +2800,52 @@ async fn extract_stores_every_item_of_the_list() {
     )
     .await;
     assert!(nothing.result.steps[0].note.contains("no list of results"));
+}
+
+#[test]
+fn looks_like_date_rejects_a_day_the_named_month_never_has() {
+    assert!(looks_like_date("18 October 2026"));
+    // April has 30 days; without a year, February is taken generously (29).
+    assert!(!looks_like_date("31 April"));
+    assert!(looks_like_date("29 February"));
+    // 2026 is not a leap year; 2028 is.
+    assert!(!looks_like_date("29 February 2026"));
+    assert!(looks_like_date("29 February 2028"));
+}
+
+#[test]
+fn in_region_prefers_the_ancestor_named_region_but_keeps_every_match_when_none_is_named() {
+    let seat = node(
+        "Continue",
+        "button",
+        &["Click"],
+        &["root", "Seat picker"],
+        10.0,
+    );
+    let unrelated = node(
+        "Continue",
+        "button",
+        &["Click"],
+        &["root", "Newsletter"],
+        20.0,
+    );
+    assert!(in_region(&seat, "seat picker"));
+    assert!(!in_region(&unrelated, "seat picker"));
+    // An empty `what` names no region to narrow by, so everything matches:
+    // `pick_option` falls back to the unnarrowed pool when nothing on the
+    // page names the region at all.
+    assert!(in_region(&unrelated, ""));
+}
+
+#[test]
+fn redacted_strips_the_shown_text_but_keeps_the_ref_and_role() {
+    let mut target = node("4111 1111 1111 1111", "option", &["Click"], &["root"], 5.0);
+    target.description = Some("saved card".to_owned());
+    target.value = Some(json!("4111 1111 1111 1111"));
+    let logged = redacted(&target);
+    assert_eq!(logged.name, None);
+    assert_eq!(logged.description, None);
+    assert_eq!(logged.value, None);
+    assert_eq!(logged.ref_id, target.ref_id);
+    assert_eq!(logged.role, target.role);
 }
