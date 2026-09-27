@@ -123,8 +123,21 @@ fn detokenize(value: &str, following: &[&Candidate]) -> String {
     tokens.join(", ")
 }
 
+/// The document-ordered merge of `screen`'s candidates and the ref-less text
+/// nodes `collect` set aside, which [`rich_text`] and [`detokenize`] both
+/// walk to find a field's held text.
+pub(super) fn ordered_nodes(screen: &Screen) -> Vec<&Candidate> {
+    let mut ordered = screen
+        .candidates
+        .iter()
+        .chain(screen.text_nodes.iter())
+        .collect::<Vec<_>>();
+    ordered.sort_by_key(|node| node.order);
+    ordered
+}
+
 /// The text inside a rich-text area, joined in reading order.
-fn rich_text(ordered: &[&Candidate], area: &Candidate) -> Option<String> {
+pub(super) fn rich_text(ordered: &[&Candidate], area: &Candidate) -> Option<String> {
     if !["webarea", "document"]
         .iter()
         .any(|role| area.role.eq_ignore_ascii_case(role))
