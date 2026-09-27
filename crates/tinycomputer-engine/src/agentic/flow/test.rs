@@ -4278,7 +4278,7 @@ async fn a_journaled_wide_run_records_its_survey_and_each_turns_decisions() {
         .expect("the crowded screen was surveyed");
     assert_eq!(survey["step"], "1");
     assert!(survey["regions"].as_u64().unwrap() >= 2);
-    assert_eq!(survey["most_relevant"][0], survey["most_relevant"][0]);
+    assert!(survey["most_relevant"][0].is_string());
     assert_eq!(survey["distractions"], 0);
     let turns = events
         .iter()
