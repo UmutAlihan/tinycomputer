@@ -108,6 +108,32 @@ fn a_rich_text_body_never_reaches_context_but_stays_in_text_nodes() {
 }
 
 #[test]
+fn a_token_fields_chip_labels_never_reach_context_but_stay_in_text_nodes() {
+    // A token field (a mail recipient list) turns each typed address into an
+    // attachment and exposes it as a ref-less static-text sibling right after
+    // the field itself, rather than nested inside a rich-text area. That
+    // sibling is field content too, so it must never surface in `context`
+    // unconditionally, even though it carries no `webarea`/`document`
+    // ancestor for `remembers_as_field_content` to recognize.
+    let screen = parsed(&json!({"role": "window", "children": [
+        {"ref_id": "@s:to", "role": "textfield", "name": "To", "available_actions": ["SetValue"]},
+        {"role": "statictext", "name": "sam@example.com"}
+    ]}));
+    assert!(
+        !screen.context.iter().any(|line| line.contains("sam@example.com")),
+        "a token field's chip label must not leak into unconditional context: {:?}",
+        screen.context
+    );
+    assert!(
+        screen
+            .text_nodes
+            .iter()
+            .any(|node| node.name.as_deref() == Some("sam@example.com")),
+        "the chip label must still be reachable for gated field-content extraction"
+    );
+}
+
+#[test]
 fn a_truncated_subtree_is_recorded_for_exploration() {
     let screen = parsed(&json!({"role": "window", "children": [
         {"ref_id": "@s:list", "role": "scrollarea", "subtree_truncated": true, "available_actions": ["Scroll"]},
