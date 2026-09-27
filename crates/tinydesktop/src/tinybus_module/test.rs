@@ -300,11 +300,13 @@ fn every_agentic_member_requires_confidential_delivery() {
 #[tokio::test]
 async fn private_module_configuration_initializes_jev_without_exposing_the_key()
 -> tinybus::Result<()> {
+    // The provider's default endpoint: loopback is trusted only inside the
+    // engine's own tests. The missing application fails observation before
+    // any Jev request, so nothing here reaches the network.
     let configured_service = DesktopService::from_config(&json!({
         "jev": {
             "api_key": "test-secret",
             "provider": "open_router",
-            "endpoint_url": "http://127.0.0.1:1/decisions",
             "model": "jev-test",
             "max_retries": 0
         }

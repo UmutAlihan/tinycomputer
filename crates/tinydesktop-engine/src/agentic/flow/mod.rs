@@ -70,12 +70,14 @@ pub async fn run_flow(
 }
 
 /// Checks a flow without touching the desktop or Jev.
+#[must_use]
 pub fn validate_flow(request: &ValidateFlowRequest) -> DesktopResponse {
     let (_, validation) = validate::validate(&request.flow, &BTreeSet::new());
     response("validate-flow", &validation)
 }
 
 /// The flow authoring guide, as prompt text.
+#[must_use]
 pub fn flow_guide() -> DesktopResponse {
     DesktopResponse::ok(
         "flow-guide",

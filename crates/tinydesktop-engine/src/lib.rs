@@ -1,6 +1,6 @@
 //! The tinydesktop agent runtime.
 //!
-//! This crate composes the surface adapters with Jev, TypeSafe's decision
+//! This crate composes the surface adapters with Jev, `TypeSafe`'s decision
 //! model, into the loops a caller drives through the module:
 //!
 //! - [`resolve_intent`] grounds one described element and optionally acts on

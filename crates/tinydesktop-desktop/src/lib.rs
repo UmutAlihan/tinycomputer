@@ -50,7 +50,7 @@
 //! synthesized input, so it does not steal focus, move the cursor, or touch the
 //! pasteboard as a side effect. A run can proceed while someone else is using
 //! the machine. [`Desktop::with_headed`] relaxes that for the interactions that
-//! genuinely need a real cursor, and the [`input`](tinydesktop_bus::input)
+//! genuinely need a real cursor, and the [`input`]
 //! members bypass it entirely — both on purpose, and both the exception.
 //!
 //! # Errors are replies, not failures
