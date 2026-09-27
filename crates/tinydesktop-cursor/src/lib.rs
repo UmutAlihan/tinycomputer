@@ -1,68 +1,43 @@
-//! A virtual mouse and a virtual keyboard that move like a person.
+//! The agent's on-screen cursor.
 //!
-//! Automation that teleports the pointer onto an element's centre and
-//! presses there skips everything a page or application sees on the way:
-//! `mouseover`, `mouseenter`, `pointermove`, hover styles, menus that open on
-//! hover. Text inserted in one go skips per-key handlers. This crate plans
-//! input the way a hand produces it:
+//! When an agent acts on a page or an application, a watching person sees
+//! nothing move: the engine clicks an element directly. This crate plans a
+//! second cursor, drawn over the content, that shows the agent at work:
 //!
-//! - [`VirtualMouse`] aims somewhere inside an element (not dead centre),
-//!   reaches it along a curved path that overshoots and corrects, with a
-//!   gentle wobble and a small tremor, in the time Fitts's law gives, then
-//!   settles before pressing and holds the button for a human beat.
-//! - [`VirtualKeyboard`] presses one key per character with log-normal gaps,
-//!   faster common letter pairs, and pauses after punctuation.
-//! - [`MotionProfile`] sets the tempo; [`MotionProfile::Instant`] turns all
-//!   of it off.
+//! - [`VirtualCursor`] aims somewhere inside the element about to be acted on
+//!   (near, not dead on, its centre) and glides there from where it last was.
+//! - The path is a hand's: one quick stroke that bows sideways and lands a
+//!   little past the target, a short correction back onto it, a gentle wobble
+//!   and a small tremor, in the time Fitts's law gives for the distance and
+//!   the target's size ([`human_path`]).
+//! - [`CursorPace`] sets the tempo; [`CursorPace::Off`] draws nothing.
 //!
-//! Both produce a [`Plan`]: plain data, reproducible from a seed. [`play`]
-//! performs a plan against any [`InputSink`] — CDP events for a browser page,
-//! synthetic OS events for a desktop — so the humanization is written once
-//! and every engine only supplies move, press, release, and key primitives.
-//!
-//! The crate deliberately holds no engine, no I/O, and no rendering. Drawing
-//! the virtual cursor belongs to whoever owns the screen; the plan's moves
-//! are exactly the positions to draw.
+//! The cursor is purely cosmetic. It sends no input and never touches the
+//! user's own pointer: the engine performs every action exactly as it would
+//! with no cursor on screen. A [`Glide`] is plain data — timed positions,
+//! reproducible from a seed — for whatever owns the screen to animate.
 //!
 //! ```
-//! use tinydesktop_input::{Button, MotionProfile, Point, Rect, Rng, VirtualMouse, play};
-//! # use tinydesktop_input::{InputSink, Key};
-//! # #[derive(Default)] struct Log(Vec<String>);
-//! # impl InputSink for Log {
-//! #     type Error = ();
-//! #     fn move_to(&mut self, p: Point) -> Result<(), ()> { self.0.push(format!("move {:.0},{:.0}", p.x, p.y)); Ok(()) }
-//! #     fn press(&mut self, _: Button) -> Result<(), ()> { self.0.push("press".into()); Ok(()) }
-//! #     fn release(&mut self, _: Button) -> Result<(), ()> { self.0.push("release".into()); Ok(()) }
-//! #     fn key_down(&mut self, _: Key) -> Result<(), ()> { Ok(()) }
-//! #     fn key_up(&mut self, _: Key) -> Result<(), ()> { Ok(()) }
-//! #     fn text(&mut self, _: &str) -> Result<(), ()> { Ok(()) }
-//! # }
+//! use tinydesktop_cursor::{CursorPace, Point, Rect, Rng, VirtualCursor};
 //!
-//! let mut mouse = VirtualMouse::with_rng(MotionProfile::Natural, Rng::seeded(1))
+//! let mut cursor = VirtualCursor::with_rng(CursorPace::Natural, Rng::seeded(1))
 //!     .at(Point::new(40.0, 40.0));
 //! let button = Rect::new(400.0, 300.0, 120.0, 32.0);
-//! let plan = mouse.click(button, Button::Left, 1);
+//! let glide = cursor.glide(button).expect("a natural cursor glides");
 //!
-//! assert!(plan.moves().len() > 10, "the pointer travels, it does not jump");
-//! assert!(button.contains(mouse.position().unwrap()));
-//!
-//! let mut sink = Log::default();
-//! play(&plan, &mut sink, &mut |_| {}).unwrap();
-//! assert_eq!(sink.0[sink.0.len() - 2..], ["press", "release"]);
+//! assert!(glide.samples.len() > 10, "the cursor travels, it does not jump");
+//! assert!(button.contains(glide.to));
+//! assert_eq!(glide.samples.last().map(|sample| sample.point), Some(glide.to));
 //! ```
 
 mod error;
 mod geometry;
-mod keyboard;
-mod mouse;
-mod plan;
-mod profile;
+mod glide;
+mod pace;
 mod rng;
 
 pub use error::{Error, Result};
 pub use geometry::{Point, Rect};
-pub use keyboard::VirtualKeyboard;
-pub use mouse::{PathSample, VirtualMouse, aim, human_path};
-pub use plan::{Button, InputSink, Key, Pacer, Plan, Step, play};
-pub use profile::MotionProfile;
+pub use glide::{Glide, PathSample, VirtualCursor, aim, human_path};
+pub use pace::CursorPace;
 pub use rng::Rng;

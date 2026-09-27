@@ -15,13 +15,7 @@ const TO: Point = Point::new(900.0, 150.0);
 #[test]
 fn a_path_ends_exactly_on_its_target_with_strictly_increasing_time() {
     for seed in 0..200 {
-        let path = human_path(
-            FROM,
-            TO,
-            40.0,
-            CursorPace::Natural,
-            &mut Rng::seeded(seed),
-        );
+        let path = human_path(FROM, TO, 40.0, CursorPace::Natural, &mut Rng::seeded(seed));
         assert_eq!(path.last().unwrap().point, TO, "seed {seed}");
         assert!(path.windows(2).all(|pair| pair[1].t_ms > pair[0].t_ms));
         assert!(path.len() > 5, "a long reach is sampled many times");
@@ -35,13 +29,7 @@ fn a_path_overshoots_by_at_most_its_bound_and_never_strays_far_sideways() {
     let (dx, dy) = ((TO.x - FROM.x) / distance, (TO.y - FROM.y) / distance);
     let mut overshot = 0;
     for seed in 0..500 {
-        let path = human_path(
-            FROM,
-            TO,
-            40.0,
-            CursorPace::Natural,
-            &mut Rng::seeded(seed),
-        );
+        let path = human_path(FROM, TO, 40.0, CursorPace::Natural, &mut Rng::seeded(seed));
         let furthest = path
             .iter()
             .map(|sample| (sample.point.x - FROM.x) * dx + (sample.point.y - FROM.y) * dy)
@@ -122,13 +110,7 @@ fn a_short_reach_does_not_overshoot() {
     let from = Point::new(100.0, 100.0);
     let to = Point::new(140.0, 100.0);
     for seed in 0..100 {
-        let path = human_path(
-            from,
-            to,
-            20.0,
-            CursorPace::Natural,
-            &mut Rng::seeded(seed),
-        );
+        let path = human_path(from, to, 20.0, CursorPace::Natural, &mut Rng::seeded(seed));
         let furthest = path
             .iter()
             .map(|sample| sample.point.x)
@@ -184,7 +166,10 @@ fn a_cursor_with_no_position_appears_nearby_and_remembers_where_it_lands() {
 
     let next = cursor.glide(Rect::new(40.0, 600.0, 60.0, 30.0)).unwrap();
     assert!(!next.appears);
-    assert_eq!(next.from, glide.to, "the next glide starts where this one landed");
+    assert_eq!(
+        next.from, glide.to,
+        "the next glide starts where this one landed"
+    );
 }
 
 #[test]

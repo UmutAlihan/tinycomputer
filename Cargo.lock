@@ -1962,7 +1962,6 @@ dependencies = [
  "thiserror 2.0.20",
  "tinydesktop-bus",
  "tinydesktop-core",
- "tinydesktop-input",
  "tokio",
 ]
 
@@ -1985,6 +1984,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinydesktop-cursor"
+version = "0.5.1"
+dependencies = [
+ "getrandom 0.4.3",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "tinydesktop-desktop"
 version = "0.5.1"
 dependencies = [
@@ -1996,7 +2005,6 @@ dependencies = [
  "thiserror 2.0.20",
  "tinydesktop-bus",
  "tinydesktop-core",
- "tinydesktop-input",
 ]
 
 [[package]]
@@ -2028,16 +2036,6 @@ dependencies = [
  "tinydesktop-engine",
  "tinyinference-llm",
  "tokio",
-]
-
-[[package]]
-name = "tinydesktop-input"
-version = "0.5.1"
-dependencies = [
- "getrandom 0.4.3",
- "serde",
- "serde_json",
- "thiserror 2.0.20",
 ]
 
 [[package]]
