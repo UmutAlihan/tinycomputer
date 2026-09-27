@@ -36,6 +36,8 @@ const UNHELPFUL: f64 = 0.2;
 const SHORTCUT_FLOOR: f64 = 0.5;
 /// Unchanged turns after which a step gives up.
 const STALL_TURNS: u32 = 3;
+/// Waits in a row that changed nothing after which Jev is not let wait again.
+const MAX_IDLE_WAITS: u32 = 2;
 /// Obstacles dismissed per step at most.
 const MAX_OBSTACLES: u32 = 2;
 /// Undos per step at most.
@@ -103,6 +105,8 @@ struct LastAction {
     target: Option<Candidate>,
     before: Screen,
     progress: Option<f64>,
+    /// Whether the action was a wait rather than a press or a shortcut.
+    waited: bool,
 }
 
 /// Bookkeeping across the turns of one `do` step.
@@ -111,6 +115,8 @@ struct DoState {
     last: Option<LastAction>,
     banned: BTreeSet<String>,
     unchanged: u32,
+    /// Waits in a row that changed nothing.
+    idle_waits: u32,
     obstacles: u32,
     undos: u32,
 }
@@ -251,6 +257,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             {
                 continue;
             }
+            if judged.next == "wait" && state.idle_waits >= MAX_IDLE_WAITS {
+                self.history.push(
+                    "did not wait again: the page has settled, so judge it as it is or act on it"
+                        .to_owned(),
+                );
+                continue;
+            }
             match self
                 .make_move(log, &screen, intent, &judged, &state.banned)
                 .await?
@@ -261,6 +274,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         target: target.map(|target| *target),
                         before: screen,
                         progress: judged.progress,
+                        waited: judged.next == "wait",
                     });
                 }
                 Move::Skipped => {}
@@ -281,6 +295,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Records what the last action changed, banning an element that changed
     /// nothing and failing the step after [`STALL_TURNS`] such turns.
+    ///
+    /// A wait that changes nothing is not a stall: the page has settled, and
+    /// Jev is told so. It is not let wait again after [`MAX_IDLE_WAITS`] of
+    /// them, which leaves it to judge or act on the page as it stands.
     fn note_change(&mut self, state: &mut DoState, screen: &Screen) -> Result<(), Halt> {
         let Some(previous) = &state.last else {
             return Ok(());
@@ -289,6 +307,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let note = change_note(&previous.before, screen, changed);
         if changed {
             state.unchanged = 0;
+            state.idle_waits = 0;
+        } else if previous.waited {
+            state.idle_waits = state.idle_waits.saturating_add(1);
+            self.history.push(
+                "waited: the page has finished loading and nothing changed, so waiting longer will not change it"
+                    .to_owned(),
+            );
+            return Ok(());
         } else {
             state.unchanged = state.unchanged.saturating_add(1);
             if let Some(target) = &previous.target {
