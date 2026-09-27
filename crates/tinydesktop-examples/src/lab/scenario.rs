@@ -3,8 +3,10 @@
 //! A scenario has a plain-language brief (what an LLM author is given), a
 //! hand-written high-level flow (what a person would write, with no UI
 //! knowledge), a goal string for the single-loop `RunGoal` baseline, and a
-//! checker that reads the application's real state — through AppleScript, the
-//! filesystem, or the bus — rather than trusting the run's own report.
+//! checker that reads the application's real state — through its accessibility
+//! snapshot, the filesystem, or AppleScript where no other reader exists —
+//! rather than trusting the run's own report. Snapshot checks need no
+//! Automation permission beyond what the lab already uses.
 
 use std::process::Command;
 
@@ -39,20 +41,20 @@ pub enum Check {
     TextEditContains(&'static str),
     /// The Calculator window shows this value somewhere.
     CalculatorShows(&'static str),
-    /// A note with this name exists.
+    /// The Notes window shows this text.
     NoteNamed(&'static str),
     /// A folder with this name exists on the Desktop.
     DesktopFolder(&'static str),
     /// The flow read the same appearance mode `defaults` reports.
     AppearanceRead,
-    /// An open Mail draft has this subject and contains this text.
+    /// The front Mail window shows this subject and this body text.
     MailDraft {
         /// The draft's subject.
         subject: &'static str,
         /// Text the draft body must contain.
         body: &'static str,
     },
-    /// An open Mail draft is a reply ("Re:") with a non-empty body.
+    /// The front Mail window is a reply ("Re:") draft that promises a follow up.
     MailReplyDraft,
     /// The application shows a Pause control.
     ShowsPause,
@@ -203,10 +205,7 @@ impl Scenario {
                     ),
                 })
             }
-            Check::NoteNamed(name) => Ok(contains(
-                &osascript(r#"tell application "Notes" to get name of every note"#),
-                name,
-            )),
+            Check::NoteNamed(name) => Ok(contains(&snapshot_text(host, self.app).await?, name)),
             Check::DesktopFolder(name) => {
                 let path = std::env::var("HOME").map(|home| format!("{home}/Desktop/{name}"))?;
                 let exists = std::path::Path::new(&path).is_dir();
@@ -234,21 +233,24 @@ impl Scenario {
                 })
             }
             Check::MailDraft { subject, body } => {
-                let drafts = osascript(
-                    r#"tell application "Mail" to get {subject, content} of every outgoing message"#,
-                );
+                let window = snapshot_text(host, self.app).await?;
                 Ok(Verdict {
-                    passed: drafts.contains(subject) && drafts.contains(body),
-                    detail: format!("open drafts: {}", clip(&drafts)),
+                    passed: window.contains(subject) && window.contains(body),
+                    detail: format!(
+                        "the front Mail window {} the subject and {} the body",
+                        if window.contains(subject) { "shows" } else { "lacks" },
+                        if window.contains(body) { "shows" } else { "lacks" },
+                    ),
                 })
             }
             Check::MailReplyDraft => {
-                let drafts = osascript(
-                    r#"tell application "Mail" to get {subject, content} of every outgoing message"#,
-                );
+                let window = snapshot_text(host, self.app).await?;
                 Ok(Verdict {
-                    passed: drafts.contains("Re:") && drafts.contains("follow up"),
-                    detail: format!("open drafts: {}", clip(&drafts)),
+                    passed: window.contains("Re:") && window.contains("follow up"),
+                    detail: format!(
+                        "the front Mail window {} a reply draft",
+                        if window.contains("Re:") { "is" } else { "is not" }
+                    ),
                 })
             }
             Check::ShowsPause => {
