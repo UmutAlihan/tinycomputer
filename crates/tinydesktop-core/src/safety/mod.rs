@@ -12,6 +12,11 @@
 //! - [`payment_evidence`] looks at the page itself — card fields, `cc-*`
 //!   autocomplete attributes, a checkout URL with a pay button — so a payment
 //!   step is caught even when its button says only "Continue".
+//! - [`screen_payment_evidence`] builds `payment_evidence`'s inputs from a
+//!   surface-agnostic [`Screen`](crate::surface::Screen), so every surface's
+//!   destructive-click gate can apply the same page-level check.
+
+use crate::surface::Screen;
 
 /// What pressing a control commits the user to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
