@@ -249,9 +249,13 @@ fn undefined(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeS
 
 /// The variables `flow` uses before anything defines them, in first-use
 /// order: what a caller must still supply beyond `known`.
-pub(crate) fn missing_inputs(flow: &Flow, known: &BTreeSet<String>) -> Vec<String> {
+pub(crate) fn missing_inputs(
+    flow: &Flow,
+    known: &BTreeSet<String>,
+    facts: &BTreeSet<String>,
+) -> Vec<String> {
     let mut missing = Vec::new();
-    for error in check(flow, known).errors {
+    for error in check(flow, known, facts).errors {
         let Some(start) = error.find("`${") else {
             continue;
         };
