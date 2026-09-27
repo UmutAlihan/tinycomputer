@@ -81,6 +81,30 @@ pub(in crate::agentic) fn is_destructive(
             && tinycomputer_core::screen_payment_evidence(screen).is_some())
 }
 
+/// `pool` with every element Jev could not tell apart from an earlier one
+/// left out: of candidates whose descriptions match, bounds aside, the first
+/// in page order is kept.
+///
+/// Offered side by side, lookalikes split the vote: measured on a booking
+/// widget with nine unnamed search boxes in one dropdown, each framing of a
+/// voted slot question picked a different one, and the merged answer fell
+/// under the slot floor although every framing had found the right box.
+pub(in crate::agentic) fn distinct(pool: Vec<Candidate>, include_values: bool) -> Vec<Candidate> {
+    let mut seen = std::collections::BTreeSet::new();
+    pool.into_iter()
+        .filter(|candidate| {
+            let mut key = describe(candidate, include_values);
+            if let Some(fields) = key
+                .get_mut("untrusted_accessibility_data")
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                fields.remove("bounds");
+            }
+            seen.insert(key.to_string())
+        })
+        .collect()
+}
+
 /// Words a purpose is phrased with that say nothing about which element
 /// serves it.
 const PURPOSE_FILLER: &[&str] = &[

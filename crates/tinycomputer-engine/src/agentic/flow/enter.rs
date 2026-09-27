@@ -305,12 +305,17 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .iter()
             .map(|assignment| signature(&assignment.field))
             .collect::<BTreeSet<_>>();
-        let offered = fields
-            .iter()
-            .filter(|field| !taken.contains(&signature(field)))
-            .take(CAP)
-            .cloned()
-            .collect::<Vec<_>>();
+        let offered = distinct(
+            fields
+                .iter()
+                .filter(|field| !taken.contains(&signature(field)))
+                .cloned()
+                .collect(),
+            self.include_values,
+        )
+        .into_iter()
+        .take(CAP)
+        .collect::<Vec<_>>();
         if !open.is_empty() && !offered.is_empty() {
             let keys = numbered(offered.len());
             let mut questions = Questions::default();
