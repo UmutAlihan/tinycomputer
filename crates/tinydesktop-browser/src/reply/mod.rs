@@ -16,7 +16,7 @@ use crate::error::{Error, Result};
 /// # Errors
 ///
 /// The [`Error`] variant [`classify`] picks for the engine's message.
-pub(crate) fn data(reply: Value) -> Result<Value> {
+pub(crate) fn data(reply: &Value) -> Result<Value> {
     if reply.get("success").and_then(Value::as_bool) == Some(true) {
         return Ok(reply.get("data").cloned().unwrap_or(Value::Null));
     }
@@ -205,8 +205,7 @@ fn webp_size(bytes: &[u8]) -> Option<(u32, u32)> {
         }
         b"VP8 " => {
             let width = u32::from(u16::from_le_bytes([*bytes.get(26)?, *bytes.get(27)?]) & 0x3FFF);
-            let height =
-                u32::from(u16::from_le_bytes([*bytes.get(28)?, *bytes.get(29)?]) & 0x3FFF);
+            let height = u32::from(u16::from_le_bytes([*bytes.get(28)?, *bytes.get(29)?]) & 0x3FFF);
             Some((width, height))
         }
         b"VP8L" => {

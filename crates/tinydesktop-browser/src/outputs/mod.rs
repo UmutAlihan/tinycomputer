@@ -44,7 +44,7 @@ pub(crate) const TTL: Duration = Duration::from_secs(300);
 ///
 /// A fraction of [`TTL`], so an abandoned output is released within a minute or
 /// so of expiring rather than at some unbounded later moment.
-pub(crate) const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
+pub const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
 
 /// The most a single [`read`](OutputStore::read) will return.
 ///

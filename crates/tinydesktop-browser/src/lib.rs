@@ -26,9 +26,10 @@ mod engine;
 mod error;
 mod outputs;
 mod reply;
-mod session;
+mod sessions;
 
 pub use engine::{Engine, Launcher, Reply};
 pub use error::{Error, Result};
-pub use session::{Browser, MAX_SESSIONS};
+pub use outputs::SWEEP_INTERVAL;
+pub use sessions::{Browser, MAX_SESSIONS};
 pub use tinydesktop_bus::browser::*;

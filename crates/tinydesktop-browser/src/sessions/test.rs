@@ -68,7 +68,7 @@ impl Fake {
     }
 }
 
-fn ok(data: Value) -> Value {
+fn ok(data: &Value) -> Value {
     json!({"id": "", "success": true, "data": data})
 }
 
@@ -86,28 +86,28 @@ fn png(width: u32, height: u32) -> Vec<u8> {
 fn default_reply(command: &Value) -> Value {
     let path = command["path"].as_str().map(str::to_owned);
     match command["action"].as_str().unwrap() {
-        "url" => ok(json!({"url": "https://flights.test/"})),
-        "title" => ok(json!({"title": "Flights"})),
-        "navigate" => ok(json!({"url": command["url"], "title": "Loaded"})),
-        "snapshot" => ok(json!({
+        "url" => ok(&json!({"url": "https://flights.test/"})),
+        "title" => ok(&json!({"title": "Flights"})),
+        "navigate" => ok(&json!({"url": command["url"], "title": "Loaded"})),
+        "snapshot" => ok(&json!({
             "snapshot": "- button \"Search\" [ref=e1]",
             "refs": {"e1": {"role": "button", "name": "Search"}}
         })),
-        "gettext" => ok(json!({"text": "IndiGo ₹6,840"})),
-        "getattribute" => ok(json!({"value": "/book"})),
-        "isvisible" => ok(json!({"visible": true})),
-        "read" => ok(json!({"content": "# Flights\nIndiGo", "truncated": false})),
-        "content" => ok(json!({"html": "<h1>Flights</h1>"})),
-        "evaluate" => ok(json!({"result": 42})),
+        "gettext" => ok(&json!({"text": "IndiGo ₹6,840"})),
+        "getattribute" => ok(&json!({"value": "/book"})),
+        "isvisible" => ok(&json!({"visible": true})),
+        "read" => ok(&json!({"content": "# Flights\nIndiGo", "truncated": false})),
+        "content" => ok(&json!({"html": "<h1>Flights</h1>"})),
+        "evaluate" => ok(&json!({"result": 42})),
         "screenshot" => {
             std::fs::write(path.as_ref().unwrap(), png(1280, 800)).unwrap();
-            ok(json!({"path": path}))
+            ok(&json!({"path": path}))
         }
         "waitfordownload" => {
             std::fs::write(path.as_ref().unwrap(), b"itinerary").unwrap();
-            ok(json!({"path": path}))
+            ok(&json!({"path": path}))
         }
-        _ => ok(json!({})),
+        _ => ok(&json!({})),
     }
 }
 
@@ -171,7 +171,10 @@ async fn a_failed_launch_opens_nothing() {
         .open_session(SessionOptions::default())
         .await
         .unwrap_err();
-    assert!(matches!(error, Error::BrowserUnavailable { .. }), "{error:?}");
+    assert!(
+        matches!(error, Error::BrowserUnavailable { .. }),
+        "{error:?}"
+    );
     assert!(browser.list_sessions().await.unwrap().is_empty());
 }
 
@@ -194,7 +197,9 @@ async fn sessions_are_capped_and_unknown_ones_are_named() {
     ));
     let missing = SessionId::new("s-missing");
     assert!(matches!(
-        browser.navigate(&missing, NavigateRequest::new("https://x.test")).await,
+        browser
+            .navigate(&missing, NavigateRequest::new("https://x.test"))
+            .await,
         Err(Error::NoSuchSession { .. })
     ));
     assert!(matches!(
@@ -438,16 +443,18 @@ async fn a_screenshot_is_collected_into_a_held_output_and_its_file_removed() {
         .unwrap();
     assert_eq!((held.width, held.height), (1280, 800));
     assert_eq!(held.media_type, "image/png");
-    let written = fake.last("screenshot")["path"]
-        .as_str()
-        .unwrap()
-        .to_owned();
+    let written = fake.last("screenshot")["path"].as_str().unwrap().to_owned();
     assert!(
         !std::path::Path::new(&written).exists(),
         "the staged file is removed"
     );
     let chunk = browser.read_output(&held.id, 0, 1_024).unwrap();
     assert!(chunk.eof);
+    browser.sweep_outputs().unwrap();
+    assert!(
+        browser.read_output(&held.id, 0, 1).is_ok(),
+        "fresh outputs survive a sweep"
+    );
     browser.release_output(&held.id).unwrap();
     assert!(matches!(
         browser.read_output(&held.id, 0, 1),
@@ -458,7 +465,7 @@ async fn a_screenshot_is_collected_into_a_held_output_and_its_file_removed() {
 #[tokio::test]
 async fn a_screenshot_the_engine_never_wrote_is_a_failure() {
     let fake = Fake::scripted(|command| {
-        (command["action"] == "screenshot").then(|| ok(json!({"path": "/nonexistent/shot.png"})))
+        (command["action"] == "screenshot").then(|| ok(&json!({"path": "/nonexistent/shot.png"})))
     });
     let (browser, id) = open(&fake, "unwritten").await;
     assert!(matches!(

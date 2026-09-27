@@ -154,9 +154,24 @@ fn refs_and_selectors_become_engine_selectors() {
 fn every_plain_action_names_its_engine_command() {
     let target = Target::reference("e1");
     let cases = [
-        (Action::DoubleClick { target: target.clone() }, "dblclick"),
-        (Action::Hover { target: target.clone() }, "hover"),
-        (Action::Focus { target: target.clone() }, "focus"),
+        (
+            Action::DoubleClick {
+                target: target.clone(),
+            },
+            "dblclick",
+        ),
+        (
+            Action::Hover {
+                target: target.clone(),
+            },
+            "hover",
+        ),
+        (
+            Action::Focus {
+                target: target.clone(),
+            },
+            "focus",
+        ),
         (
             Action::Select {
                 target: target.clone(),
@@ -178,7 +193,12 @@ fn every_plain_action_names_its_engine_command() {
             },
             "uncheck",
         ),
-        (Action::GetText { target: target.clone() }, "gettext"),
+        (
+            Action::GetText {
+                target: target.clone(),
+            },
+            "gettext",
+        ),
         (
             Action::GetAttribute {
                 target: target.clone(),
@@ -186,7 +206,12 @@ fn every_plain_action_names_its_engine_command() {
             },
             "getattribute",
         ),
-        (Action::IsVisible { target: target.clone() }, "isvisible"),
+        (
+            Action::IsVisible {
+                target: target.clone(),
+            },
+            "isvisible",
+        ),
         (Action::Back, "back"),
         (Action::Forward, "forward"),
         (Action::Reload, "reload"),
@@ -198,9 +223,21 @@ fn every_plain_action_names_its_engine_command() {
         ),
     ];
     for (input, expected) in cases {
-        assert_eq!(action(&input, 1_000).unwrap()["action"], expected, "{input:?}");
+        assert_eq!(
+            action(&input, 1_000).unwrap()["action"],
+            expected,
+            "{input:?}"
+        );
     }
-    assert!(invalid(action(&Action::Press { key: " ".to_owned() }, 1_000)).contains("key"));
+    assert!(
+        invalid(action(
+            &Action::Press {
+                key: " ".to_owned()
+            },
+            1_000
+        ))
+        .contains("key")
+    );
 }
 
 #[test]
@@ -248,8 +285,14 @@ fn scrolling_maps_directions_and_the_page_ends() {
         json!({"action": "scroll", "direction": "down", "amount": 300})
     );
     assert_eq!(scroll(ScrollDirection::Up, Some(50), None)["amount"], 50);
-    assert_eq!(scroll(ScrollDirection::Left, None, None)["direction"], "left");
-    assert_eq!(scroll(ScrollDirection::Right, None, None)["direction"], "right");
+    assert_eq!(
+        scroll(ScrollDirection::Left, None, None)["direction"],
+        "left"
+    );
+    assert_eq!(
+        scroll(ScrollDirection::Right, None, None)["direction"],
+        "right"
+    );
     assert_eq!(scroll(ScrollDirection::Top, None, None)["direction"], "up");
     let bottom = scroll(
         ScrollDirection::Bottom,
@@ -330,7 +373,12 @@ fn locators_use_the_semantic_commands_with_a_subaction() {
     assert_eq!(fill["value"], "Delhi");
     for (locate, command, key, subaction) in [
         (LocateBy::Text, "getbytext", "text", "hover"),
-        (LocateBy::Placeholder, "getbyplaceholder", "placeholder", "text"),
+        (
+            LocateBy::Placeholder,
+            "getbyplaceholder",
+            "placeholder",
+            "text",
+        ),
         (LocateBy::TestId, "getbytestid", "testId", "check"),
         (LocateBy::AltText, "getbyalttext", "text", "click"),
         (LocateBy::Title, "getbytitle", "text", "click"),
@@ -358,7 +406,12 @@ fn locators_use_the_semantic_commands_with_a_subaction() {
 #[test]
 fn a_locator_the_engine_cannot_combine_is_refused_with_the_alternative() {
     let locator = Target::locator(Locator::new(LocateBy::Text, "Book"));
-    let message = invalid(action(&Action::Focus { target: locator.clone() }, 1));
+    let message = invalid(action(
+        &Action::Focus {
+            target: locator.clone(),
+        },
+        1,
+    ));
     assert!(message.contains("ref or selector"), "{message}");
     let unchecking = invalid(action(
         &Action::Check {
@@ -413,8 +466,14 @@ fn reading_picks_the_command_for_each_format() {
             ..ReadRequest::default()
         })
     };
-    assert_eq!(read_as(ReadFormat::Markdown, None), json!({"action": "read"}));
-    assert_eq!(read_as(ReadFormat::Html, None), json!({"action": "content"}));
+    assert_eq!(
+        read_as(ReadFormat::Markdown, None),
+        json!({"action": "read"})
+    );
+    assert_eq!(
+        read_as(ReadFormat::Html, None),
+        json!({"action": "content"})
+    );
     assert_eq!(
         read_as(ReadFormat::Html, Some("main")),
         json!({"action": "innerhtml", "selector": "main"})

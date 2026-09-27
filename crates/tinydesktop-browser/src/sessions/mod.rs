@@ -57,7 +57,7 @@ impl std::fmt::Debug for Session {
 
 impl Session {
     async fn run(&mut self, command: Value) -> Result<Value> {
-        reply::data(self.engine.execute(command).await)
+        reply::data(&self.engine.execute(command).await)
     }
 
     async fn page(&mut self) -> Result<PageState> {
@@ -310,7 +310,11 @@ impl Browser {
     /// [`Error::NoSuchSession`], [`Error::InvalidInput`] for a bad quality or
     /// a locator target, [`Error::LimitExceeded`] for an oversized image, and
     /// whatever the capture reports.
-    pub async fn screenshot(&self, id: &SessionId, request: ScreenshotRequest) -> Result<OutputRef> {
+    pub async fn screenshot(
+        &self,
+        id: &SessionId,
+        request: ScreenshotRequest,
+    ) -> Result<OutputRef> {
         let session = self.session(id)?;
         let mut session = session.lock().await;
         let extension = match request.format {
@@ -350,6 +354,20 @@ impl Browser {
     /// Only when the output store itself is unusable.
     pub fn release_output(&self, id: &OutputId) -> Result<()> {
         self.lock_outputs()?.release(id);
+        Ok(())
+    }
+
+    /// Drops held outputs whose time to live has passed.
+    ///
+    /// Expiry also happens on every output call; a host runs this every
+    /// [`SWEEP_INTERVAL`](crate::SWEEP_INTERVAL) so an abandoned screenshot
+    /// is released even when no further call arrives.
+    ///
+    /// # Errors
+    ///
+    /// Only when the output store itself is unusable.
+    pub fn sweep_outputs(&self) -> Result<()> {
+        self.lock_outputs()?.expire();
         Ok(())
     }
 

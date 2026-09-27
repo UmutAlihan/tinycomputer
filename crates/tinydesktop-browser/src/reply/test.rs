@@ -13,26 +13,30 @@ use crate::error::Error;
 #[test]
 fn a_success_yields_its_data_and_a_failure_its_classified_error() {
     assert_eq!(
-        data(json!({"id": "1", "success": true, "data": {"url": "u"}})).unwrap(),
+        data(&json!({"id": "1", "success": true, "data": {"url": "u"}})).unwrap(),
         json!({"url": "u"})
     );
-    assert_eq!(data(json!({"success": true})).unwrap(), json!(null));
+    assert_eq!(data(&json!({"success": true})).unwrap(), json!(null));
     assert!(matches!(
-        data(json!({"success": false, "error": "Unknown ref: e3"})),
+        data(&json!({"success": false, "error": "Unknown ref: e3"})),
         Err(Error::StaleRef { reference }) if reference == "e3"
     ));
     assert!(matches!(
-        data(json!({"success": false})),
+        data(&json!({"success": false})),
         Err(Error::ModuleFailed { .. })
     ));
 }
 
+/// Whether a classified error is the expected kind.
+type Expect = fn(&Error) -> bool;
+
 #[test]
 fn engine_messages_map_to_what_the_caller_should_do() {
-    let cases: &[(&str, fn(&Error) -> bool)] = &[
-        ("Unknown ref: @e9", |e| {
-            matches!(e, Error::StaleRef { reference } if reference == "e9")
-        }),
+    let cases: &[(&str, Expect)] = &[
+        (
+            "Unknown ref: @e9",
+            |e| matches!(e, Error::StaleRef { reference } if reference == "e9"),
+        ),
         ("Could not locate element with role=button name=Book", |e| {
             matches!(e, Error::StaleRef { .. })
         }),
@@ -57,9 +61,10 @@ fn engine_messages_map_to_what_the_caller_should_do() {
             "Element exists but is not visible. Wait for it to become visible",
             |e| matches!(e, Error::NotActionable { .. }),
         ),
-        ("Element matched multiple results. Use a more specific selector.", |e| {
-            matches!(e, Error::NotActionable { .. })
-        }),
+        (
+            "Element matched multiple results. Use a more specific selector.",
+            |e| matches!(e, Error::NotActionable { .. }),
+        ),
         ("Operation timed out. The page may still be loading", |e| {
             matches!(e, Error::Timeout { .. })
         }),
@@ -75,7 +80,9 @@ fn engine_messages_map_to_what_the_caller_should_do() {
         ("CDP connection failed: refused", |e| {
             matches!(e, Error::BrowserUnavailable { .. })
         }),
-        ("Invalid URL: nope", |e| matches!(e, Error::InvalidInput { .. })),
+        ("Invalid URL: nope", |e| {
+            matches!(e, Error::InvalidInput { .. })
+        }),
         ("Missing 'url' parameter", |e| {
             matches!(e, Error::InvalidInput { .. })
         }),
@@ -109,7 +116,11 @@ fn a_snapshot_lists_refs_in_document_order_and_caps_the_tree() {
     });
     let parsed = snapshot(&reply, "https://x".to_owned(), "X".to_owned(), 4, 20);
     assert_eq!(
-        parsed.refs.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(),
+        parsed
+            .refs
+            .iter()
+            .map(|r| r.id.as_str())
+            .collect::<Vec<_>>(),
         ["e1", "e2", "e10", "misc"]
     );
     assert_eq!(parsed.refs[0].name, "Search");
@@ -134,11 +145,14 @@ fn image_dimensions_come_from_each_supported_header() {
 
     // SOI, an APP0 segment to skip, then SOF0 with height 600 and width 800.
     let jpeg = [
-        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0x02,
-        0x58, 0x03, 0x20, 0x03, 0x00, 0x00,
+        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0x02, 0x58,
+        0x03, 0x20, 0x03, 0x00, 0x00,
     ];
     assert_eq!(image_size(&jpeg), (800, 600));
-    assert_eq!(image_size(&[0xFF, 0xD8, 0x00, 0x00, 0, 0, 0, 0, 0, 0, 0]), (0, 0));
+    assert_eq!(
+        image_size(&[0xFF, 0xD8, 0x00, 0x00, 0, 0, 0, 0, 0, 0, 0]),
+        (0, 0)
+    );
 
     let riff = |chunk: &[u8], body: &[u8]| {
         let mut bytes = b"RIFF\0\0\0\0WEBP".to_vec();
@@ -158,7 +172,8 @@ fn image_dimensions_come_from_each_supported_header() {
     lossy.extend(600_u16.to_le_bytes());
     assert_eq!(image_size(&lossy), (800, 600));
     // VP8L: signature byte, then width-1 and height-1 packed in 14 bits each.
-    let packed: u32 = 799 | (599 << 14);
+    let (width_less_one, height_less_one): (u32, u32) = (799, 599);
+    let packed = width_less_one | (height_less_one << 14);
     let mut lossless = riff(b"VP8L", &[0, 0, 0, 0, 0x2F]);
     lossless.extend(packed.to_le_bytes());
     assert_eq!(image_size(&lossless), (800, 600));
