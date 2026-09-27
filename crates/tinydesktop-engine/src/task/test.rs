@@ -477,7 +477,7 @@ async fn a_declined_action_cancels_and_a_payment_is_always_a_checkpoint() {
         .unwrap();
     assert_eq!(declined.status, TaskStatus::Cancelled);
 
-    let (tasks, _) = controller(vec![gated("Pay ₹6,840", "paying for the booking")]);
+    let (tasks, script) = controller(vec![gated("Pay ₹6,840", "paying for the booking")]);
     let view = start(&tasks, mail_flow(), &[]);
     let stopped = settle(&tasks, &view.id).await;
     let TaskStatus::Checkpoint {
@@ -493,13 +493,25 @@ async fn a_declined_action_cancels_and_a_payment_is_always_a_checkpoint() {
     assert!(reason.contains("payment"));
     assert!(summary.contains("start a new email message"));
     assert!(stopped.status.is_final());
-    assert_eq!(stopped.next, ["TaskReport"]);
+    // A final checkpoint's workspace is left open for a person to pay in, so
+    // it is not released on its own; `CancelTask` must stay offered as the
+    // only path to release it once they are done, or it would permanently
+    // consume one of the browser's limited session slots.
+    assert_eq!(stopped.next, ["CancelTask", "TaskReport"]);
+    assert!(script.released.lock().unwrap().is_empty());
     let again = tasks.continue_task(ContinueTaskRequest {
-        id: view.id,
+        id: view.id.clone(),
         approve: Some(true),
         ..ContinueTaskRequest::default()
     });
     assert_eq!(code(&again), "NOT_WAITING");
+    let cancelled = tasks.cancel(&view.id).data.unwrap();
+    assert_eq!(
+        cancelled.status,
+        stopped.status,
+        "cancelling a final checkpoint releases its workspace without changing its status"
+    );
+    assert_eq!(*script.released.lock().unwrap(), [view.id]);
 }
 
 #[tokio::test]
