@@ -459,7 +459,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let mut questions = Questions::default();
         if self.enabled(FlowLoop::Completion) {
             log.used(FlowLoop::Completion);
-            questions = questions.with("done", completion(intent));
+            questions = questions
+                .with("done", completion(intent))
+                .with("not_done", ask::unfinished(intent));
         }
         if self.enabled(FlowLoop::Progress) {
             log.used(FlowLoop::Progress);
@@ -516,7 +518,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .map(|(name, combo, _)| (*combo, *name))
             });
         Ok(Judgement {
-            done: probability(&answers, "done"),
+            done: ask::calibrated(&answers, "done", "not_done"),
             progress: level(&answers, "progress"),
             blocked: probability(&answers, "blocked"),
             next,
