@@ -209,7 +209,8 @@ impl Tasks {
             ));
         };
         let known = known_names(&flow, &facts);
-        let validation = crate::agentic::check_flow(&flow, &known);
+        let fact_names = fact_names(&facts);
+        let validation = crate::agentic::check_flow(&flow, &known, &fact_names);
         let problems = validation
             .errors
             .iter()
@@ -227,7 +228,7 @@ impl Tasks {
         let Some(cell) = self.register(&flow, facts, request) else {
             return too_many();
         };
-        let missing = crate::agentic::missing_inputs(&flow, &known);
+        let missing = crate::agentic::missing_inputs(&flow, &known, &fact_names);
         if missing.is_empty() {
             self.spawn(
                 &cell,
@@ -374,7 +375,8 @@ impl Tasks {
             }
         }
         let known = known_names(&state.flow, &state.facts);
-        let missing = crate::agentic::missing_inputs(&state.flow, &known);
+        let facts = fact_names(&state.facts);
+        let missing = crate::agentic::missing_inputs(&state.flow, &known, &facts);
         if !missing.is_empty() {
             drop(state);
             publish(
@@ -383,6 +385,25 @@ impl Tasks {
                 "The task still needs values before it can start.",
             );
             return AgentResponse::ok(cell.view.borrow().clone());
+        }
+        // A newly supplied value can turn a reference that only looked
+        // undefined at `StartTask` into a fact used somewhere Jev must never
+        // see it, so the flow is checked again in full now that every name
+        // it uses is finally known, rather than trusting the check `start`
+        // already ran against an incomplete `facts` set.
+        let problems = crate::agentic::check_flow(&state.flow, &known, &facts)
+            .errors
+            .into_iter()
+            .filter(|error| !is_undefined(error))
+            .collect::<Vec<_>>();
+        if !problems.is_empty() {
+            drop(state);
+            return AgentResponse::err(AgentError::new(
+                "INVALID_FLOW",
+                problems.join("; "),
+                "fix the flow; Describe returns the guide",
+                true,
+            ));
         }
         let run = Run {
             flow: state.flow.clone(),
@@ -636,11 +657,14 @@ async fn plan_then_drive(
 fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraints, Option<u64>)> {
     let state = cell.state.lock().ok()?;
     // Only the caller's values: the flow's own definitions travel with the
-    // flow, and the runtime expands them against these.
+    // flow, and the runtime expands them against these. Every one of them is
+    // a fact, so each is also named in `facts`.
     let mut vars = BTreeMap::new();
+    let mut facts = BTreeSet::new();
     for name in state.facts.names() {
         if let Some(value) = state.facts.get(name) {
             vars.insert(name.to_owned(), value.to_owned());
+            facts.insert(name.to_owned());
         }
     }
     let max_actions = state
@@ -661,6 +685,7 @@ fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraint
         RunFlowRequest {
             flow: run.flow.clone(),
             vars,
+            facts,
             allow_destructive: run.allow_destructive,
             include_values: false,
             max_actions,
@@ -909,6 +934,12 @@ fn known_names(flow: &Flow, facts: &Facts) -> BTreeSet<String> {
         .map(str::to_owned)
         .chain(flow.vars.keys().cloned())
         .collect()
+}
+
+/// The names among `facts`, on their own: what the flow validator and
+/// runtime treat as never allowed in model-facing text.
+fn fact_names(facts: &Facts) -> BTreeSet<String> {
+    facts.names().into_iter().map(str::to_owned).collect()
 }
 
 fn is_undefined(error: &str) -> bool {

@@ -49,7 +49,7 @@ use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use super::{JevRuntime, merge_metrics, provider_error, response};
 use backend::{AgentBackend, blocking, observe_async};
-use validate::{step_path, substitute};
+use validate::{step_path, substitute_safe};
 use view::{Candidate, Depth, Screen, target_payload};
 
 /// Upper bound on [`RunFlowRequest::max_actions`].
@@ -74,7 +74,7 @@ pub async fn run_flow<S: AgentBackend + Sync>(
 /// Checks a flow without touching the desktop or Jev.
 #[must_use]
 pub fn validate_flow(request: &ValidateFlowRequest) -> DesktopResponse {
-    let (_, validation) = validate::validate(&request.flow, &BTreeSet::new());
+    let (_, validation) = validate::validate(&request.flow, &BTreeSet::new(), &BTreeSet::new());
     response("validate-flow", &validation)
 }
 
@@ -93,7 +93,7 @@ pub(super) async fn run_flow_with<B: AgentBackend + Sync>(
     request: RunFlowRequest,
 ) -> DesktopResponse {
     let known = request.vars.keys().cloned().collect::<BTreeSet<_>>();
-    let validation = validate::check(&request.flow, &known);
+    let validation = validate::check(&request.flow, &known, &request.facts);
     if !validation.valid {
         return DesktopResponse::err(
             "run-flow",
@@ -160,6 +160,9 @@ pub(super) struct FlowRun<'r, B> {
     runtime: &'r JevRuntime,
     pub(super) app: String,
     pub(super) vars: BTreeMap<String, String>,
+    /// Names among `vars` that are the task's facts: never expanded into any
+    /// text a Jev evaluation sees, as a runtime backstop behind validation.
+    pub(super) facts: BTreeSet<String>,
     pub(super) allow_destructive: bool,
     pub(super) include_values: bool,
     max_actions: u32,
@@ -224,6 +227,9 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             app: request.flow.app.clone(),
             stop_before: stop_before_phrases(&request.flow.steps),
             vars,
+            // A flow variable defined from a fact now holds that fact's
+            // value, so it is kept out of model-facing text the same way.
+            facts: validate::carrying_facts(&request.flow.vars, &request.facts),
             allow_destructive: request.allow_destructive,
             include_values: request.include_values,
             max_actions: request.max_actions.min(MAX_ACTIONS),
@@ -274,7 +280,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 
     async fn run_step(&mut self, step: &FlowStep, path: String) -> Result<(), Halt> {
         let action = step.action();
-        let (kind, text) = describe_step(&action, &self.vars);
+        let (kind, text) = describe_step(&action, &self.vars, &self.facts);
         let mut log = StepLog::default();
         self.step.clone_from(&path);
         let result = steps::run(self, &mut log, &action, &text, &path).await;
@@ -522,7 +528,16 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 }
 
 /// A step's wire kind and its text with variables substituted.
-fn describe_step(action: &FlowAction, vars: &BTreeMap<String, String>) -> (&'static str, String) {
+///
+/// This text is what a step report shows and what `recent_actions` carries
+/// into every later Jev question, so it is built with [`substitute_safe`]:
+/// even a step kind that may substitute a fact operationally (`open`,
+/// `browse`) never repeats that value here.
+fn describe_step(
+    action: &FlowAction,
+    vars: &BTreeMap<String, String>,
+    facts: &BTreeSet<String>,
+) -> (&'static str, String) {
     let (kind, text) = match action {
         FlowAction::Open(app) => ("open", app.clone()),
         FlowAction::Browse(url) => ("browse", url.clone()),
@@ -546,5 +561,5 @@ fn describe_step(action: &FlowAction, vars: &BTreeMap<String, String>) -> (&'sta
         FlowAction::RepeatUntil(repeat) => ("repeat_until", repeat.condition.clone()),
         FlowAction::If(branch) => ("if", branch.condition.clone()),
     };
-    (kind, substitute(&text, vars))
+    (kind, substitute_safe(&text, vars, facts))
 }

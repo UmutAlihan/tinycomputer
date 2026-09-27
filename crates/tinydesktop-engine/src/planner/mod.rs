@@ -76,9 +76,12 @@ guide below. Reply with exactly one JSON object and nothing else: a flow \
 Use `browse` for anything on the web and `open` for a desktop application. \
 Refer to the person's details only as ${name} variables: use the fact names you are given, \
 and invent a clear name for any other detail the task needs, so the person can be asked for \
-it. Never invent personal details. Never enter payment details: end any purchase or booking \
-with a stop_before step for paying. Guard sending, deleting, publishing, or submitting with a \
-stop_before step.";
+it. Never invent personal details. A fact variable may appear only as an `enter` step's \
+value: you never see it, so it may not appear in an `open` application name, a `browse` \
+address, a `do`, `verify`, `wait_for`, `stop_before`, `choose`, `read`, `extract`, `pick`, \
+`repeat_until`, or `if` text, or as an `enter` slot's own name. Never enter \
+payment details: end any purchase or booking with a stop_before step for paying. Guard \
+sending, deleting, publishing, or submitting with a stop_before step.";
 
 /// Turns tasks into flows with a [`LanguageModel`].
 #[derive(Clone)]
@@ -146,7 +149,7 @@ impl Planner {
             turns.push(Turn::new(Role::Assistant, reply.clone()));
             let problem = match parse(&reply) {
                 Ok(flow) => {
-                    let errors = crate::agentic::check_flow(&flow, &known)
+                    let errors = crate::agentic::check_flow(&flow, &known, &known)
                         .errors
                         .into_iter()
                         .filter(|error| !error.contains("` is not defined in `vars`"))
@@ -169,7 +172,7 @@ impl Planner {
 }
 
 fn plan_for(flow: Flow, known: &BTreeSet<String>) -> TaskPlan {
-    let questions = crate::agentic::missing_inputs(&flow, known)
+    let questions = crate::agentic::missing_inputs(&flow, known, known)
         .into_iter()
         .map(|name| InputField {
             why: format!("the plan uses ${{{name}}}"),

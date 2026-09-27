@@ -891,6 +891,46 @@ async fn a_mail_compose_flow_fills_every_field_and_stops_in_front_of_send() {
 }
 
 #[tokio::test]
+async fn a_fact_is_typed_through_enter_but_never_reaches_a_jev_request() {
+    let app = App::quirky(Quirk::BodyIgnoresSetValue);
+    let run = run_with(
+        app,
+        mail_flow(),
+        |request| {
+            request.facts = BTreeSet::from(["to".to_owned()]);
+            // A task's flow always runs with `include_values` off (screen
+            // text is a separate, already-guarded leak path); this test is
+            // about `${to}` substitution, the bug this change fixes.
+            request.include_values = false;
+        },
+        |_, _, _| None,
+    )
+    .await;
+
+    assert_eq!(run.result.stop, FlowStopReason::StoppedBeforeDestructive);
+    let sim = run.app.sim();
+    assert_eq!(
+        sim.fields["To"], "sam@example.com",
+        "the fact is still typed into the field"
+    );
+
+    let leaked = run.requests.iter().any(|request| {
+        serde_json::to_string(request)
+            .unwrap()
+            .contains("sam@example.com")
+    });
+    assert!(!leaked, "a fact's value must never reach a Jev request");
+    assert!(
+        run.result
+            .steps
+            .iter()
+            .all(|step| !step.text.contains("sam@example.com")
+                && !step.note.contains("sam@example.com")),
+        "a fact's value must not appear in a step report either"
+    );
+}
+
+#[tokio::test]
 async fn an_allowed_destructive_step_is_performed_and_verified() {
     let run = run_with(
         App::default(),
@@ -1897,6 +1937,32 @@ async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
     )
     .await;
     assert_eq!(invalid.error.unwrap().code, "FLOW_INVALID");
+
+    let fact_in_condition = run_flow_with(
+        App::default(),
+        &runtime(Oracle {
+            app: App::default(),
+            hook: Box::new(|_, _, _| None),
+            requests: Mutex::new(Vec::new()),
+            fail: false,
+        }),
+        RunFlowRequest {
+            flow: serde_json::from_value(json!({"app": "Mail", "steps": [
+                {"verify": "shows ${email}"}
+            ]}))
+            .unwrap(),
+            vars: BTreeMap::from([("email".to_owned(), "sam@example.com".to_owned())]),
+            facts: BTreeSet::from(["email".to_owned()]),
+            ..RunFlowRequest::default()
+        },
+    )
+    .await;
+    let error = fact_in_condition.error.unwrap();
+    assert_eq!(error.code, "FLOW_INVALID");
+    assert!(
+        error.message.contains("is a fact"),
+        "a fact referenced outside an enter step never starts running: {error:?}"
+    );
 }
 
 #[test]
@@ -1945,11 +2011,12 @@ fn validation_reports_every_problem_by_step() {
     let malformed = validate::validate(
         &json!({"app": "Mail", "steps": [{"click": "x"}]}),
         &BTreeSet::new(),
+        &BTreeSet::new(),
     );
     assert!(malformed.0.is_none());
     assert!(malformed.1.errors[0].contains("not well formed"));
 
-    let empty = validate::check(&Flow::default(), &BTreeSet::new());
+    let empty = validate::check(&Flow::default(), &BTreeSet::new(), &BTreeSet::new());
     assert!(
         empty
             .errors
@@ -1962,13 +2029,17 @@ fn validation_reports_every_problem_by_step() {
         vars: BTreeMap::new(),
         steps: vec![tinydesktop_bus::FlowStep::Intent("x".to_owned()); 101],
     };
-    assert!(validate::check(&huge, &BTreeSet::new()).errors[0].contains("at most 100"));
+    assert!(
+        validate::check(&huge, &BTreeSet::new(), &BTreeSet::new()).errors[0]
+            .contains("at most 100")
+    );
 
-    let ok = validate::validate(&mail_flow(), &BTreeSet::new());
+    let ok = validate::validate(&mail_flow(), &BTreeSet::new(), &BTreeSet::new());
     assert!(ok.0.is_some() && ok.1.valid && ok.1.steps == 5);
     let with_runtime_var = validate::check(
         &serde_json::from_value(json!({"app": "Mail", "steps": [{"open": "${app}"}]})).unwrap(),
         &BTreeSet::from(["app".to_owned()]),
+        &BTreeSet::new(),
     );
     assert!(with_runtime_var.valid);
 }
@@ -1984,6 +2055,7 @@ fn validation_tracks_variables_along_execution_order() {
             ]
         }))
         .unwrap(),
+        &BTreeSet::new(),
         &BTreeSet::new(),
     );
     assert!(
@@ -2004,6 +2076,7 @@ fn validation_tracks_variables_along_execution_order() {
         }))
         .unwrap(),
         &BTreeSet::new(),
+        &BTreeSet::new(),
     );
     assert!(after_read.valid);
 
@@ -2018,6 +2091,7 @@ fn validation_tracks_variables_along_execution_order() {
             ]
         }))
         .unwrap(),
+        &BTreeSet::new(),
         &BTreeSet::new(),
     );
     assert!(
@@ -2039,6 +2113,7 @@ fn validation_tracks_variables_along_execution_order() {
             ]
         }))
         .unwrap(),
+        &BTreeSet::new(),
         &BTreeSet::new(),
     );
     assert!(
@@ -2085,6 +2160,173 @@ async fn a_flow_definition_naming_a_caller_value_is_expanded_once() {
     );
 }
 
+#[tokio::test]
+async fn a_flow_definition_naming_a_fact_is_typed_but_never_reaches_a_jev_request() {
+    let run = run_with(
+        App::with(|sim| sim.compose_open = true),
+        json!({
+            "app": "Mail",
+            "vars": {"subject_line": "${topic}"},
+            "steps": [{"enter": {"subject": "${subject_line}"}}]
+        }),
+        |request| {
+            request.vars = BTreeMap::from([("topic".to_owned(), "Kashmir".to_owned())]);
+            request.facts = BTreeSet::from(["topic".to_owned()]);
+            request.include_values = false;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    assert_eq!(
+        run.app.sim().fields["Subject"],
+        "Kashmir",
+        "the definition carries the fact into the field"
+    );
+    let leaked = run
+        .requests
+        .iter()
+        .any(|request| serde_json::to_string(request).unwrap().contains("Kashmir"));
+    assert!(!leaked, "a fact's value must never reach a Jev request");
+}
+
+#[test]
+fn validation_treats_a_flow_definition_naming_a_fact_as_a_fact() {
+    let facts = BTreeSet::from(["email".to_owned()]);
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "Mail",
+        "vars": {"recipient": "${email}", "topic": "the budget"},
+        "steps": [
+            {"do": "write to ${recipient} about ${topic}"},
+            {"enter": {"to": "${recipient}"}}
+        ]
+    }))
+    .unwrap();
+    let validation = validate::check(&flow, &facts, &facts);
+    assert_eq!(
+        validation.errors,
+        vec![
+            "step 1: `${recipient}` is a fact; use an enter step to type it — Jev only sees slot names"
+                .to_owned()
+        ],
+        "only the model-facing use of the fact-bearing definition is rejected"
+    );
+    assert_eq!(
+        validate::carrying_facts(&flow.vars, &facts),
+        BTreeSet::from(["email".to_owned(), "recipient".to_owned()]),
+        "a definition naming a fact carries it; one that does not stays ordinary"
+    );
+}
+
+#[test]
+fn validation_rejects_a_fact_referenced_in_every_model_facing_position() {
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "Mail",
+        "steps": [
+            {"open": "${email}"},
+            {"browse": "${email}"},
+            {"do": "tell Jev ${email}"},
+            {"verify": "shows ${email}"},
+            {"wait_for": "shows ${email}"},
+            {"stop_before": "sending to ${email}"},
+            {"choose": {"what": "${email}", "option": "ok"}},
+            {"choose": {"what": "list", "option": "${email}"}},
+            {"read": {"what": "the ${email} row", "into": "x"}},
+            {"extract": {"what": "the ${email} row", "into": "y"}},
+            {"pick": {"from": "${email}", "by": "lowest", "into": "z"}},
+            {"pick": {"from": "results", "by": "${email}", "into": "w"}},
+            {"repeat_until": {"condition": "shows ${email}", "steps": ["x"], "max": 1}},
+            {"if": {"condition": "shows ${email}", "then": ["x"]}},
+            {"enter": {"${email}": "hi"}}
+        ]
+    }))
+    .unwrap();
+    let facts = BTreeSet::from(["email".to_owned()]);
+    let validation = validate::check(&flow, &facts, &facts);
+    assert!(!validation.valid);
+    let hits = validation
+        .errors
+        .iter()
+        .filter(|error| error.contains("`${email}` is a fact"))
+        .count();
+    assert_eq!(
+        hits,
+        15,
+        "every model-facing position should reject the fact:\n{}",
+        validation.errors.join("\n")
+    );
+    for error in &validation.errors {
+        if error.contains("`${email}` is a fact") {
+            assert!(error.contains("use an enter step to type it"), "{error}");
+        }
+    }
+}
+
+#[test]
+fn validation_allows_a_fact_only_as_an_enter_steps_typed_value() {
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "Mail",
+        "steps": [
+            {"enter": {"email address": "${email}"}}
+        ]
+    }))
+    .unwrap();
+    let facts = BTreeSet::from(["email".to_owned()]);
+    let validation = validate::check(&flow, &facts, &facts);
+    assert!(validation.valid, "{:?}", validation.errors);
+}
+
+#[test]
+fn validation_rejects_a_fact_reached_by_open_or_browse() {
+    // The launched application or address becomes `screen.app` and a step
+    // note in `history`, both of which reach Jev on a later step, so these
+    // are rejected the same as any other model-facing position.
+    let open = validate::check(
+        &serde_json::from_value(json!({"app": "Mail", "steps": [{"open": "${app_name}"}]}))
+            .unwrap(),
+        &BTreeSet::from(["app_name".to_owned()]),
+        &BTreeSet::from(["app_name".to_owned()]),
+    );
+    assert!(
+        open.errors
+            .iter()
+            .any(|error| error.contains("`${app_name}` is a fact"))
+    );
+
+    let browse = validate::check(
+        &serde_json::from_value(json!({"app": "browser", "steps": [{"browse": "${site}"}]}))
+            .unwrap(),
+        &BTreeSet::from(["site".to_owned()]),
+        &BTreeSet::from(["site".to_owned()]),
+    );
+    assert!(
+        browse
+            .errors
+            .iter()
+            .any(|error| error.contains("`${site}` is a fact"))
+    );
+}
+
+#[test]
+fn validation_allows_a_non_fact_variable_in_model_facing_text() {
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "Mail",
+        "vars": {"topic": "the budget"},
+        "steps": [
+            {"do": "start an email about ${topic}"},
+            {"verify": "mentions ${topic}"}
+        ]
+    }))
+    .unwrap();
+    let validation = validate::check(&flow, &BTreeSet::new(), &BTreeSet::new());
+    assert!(validation.valid, "{:?}", validation.errors);
+}
+
 #[test]
 fn text_helpers_substitute_reference_and_normalize() {
     let vars = BTreeMap::from([("to".to_owned(), "sam".to_owned())]);
@@ -2116,6 +2358,24 @@ fn text_helpers_substitute_reference_and_normalize() {
     assert_eq!(
         validate::substitute("trailing ${unclosed", &BTreeMap::new()),
         "trailing ${unclosed"
+    );
+}
+
+#[test]
+fn substitute_safe_never_expands_a_fact_even_if_asked_to() {
+    let vars = BTreeMap::from([
+        ("email".to_owned(), "sam@example.com".to_owned()),
+        ("topic".to_owned(), "budget".to_owned()),
+    ]);
+    let facts = BTreeSet::from(["email".to_owned()]);
+    assert_eq!(
+        validate::substitute_safe("send to ${email} about ${topic}", &vars, &facts),
+        "send to ${email} about budget"
+    );
+    assert_eq!(
+        validate::substitute_safe("${email}", &vars, &BTreeSet::new()),
+        "sam@example.com",
+        "a non-fact name still substitutes normally"
     );
 }
 
@@ -2495,7 +2755,12 @@ async fn pick_fails_where_no_list_is_showing() {
 #[test]
 fn pick_validates_its_fields_and_defines_its_variable() {
     let check = |flow: serde_json::Value| {
-        super::validate::check(&serde_json::from_value(flow).unwrap(), &BTreeSet::new()).errors
+        super::validate::check(
+            &serde_json::from_value(flow).unwrap(),
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+        )
+        .errors
     };
     assert!(
         check(json!({"app": "Mail", "steps": [
