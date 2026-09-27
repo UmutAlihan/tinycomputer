@@ -142,6 +142,17 @@ pub struct Summary {
     pub input_tokens: u64,
     /// Provider-reported output tokens.
     pub output_tokens: u64,
+    /// The largest single call's input tokens.
+    pub max_input_tokens: u64,
+    /// The largest call's share of Jev's context window, in percent.
+    pub max_window_percent: u64,
+    /// `do` turns journaled.
+    pub turns: u64,
+    /// Decisions a `do` turn waited for, one after another: the most, and
+    /// the mean in hundredths.
+    pub max_turn_decisions: u64,
+    /// See [`Summary::max_turn_decisions`].
+    pub mean_turn_decisions_x100: u64,
     /// One row per journaled step, in the order the steps ended.
     pub steps: Vec<StepRow>,
     /// The slowest calls, slowest first.
@@ -186,6 +197,8 @@ pub struct SlowCall {
 
 /// How many slow calls a summary lists.
 const SLOWEST: usize = 5;
+/// Jev's context window, in tokens.
+const JEV_WINDOW: u64 = 32_000;
 
 /// Summarises `events`.
 #[must_use]
@@ -197,6 +210,7 @@ pub fn summarize(events: &[Value]) -> Summary {
     let mut bytes = 0;
     let mut exchange_ms = 0;
     let mut slow = Vec::new();
+    let mut turn_decisions = 0;
     for event in events {
         summary.wall_ms = summary.wall_ms.max(number(event, "elapsed_ms"));
         let step = event["step"].as_str().unwrap_or_default().to_owned();
@@ -216,6 +230,8 @@ pub fn summarize(events: &[Value]) -> Summary {
                 exchange_ms += latency;
                 bytes += number(event, "request_bytes");
                 summary.input_tokens += number(event, "input_tokens");
+                summary.max_input_tokens =
+                    summary.max_input_tokens.max(number(event, "input_tokens"));
                 summary.output_tokens += number(event, "output_tokens");
                 steps.entry(step.clone()).or_default().calls += 1;
                 slow.push(SlowCall {
@@ -253,6 +269,12 @@ pub fn summarize(events: &[Value]) -> Summary {
                 row.wall_ms = number(event, "wall_ms");
                 order.push(step);
             }
+            "turn" => {
+                let decisions = number(event, "decisions");
+                summary.turns += 1;
+                turn_decisions += decisions;
+                summary.max_turn_decisions = summary.max_turn_decisions.max(decisions);
+            }
             "end" => summary.wall_ms = summary.wall_ms.max(number(event, "wall_ms")),
             _ => {}
         }
@@ -267,6 +289,10 @@ pub fn summarize(events: &[Value]) -> Summary {
     summary.latency_p90_ms = percentile(&latencies, 90);
     summary.latency_max_ms = latencies.last().copied().unwrap_or_default();
     summary.mean_request_bytes = bytes.checked_div(summary.calls).unwrap_or_default();
+    summary.max_window_percent = summary.max_input_tokens * 100 / JEV_WINDOW;
+    summary.mean_turn_decisions_x100 = (turn_decisions * 100)
+        .checked_div(summary.turns)
+        .unwrap_or_default();
     summary.steps = order
         .into_iter()
         .filter_map(|step| steps.remove(&step))
@@ -305,6 +331,25 @@ pub fn render(summary: &Summary) -> String {
         summary.input_tokens,
         summary.output_tokens,
     );
+    if summary.max_input_tokens > 0 {
+        let _ = writeln!(
+            out,
+            "window   largest call {} tokens, {}% of Jev's {} K",
+            summary.max_input_tokens,
+            summary.max_window_percent,
+            JEV_WINDOW / 1000
+        );
+    }
+    if summary.turns > 0 {
+        let _ = writeln!(
+            out,
+            "turns    {} do turns; decisions in sequence per turn: mean {}.{:02}, most {}",
+            summary.turns,
+            summary.mean_turn_decisions_x100 / 100,
+            summary.mean_turn_decisions_x100 % 100,
+            summary.max_turn_decisions
+        );
+    }
     let _ = writeln!(
         out,
         "observe  {} {}  {} reads",
