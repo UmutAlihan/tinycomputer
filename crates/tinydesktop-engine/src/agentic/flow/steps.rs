@@ -387,7 +387,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Types `option` wherever the focus is.
     async fn type_into_focus(&mut self, log: &mut StepLog, option: &str) -> Result<(), Halt> {
-        let text = option.to_owned();
+        let text = search_text(option);
         self.act(log, "type to filter", None, move |backend| {
             backend.execute(JevOperation::TypeText, None, Some(text))
         })
@@ -422,7 +422,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let app = self.app.clone();
             let target = grounded.candidate;
             let field = target.clone();
-            let text = option.to_owned();
+            let text = search_text(option);
             let reply = self
                 .act(log, "type to filter", Some(&target), move |backend| {
                     deliver_text(&backend, &app, &field, &text)
@@ -982,9 +982,32 @@ fn mentions(candidate: &Candidate, option: &str) -> bool {
                 Some(words) => words
                     .iter()
                     .all(|word| shown.contains(&format!(" {word} "))),
-                None => shown.contains(&format!(" {wanted} ")),
+                // "Srinagar (SXR)" is the "Srinagar ... Airport SXR" row: the
+                // exact phrase, or else every one of its words.
+                None => {
+                    shown.contains(&format!(" {wanted} "))
+                        || wanted
+                            .split(' ')
+                            .all(|word| shown.contains(&format!(" {word} ")))
+                }
             }
         })
+}
+
+/// What to type to find `option` in a search box: its name before any
+/// qualifier, so "Srinagar (SXR)" searches for "Srinagar" — a box matching
+/// on the name would find nothing for the whole of it.
+pub(super) fn search_text(option: &str) -> String {
+    let name = option
+        .split(['(', ','])
+        .next()
+        .map(str::trim)
+        .unwrap_or_default();
+    if name.is_empty() {
+        option.trim().to_owned()
+    } else {
+        name.to_owned()
+    }
 }
 
 /// Elements that can be pressed.
