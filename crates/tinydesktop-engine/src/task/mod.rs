@@ -487,6 +487,7 @@ impl Tasks {
                 reads: BTreeMap::new(),
                 finished: 0,
                 resume: None,
+                spent: Spent::default(),
             }),
             worker: Mutex::new(None),
         });
