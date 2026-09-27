@@ -576,7 +576,7 @@ fn needs_input(missing: &[String]) -> TaskStatus {
 }
 
 /// A best guess at a value's kind from its name, for the caller's form.
-fn input_kind(name: &str) -> InputKind {
+pub(crate) fn input_kind(name: &str) -> InputKind {
     let name = name.to_ascii_lowercase();
     if name.contains("email") {
         InputKind::Email

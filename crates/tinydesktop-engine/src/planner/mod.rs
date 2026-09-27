@@ -20,7 +20,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use serde_json::Value;
-use tinydesktop_bus::agent::{InputField, InputKind, SurfaceKind, TaskPlan};
+use tinydesktop_bus::agent::{InputField, SurfaceKind, TaskPlan};
 use tinydesktop_bus::{FLOW_GUIDE, Flow};
 
 #[cfg(feature = "planner")]
@@ -202,12 +202,6 @@ fn parse(text: &str) -> Result<Flow, String> {
     let value: Value = serde_json::from_str(&trimmed[start..end.max(start)])
         .map_err(|error| error.to_string())?;
     serde_json::from_value(value).map_err(|error| error.to_string())
-}
-
-/// A task view's kind of value, for a question the planner raises.
-#[must_use]
-pub(crate) fn kind_of(name: &str) -> InputKind {
-    crate::task::input_kind(name)
 }
 
 #[cfg(test)]
