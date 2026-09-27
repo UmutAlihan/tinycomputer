@@ -256,6 +256,24 @@ step, when:
 - or the screen shows payment evidence (a card number, CVV, or expiry field),
   so a button that only says "Continue" on a card form is caught too.
 
+When a click is refused because it is covered — a result list's whole card
+often lies a transparent click layer over its own controls, so the card's own
+button is "covered" by the card itself — the runtime presses Escape once and
+retries the *same* already-vetted target. Escape never chooses a new element,
+so nothing exposed by dismissing whatever covered the click is ever pressed
+without going through grounding and `is_destructive` again on a later turn.
+
+A dismissal the completion judge would otherwise never see ends the step
+immediately: when the last action pressed a control whose own words the
+step's intent names ("Accept Essential Only" for a step about accepting
+cookies), or the intent asks to dismiss, close, accept, decline, reject, or
+skip a banner, dialog, popup, cookie notice, modal, overlay, or prompt, and
+the screen has returned to the application's own window, the step ends as
+`Done` — a closed overlay leaves no trace afterward for the judge to read.
+The same check runs once more after the very last turn, so a dismissal that
+lands on the last permitted turn is not reported as failed for want of
+another look.
+
 After eight turns without an end, the runtime looks one last time. If the
 completion estimate reaches 0.75 the step is `Done`; otherwise it fails with
 "not accomplished after 8 turns".
