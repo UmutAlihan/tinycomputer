@@ -70,15 +70,8 @@ struct Sim {
     /// Refs of the result cards' "Select" buttons clicked, in order.
     picked: Vec<String>,
     extra_buttons: usize,
-    /// A destination box that opens a search field, as an autocomplete does.
-    destination: bool,
-    /// Whether the destination's search field is open.
-    searching: bool,
-    /// A departure date shown only through a calendar: `Some(month)` while
-    /// the calendar is open on that month (0 = January).
-    calendar: Option<usize>,
-    /// Whether the departure date control is on screen at all.
-    departure: bool,
+    /// A booking form with an autocomplete destination and a calendar.
+    booking: Option<Booking>,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -102,6 +95,60 @@ const MONTH_NAMES: [&str; 12] = [
     "November",
     "December",
 ];
+
+/// A booking form: a destination box that opens a search field, as an
+/// autocomplete does, and a departure date picked only from a calendar.
+#[derive(Debug, Default)]
+struct Booking {
+    /// Whether the destination's search field is open.
+    searching: bool,
+    /// `Some(month)` while the calendar is open on that month (0 = January).
+    calendar: Option<usize>,
+}
+
+/// What pressing `name` does to the booking form.
+fn press_booking(sim: &mut Sim, name: &str) {
+    let Some(booking) = sim.booking.as_mut() else {
+        return;
+    };
+    match name {
+        "Going to?" => booking.searching = true,
+        "Departure" => booking.calendar = Some(8),
+        "Next Month" => booking.calendar = booking.calendar.map(|month| (month + 1) % 12),
+        day if booking.calendar.is_some() && day.ends_with(" 2026") => {
+            booking.calendar = None;
+            sim.fields.insert("Departure".to_owned(), day.to_owned());
+        }
+        _ => {}
+    }
+}
+
+/// The booking form's controls, as they stand.
+fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec<Candidate>) {
+    let widget = [root, "group \"Booking\""];
+    candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
+    if booking.searching {
+        candidates.push(node(
+            "Search city",
+            "textbox",
+            &["Click", "SetValue"],
+            &widget,
+            90.0,
+        ));
+        let typed = sim.fields.get("Search city").cloned().unwrap_or_default();
+        if !typed.is_empty() && "srinagar".starts_with(&typed.to_lowercase()) {
+            candidates.push(node("Srinagar, SXR", "option", &["Click"], &widget, 95.0));
+        }
+    }
+    candidates.push(node("Departure", "button", &["Click"], &widget, 120.0));
+    if let Some(month) = booking.calendar {
+        candidates.push(node("Next Month", "button", &["Click"], &widget, 130.0));
+        for day in 1..=28 {
+            let name = format!("{day} {} 2026", MONTH_NAMES[month]);
+            candidates.push(node(&name, "button", &["Click"], &widget, 140.0));
+        }
+    }
+}
 
 #[derive(Clone, Default)]
 struct App(Arc<Mutex<Sim>>);
@@ -229,33 +276,8 @@ impl App {
                 ));
             }
         }
-        if sim.destination {
-            let widget = [root.as_str(), "group \"Booking\""];
-            candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
-            if sim.searching {
-                candidates.push(node(
-                    "Search city",
-                    "textbox",
-                    &["Click", "SetValue"],
-                    &widget,
-                    90.0,
-                ));
-                let typed = sim.fields.get("Search city").cloned().unwrap_or_default();
-                if !typed.is_empty() && "srinagar".starts_with(&typed.to_lowercase()) {
-                    candidates.push(node("Srinagar, SXR", "option", &["Click"], &widget, 95.0));
-                }
-            }
-        }
-        if sim.departure {
-            let widget = [root.as_str(), "group \"Booking\""];
-            candidates.push(node("Departure", "button", &["Click"], &widget, 120.0));
-            if let Some(month) = sim.calendar {
-                candidates.push(node("Next Month", "button", &["Click"], &widget, 130.0));
-                for day in 1..=28 {
-                    let name = format!("{day} {} 2026", MONTH_NAMES[month]);
-                    candidates.push(node(&name, "button", &["Click"], &widget, 140.0));
-                }
-            }
+        if let Some(booking) = &sim.booking {
+            booking_widget(&sim, booking, &root, &mut candidates);
         }
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
@@ -349,13 +371,7 @@ impl AgentBackend for App {
                     "Send" => sim.sent = true,
                     "Keep Editing" => sim.obstacle = false,
                     "Archive" => sim.compose_open = false,
-                    "Going to?" => sim.searching = true,
-                    "Departure" => sim.calendar = Some(8),
-                    "Next Month" => sim.calendar = sim.calendar.map(|month| (month + 1) % 12),
-                    day if sim.calendar.is_some() && day.ends_with(" 2026") => {
-                        sim.fields.insert("Departure".to_owned(), day.to_owned());
-                        sim.calendar = None;
-                    }
+                    _ if sim.booking.is_some() => press_booking(&mut sim, &name),
                     _ => {}
                 }
             }
@@ -1437,14 +1453,24 @@ async fn choose_reveals_the_list_first_when_the_option_is_not_visible() {
 #[tokio::test]
 async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
     let run = run_with(
-        App::with(|sim| sim.destination = true),
+        App::with(|sim| sim.booking = Some(Booking::default())),
         json!({"app": "Mail", "steps": [
             {"choose": {"what": "the destination box", "option": "Srinagar"}}
         ]}),
         |_| {},
         |id, question, sim| match id {
             "move" => Some(pick(question, "activate", 0.9)),
-            "done" => Some(noul(if sim.searching { 0.9 } else { 0.05 })),
+            "done" => Some(noul(
+                if sim
+                    .booking
+                    .as_ref()
+                    .is_some_and(|booking| booking.searching)
+                {
+                    0.9
+                } else {
+                    0.05
+                },
+            )),
             _ if !matches!(question, Question::Choice(_)) => None,
             _ if purpose_of(question).contains("search box") => {
                 Some(pick(question, "Search city", 0.9))
@@ -1479,12 +1505,22 @@ fn purpose_of(question: &Question) -> String {
 #[tokio::test]
 async fn enter_picks_a_date_from_a_calendar_without_telling_jev_the_date() {
     let run = run_with(
-        App::with(|sim| sim.departure = true),
+        App::with(|sim| sim.booking = Some(Booking::default())),
         json!({"app": "Mail", "steps": [{"enter": {"departure date": "Sunday, 18 October 2026"}}]}),
         |_| {},
         |id, question, sim| match id {
             "move" => Some(pick(question, "activate", 0.9)),
-            "done" => Some(noul(if sim.calendar.is_some() { 0.9 } else { 0.05 })),
+            "done" => Some(noul(
+                if sim
+                    .booking
+                    .as_ref()
+                    .is_some_and(|booking| booking.calendar.is_some())
+                {
+                    0.9
+                } else {
+                    0.05
+                },
+            )),
             _ if !matches!(question, Question::Choice(_)) => None,
             _ if id.starts_with("slot_") => Some(pick(question, "none", 0.9)),
             _ if purpose_of(question).contains("value being entered") => {
