@@ -633,10 +633,7 @@ async fn plan_then_drive(
 /// budget has not already spent, along with the constraints to run it under
 /// and how much of `max_elapsed_ms` remains (`None` when it is unbounded).
 /// `None` overall only when the task's state was poisoned by a panic.
-fn run_request(
-    cell: &Cell,
-    run: &Run,
-) -> Option<(RunFlowRequest, TaskConstraints, Option<u64>)> {
+fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraints, Option<u64>)> {
     let state = cell.state.lock().ok()?;
     let mut vars = run.flow.vars.clone();
     for name in state.facts.names() {
