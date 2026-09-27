@@ -36,11 +36,11 @@ reading first is cheaper than rediscovering a rule by breaking it.
 | change desktop behaviour, a conversion, or a permission check | [`crates/tinycomputer-desktop/README.md`](crates/tinycomputer-desktop/README.md), "How a call travels" in [`docs/architecture.md`](docs/architecture.md), [`MODULE.md`](MODULE.md) |
 | change the browser adapter | [`crates/tinycomputer-browser/README.md`](crates/tinycomputer-browser/README.md), [`docs/specs/unified-agent.md`](docs/specs/unified-agent.md), [`docs/docker-lab.md`](docs/docker-lab.md) |
 | change the shared screen model, keys, or safety rules | [`crates/tinycomputer-core/README.md`](crates/tinycomputer-core/README.md), "Safety, in one place" in [`docs/architecture.md`](docs/architecture.md) |
-| change a Jev loop, question, threshold, or budget | [`docs/jev-harness.md`](docs/jev-harness.md), [`docs/decision-loops.md`](docs/decision-loops.md), [`crates/tinycomputer-engine/src/agentic/flow/README.md`](crates/tinycomputer-engine/src/agentic/flow/README.md), [`docs/specs/jev-intent-flows.md`](docs/specs/jev-intent-flows.md), [`docs/specs/jev-briefing.md`](docs/specs/jev-briefing.md) |
+| change a Jev loop, question, threshold, or budget | [`docs/jev-harness.md`](docs/jev-harness.md), [`docs/decision-loops.md`](docs/decision-loops.md), [`docs/jev-questions.md`](docs/jev-questions.md), [`docs/flow-examples.md`](docs/flow-examples.md), [`crates/tinycomputer-engine/src/agentic/flow/README.md`](crates/tinycomputer-engine/src/agentic/flow/README.md), [`docs/specs/jev-intent-flows.md`](docs/specs/jev-intent-flows.md), [`docs/specs/jev-briefing.md`](docs/specs/jev-briefing.md) |
 | change `RunGoal` or `ResolveIntent` | [`crates/tinycomputer-engine/src/agentic/README.md`](crates/tinycomputer-engine/src/agentic/README.md), [`docs/jev-harness.md`](docs/jev-harness.md) |
-| write, review, or debug a flow | [`crates/tinycomputer-bus/src/flow/guide.md`](crates/tinycomputer-bus/src/flow/guide.md), [`docs/decision-loops.md`](docs/decision-loops.md) |
+| write, review, or debug a flow | [`crates/tinycomputer-bus/src/flow/guide.md`](crates/tinycomputer-bus/src/flow/guide.md), [`docs/flow-examples.md`](docs/flow-examples.md), [`docs/decision-loops.md`](docs/decision-loops.md) |
 | change the task API, pausing, budgets, or the planner | [`docs/tasks.md`](docs/tasks.md), [`docs/specs/unified-agent.md`](docs/specs/unified-agent.md), [`crates/tinycomputer-skills/skills/tinycomputer/SKILL.md`](crates/tinycomputer-skills/skills/tinycomputer/SKILL.md) |
-| find out why a run did what it did, or why it was slow | [`docs/jev-journal.md`](docs/jev-journal.md), [`docs/lab.md`](docs/lab.md), "Debugging And Measuring Runs" below |
+| find out why a run did what it did, or why it was slow | [`docs/jev-journal.md`](docs/jev-journal.md), the failure table in [`docs/flow-examples.md`](docs/flow-examples.md), [`docs/lab.md`](docs/lab.md), "Debugging And Measuring Runs" below |
 | change the on-screen cursor | [`crates/tinycomputer-cursor/README.md`](crates/tinycomputer-cursor/README.md), [`docs/specs/virtual-cursor.md`](docs/specs/virtual-cursor.md) |
 | change the TinyBus glue, the ABI, or configuration keys | [`crates/tinycomputer/src/tinybus_module/README.md`](crates/tinycomputer/src/tinybus_module/README.md), "Configuration" in [`docs/architecture.md`](docs/architecture.md), [`MODULE.md`](MODULE.md) |
 | change packaging or a release | [`docs/specs/tinybus-module-release.md`](docs/specs/tinybus-module-release.md), "Releases" below |
@@ -107,6 +107,8 @@ docs/
 ├── architecture.md     # the layers, how a call travels, configuration, safety
 ├── jev-harness.md      # the Jev stack, one decision end to end, latency levers
 ├── decision-loops.md   # every flow loop, question, and threshold
+├── jev-questions.md    # every Jev input, question id, answer shape, and use
+├── flow-examples.md    # real flows traced decision by decision
 ├── jev-journal.md      # the debug journal and how to measure a run
 ├── tasks.md            # the task API and the planner
 ├── lab.md, docker-lab.md # live runs

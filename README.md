@@ -434,8 +434,15 @@ Do not hand-edit the version in the root `Cargo.toml`.
 
 - [`docs/architecture.md`](docs/architecture.md): the layers, how a call
   travels, threading, configuration, safety
+- [`docs/jev-harness.md`](docs/jev-harness.md): the Jev stack, one decision
+  end to end, and where the time goes
 - [`docs/decision-loops.md`](docs/decision-loops.md): how the flow runtime
   grounds each step, question by question
+- [`docs/jev-questions.md`](docs/jev-questions.md) and
+  [`docs/flow-examples.md`](docs/flow-examples.md): every Jev input and
+  output, and real flows traced decision by decision
+- [`docs/jev-journal.md`](docs/jev-journal.md): the debug journal, for reading
+  a run back and measuring its latency
 - [`docs/tasks.md`](docs/tasks.md): the task API, pausing and resuming,
   private values, the planner
 - [`docs/lab.md`](docs/lab.md) and [`docs/docker-lab.md`](docs/docker-lab.md):

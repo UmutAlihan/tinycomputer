@@ -12,6 +12,7 @@ docs/
 ├── README.md      # this index
 ├── architecture.md, decision-loops.md, tasks.md   # how the system works
 ├── jev-harness.md, jev-journal.md                  # the Jev stack; debugging it
+├── jev-questions.md, flow-examples.md             # Jev's inputs and outputs; flows traced
 ├── lab.md, docker-lab.md                          # live runs
 ├── evals/         # recorded live results
 ├── specs/         # behavior and architecture specifications
@@ -32,6 +33,9 @@ docs/
 Complex modules also carry a module-level `README.md` inside `src/<module>/`
 covering their design, public surface, and important constraints.
 
+Coding agents: [`AGENTS.md`](../AGENTS.md) maps each kind of change to the
+documents to read first ("Read The Right Document First").
+
 Start with these, in order:
 
 - [`architecture.md`](architecture.md): the crates, how a call travels from
@@ -41,6 +45,11 @@ Start with these, in order:
   each is tested and observed.
 - [`decision-loops.md`](decision-loops.md): how the flow runtime grounds each
   step on a live screen, every question it asks Jev, and every threshold.
+- [`jev-questions.md`](jev-questions.md): every input Jev receives, every
+  question id with its type and options, the answer shapes, and how each
+  answer is thresholded.
+- [`flow-examples.md`](flow-examples.md): real flows traced decision by
+  decision, what each step kind costs, and what common failures look like.
 - [`jev-journal.md`](jev-journal.md): the debug journal — every Jev exchange
   and timing of a run on disk — and how to use it to find latency.
 - [`tasks.md`](tasks.md): the task API for outside agents, pausing and
