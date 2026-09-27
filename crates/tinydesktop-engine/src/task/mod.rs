@@ -375,7 +375,8 @@ impl Tasks {
             }
         }
         let known = known_names(&state.flow, &state.facts);
-        let missing = crate::agentic::missing_inputs(&state.flow, &known);
+        let missing =
+            crate::agentic::missing_inputs(&state.flow, &known, &fact_names(&state.facts));
         if !missing.is_empty() {
             drop(state);
             publish(
