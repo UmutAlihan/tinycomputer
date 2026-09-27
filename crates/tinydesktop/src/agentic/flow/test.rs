@@ -1002,6 +1002,33 @@ async fn move_outcomes_cover_finished_stuck_wait_and_a_missing_shortcut() {
 }
 
 #[tokio::test]
+async fn an_unrecognized_move_is_skipped_rather_than_clicked() {
+    // A malformed or prompt-injected answer must never fall through to
+    // `activate`'s default Click branch; only `activate`, `expand`, and
+    // `scroll` may ground and act.
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["tidy up"]}),
+        |request| request.max_actions = 4,
+        |id, _, _| {
+            (id == "move").then(|| {
+                Answer::Choice(ChoiceAnswer {
+                    choice: "delete_everything".to_owned(),
+                    probabilities: BTreeMap::from([("delete_everything".to_owned(), 0.9)]),
+                    confidence: 0.9,
+                })
+            })
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        run.app.sim().clicks.is_empty(),
+        "an unrecognized move must never ground and click a control"
+    );
+}
+
+#[tokio::test]
 async fn return_is_refused_while_a_dialog_is_showing() {
     let run = run_with(
         App::with(|sim| sim.obstacle = true),
