@@ -8,7 +8,9 @@
 //!
 //! - `OPENROUTER_API_KEY` — Jev and the planner.
 //! - `TASK_FILE` — the task in plain language.
-//! - `FACTS_FILE` — a JSON object of facts (names and values) for the task.
+//! - `FACTS_FILE` — a JSON object of facts for the task, by name. A value is
+//!   a string, or `{"value": "...", "secret": true}` to keep it secret; a
+//!   card number or passport number is secret anyway.
 //! - `FLOW_FILE` — optional: run this flow instead of planning one.
 //! - `TASK_OUT` — optional: where the plan, report, and final screenshot go
 //!   (default `target/task-live`).
@@ -76,8 +78,7 @@ async fn main() -> Result<(), Failure> {
     let key = std::env::var("OPENROUTER_API_KEY")
         .map_err(|_| "OPENROUTER_API_KEY is not set; Jev and the planner cannot run")?;
     let task = std::fs::read_to_string(env("TASK_FILE")?)?;
-    let facts: BTreeMap<String, String> =
-        serde_json::from_str(&std::fs::read_to_string(env("FACTS_FILE")?)?)?;
+    let (facts, secret_facts) = read_facts(&std::fs::read_to_string(env("FACTS_FILE")?)?)?;
     let out =
         PathBuf::from(std::env::var("TASK_OUT").unwrap_or_else(|_| "target/task-live".into()));
     std::fs::create_dir_all(&out)?;
@@ -111,19 +112,23 @@ async fn main() -> Result<(), Failure> {
 
     let flow = match std::env::var("FLOW_FILE") {
         Ok(path) => serde_json::from_str(&std::fs::read_to_string(path)?)?,
-        Err(_) => plan(&tasks, &task, &facts, &out).await?,
+        Err(_) => plan(&tasks, &task, &facts, &secret_facts, &out).await?,
     };
+    // The task travels with the flow, so every Jev question is briefed on it.
     let started = tasks.start(&StartTaskRequest {
+        task: Some(task.clone()),
         flow: Some(flow),
         facts,
+        secret_facts: secret_facts.clone(),
         constraints: TaskConstraints {
             surfaces: vec![SurfaceKind::Browser],
             ..TaskConstraints::default()
         },
         budget: TaskBudget {
             max_actions: Some(200),
-            max_model_calls: Some(400),
+            max_model_calls: Some(5000),
             max_elapsed_ms: None,
+            votes: None,
         },
         trace: true,
         ..StartTaskRequest::default()
@@ -167,6 +172,31 @@ async fn main() -> Result<(), Failure> {
     }
 }
 
+/// The facts file's values by name, and the names it marks secret.
+fn read_facts(text: &str) -> Result<(BTreeMap<String, String>, Vec<String>), Failure> {
+    let raw: BTreeMap<String, serde_json::Value> = serde_json::from_str(text)?;
+    let mut facts = BTreeMap::new();
+    let mut secret = Vec::new();
+    for (name, value) in raw {
+        let text = match &value {
+            serde_json::Value::String(text) => text.clone(),
+            serde_json::Value::Object(fields) => {
+                if fields.get("secret").and_then(serde_json::Value::as_bool) == Some(true) {
+                    secret.push(name.clone());
+                }
+                fields
+                    .get("value")
+                    .and_then(serde_json::Value::as_str)
+                    .ok_or_else(|| format!("fact `{name}` has no string `value`"))?
+                    .to_owned()
+            }
+            _ => return Err(format!("fact `{name}` must be a string or an object").into()),
+        };
+        facts.insert(name, text);
+    }
+    Ok((facts, secret))
+}
+
 fn env(name: &str) -> Result<String, String> {
     std::env::var(name).map_err(|_| format!("{name} is not set"))
 }
@@ -176,12 +206,14 @@ async fn plan(
     tasks: &Tasks,
     task: &str,
     facts: &BTreeMap<String, String>,
+    secret_facts: &[String],
     out: &std::path::Path,
 ) -> Result<Flow, Failure> {
     let reply = tasks
         .plan(&PlanTaskRequest {
             task: task.to_owned(),
             fact_names: facts.keys().cloned().collect(),
+            secret_facts: secret_facts.to_vec(),
             surfaces: vec![SurfaceKind::Browser],
         })
         .await;
