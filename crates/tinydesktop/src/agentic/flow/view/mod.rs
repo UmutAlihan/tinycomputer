@@ -568,6 +568,40 @@ pub(in crate::agentic) fn destructive_label(evidence: &str) -> bool {
     .any(|term| evidence.contains(term))
 }
 
+/// Whether `label` is named by a `stop_before` phrase the flow itself
+/// declares elsewhere.
+///
+/// A flow that already plans to `stop_before: "sending the email"` has told
+/// us, in its own words, that whatever performs that action is irreversible —
+/// even when the generic English denylist above does not happen to cover the
+/// word it uses. A label under three characters is never checked: it is too
+/// short for containment to mean anything ("ok", "go") and would otherwise
+/// match almost any phrase.
+pub(in crate::agentic) fn named_in_stop_before(label: &str, stop_before: &[String]) -> bool {
+    let label = label.trim().to_ascii_lowercase();
+    label.chars().count() >= 3
+        && stop_before
+            .iter()
+            .any(|phrase| phrase.to_ascii_lowercase().contains(&label))
+}
+
+/// Whether pressing `candidate` on `screen` must be treated as irreversible:
+/// its own label names a hard-to-undo action, the flow's own `stop_before`
+/// steps already name it, or it is an unnamed control offered inside a
+/// confirmation sheet — the shape of "Delete"/"Cancel" dialogs whose default
+/// button carries no accessible name on some platforms, so the denylist can
+/// never see the word that would otherwise gate it.
+pub(in crate::agentic) fn is_destructive(
+    candidate: &Candidate,
+    screen: &Screen,
+    stop_before: &[String],
+) -> bool {
+    let label = label(candidate);
+    destructive_label(&label.to_ascii_lowercase())
+        || named_in_stop_before(&label, stop_before)
+        || (screen.surface == "sheet" && candidate.name.is_none())
+}
+
 /// The wire form of an element a flow acted on.
 pub(in crate::agentic) fn target_payload(candidate: &Candidate) -> JevTarget {
     JevTarget {
