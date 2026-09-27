@@ -22,10 +22,12 @@ enum Side {
     Browser,
 }
 
-/// A desktop surface and, when one is configured, a browser surface.
+/// A desktop surface and a browser surface, each present only when the
+/// task's constraints allow it: a task confined to one side must never reach
+/// the other, so neither side is unconditionally available.
 #[derive(Debug, Clone)]
 pub struct Workspace<D, W> {
-    desktop: D,
+    desktop: Option<D>,
     browser: Option<W>,
     active: Arc<Mutex<Side>>,
     /// The application (or `browser`) last observed or opened.
@@ -33,10 +35,10 @@ pub struct Workspace<D, W> {
 }
 
 impl<D: Surface, W: Surface> Workspace<D, W> {
-    /// A workspace over `desktop`, with `browser` when the browser is
-    /// available to this task.
+    /// A workspace with `desktop` when the desktop is available to this task,
+    /// and `browser` when the browser is.
     #[must_use]
-    pub fn new(desktop: D, browser: Option<W>) -> Self {
+    pub fn new(desktop: Option<D>, browser: Option<W>) -> Self {
         Self {
             desktop,
             browser,
