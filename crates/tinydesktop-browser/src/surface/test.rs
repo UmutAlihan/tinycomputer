@@ -57,7 +57,7 @@ fn a_line_parses_its_role_name_attributes_and_value() {
     assert_eq!(parse_line("- text:").unwrap().value, None);
     assert!(parse_line("not an item").is_none());
     assert!(parse_line(r#"- button "unterminated"#).is_none());
-    assert!(parse_line(r#"- button [ref=e1"#).is_none());
+    assert!(parse_line(r"- button [ref=e1").is_none());
 }
 
 #[test]
@@ -117,7 +117,8 @@ fn dialogs_are_the_surface_in_front() {
     assert_eq!(alert.surface, "alert");
     let many = (0..80)
         .map(|index| format!("- heading \"line {index}\"\n- text: \n"))
-        .collect::<String>();
+        .collect::<Vec<_>>()
+        .concat();
     assert_eq!(screen(&many, "").context.len(), 60, "context is capped");
     let long = format!(
         "- heading \"{}\"\n- heading \"line 1\"\n- heading \"line 1\"\n",

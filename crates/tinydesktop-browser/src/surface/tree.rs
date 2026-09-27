@@ -39,15 +39,21 @@ pub(crate) struct Line {
 }
 
 impl Line {
-    fn attribute(&self, key: &str) -> Option<Option<&str>> {
+    /// Whether the attribute is present, as a flag or with a value.
+    fn has(&self, key: &str) -> bool {
+        self.attributes.iter().any(|(name, _)| name == key)
+    }
+
+    /// The attribute's value, when it has one.
+    fn value_of(&self, key: &str) -> Option<&str> {
         self.attributes
             .iter()
             .find(|(name, _)| name == key)
-            .map(|(_, value)| value.as_deref())
+            .and_then(|(_, value)| value.as_deref())
     }
 
     fn reference(&self) -> Option<&str> {
-        self.attribute("ref").flatten()
+        self.value_of("ref")
     }
 
     fn label(&self) -> String {
@@ -135,7 +141,7 @@ pub(crate) fn screen(tree: &str, title: &str) -> Screen {
         }
         let node = candidate(&line, path, order);
         if line.reference().is_some() {
-            if line.attribute("disabled").is_none() {
+            if !line.has("disabled") {
                 candidates.push(node);
             }
         } else {
@@ -160,10 +166,9 @@ pub(crate) fn screen(tree: &str, title: &str) -> Screen {
 fn candidate(line: &Line, path: Vec<String>, order: usize) -> Candidate {
     let states = ["checked", "expanded", "selected", "required"]
         .into_iter()
-        .filter(|state| match line.attribute(state) {
-            Some(Some(value)) => value == "true",
-            Some(None) => true,
-            None => false,
+        .filter(|state| {
+            line.value_of(state)
+                .map_or_else(|| line.has(state), |value| value == "true")
         })
         .map(str::to_owned)
         .collect();
