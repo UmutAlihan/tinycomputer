@@ -419,7 +419,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Stores every item of the list showing as JSON rows of their text.
     async fn extract(&mut self, read: &ReadStep) -> Result<Ended, Halt> {
-        let what = substitute(&read.what, &self.vars);
+        let what = substitute_safe(&read.what, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
         let groups = result_groups(&screen);
