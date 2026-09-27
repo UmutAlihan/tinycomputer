@@ -67,8 +67,7 @@ impl Sprite {
         let scale = scale.clamp(1, 4);
         let frames = (0..=PULSE_STEPS)
             .map(|frame| {
-                let pulse =
-                    (frame > 0).then(|| f64::from(frame) / f64::from(PULSE_STEPS + 1));
+                let pulse = (frame > 0).then(|| f64::from(frame) / f64::from(PULSE_STEPS + 1));
                 draw(scale, pulse)
             })
             .collect();
@@ -185,12 +184,20 @@ fn sample(x: f64, y: f64, pulse: Option<f64>) -> [f64; 4] {
     let shadow = distance(&ARROW, x - SHADOW.0, y - SHADOW.1);
     let shadowed = inside(&ARROW, x - SHADOW.0, y - SHADOW.1);
     if shadowed || shadow < SHADOW.2 {
-        let depth = if shadowed { 1.0 } else { 1.0 - shadow / SHADOW.2 };
+        let depth = if shadowed {
+            1.0
+        } else {
+            1.0 - shadow / SHADOW.2
+        };
         colour = over(colour, [0.0, 0.0, 0.0], 0.35 * depth);
     }
     if inside(&ARROW, x, y) {
         let edge = distance(&ARROW, x, y);
-        colour = over(colour, if edge < OUTLINE_WIDTH { OUTLINE } else { FILL }, 1.0);
+        colour = over(
+            colour,
+            if edge < OUTLINE_WIDTH { OUTLINE } else { FILL },
+            1.0,
+        );
     } else if distance(&ARROW, x, y) < OUTLINE_WIDTH / 2.0 {
         colour = over(colour, OUTLINE, 1.0);
     }
@@ -209,8 +216,10 @@ fn draw(scale: u32, pulse: Option<f64>) -> Vec<u8> {
             let mut sum = [0.0; 4];
             for sy in 0..SUPERSAMPLE {
                 for sx in 0..SUPERSAMPLE {
-                    let x = (f64::from(column) + (f64::from(sx) + 0.5) / steps) / per_point - hotspot.x;
-                    let y = (f64::from(row) + (f64::from(sy) + 0.5) / steps) / per_point - hotspot.y;
+                    let x =
+                        (f64::from(column) + (f64::from(sx) + 0.5) / steps) / per_point - hotspot.x;
+                    let y =
+                        (f64::from(row) + (f64::from(sy) + 0.5) / steps) / per_point - hotspot.y;
                     let colour = sample(x, y, pulse);
                     for (total, channel) in sum.iter_mut().zip(colour) {
                         *total += channel;
@@ -220,7 +229,11 @@ fn draw(scale: u32, pulse: Option<f64>) -> Vec<u8> {
             let count = steps * steps;
             let alpha = sum[3] / count;
             let straight = |channel: f64| {
-                if alpha > 0.0 { channel / count / alpha } else { 0.0 }
+                if alpha > 0.0 {
+                    channel / count / alpha
+                } else {
+                    0.0
+                }
             };
             pixels.extend([
                 byte(straight(sum[0])),

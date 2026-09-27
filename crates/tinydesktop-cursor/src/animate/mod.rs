@@ -86,7 +86,10 @@ impl Animator {
         } else {
             1.0
         };
-        Some(Point::new(a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k))
+        Some(Point::new(
+            a[1] + (b[1] - a[1]) * k,
+            a[2] + (b[2] - a[2]) * k,
+        ))
     }
 
     /// What to draw at `now`; `None` when nothing is on screen.

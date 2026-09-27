@@ -30,9 +30,12 @@ impl ProcessOverlay {
     ///
     /// When the helper cannot be found or started.
     pub fn spawn(path: Option<&Path>) -> std::io::Result<Self> {
-        let path = path.map(Path::to_path_buf).or_else(Self::locate).ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotFound, "no cursor overlay helper")
-        })?;
+        let path = path
+            .map(Path::to_path_buf)
+            .or_else(Self::locate)
+            .ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::NotFound, "no cursor overlay helper")
+            })?;
         let mut child = Command::new(path)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())

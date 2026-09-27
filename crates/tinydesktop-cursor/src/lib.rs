@@ -15,7 +15,16 @@
 //! The cursor is purely cosmetic. It sends no input and never touches the
 //! user's own pointer: the engine performs every action exactly as it would
 //! with no cursor on screen. A [`Glide`] is plain data — timed positions,
-//! reproducible from a seed — for whatever owns the screen to animate.
+//! reproducible from a seed.
+//!
+//! There is one cursor for the whole screen. [`ScreenCursor`] is shared by
+//! the desktop and browser surfaces, which hand it targets in global screen
+//! points, so the cursor glides from an application to a web page and back
+//! without jumping. It draws through an [`OverlaySink`]: by default the
+//! `tinydesktop-cursor-overlay` helper process, a click-through window above
+//! everything, spoken to in [`OverlayCommand`]s. The helper only puts pixels
+//! on screen; how the cursor looks ([`sprite`]) and moves ([`animate`]) is
+//! decided here, the same on every platform.
 //!
 //! ```
 //! use tinydesktop_cursor::{CursorPace, Point, Rect, Rng, VirtualCursor};
@@ -30,14 +39,20 @@
 //! assert_eq!(glide.samples.last().map(|sample| sample.point), Some(glide.to));
 //! ```
 
+pub mod animate;
 mod error;
 mod geometry;
 mod glide;
 mod pace;
+mod protocol;
 mod rng;
+mod screen;
+pub mod sprite;
 
 pub use error::{Error, Result};
 pub use geometry::{Point, Rect};
 pub use glide::{Glide, PathSample, VirtualCursor, aim, human_path};
 pub use pace::CursorPace;
+pub use protocol::OverlayCommand;
 pub use rng::Rng;
+pub use screen::{HELPER_ENV, HELPER_NAME, OverlaySink, ProcessOverlay, ScreenCursor};

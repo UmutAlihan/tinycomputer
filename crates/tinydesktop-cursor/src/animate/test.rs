@@ -25,10 +25,22 @@ fn nothing_is_drawn_before_the_first_glide() {
 fn a_glide_follows_its_path_and_lands_exactly() {
     let mut animator = Animator::new();
     animator.apply(glide(false), 1_000.0);
-    assert_eq!(animator.frame(1_000.0).unwrap().position, Point::new(0.0, 0.0));
-    assert_eq!(animator.frame(1_050.0).unwrap().position, Point::new(25.0, 25.0));
-    assert_eq!(animator.frame(1_150.0).unwrap().position, Point::new(75.0, 75.0));
-    assert_eq!(animator.frame(1_900.0).unwrap().position, Point::new(100.0, 100.0));
+    assert_eq!(
+        animator.frame(1_000.0).unwrap().position,
+        Point::new(0.0, 0.0)
+    );
+    assert_eq!(
+        animator.frame(1_050.0).unwrap().position,
+        Point::new(25.0, 25.0)
+    );
+    assert_eq!(
+        animator.frame(1_150.0).unwrap().position,
+        Point::new(75.0, 75.0)
+    );
+    assert_eq!(
+        animator.frame(1_900.0).unwrap().position,
+        Point::new(100.0, 100.0)
+    );
     assert!(animator.is_moving(1_100.0));
 }
 
@@ -39,10 +51,17 @@ fn an_appearing_cursor_fades_in_and_a_landing_pulses_once() {
     assert!(animator.frame(0.0).unwrap().opacity.abs() < f64::EPSILON);
     assert!((animator.frame(FADE_MS / 2.0).unwrap().opacity - 0.5).abs() < 1e-9);
     assert!(animator.frame(199.0).unwrap().pulse.is_none());
-    let pulse = animator.frame(200.0 + PULSE_MS / 2.0).unwrap().pulse.unwrap();
+    let pulse = animator
+        .frame(200.0 + PULSE_MS / 2.0)
+        .unwrap()
+        .pulse
+        .unwrap();
     assert!((pulse - 0.5).abs() < 1e-9);
     assert!(animator.frame(200.0 + PULSE_MS).unwrap().pulse.is_none());
-    assert!(!animator.is_moving(200.0 + PULSE_MS + 1.0), "at rest after the pulse");
+    assert!(
+        !animator.is_moving(200.0 + PULSE_MS + 1.0),
+        "at rest after the pulse"
+    );
 }
 
 #[test]
@@ -71,7 +90,10 @@ fn hide_fades_out_and_a_new_glide_fades_back_in() {
 
     animator.apply(glide(false), 1_000.0);
     let frame = animator.frame(1_000.0).unwrap();
-    assert!(frame.opacity.abs() < f64::EPSILON, "a hidden cursor fades back in");
+    assert!(
+        frame.opacity.abs() < f64::EPSILON,
+        "a hidden cursor fades back in"
+    );
 }
 
 #[test]
@@ -85,7 +107,10 @@ fn an_empty_glide_changes_nothing() {
         },
         50.0,
     );
-    assert_eq!(animator.frame(50.0).unwrap().position, Point::new(25.0, 25.0));
+    assert_eq!(
+        animator.frame(50.0).unwrap().position,
+        Point::new(25.0, 25.0)
+    );
 }
 
 #[test]
@@ -98,6 +123,9 @@ fn a_path_with_repeated_times_still_moves_forward() {
         },
         0.0,
     );
-    assert_eq!(animator.frame(50.0).unwrap().position, Point::new(15.0, 15.0));
+    assert_eq!(
+        animator.frame(50.0).unwrap().position,
+        Point::new(15.0, 15.0)
+    );
     assert_eq!(animator.frame(-5.0).unwrap().position, Point::new(0.0, 0.0));
 }

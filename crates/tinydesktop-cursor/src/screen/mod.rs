@@ -144,7 +144,12 @@ impl ScreenCursor {
         if self.pace.is_off() || !target.is_valid() || target.width <= 0.0 || target.height <= 0.0 {
             return;
         }
-        let Some(glide) = self.cursor.lock().ok().and_then(|mut cursor| cursor.glide(target)) else {
+        let Some(glide) = self
+            .cursor
+            .lock()
+            .ok()
+            .and_then(|mut cursor| cursor.glide(target))
+        else {
             return;
         };
         if self.send(&OverlayCommand::glide(&glide)) {

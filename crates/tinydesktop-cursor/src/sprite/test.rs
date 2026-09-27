@@ -27,11 +27,23 @@ fn the_arrow_is_drawn_from_the_tip_down_and_right_and_nothing_else_at_rest() {
     let tip = Sprite::hotspot();
     let (x, y) = (2 * (super::SIZE / 2), 2 * (super::SIZE / 2));
     assert!((tip.x - 32.0).abs() < f64::EPSILON);
-    assert_eq!(alpha(&sprite, 0, x + 6, y + 20), 255, "inside the arrow body");
+    assert_eq!(
+        alpha(&sprite, 0, x + 6, y + 20),
+        255,
+        "inside the arrow body"
+    );
     let body = usize::try_from(((y + 20) * sprite.pixels() + x + 6) * 4).unwrap();
-    assert_eq!(&sprite.frames[0][body..body + 3], &[124, 92, 255], "violet fill");
+    assert_eq!(
+        &sprite.frames[0][body..body + 3],
+        &[124, 92, 255],
+        "violet fill"
+    );
     assert_eq!(alpha(&sprite, 0, 2, 2), 0, "the corners are clear");
-    assert_eq!(alpha(&sprite, 0, x - 20, y - 20), 0, "nothing up and left of the tip");
+    assert_eq!(
+        alpha(&sprite, 0, x - 20, y - 20),
+        0,
+        "nothing up and left of the tip"
+    );
 }
 
 #[test]
@@ -39,11 +51,16 @@ fn the_pulse_ring_grows_and_fades() {
     let sprite = Sprite::render(1);
     let (x, y) = (SIZE / 2, SIZE / 2);
     // Up and left of the tip only the ring can be drawn.
-    let ring_at = |frame: usize| (0..32).find(|r| alpha(&sprite, frame, x - r, y) > 0);
+    let ring_at = |frame: usize| (1..32).rev().find(|r| alpha(&sprite, frame, x - r, y) > 0);
     let early = ring_at(1).unwrap();
     let late = ring_at(PULSE_FRAMES - 2).unwrap();
     assert!(late > early, "{early} -> {late}");
-    let peak = |frame: usize| (0..32).map(|r| alpha(&sprite, frame, x - r, y)).max().unwrap();
+    let peak = |frame: usize| {
+        (0..32)
+            .map(|r| alpha(&sprite, frame, x - r, y))
+            .max()
+            .unwrap()
+    };
     assert!(peak(PULSE_FRAMES) < peak(1));
 }
 
@@ -62,7 +79,10 @@ fn bgra_is_premultiplied_and_swizzled() {
         scale: 1,
         frames: vec![vec![200, 100, 50, 128, 10, 20, 30, 0]],
     };
-    assert_eq!(sprite.premultiplied_bgra(0), vec![25, 50, 100, 128, 0, 0, 0, 0]);
+    assert_eq!(
+        sprite.premultiplied_bgra(0),
+        vec![25, 50, 100, 128, 0, 0, 0, 0]
+    );
     assert!(sprite.premultiplied_bgra(3).is_empty());
 }
 
@@ -79,7 +99,10 @@ fn png_output_is_a_valid_stream() {
     assert!(png(3, 1, &rgba).is_empty(), "wrong size is refused");
     assert!(png(0, 1, &[]).is_empty());
     let big = vec![7_u8; 70_000 * 4];
-    assert!(png(70_000, 1, &big).len() > big.len(), "several stored blocks");
+    assert!(
+        png(70_000, 1, &big).len() > big.len(),
+        "several stored blocks"
+    );
 }
 
 #[test]
