@@ -3937,3 +3937,289 @@ async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
         .collect::<Vec<_>>();
     assert!(seqs.windows(2).all(|pair| pair[1] == pair[0] + 1));
 }
+
+// ---------------------------------------------------------- wide strategy
+
+fn wide(request: &mut RunFlowRequest) {
+    request.strategy = tinycomputer_bus::FlowStrategy::Wide;
+}
+
+/// Answers `move` with "activate", so a step is done by pressing a control.
+fn activate_moves(id: &str, question: &Question, _: &Sim) -> Option<Answer> {
+    (id == "move").then(|| pick(question, "activate", 0.9))
+}
+
+fn asked(requests: &[EvaluationRequest], id: &str) -> usize {
+    requests
+        .iter()
+        .filter(|request| request.questions.contains_key(id))
+        .count()
+}
+
+fn asked_prefix(requests: &[EvaluationRequest], prefix: &str) -> usize {
+    requests
+        .iter()
+        .filter(|request| request.questions.keys().any(|id| id.starts_with(prefix)))
+        .count()
+}
+
+#[tokio::test]
+async fn a_wide_turn_judges_and_chooses_its_target_in_one_request() {
+    let flow = json!({"app": "Mail", "steps": [{"open": "Mail"}, "start a new email message"]});
+    let narrow = run_with(App::default(), flow.clone(), |_| {}, activate_moves).await;
+    let broad = run_with(App::default(), flow, wide, activate_moves).await;
+
+    assert_eq!(outcomes(&narrow.result), outcomes(&broad.result));
+    assert_eq!(broad.app.sim().clicks, ["New Message"]);
+    assert_eq!(
+        narrow.result.steps[1].jev_calls, 2,
+        "narrow: judge, then choose"
+    );
+    assert_eq!(
+        broad.result.steps[1].jev_calls, 1,
+        "wide: one request judges the screen and chooses the control"
+    );
+    let first = &broad.requests[0];
+    for id in ["done", "not_done", "progress", "move", "target_activate", "again_activate"] {
+        assert!(first.questions.contains_key(id), "the turn asks {id}");
+    }
+}
+
+#[tokio::test]
+async fn a_wide_question_sees_the_screen_as_a_digest_and_the_run_as_memory() {
+    let app = App::quirky(Quirk::BodyIgnoresSetValue);
+    let run = run_with(app, mail_flow(), wide, |_, _, _| None).await;
+    assert_eq!(run.result.stop, FlowStopReason::StoppedBeforeDestructive);
+
+    let entering = run
+        .result
+        .trace
+        .iter()
+        .find(|exchange| exchange.step == "3")
+        .expect("the enter step asks Jev");
+    let state = &entering.state;
+    assert!(state.get("recent_actions").is_none());
+    assert!(state.get("elements").is_none());
+    let regions = &state["screen"]["untrusted_accessibility_data"]["regions"];
+    assert!(
+        regions
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|region| region["elements"].as_array().unwrap())
+            .any(|line| line.as_str().unwrap().contains("textfield \"To\""))
+    );
+    let memory = &state["memory"];
+    assert!(
+        memory["steps_done"][1]
+            .as_str()
+            .unwrap()
+            .starts_with("step 2 (do \"start a new email message\"): Done"),
+        "{memory}"
+    );
+    assert_eq!(
+        memory["next_step"],
+        "verify: the draft shows the recipient, subject and body"
+    );
+    assert!(memory["budget_left"]["actions"].as_u64().unwrap() > 0);
+    for exchange in &run.result.trace {
+        assert!(
+            !exchange.state["memory"]
+                .to_string()
+                .contains("Could we move it"),
+            "the memory holds what happened, never the text that was typed"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_wide_run_without_the_digest_shows_the_flat_list_with_memory() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.disabled_loops = vec![FlowLoop::Digest];
+        },
+        |_, _, _| None,
+    )
+    .await;
+    let state = &run.result.trace[0].state;
+    assert!(state.get("screen").is_none());
+    assert!(state["elements"]["untrusted_accessibility_data"].is_array());
+    assert_eq!(state["memory"]["now"], "start a new email message");
+}
+
+#[tokio::test]
+async fn what_changed_nothing_is_remembered_as_tried_and_failed() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["tidy the inbox"]}),
+        wide,
+        activate_moves,
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Failed);
+    let later = run
+        .result
+        .trace
+        .iter()
+        .find(|exchange| exchange.state["memory"].get("tried_and_failed").is_some())
+        .expect("a later turn is told what did not work");
+    assert_eq!(
+        later.state["memory"]["tried_and_failed"][0],
+        "pressed button \"Archive\": nothing on screen changed"
+    );
+}
+
+#[tokio::test]
+async fn an_obstacle_in_front_is_cleared_from_the_turns_own_request_and_remembered() {
+    let app = App::with(|sim| sim.obstacle = true);
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        wide,
+        press_keep_editing,
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+    let sim = run.app.sim();
+    assert_eq!(sim.clicks, ["Keep Editing"]);
+    assert!(!sim.clicks.contains(&"Delete Draft".to_owned()));
+    let Question::Choice(dismiss) = &run.requests[0].questions["dismiss"] else {
+        panic!("dismiss is a choice");
+    };
+    assert!(
+        !serde_json::to_string(&dismiss.criteria)
+            .unwrap()
+            .contains("Delete Draft"),
+        "an irreversible control is never offered to dismiss with"
+    );
+    assert_eq!(
+        asked(&run.requests, "dismiss"),
+        asked(&run.requests, "done"),
+        "the obstacle is asked about in the turn's own request, never alone"
+    );
+    let hint = run
+        .result
+        .learned
+        .iter()
+        .find(|hint| hint.key == "obstacle sheet")
+        .expect("the control that closed the sheet is remembered");
+    assert_eq!(hint.name.as_deref(), Some("Keep Editing"));
+    drop(sim);
+
+    let again = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.memory = vec![hint.clone()];
+        },
+        |id, question, sim| {
+            // Only the remembered control is confirmed; the chooser picks
+            // nothing, so the dismissal can only come from memory.
+            (id == "dismiss")
+                .then(|| pick(question, "none", 0.9))
+                .or_else(|| press_keep_editing(id, question, sim))
+        },
+    )
+    .await;
+    assert_eq!(asked(&again.requests, "dismiss_known"), 1);
+    assert_eq!(again.app.sim().clicks, ["Keep Editing"]);
+}
+
+#[tokio::test]
+async fn a_crowded_screen_is_surveyed_once_and_ranked_instead_of_narrowed() {
+    let app = App::with(|sim| sim.extra_buttons = 60);
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": ["open message 7"]}),
+        wide,
+        |id, question, sim| {
+            if id == "done" {
+                return Some(noul(if sim.clicks.contains(&"Message 7".to_owned()) {
+                    0.95
+                } else {
+                    0.05
+                }));
+            }
+            activate_moves(id, question, sim)
+        },
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+    assert_eq!(run.app.sim().clicks, ["Message 7"]);
+    assert_eq!(
+        asked_prefix(&run.requests, "relevance_"),
+        1,
+        "one survey for the step's page shape, reused on later turns"
+    );
+    assert_eq!(asked(&run.requests, "region"), 0, "no region-by-region narrowing");
+    assert!(run.result.steps[0].loops.contains(&FlowLoop::Survey));
+
+    let survey = run
+        .requests
+        .iter()
+        .find(|request| request.questions.keys().any(|id| id.starts_with("relevance_")))
+        .unwrap();
+    assert!(survey.questions.keys().any(|id| id.starts_with("distraction_")));
+    let turn = run
+        .requests
+        .iter()
+        .find(|request| request.questions.contains_key("done"))
+        .unwrap();
+    let Question::Choice(first_group) = &turn.questions["group_activate_0"] else {
+        panic!("a crowded pool is knocked out in the turn's own request");
+    };
+    let first_option = first_group.criteria["1"].as_ref().unwrap().to_string();
+    assert!(
+        first_option.contains("Region 1"),
+        "the region the survey ranked highest is offered first: {first_option}"
+    );
+    let regions = &turn.state["screen"]["untrusted_accessibility_data"]["regions"];
+    assert_eq!(regions[0]["relevance"], 1.0);
+}
+
+#[tokio::test]
+async fn a_hesitant_wide_pick_is_confirmed_before_it_is_pressed() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        wide,
+        |id, question, sim| {
+            if id == "target_activate" {
+                return Some(pick(question, "New Message", 0.5));
+            }
+            activate_moves(id, question, sim)
+        },
+    )
+    .await;
+    assert_eq!(run.app.sim().clicks, ["New Message"]);
+    let confirmations = run
+        .requests
+        .iter()
+        .filter(|request| request.questions.keys().collect::<Vec<_>>() == ["confirm"])
+        .count();
+    assert_eq!(confirmations, 1, "one yes/no settles the hesitant pick");
+
+    let refused = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.disabled_loops = vec![FlowLoop::Consistency, FlowLoop::Corroboration];
+        },
+        |id, question, sim| {
+            if id == "target_activate" {
+                return Some(pick(question, "New Message", 0.5));
+            }
+            activate_moves(id, question, sim)
+        },
+    )
+    .await;
+    assert!(
+        refused.app.sim().clicks.is_empty(),
+        "with nothing to check a hesitant pick against, it is not pressed"
+    );
+}
