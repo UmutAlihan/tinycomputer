@@ -204,7 +204,7 @@ pub fn summarize(events: &[Value]) -> Summary {
             "run" => {
                 summary
                     .runs
-                    .push(format!("{}: {}", text(event, "kind"), text(event, "label")))
+                    .push(format!("{}: {}", text(event, "kind"), text(event, "label")));
             }
             "exchange" => {
                 let latency = number(event, "latency_ms");
