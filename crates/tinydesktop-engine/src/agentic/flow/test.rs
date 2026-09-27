@@ -2805,3 +2805,488 @@ async fn extract_stores_every_item_of_the_list() {
     .await;
     assert!(nothing.result.steps[0].note.contains("no list of results"));
 }
+
+// ------------------------------------------------ brief, secrets, and votes
+
+fn brief_of(request: &EvaluationRequest) -> Value {
+    request.state.get("brief").cloned().unwrap_or(Value::Null)
+}
+
+#[tokio::test]
+async fn every_question_is_briefed_on_the_goal_the_person_and_the_plan() {
+    let run = run_with(
+        App::default(),
+        mail_flow(),
+        |request| {
+            request.brief = tinydesktop_bus::FlowBrief {
+                goal: "move Thursday's sync with Sam to Friday".to_owned(),
+                details: BTreeMap::from([
+                    ("first name".to_owned(), "Alex".to_owned()),
+                    ("date of birth".to_owned(), "2000-01-01".to_owned()),
+                ]),
+                secrets: vec!["card number".to_owned()],
+                rules: vec!["never send without approval".to_owned()],
+            };
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert!(!run.requests.is_empty());
+    for request in &run.requests {
+        let brief = brief_of(request);
+        assert_eq!(brief["goal"], "move Thursday's sync with Sam to Friday");
+        assert_eq!(brief["for"]["date of birth"], "2000-01-01");
+        assert_eq!(brief["secrets"]["names"], json!(["${card number}"]));
+        assert_eq!(brief["rules"], json!(["never send without approval"]));
+        assert_eq!(brief["plan"].as_array().unwrap().len(), 5);
+    }
+    let entering = run
+        .requests
+        .iter()
+        .find(|request| request.questions.keys().any(|id| id.starts_with("slot_")))
+        .unwrap();
+    let plan = brief_of(entering)["plan"].clone();
+    assert_eq!(plan[1], "2. [done] do: start a new email message");
+    assert!(plan[2].as_str().unwrap().starts_with("3. [now] enter:"), "{plan}");
+    assert!(plan[3].as_str().unwrap().starts_with("4. [next] verify:"), "{plan}");
+    let verifying = run
+        .requests
+        .iter()
+        .find(|request| request.questions.contains_key("holds"))
+        .unwrap();
+    assert_eq!(
+        brief_of(verifying)["so_far"],
+        json!(["entered: recipient, subject, message body"])
+    );
+}
+
+#[tokio::test]
+async fn an_unbriefed_run_sends_no_brief_but_its_plan() {
+    let run = run(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+    )
+    .await;
+    assert!(
+        run.requests.iter().all(|request| brief_of(request).is_null()),
+        "a one-step flow with no brief adds nothing to the state"
+    );
+}
+
+#[tokio::test]
+async fn a_secret_the_page_shows_back_is_masked_in_every_request() {
+    let run = run_with(
+        App::default(),
+        json!({
+            "app": "Mail",
+            "steps": [
+                {"open": "Mail"},
+                "start a new email message",
+                {"enter": {"message body": "${card number}"}},
+                {"verify": "the draft shows the body"}
+            ]
+        }),
+        |request| {
+            request.vars =
+                BTreeMap::from([("card number".to_owned(), "4111111111111111".to_owned())]);
+            request.facts = BTreeSet::from(["card number".to_owned()]);
+            // The body field shows what was typed, so the value is on screen.
+            request.include_values = true;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(run.app.sim().fields["Body"], "4111111111111111");
+    let text = run
+        .requests
+        .iter()
+        .map(|request| serde_json::to_string(request).unwrap())
+        .collect::<String>();
+    assert!(!text.contains("4111111111111111"), "the secret leaked");
+    assert!(
+        text.contains("${card number}"),
+        "the page's copy reads as its template"
+    );
+    let traced = serde_json::to_string(&run.result.trace).unwrap();
+    assert!(!traced.contains("4111111111111111"));
+}
+
+#[tokio::test]
+async fn a_shared_value_may_be_named_in_a_step_and_reaches_jev() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": [
+            {"open": "Mail"},
+            "start a new email message",
+            {"verify": "the draft is addressed to ${to}"}
+        ]}),
+        |request| {
+            request.vars = BTreeMap::from([("to".to_owned(), "sam@example.com".to_owned())]);
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert!(run.requests.iter().any(|request| {
+        text_of(request.questions.get("holds").unwrap_or(&ask::condition("")), "condition")
+            .contains("sam@example.com")
+    }));
+}
+
+/// A Jev that leans toward whichever option is listed first: the needle gets
+/// 0.4, the first option 0.6 — enough to mislead any single asking.
+fn first_biased(question: &Question, needle: &str) -> Answer {
+    let Question::Choice(choice) = question else {
+        panic!("a choice");
+    };
+    let right = choice
+        .criteria
+        .iter()
+        .find(|(_, description)| {
+            description
+                .as_ref()
+                .is_some_and(|description| description.to_string().contains(needle))
+        })
+        .map(|(key, _)| key.clone())
+        .unwrap();
+    let first = choice
+        .criteria
+        .keys()
+        .find(|key| *key != "none")
+        .unwrap()
+        .clone();
+    let probabilities = choice
+        .criteria
+        .keys()
+        .map(|key| {
+            let mut probability = 0.0;
+            if *key == right {
+                probability += 0.4;
+            }
+            if *key == first {
+                probability += 0.6;
+            }
+            (key.clone(), probability)
+        })
+        .collect::<BTreeMap<_, _>>();
+    let choice = probabilities
+        .iter()
+        .max_by(|left, right| left.1.total_cmp(right.1))
+        .unwrap()
+        .0
+        .clone();
+    Answer::Choice(ChoiceAnswer {
+        choice,
+        probabilities,
+        confidence: 0.6,
+    })
+}
+
+async fn biased_mail(votes: u32) -> Run {
+    run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": [
+            {"open": "Mail"},
+            "start a new email message",
+            {"enter": {"subject": "Moving Thursday's sync"}}
+        ]}),
+        move |request| request.votes = votes,
+        |id, question, _| {
+            id.starts_with("slot_")
+                .then(|| first_biased(question, needle_for(&text_of(question, "purpose"))))
+        },
+    )
+    .await
+}
+
+#[tokio::test]
+async fn a_vote_undoes_a_bias_that_misleads_a_single_asking() {
+    let once = biased_mail(1).await;
+    assert_ne!(
+        once.app.sim().fields.get("Subject").map(String::as_str),
+        Some("Moving Thursday's sync"),
+        "asked once, the first field wins"
+    );
+    let voted = biased_mail(5).await;
+    assert_eq!(
+        voted.app.sim().fields["Subject"],
+        "Moving Thursday's sync",
+        "asked five ways, the right field wins"
+    );
+    assert!(voted.result.steps[2].loops.contains(&FlowLoop::Vote));
+}
+
+#[tokio::test]
+async fn every_framing_is_charged_and_the_budget_bounds_them() {
+    let flow = json!({"app": "Mail", "steps": [{"open": "Mail"}, "start a new email message"]});
+    let once = run_with(App::default(), flow.clone(), |_| {}, |_, _, _| None).await;
+    let thrice = run_with(
+        App::default(),
+        flow.clone(),
+        |request| request.votes = 3,
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(thrice.result.metrics.calls, 3 * once.result.metrics.calls);
+    assert_eq!(
+        usize::try_from(thrice.result.metrics.calls).unwrap(),
+        thrice.requests.len()
+    );
+    assert_eq!(
+        thrice.result.trace.len(),
+        once.result.trace.len(),
+        "the trace keeps one merged exchange per decision"
+    );
+    let squeezed = run_with(
+        App::default(),
+        flow,
+        |request| {
+            request.votes = 9;
+            request.max_model_calls = 2;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(squeezed.result.metrics.calls, 2, "voting never overspends");
+    assert_eq!(squeezed.result.stop, FlowStopReason::ModelBudget);
+}
+
+#[test]
+fn framings_relabel_label_keys_and_keep_word_keys() {
+    let request = ask::request(
+        "jev-latest",
+        json!({}),
+        ask::Questions::default()
+            .with(
+                "target",
+                ask::options(
+                    json!({"task": "t"}),
+                    ["1", "2", "3"].map(|key| (key.to_owned(), json!(format!("option {key}")))),
+                ),
+            )
+            .with(
+                "move",
+                ask::options(
+                    json!({"task": "m"}),
+                    ["activate", "wait"].map(|key| (key.to_owned(), json!(key))),
+                ),
+            )
+            .with("done", ask::completion("x")),
+    );
+    let framings = vote::framings(&request, 4);
+    assert_eq!(framings.len(), 4);
+    assert_eq!(framings[0].request, request, "the first framing is the request");
+    let firsts = framings
+        .iter()
+        .map(|framing| {
+            let Question::Choice(choice) = &framing.request.questions["target"] else {
+                panic!()
+            };
+            let first = choice.criteria.keys().next().unwrap();
+            choice.criteria[first].clone().unwrap()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        firsts,
+        [
+            json!("option 1"),
+            json!("option 2"),
+            json!("option 3"),
+            json!("option 1")
+        ],
+        "each framing leads with another option"
+    );
+    let Question::Choice(target) = &framings[1].request.questions["target"] else {
+        panic!()
+    };
+    assert_eq!(
+        target.criteria.keys().collect::<Vec<_>>(),
+        ["A", "B", "C", "none"]
+    );
+    assert_eq!(target.instructions["perspective"].as_str().unwrap().is_empty(), false);
+    let Question::Choice(moves) = &framings[1].request.questions["move"] else {
+        panic!()
+    };
+    assert_eq!(
+        moves.criteria.keys().collect::<Vec<_>>(),
+        ["activate", "none", "wait"],
+        "meaningful keys are kept"
+    );
+    assert_eq!(vote::framings(&request, 50).len(), vote::MAX_VOTES as usize);
+    assert_eq!(vote::framings(&request, 0).len(), 1);
+}
+
+#[test]
+fn merged_answers_average_under_the_original_keys() {
+    let request = ask::request(
+        "jev-latest",
+        json!({}),
+        ask::Questions::default()
+            .with(
+                "target",
+                ask::options(
+                    json!({"task": "t"}),
+                    (1..=30).map(|key| (key.to_string(), json!(format!("option {key}")))),
+                ),
+            )
+            .with("done", ask::completion("x"))
+            .with("progress", ask::progress("x")),
+    );
+    let framings = vote::framings(&request, 2);
+    let Question::Choice(second) = &framings[1].request.questions["target"] else {
+        panic!()
+    };
+    let keys = second.criteria.keys().cloned().collect::<Vec<_>>();
+    assert_eq!((keys[0].as_str(), keys[29].as_str()), ("AA", "BD"));
+    let key_for = |framing: &vote::Framing, description: &str| {
+        let Question::Choice(choice) = &framing.request.questions["target"] else {
+            panic!()
+        };
+        choice
+            .criteria
+            .iter()
+            .find(|(_, value)| value.as_ref() == Some(&json!(description)))
+            .unwrap()
+            .0
+            .clone()
+    };
+    let answer = |framing: &vote::Framing, winner: &str, done: f64, top: usize| {
+        let winner = key_for(framing, winner);
+        BTreeMap::from([
+            (
+                "target".to_owned(),
+                Answer::Choice(ChoiceAnswer {
+                    probabilities: BTreeMap::from([(winner.clone(), 0.8)]),
+                    choice: winner,
+                    confidence: 0.8,
+                }),
+            ),
+            ("done".to_owned(), noul(done)),
+            ("progress".to_owned(), level(top)),
+        ])
+    };
+    let answered = vec![
+        (framings[0].clone(), answer(&framings[0], "option 7", 0.9, 4)),
+        (framings[1].clone(), answer(&framings[1], "option 7", 0.5, 2)),
+    ];
+    let merged = vote::merge(&answered);
+    let Answer::Choice(target) = &merged["target"] else {
+        panic!()
+    };
+    assert_eq!(target.choice, "7");
+    assert!((target.probabilities["7"] - 0.8).abs() < 1e-9);
+    assert!((target.confidence - 1.0).abs() < 1e-9);
+    assert!((ask::probability(&merged, "done").unwrap() - 0.7).abs() < 1e-9);
+    assert!((ask::top_level(&merged, "progress").unwrap() - 0.5).abs() < 1e-9);
+
+    let split = vote::merge(&[
+        (framings[0].clone(), answer(&framings[0], "option 7", 0.9, 4)),
+        (framings[1].clone(), answer(&framings[1], "option 9", 0.9, 4)),
+    ]);
+    let Answer::Choice(split) = &split["target"] else {
+        panic!()
+    };
+    assert!((split.confidence - 0.5).abs() < 1e-9, "one of two agreed");
+    assert!(vote::merge(&[]).is_empty());
+}
+
+#[tokio::test]
+async fn a_web_page_is_named_and_the_name_briefs_the_next_question() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "browser", "steps": [
+            {"browse": "https://flights.test"},
+            {"verify": "flights are listed"}
+        ]}),
+        |_| {},
+        |id, question, _| (id == "page_kind").then(|| pick(question, "results", 0.9)),
+    )
+    .await;
+    let named = run
+        .requests
+        .iter()
+        .filter(|request| request.questions.contains_key("page_kind"))
+        .count();
+    assert!(named > 0, "a web page's questions carry the page kind");
+    assert!(
+        run.requests
+            .iter()
+            .any(|request| brief_of(request)["page"] == "results"),
+        "a later question is told the page is a results page"
+    );
+    assert!(run.result.steps[1].loops.contains(&FlowLoop::PageKind));
+    let desktop = run(App::default(), mail_flow()).await;
+    assert!(
+        desktop
+            .requests
+            .iter()
+            .all(|request| !request.questions.contains_key("page_kind")),
+        "a desktop application has no page kind"
+    );
+}
+
+#[tokio::test]
+async fn an_action_judged_unhelpful_is_undone_and_not_tried_again() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| request.max_actions = 6,
+        |id, question, sim| match id {
+            "move" => Some(pick(
+                question,
+                if sim.presses.contains(&"escape".to_owned()) {
+                    "shortcut"
+                } else {
+                    "activate"
+                },
+                0.9,
+            )),
+            "target" => Some(pick(question, "Archive", 0.9)),
+            "helped" => Some(noul(if sim.clicks.is_empty() { 0.9 } else { 0.05 })),
+            _ => None,
+        },
+    )
+    .await;
+    let sim = run.app.sim();
+    assert_eq!(sim.clicks, ["Archive"]);
+    assert!(sim.presses.contains(&"escape".to_owned()));
+    assert!(run.result.steps[0].loops.contains(&FlowLoop::Undo));
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+}
+
+#[tokio::test]
+async fn a_field_the_form_flags_is_entered_again_and_then_gives_up() {
+    let flow = json!({"app": "Mail", "steps": [
+        {"open": "Mail"},
+        "start a new email message",
+        {"enter": {"subject": "Moving Thursday's sync"}}
+    ]});
+    let asked = Arc::new(Mutex::new(0));
+    let counter = asked.clone();
+    let recovered = run_with(App::default(), flow.clone(), |_| {}, move |id, _, _| {
+        (id == "error_0").then(|| {
+            let mut asked = counter.lock().unwrap();
+            *asked += 1;
+            noul(if *asked == 1 { 0.9 } else { 0.05 })
+        })
+    })
+    .await;
+    assert_eq!(recovered.result.stop, FlowStopReason::Completed);
+    assert!(recovered.result.steps[2].loops.contains(&FlowLoop::Validation));
+    let fills = recovered.result.steps[2]
+        .actions
+        .iter()
+        .filter(|action| action.action.starts_with("fill"))
+        .count();
+    assert_eq!(fills, 2, "the flagged field is entered twice");
+
+    let stuck = run_with(App::default(), flow, |_| {}, |id, _, _| {
+        (id == "error_0").then(|| noul(0.9))
+    })
+    .await;
+    assert_eq!(stuck.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        stuck.result.steps[2].note.contains("still shows an error about: subject"),
+        "{}",
+        stuck.result.steps[2].note
+    );
+}
