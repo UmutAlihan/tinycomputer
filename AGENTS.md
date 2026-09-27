@@ -46,12 +46,12 @@ crates/
 │   └── src/
 │       ├── lib.rs      # crate docs + public surface, re-exporting the contract
 │       ├── error/mod.rs      # crate-wide `Error` and `Result<T>`
-│       └── desktop/          # the engine: one method per member, by family
-│           ├── mod.rs        # `Desktop`, its configuration, and the run path
-│           ├── convert.rs    # contract payloads -> engine arguments
-│           ├── permission.rs # what each member needs, and the preflight
-│           ├── reply.rs      # engine result -> response envelope
-│           └── test.rs       # module-local unit tests
+│       ├── desktop/          # the engine: one method per member, by family
+│       │   ├── mod.rs        # `Desktop`, its configuration, and the run path
+│       │   ├── convert.rs    # contract payloads -> engine arguments
+│       │   ├── permission.rs # what each member needs, and the preflight
+│       │   ├── reply.rs      # engine result -> response envelope
+│       │   └── test.rs       # module-local unit tests
 │       └── surface/          # `Desktop` as a core `Surface`
 ├── tinydesktop-engine/ # the agent runtime: Jev, RunGoal, intent flows
 │   └── src/agentic/    # goal and intent loops; `flow/` runs intent flows

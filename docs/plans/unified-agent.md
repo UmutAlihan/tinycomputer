@@ -37,10 +37,10 @@ contract commands and the per-file coverage gate green.
 - [ ] Upstream: `lib.rs`, `StateOptions` and `DaemonState::with_options` in
       `vercel-labs/agent-browser`. The `tinyhumansai/agent-browser` fork is
       pinned meanwhile.
-- [ ] `vendor/agent-browser` submodule; `tinydesktop-browser` (session,
-      convert, reply, policy, outputs, `BrowserSurface`).
-- [ ] `tinydesktop-bus/src/browser/` from `tinybrowser-bus`, plus the new
-      members; the `Browser` interface.
+- [ ] `vendor/agent-browser` submodule; the linked `Engine` over
+      `execute_command`; `BrowserSurface`.
+- [ ] The `Browser` interface in the cdylib, plus tabs, cookies, storage
+      state, upload, dialog, find, and wait members.
 - [ ] Browser tests in the Docker lab; a CI job on the Playwright image;
       `cargo deny`.
 
