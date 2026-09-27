@@ -44,8 +44,7 @@ crates/
 │       ├── version/    # contract version and the host bind rule
 │       └── <family>/   # one directory per payload family
 ├── tinydesktop-core/   # shared domain: Surface trait, keys, safety, records
-├── tinydesktop-cursor/ # the agent's on-screen cursor: glides, look, protocol
-├── tinydesktop-cursor-overlay/ # the helper window that draws that cursor
+├── tinydesktop-cursor/ # the agent's on-screen cursor, and the overlay that draws it
 ├── tinydesktop-browser/ # the agent-browser adapter: sessions, outputs
 ├── tinydesktop-desktop/ # the agent-desktop adapter: no bus, no agent loop
 │   └── src/

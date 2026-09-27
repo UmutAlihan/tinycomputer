@@ -65,7 +65,9 @@ So the cursor is **purely cosmetic**.
   8–12 Hz. Both fade to zero at the ends.
 - **Sampling:** 60 Hz.
 
-### `tinydesktop-cursor-overlay`
+### The overlay (`tinydesktop-cursor-overlay`)
+
+This is the crate's binary, built with the `overlay` feature.
 
 The helper reads commands on stdin and exits when stdin closes. It shows a
 64-point window positioned at `tip − hotspot` and ticks the animator at
@@ -81,8 +83,8 @@ The helper reads commands on stdin and exits when stdin closes. It shows a
 - **Elsewhere:** it drains its input and draws nothing.
 
 The platform modules are the only `unsafe` code in the workspace. The crate
-sets `unsafe_code = "deny"` instead of `forbid`, and every `unsafe` block
-carries a `// SAFETY:` comment.
+sets `unsafe_code = "deny"` instead of `forbid`, the library forbids `unsafe`
+itself, and every `unsafe` block carries a `// SAFETY:` comment.
 
 ### Surfaces
 

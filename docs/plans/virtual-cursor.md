@@ -7,13 +7,15 @@ Spec: [`../specs/virtual-cursor.md`](../specs/virtual-cursor.md).
 1. **`tinydesktop-cursor` crate.** Add `geometry/`, `rng/`, `pace/`,
    `glide/`, `protocol/`, `animate/`, `sprite/` (with `png`), and `screen/`
    (with `ProcessOverlay`). Write every module's tests first.
-2. **`tinydesktop-cursor-overlay` helper.**
+2. **The `tinydesktop-cursor-overlay` binary** in the same crate, under
+   `src/bin/` and behind the `overlay` feature:
    - `driver/`, testable without a display;
    - `platform/macos.rs` (AppKit);
    - `platform/windows.rs` (Win32 layered window);
    - `platform/other.rs`.
 
-   It carries its own lint table with `unsafe_code = "deny"`.
+   The crate carries its own lint table with `unsafe_code = "deny"`, and the
+   library itself sets `#![forbid(unsafe_code)]`.
 3. **Core.** Add `uses_pointer`.
 4. **Desktop.** Add `Desktop::with_cursor`, and make `execute_desktop` glide
    onto boxed pointer targets.
@@ -29,9 +31,9 @@ Spec: [`../specs/virtual-cursor.md`](../specs/virtual-cursor.md).
 ## Verification
 
 ```sh
-cargo test -p tinydesktop-cursor -p tinydesktop-cursor-overlay
-cargo clippy -p tinydesktop-cursor-overlay --target x86_64-pc-windows-msvc --all-targets -- -D warnings
-cargo build -p tinydesktop-cursor-overlay
+cargo test -p tinydesktop-cursor --all-features
+cargo clippy -p tinydesktop-cursor --features overlay --target x86_64-pc-windows-msvc --all-targets -- -D warnings
+cargo build -p tinydesktop-cursor --features overlay
 cargo run -p tinydesktop-examples --bin cursor_demo -- calm 2
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings

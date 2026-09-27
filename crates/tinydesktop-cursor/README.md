@@ -13,5 +13,24 @@ cosmetic. It sends no input and never moves the user's pointer.
 | `sprite/` | `Sprite`: the cursor's look as RGBA frames, and a PNG encoder |
 | `pace/` | `CursorPace`: `off`, `brisk`, `natural` (default), `calm` |
 
-The overlay window itself is `crates/tinydesktop-cursor-overlay`; see
-[`docs/specs/virtual-cursor.md`](../../docs/specs/virtual-cursor.md).
+With the `overlay` feature the crate also builds `tinydesktop-cursor-overlay`,
+the helper that draws the cursor (`src/bin/tinydesktop-cursor-overlay/`):
+
+| Path | Holds |
+|---|---|
+| `driver/` | commands in, window position, sprite frame, and opacity out; platform-independent and tested |
+| `platform/macos.rs` | a borderless, click-through, never-activating `NSWindow` |
+| `platform/windows.rs` | a layered, topmost, click-through, non-activating Win32 window |
+| `platform/other.rs` | drains input and draws nothing |
+
+Those platform modules are foreign-function code, so this crate carries its
+own lint table with `unsafe_code = "deny"` instead of the workspace's
+`forbid`. The library forbids `unsafe` itself, and only the platform modules
+allow it, each `unsafe` block with a `// SAFETY:` comment.
+
+```sh
+cargo build -p tinydesktop-cursor --features overlay
+cargo run -p tinydesktop-examples --bin cursor_demo -- calm 3
+```
+
+See [`docs/specs/virtual-cursor.md`](../../docs/specs/virtual-cursor.md).

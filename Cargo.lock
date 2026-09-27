@@ -2057,21 +2057,14 @@ dependencies = [
 name = "tinydesktop-cursor"
 version = "0.5.1"
 dependencies = [
- "getrandom 0.4.3",
- "serde",
- "serde_json",
- "thiserror 2.0.20",
-]
-
-[[package]]
-name = "tinydesktop-cursor-overlay"
-version = "0.5.1"
-dependencies = [
  "block2",
+ "getrandom 0.4.3",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
- "tinydesktop-cursor",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
  "windows-sys 0.61.2",
 ]
 
