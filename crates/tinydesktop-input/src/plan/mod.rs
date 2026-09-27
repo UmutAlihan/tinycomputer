@@ -258,9 +258,10 @@ impl Pacer {
     /// Waits until `pause` has passed since the previous call returned,
     /// or not at all if it already has.
     pub fn wait(&mut self, pause: Duration) {
-        let spent = self.last.elapsed();
-        if pause > spent {
-            (self.sleep)(pause - spent);
+        if let Some(left) = pause.checked_sub(self.last.elapsed())
+            && !left.is_zero()
+        {
+            (self.sleep)(left);
         }
         self.last = Instant::now();
     }
