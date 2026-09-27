@@ -5,6 +5,8 @@
 //! the first control whose name contains `<name>` and prints the page again;
 //! `type=<text>` types it with key presses wherever the focus is.
 //! It is the research step before pointing a live task at a site.
+//! `PROBE_ENDPOINT` attaches to a running Chrome, where the URL `current`
+//! reads the page it already shows.
 //!
 //! Run it in the Docker lab, never on the host:
 //! `scripts/docker-lab -- cargo run -p tinydesktop-examples --bin site_probe -- <url>...`
@@ -78,6 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             SessionOptions {
                 executable: std::env::var("TINYDESKTOP_BROWSER_EXECUTABLE").ok(),
                 user_agent: std::env::var("PROBE_USER_AGENT").ok(),
+                endpoint: std::env::var("PROBE_ENDPOINT").ok(),
                 args: std::env::var("PROBE_BROWSER_ARGS")
                     .map(|args| args.split_whitespace().map(str::to_owned).collect())
                     .unwrap_or_default(),
@@ -86,7 +89,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             runtime.handle().clone(),
         );
         println!("=== {argument}");
-        let reply = fresh.navigate(argument);
+        // `current` reads whatever page an attached browser already shows.
+        let reply = if argument == "current" {
+            tinydesktop_bus::DesktopResponse::ok("navigate", serde_json::json!({}))
+        } else {
+            fresh.navigate(argument)
+        };
         if reply.ok {
             show(&fresh);
         } else {
