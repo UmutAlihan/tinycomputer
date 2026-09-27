@@ -911,6 +911,12 @@ fn known_names(flow: &Flow, facts: &Facts) -> BTreeSet<String> {
         .collect()
 }
 
+/// The names among `facts`, on their own: what the flow validator and
+/// runtime treat as never allowed in model-facing text.
+fn fact_names(facts: &Facts) -> BTreeSet<String> {
+    facts.names().into_iter().map(str::to_owned).collect()
+}
+
 fn is_undefined(error: &str) -> bool {
     error.contains("` is not defined in `vars`")
 }
