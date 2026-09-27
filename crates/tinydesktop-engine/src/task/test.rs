@@ -481,7 +481,7 @@ async fn an_approval_resume_spends_from_the_tasks_remaining_budget_not_a_fresh_o
     });
     let view = started.data.unwrap();
     settle(&tasks, &view.id).await;
-    tasks.continue_task(ContinueTaskRequest {
+    let _ = tasks.continue_task(ContinueTaskRequest {
         id: view.id.clone(),
         approve: Some(true),
         ..ContinueTaskRequest::default()
