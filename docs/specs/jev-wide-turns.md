@@ -86,7 +86,17 @@ Under `"wide"`:
    as a grounding hint keyed `obstacle <region>`; a later run confirms it
    with `dismiss_known` instead of choosing again.
 
-One change applies to both strategies: a gated `stop_before` asks Jev to
+Changes found on the live runs apply to both strategies:
+
+- elements Jev cannot tell apart (identical descriptions, bounds aside) are
+  offered once, the first in page order, in element Choices and slot
+  matching;
+- an unnamed element is described by the nearest named container it sits in;
+- `pick` recovers from a covered click the way a `do` click does, and says
+  why when it cannot; the browser clicks through a result card's own content
+  when the exact target is in that card and no dialog is involved.
+
+And a gated `stop_before` asks Jev to
 *find, without pressing it,* the control, rather than to perform the action.
 Measured on a payment page, "perform: paying for the booking" chose the Pay
 button at 0.44 (the brief's rule says to stop before paying); the new
