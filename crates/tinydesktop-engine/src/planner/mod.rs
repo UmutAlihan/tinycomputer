@@ -146,7 +146,7 @@ impl Planner {
             turns.push(Turn::new(Role::Assistant, reply.clone()));
             let problem = match parse(&reply) {
                 Ok(flow) => {
-                    let errors = crate::agentic::check_flow(&flow, &known)
+                    let errors = crate::agentic::check_flow(&flow, &known, &known)
                         .errors
                         .into_iter()
                         .filter(|error| !error.contains("` is not defined in `vars`"))
