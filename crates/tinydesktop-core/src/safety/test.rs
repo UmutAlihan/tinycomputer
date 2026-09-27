@@ -223,3 +223,33 @@ fn walls_only_a_person_can_pass_are_named() {
     assert_eq!(needs("Verification complete"), None);
     assert_eq!(human_needed(&[]), None);
 }
+
+#[test]
+fn a_counters_minus_button_only_changes_a_number() {
+    for label in [
+        "Remove Adult, 2 Adult Remaining",
+        "Decrease adults",
+        "reduce rooms",
+        "minus child",
+    ] {
+        assert!(super::adjusts_a_count(label), "{label}");
+        assert_eq!(
+            super::consequence(label),
+            super::Consequence::Reversible,
+            "{label}"
+        );
+    }
+    for label in [
+        "Remove",
+        "Remove passenger details",
+        "Delete adult",
+        "Remove item",
+    ] {
+        assert!(!super::adjusts_a_count(label), "{label}");
+        assert_eq!(
+            super::consequence(label),
+            super::Consequence::Irreversible,
+            "{label}"
+        );
+    }
+}

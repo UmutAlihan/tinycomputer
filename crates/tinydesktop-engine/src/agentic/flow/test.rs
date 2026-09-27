@@ -3659,3 +3659,32 @@ async fn an_option_already_chosen_is_not_clicked_again() {
     assert!(run.app.sim().clicks.is_empty());
     assert!(run.requests.is_empty(), "nothing needed asking");
 }
+
+#[tokio::test]
+async fn after_acting_a_finished_move_stands_unless_the_judge_leans_undone() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["tidy up"]}),
+        |_| {},
+        |id, question, sim| match id {
+            "move" => Some(pick(
+                question,
+                if sim.clicks.is_empty() {
+                    "activate"
+                } else {
+                    "finished"
+                },
+                0.9,
+            )),
+            "done" => Some(noul(if sim.clicks.is_empty() { 0.05 } else { 0.6 })),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(
+        run.app.sim().clicks.len(),
+        1,
+        "no click after the step was done"
+    );
+}

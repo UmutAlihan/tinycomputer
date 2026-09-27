@@ -115,3 +115,9 @@ fn is_destructive_gates_a_generic_control_on_a_payment_screen() {
     };
     assert!(is_destructive(&pay, &screen, &[]));
 }
+
+#[test]
+fn a_counters_minus_button_is_not_destructive() {
+    assert!(!destructive_label("remove adult, 2 adult remaining"));
+    assert!(destructive_label("remove"));
+}
