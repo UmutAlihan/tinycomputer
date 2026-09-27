@@ -229,6 +229,10 @@ const STRONG_CARD_WORDS: &[&str] = &[
     "expiry date",
     "expiration date",
     "valid thru",
+    // A payment identifier, never a promotional phrase: an ad says "pay by
+    // UPI", never "UPI ID" or "VPA" on their own.
+    "upi id",
+    "vpa",
 ];
 
 /// Whether the screen a flow is looking at is a payment step, from its
