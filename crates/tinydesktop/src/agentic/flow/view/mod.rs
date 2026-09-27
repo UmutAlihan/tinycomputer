@@ -287,23 +287,20 @@ fn collect(
     }
 }
 
-/// Whether a ref-less node's only text is a mirror of a field's contents
-/// rather than screen chrome: static text with no accessible name or
-/// description, sitting inside a rich-text area, that carries only whatever
-/// the field itself holds as its `value`.
+/// Whether a ref-less node's text is a mirror of a field's contents rather
+/// than screen chrome: any static text nested inside a rich-text area, where
+/// a mail body or a web view spreads its held text over such descendants
+/// because the area itself carries none.
 ///
 /// Such a node must never reach `context`, which every request shares
 /// regardless of `include_values` — it is field content, so it is left for
 /// [`crate::agentic::flow::ask`]'s gated `field_contents` to read from
 /// [`Screen::text_nodes`] instead.
 fn remembers_as_field_content(node: &Candidate) -> bool {
-    node.name.is_none()
-        && node.description.is_none()
-        && matches!(node.value.as_ref(), Some(Value::String(text)) if !text.trim().is_empty())
-        && node.path.iter().any(|ancestor| {
-            let ancestor = ancestor.to_ascii_lowercase();
-            ancestor.starts_with("webarea") || ancestor.starts_with("document")
-        })
+    node.path.iter().any(|ancestor| {
+        let ancestor = ancestor.to_ascii_lowercase();
+        ancestor.starts_with("webarea") || ancestor.starts_with("document")
+    })
 }
 
 /// Keeps a ref-less node's visible text as context for Jev.
