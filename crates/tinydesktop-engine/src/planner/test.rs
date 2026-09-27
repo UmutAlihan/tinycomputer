@@ -29,7 +29,7 @@ impl LanguageModel for Scripted {
     }
 }
 
-fn planner(answers: &[Result<&str, &str>]) -> (Planner, Arc<Scripted>) {
+fn scripted(answers: &[Result<&str, &str>]) -> (Planner, Arc<Scripted>) {
     let model = Arc::new(Scripted {
         answers: Mutex::new(
             answers
@@ -54,7 +54,7 @@ const FLIGHT: &str = r#"Here is the plan:
 
 #[tokio::test]
 async fn a_valid_plan_comes_back_with_its_questions() {
-    let (planner, model) = planner(&[Ok(FLIGHT)]);
+    let (planner, model) = scripted(&[Ok(FLIGHT)]);
     let plan = planner
         .plan(
             "book the cheapest flight to Srinagar",
@@ -78,7 +78,7 @@ async fn a_valid_plan_comes_back_with_its_questions() {
 
 #[tokio::test]
 async fn an_invalid_answer_is_repaired_with_the_errors() {
-    let (planner, model) = planner(&[
+    let (planner, model) = scripted(&[
         Ok("I would search for flights."),
         Ok(r#"{"app": "", "steps": []}"#),
         Ok(r#"{"app": "Mail", "steps": ["start a new email message"]}"#),
@@ -106,21 +106,21 @@ async fn an_invalid_answer_is_repaired_with_the_errors() {
 #[tokio::test]
 async fn a_plan_that_never_validates_or_a_failed_model_is_an_error() {
     let never = [Ok(r#"{"app": "", "steps": []}"#); REPAIRS + 1];
-    let (planner, _) = planner(&never);
+    let (planner, _) = scripted(&never);
     let error = planner
         .plan("x", &[], &[SurfaceKind::Desktop])
         .await
         .unwrap_err();
     assert!(error.contains("did not produce a valid flow"), "{error}");
 
-    let (planner, _) = planner(&[Err("rate limited")]);
+    let (planner, _) = scripted(&[Err("rate limited")]);
     assert_eq!(
         planner.plan("x", &[], &[]).await.unwrap_err(),
         "rate limited"
     );
     assert!(format!("{planner:?}").contains("Planner"));
 
-    let (planner, _) = planner(&[Ok(r#"{"steps": "not a list"}"#), Ok("{"), Ok("{}")]);
+    let (planner, _) = scripted(&[Ok(r#"{"steps": "not a list"}"#), Ok("{"), Ok("{}")]);
     assert!(planner.plan("x", &[], &[]).await.is_err());
 }
 
