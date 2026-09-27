@@ -232,7 +232,7 @@ fn forbid_facts(errors: &mut Vec<String>, path: &str, value: &str, facts: &BTree
     for name in references(value) {
         if facts.contains(&name) {
             errors.push(format!(
-                "step {path}: `${{{name}}}` is a fact; use an enter step to type it — Jev only sees slot names"
+                "step {path}: `${{{name}}}` is a secret; only an enter step may type it — Jev only ever sees it as a name"
             ));
         }
     }
@@ -265,6 +265,26 @@ fn check_text(
         errors.push(format!("step {path}: {label} must not be empty"));
     }
     undefined(errors, path, value, defined);
+    bare(errors, path, value, defined);
+}
+
+/// Rejects a variable named without `${…}` — `cheapest_flight` rather than
+/// `${cheapest_flight}` — where it would be read as the words themselves.
+/// Only identifier-shaped names (with `_` or a digit) are looked for, so an
+/// ordinary word that happens to name a variable is left alone.
+fn bare(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeSet<String>) {
+    let outside = substitute_with(value, |_| Some(" "));
+    let words = outside
+        .split(|character: char| !(character.is_alphanumeric() || character == '_'))
+        .collect::<BTreeSet<_>>();
+    for name in defined {
+        let shaped = name.contains('_') || name.chars().any(|character| character.is_ascii_digit());
+        if shaped && words.contains(name.as_str()) {
+            errors.push(format!(
+                "step {path}: `{name}` names a variable; write it as `${{{name}}}` so its value is shown"
+            ));
+        }
+    }
 }
 
 fn undefined(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeSet<String>) {

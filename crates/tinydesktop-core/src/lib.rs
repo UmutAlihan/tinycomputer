@@ -12,7 +12,10 @@
 //!   whatever a model decided.
 //! - [`Record`], the value parsers, and [`rank`] — result cards as named
 //!   fields, and picking "the cheapest" or "the earliest" by arithmetic.
-//! - [`Facts`] — the caller's values, held locally by name, never card data.
+//! - [`parse_date`] and [`reformat_date`] — a caller's date, typed the way a
+//!   form's field asks for it.
+//! - [`Facts`] — the caller's values: shared ones briefed to a model, secret
+//!   ones (cards, passports, passwords) only ever named as `${name}`.
 //! - [`surface`] — the [`Surface`](surface::Surface) trait every decision loop
 //!   runs against, the [`Screen`](surface::Screen) it observes, and verified
 //!   text delivery.
@@ -35,6 +38,7 @@
 //! assert_eq!(rank(&fares, Criterion::LowestPrice), Some(vec![1, 0]));
 //! ```
 
+mod dates;
 mod error;
 mod facts;
 mod keymap;
@@ -42,13 +46,14 @@ mod records;
 mod safety;
 pub mod surface;
 
+pub use dates::{Date, date_pattern, parse_date, reformat_date};
 pub use error::{Error, Result};
-pub use facts::Facts;
+pub use facts::{Facts, is_sensitive_name};
 pub use keymap::{Key, Platform};
 pub use records::{
     Criterion, Price, Record, parse_clock, parse_duration, parse_price, parse_stops, rank,
 };
 pub use safety::{
-    Consequence, FieldHint, PaymentEvidence, consequence, human_needed, payment_evidence,
-    screen_payment_evidence,
+    Consequence, FieldHint, PaymentEvidence, adjusts_a_count, consequence, human_needed,
+    payment_evidence, screen_payment_evidence,
 };

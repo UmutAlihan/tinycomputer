@@ -4,12 +4,13 @@
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
-    /// A fact looked like payment-card data, which a task never holds.
+    /// A name was marked secret, but no fact carries it.
     ///
-    /// Carries the fact's name only; the value is never repeated.
-    #[error("fact `{name}` looks like payment card data, which tasks never hold")]
-    CardDataRefused {
-        /// The offending fact's name.
+    /// Refused rather than ignored: a misspelt secret name would otherwise
+    /// leave the value it meant to protect shared with the decision model.
+    #[error("`{name}` is marked secret, but no fact is called that")]
+    UnknownSecret {
+        /// The name marked secret.
         name: String,
     },
 }

@@ -3,7 +3,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{
-    FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowStep, FlowStopReason, GroundingHint,
+    FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowLoop, FlowStep, FlowStopReason, GroundingHint,
     RunFlowRequest, Slot, Slots, StepOutcome,
 };
 use serde_json::json;
@@ -115,7 +115,11 @@ fn run_requests_default_to_safe_bounded_runs() {
     let request: RunFlowRequest =
         serde_json::from_value(json!({"flow": {"app": "Mail", "steps": ["x"]}})).unwrap();
     assert!(!request.allow_destructive && !request.include_values);
-    assert_eq!((request.max_actions, request.max_model_calls), (60, 150));
+    assert_eq!(
+        (request.max_actions, request.max_model_calls, request.votes),
+        (60, 1500, 5)
+    );
+    assert!(request.brief.is_empty());
     assert!(request.disabled_loops.is_empty() && request.memory.is_empty() && !request.trace);
     assert_eq!(
         request,
@@ -145,6 +149,42 @@ fn run_request_facts_default_empty_and_round_trip() {
     let round_trip: RunFlowRequest =
         serde_json::from_value(serde_json::to_value(&with_facts).unwrap()).unwrap();
     assert_eq!(round_trip, with_facts);
+}
+
+#[test]
+fn a_brief_pins_its_wire_form_and_defaults_empty() {
+    let brief: FlowBrief = serde_json::from_value(json!({
+        "goal": "book the cheapest flight to Srinagar",
+        "details": {"first name": "Asha", "date of birth": "2000-01-01"},
+        "secrets": ["card number"],
+        "rules": ["stop before paying"]
+    }))
+    .unwrap();
+    assert!(!brief.is_empty());
+    assert_eq!(brief.details["date of birth"], "2000-01-01");
+    assert_eq!(
+        serde_json::to_value(&brief).unwrap(),
+        json!({
+            "goal": "book the cheapest flight to Srinagar",
+            "details": {"date of birth": "2000-01-01", "first name": "Asha"},
+            "secrets": ["card number"],
+            "rules": ["stop before paying"]
+        })
+    );
+    let request: RunFlowRequest = serde_json::from_value(json!({
+        "flow": {"app": "Mail", "steps": ["x"]},
+        "votes": 3,
+        "brief": {"goal": "g"}
+    }))
+    .unwrap();
+    assert_eq!((request.votes, request.brief.goal.as_str()), (3, "g"));
+    for (flow_loop, wire) in [
+        (FlowLoop::Vote, "vote"),
+        (FlowLoop::PageKind, "page_kind"),
+        (FlowLoop::Validation, "validation"),
+    ] {
+        assert_eq!(serde_json::to_value(flow_loop).unwrap(), json!(wire));
+    }
 }
 
 #[test]

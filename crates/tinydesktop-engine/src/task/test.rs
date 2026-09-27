@@ -6,12 +6,12 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::{Arc, Mutex};
 
 use serde_json::json;
 use tinydesktop_bus::agent::{
-    AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputKind, StartTaskRequest,
+    AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputKind, PaymentMode, StartTaskRequest,
     TaskConstraints, TaskId, TaskStatus, TaskView,
 };
 use tinydesktop_bus::{
@@ -195,7 +195,21 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
     assert_eq!(request.vars["email"], "asha@example.com");
     assert!(!request.include_values, "field values never leave for Jev");
     assert!(!request.allow_destructive);
-    assert_eq!((request.max_actions, request.max_model_calls), (120, 300));
+    assert_eq!(
+        (request.max_actions, request.max_model_calls, request.votes),
+        (120, 3000, 5)
+    );
+    assert!(request.facts.is_empty(), "an email is shared, not secret");
+    assert_eq!(request.brief.details["email"], "asha@example.com");
+    assert!(
+        request
+            .brief
+            .rules
+            .iter()
+            .any(|rule| rule.contains("Never pay")),
+        "{:?}",
+        request.brief.rules
+    );
 
     let report = tasks.report(&view.id).data.unwrap();
     assert_eq!(report.steps.len(), 2);
@@ -254,12 +268,16 @@ async fn missing_values_are_asked_for_before_anything_runs() {
     };
     assert_eq!(fields.len(), 2);
 
+    // A card number is taken, as a secret.
     let card = tasks.continue_task(ContinueTaskRequest {
         id: view.id.clone(),
         inputs: BTreeMap::from([("card number".to_owned(), "4111".to_owned())]),
         ..ContinueTaskRequest::default()
     });
-    assert_eq!(code(&card), "CARD_DATA_REFUSED");
+    assert!(matches!(
+        card.data.unwrap().status,
+        TaskStatus::NeedsInput { .. }
+    ));
 
     let complete = tasks.continue_task(ContinueTaskRequest {
         id: view.id.clone(),
@@ -277,37 +295,42 @@ async fn missing_values_are_asked_for_before_anything_runs() {
     let request = &script.requests.lock().unwrap()[0];
     assert_eq!(request.vars["email"], "a@b.c");
     assert_eq!(request.vars["phone"], "+91 98765 43210");
+    assert_eq!(request.vars["card number"], "4111");
+    assert_eq!(request.facts, BTreeSet::from(["card number".to_owned()]));
+    assert_eq!(request.brief.secrets, ["card number"]);
+    assert!(!request.brief.details.contains_key("card number"));
+    assert_eq!(request.brief.details["date of birth"], "1990-04-02");
 }
 
 #[tokio::test]
 async fn a_value_supplied_for_a_missing_fact_still_fails_fast_if_it_leaks() {
-    // `email` is not declared at `StartTask`, so the flow only looks like it
-    // is missing a plain value; once `ContinueTask` supplies it, it becomes a
-    // fact the same as one declared up front, and the `verify` step that
-    // reads it is exactly as invalid as if it had been declared from the
-    // start. This must fail before the task spawns, not after.
+    // `passport number` is not declared at `StartTask`, so the flow only
+    // looks like it is missing a plain value; once `ContinueTask` supplies
+    // it, it becomes a secret the same as one declared up front, and the
+    // `verify` step that reads it is exactly as invalid as if it had been
+    // declared from the start. This must fail before the task spawns.
     let (tasks, script) = controller(Vec::new());
     let view = start(
         &tasks,
         json!({"app": "Mail", "steps": [
-            {"verify": "shows ${email}"}
+            {"verify": "shows ${passport number}"}
         ]}),
         &[],
     );
     let TaskStatus::NeedsInput { fields } = &view.status else {
         panic!("{:?}", view.status);
     };
-    assert_eq!(fields[0].name, "email");
+    assert_eq!(fields[0].name, "passport number");
 
     let supplied = tasks.continue_task(ContinueTaskRequest {
         id: view.id,
-        inputs: BTreeMap::from([("email".to_owned(), "sam@example.com".to_owned())]),
+        inputs: BTreeMap::from([("passport number".to_owned(), "Z1234567".to_owned())]),
         ..ContinueTaskRequest::default()
     });
     assert_eq!(code(&supplied), "INVALID_FLOW");
     assert!(
-        supplied.error.unwrap().message.contains("is a fact"),
-        "a fact supplied to answer a missing-input prompt is still a fact"
+        supplied.error.unwrap().message.contains("is a secret"),
+        "a secret supplied to answer a missing-input prompt is still a secret"
     );
     assert!(
         script.requests.lock().unwrap().is_empty(),
@@ -318,12 +341,22 @@ async fn a_value_supplied_for_a_missing_fact_still_fails_fast_if_it_leaks() {
 #[tokio::test]
 async fn requests_that_cannot_start_are_refused_with_a_hint() {
     let (tasks, _) = controller(Vec::new());
-    let card = tasks.start(&StartTaskRequest {
+    let misspelt = tasks.start(&StartTaskRequest {
         flow: Some(flow(json!({"app": "Mail", "steps": ["x"]}))),
-        facts: BTreeMap::from([("notes".to_owned(), "4111 1111 1111 1111".to_owned())]),
+        facts: BTreeMap::from([("passport no".to_owned(), "Z1234567".to_owned())]),
+        secret_facts: vec!["passport number".to_owned()],
         ..StartTaskRequest::default()
     });
-    assert_eq!(code(&card), "CARD_DATA_REFUSED");
+    assert_eq!(code(&misspelt), "UNKNOWN_SECRET");
+    let anywhere = tasks.start(&StartTaskRequest {
+        flow: Some(flow(json!({"app": "Mail", "steps": ["x"]}))),
+        constraints: TaskConstraints {
+            payment: PaymentMode::FillThenApprove,
+            ..TaskConstraints::default()
+        },
+        ..StartTaskRequest::default()
+    });
+    assert_eq!(code(&anywhere), "ORIGINS_REQUIRED");
     let nothing = tasks.start(&StartTaskRequest::default());
     assert_eq!(code(&nothing), "INVALID_REQUEST");
     let invalid = tasks.start(&StartTaskRequest {
@@ -338,12 +371,25 @@ async fn requests_that_cannot_start_are_refused_with_a_hint() {
             {"verify": "shows ${email}"}
         ]}))),
         facts: BTreeMap::from([("email".to_owned(), "sam@example.com".to_owned())]),
+        secret_facts: vec!["email".to_owned()],
         ..StartTaskRequest::default()
     });
     assert_eq!(code(&fact_leak), "INVALID_FLOW");
     assert!(
-        fact_leak.error.unwrap().message.contains("is a fact"),
-        "a fact referenced outside an enter step fails fast"
+        fact_leak.error.unwrap().message.contains("is a secret"),
+        "a secret referenced outside an enter step fails fast"
+    );
+    let shared = tasks.start(&StartTaskRequest {
+        flow: Some(flow(json!({"app": "Mail", "steps": [
+            {"verify": "shows ${email}"}
+        ]}))),
+        facts: BTreeMap::from([("email".to_owned(), "sam@example.com".to_owned())]),
+        ..StartTaskRequest::default()
+    });
+    assert!(
+        shared.ok,
+        "a shared fact may be named in any step: {:?}",
+        shared.error
     );
 
     let planless = tasks.start(&StartTaskRequest {
@@ -638,6 +684,79 @@ async fn a_declined_action_cancels_and_a_payment_is_always_a_checkpoint() {
         "cancelling a final checkpoint releases its workspace without changing its status"
     );
     assert_eq!(*script.released.lock().unwrap(), [view.id]);
+}
+
+#[tokio::test]
+async fn filling_the_payment_form_waits_for_approval_to_pay() {
+    let (tasks, script) = controller(vec![
+        gated("Pay ₹6,840", "paying for the booking"),
+        finished_run(FlowStopReason::Completed, vec![], &[], None),
+        finished_run(FlowStopReason::Completed, vec![], &[], None),
+    ]);
+    let started = tasks.start(&StartTaskRequest {
+        task: Some("book the cheapest flight to Srinagar and pay with my card".to_owned()),
+        flow: Some(flow(mail_flow())),
+        facts: BTreeMap::from([
+            ("first name".to_owned(), "Asha".to_owned()),
+            ("card number".to_owned(), "4111111111111111".to_owned()),
+        ]),
+        constraints: TaskConstraints {
+            payment: PaymentMode::FillThenApprove,
+            origins: vec!["https://.airline.test".to_owned()],
+            ..TaskConstraints::default()
+        },
+        budget: tinydesktop_bus::agent::TaskBudget {
+            votes: Some(7),
+            ..tinydesktop_bus::agent::TaskBudget::default()
+        },
+        ..StartTaskRequest::default()
+    });
+    let view = started.data.unwrap();
+    let paused = settle(&tasks, &view.id).await;
+    let TaskStatus::NeedsApproval { target, .. } = &paused.status else {
+        panic!("{:?}", paused.status);
+    };
+    assert_eq!(target, "Pay ₹6,840");
+    {
+        let requests = script.requests.lock().unwrap();
+        let request = &requests[0];
+        assert_eq!(request.votes, 7);
+        assert_eq!(
+            request.brief.goal,
+            "book the cheapest flight to Srinagar and pay with my card"
+        );
+        assert_eq!(request.brief.details["first name"], "Asha");
+        assert_eq!(request.brief.secrets, ["card number"]);
+        assert!(
+            !serde_json::to_string(&request.brief)
+                .unwrap()
+                .contains("4111")
+        );
+        assert!(
+            request
+                .brief
+                .rules
+                .iter()
+                .any(|rule| rule.contains("Fill the payment form")),
+            "{:?}",
+            request.brief.rules
+        );
+    }
+    let paid = tasks
+        .continue_task(ContinueTaskRequest {
+            id: view.id.clone(),
+            approve: Some(true),
+            ..ContinueTaskRequest::default()
+        })
+        .data
+        .unwrap();
+    assert_eq!(paid.status, TaskStatus::Running);
+    settle(&tasks, &view.id).await;
+    let requests = script.requests.lock().unwrap();
+    assert!(
+        requests[1].allow_destructive,
+        "only the approval lets the pay control be pressed"
+    );
 }
 
 #[tokio::test]

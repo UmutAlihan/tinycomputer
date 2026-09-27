@@ -47,7 +47,8 @@ fn the_skill_covers_every_member_status_and_the_payment_rule() {
             "{status} is not explained"
         );
     }
-    assert!(SKILL.contains("Never pass payment card details"));
+    assert!(SKILL.contains("Never pay on the person's behalf"));
+    assert!(SKILL.contains("Secrets stay templates"));
     assert!(SKILL.starts_with("---\nname: tinydesktop\n"));
 }
 

@@ -35,7 +35,10 @@ fn commands_travel_as_one_tagged_json_object_per_line() {
         line,
         "{\"type\":\"glide\",\"path\":[[0.0,1.0,2.0],[16.0,3.0,4.0]],\"appears\":true}\n"
     );
-    assert!(OverlayCommand::from_line(&line) == Some(glide));
+    assert_eq!(
+        OverlayCommand::from_line(&line).map(|parsed| parsed.to_line()),
+        Some(line.clone())
+    );
     assert_eq!(OverlayCommand::Hide.to_line(), "{\"type\":\"hide\"}\n");
     assert_eq!(
         OverlayCommand::from_line(" {\"type\":\"hide\"} "),

@@ -15,6 +15,13 @@
 //!   with read-back verification.
 //! - `steps` implements the remaining step kinds.
 //! - `memory` remembers which element grounded which step.
+//! - `vote` asks each decision several ways at once and averages the answers.
+//!
+//! Every request carries the run's brief — the goal, whom it is for, the
+//! plan and where the run is in it, what it has chosen so far, and what kind
+//! of page is showing — so each small decision is made knowing the whole
+//! task. Secrets never leave as values: every request is masked so a secret
+//! reads `${name}` wherever it would have appeared.
 //!
 //! See `docs/specs/jev-intent-flows.md` for the design and its rationale.
 
@@ -27,6 +34,7 @@ mod memory;
 mod steps;
 mod validate;
 mod view;
+mod vote;
 
 pub(crate) use validate::{check as check_flow, missing_inputs};
 
@@ -39,13 +47,14 @@ use std::{
     pin::Pin,
 };
 
-use serde_json::json;
+use serde_json::{Value, json};
 use tinydesktop_bus::{
-    DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowLoop,
-    FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevExchange, JevMetrics, JevTarget,
-    RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
+    DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowBrief,
+    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevExchange, JevMetrics,
+    JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
-use tinyinference_decisions::{Answer, EvaluationRequest};
+use tinydesktop_core::Facts;
+use tinyinference_decisions::{Answer, EvaluationRequest, Question};
 
 use super::{JevRuntime, merge_metrics, provider_error, response};
 use backend::{AgentBackend, blocking, observe_async};
@@ -54,8 +63,21 @@ use view::{Candidate, Depth, Screen, target_payload};
 
 /// Upper bound on [`RunFlowRequest::max_actions`].
 const MAX_ACTIONS: u32 = 120;
-/// Upper bound on [`RunFlowRequest::max_model_calls`].
-const MAX_CALLS: u32 = 300;
+/// Upper bound on [`RunFlowRequest::max_model_calls`]. Jev is cheap, and
+/// every framing of a voted decision is one evaluation.
+const MAX_CALLS: u32 = 5000;
+/// Choices, picks, and entries remembered for the brief's `so_far`.
+const MAX_SO_FAR: usize = 12;
+/// Longest goal the brief carries, in characters.
+const MAX_GOAL: usize = 600;
+/// Longest plan line the brief carries, in characters.
+const MAX_PLAN_LINE: usize = 120;
+/// Longest `so_far` note the brief carries, in characters.
+const MAX_SO_FAR_NOTE: usize = 200;
+/// Largest request sent to Jev, in bytes of JSON. Jev refuses one past its
+/// token limit outright (HTTP 400, `max_tokens_exceeded`), which ends the
+/// run; measured, 120 KB passed and 160 KB did not.
+const MAX_REQUEST_BYTES: usize = 100_000;
 /// Consecutive unreadable observations that fail a step.
 const MAX_BLIND_LOOKS: u32 = 3;
 /// Truncated subtrees one exploration reads at most.
@@ -179,6 +201,18 @@ pub(super) struct FlowRun<'r, B> {
     tracing: bool,
     trace: Vec<JevExchange>,
     step: String,
+    /// What the run is for, shown with every question.
+    brief: FlowBrief,
+    /// The flow's top-level steps as the brief lists them.
+    outline: Vec<String>,
+    /// What the run has chosen, picked, and entered so far, newest last.
+    pub(super) so_far: Vec<String>,
+    /// The kind of page last seen, by Jev's reading of it.
+    pub(super) page: Option<String>,
+    /// How many ways each decision is asked.
+    votes: u32,
+    /// The secret values, to mask every request with.
+    secrets: Facts,
     /// Every `stop_before` phrase the flow declares, gathered once up front
     /// so an ordinary step's destructive gate can recognize a control the
     /// flow has already named as irreversible, in its own words.
@@ -221,15 +255,41 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             .map(|(name, value)| (name.clone(), validate::substitute(value, &request.vars)))
             .collect::<BTreeMap<_, _>>();
         vars.extend(request.vars.clone());
+        let facts = validate::carrying_facts(&request.flow.vars, &request.facts);
+        let secrets = Facts::with_secrets(
+            facts
+                .iter()
+                .filter_map(|name| Some((name.clone(), vars.get(name)?.clone()))),
+            facts
+                .iter()
+                .filter(|name| vars.contains_key(*name))
+                .cloned(),
+        )
+        .unwrap_or_default();
+        let outline = request
+            .flow
+            .steps
+            .iter()
+            .map(|step| {
+                let (kind, text) = describe_step(&step.action(), &vars, &facts);
+                format!("{kind}: {text}")
+            })
+            .collect();
         Self {
             backend,
             runtime,
             app: request.flow.app.clone(),
             stop_before: stop_before_phrases(&request.flow.steps),
             vars,
-            // A flow variable defined from a fact now holds that fact's
+            // A flow variable defined from a secret now holds that secret's
             // value, so it is kept out of model-facing text the same way.
-            facts: validate::carrying_facts(&request.flow.vars, &request.facts),
+            facts,
+            brief: request.brief.clone(),
+            outline,
+            so_far: Vec::new(),
+            page: None,
+            votes: request.votes.clamp(1, vote::MAX_VOTES),
+            secrets,
             allow_destructive: request.allow_destructive,
             include_values: request.include_values,
             max_actions: request.max_actions.min(MAX_ACTIONS),
@@ -308,6 +368,8 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             }
             Err(error @ Halt::Error(_)) => return Err(error),
         };
+        let text = self.secrets.mask(&text);
+        let ended = Ended::new(ended.outcome, self.secrets.mask(&ended.note));
         self.history.push(format!(
             "step {path} ({kind} {text:?}): {:?}, {}",
             ended.outcome, ended.note
@@ -363,31 +425,190 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     }
 
     /// Asks Jev one request, charging it to the run and the step.
+    ///
+    /// The request is briefed and masked first, then asked in as many
+    /// framings as the run votes with — concurrently, each one charged as an
+    /// evaluation — and the answers are averaged. On a web page it also
+    /// carries a page-kind question, whose answer briefs the next request.
     pub(super) async fn ask(
         &mut self,
         log: &mut StepLog,
-        request: EvaluationRequest,
+        mut request: EvaluationRequest,
     ) -> Result<BTreeMap<String, Answer>, Halt> {
         if self.metrics.calls >= self.max_calls {
             return Err(Halt::Stop(FlowStopReason::ModelBudget));
         }
-        let evaluation = self
-            .runtime
-            .client
-            .evaluate(&request)
-            .await
-            .map_err(|error| Halt::Error(provider_error(&error)))?;
-        merge_metrics(&mut self.metrics, &evaluation);
-        log.calls = log.calls.saturating_add(1);
+        if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
+            log.used(FlowLoop::PageKind);
+            request
+                .questions
+                .insert(PAGE_KIND.to_owned(), ask::page_kind());
+        }
+        self.brief_into(&mut request);
+        self.mask(&mut request);
+        fit(&mut request, MAX_REQUEST_BYTES);
+        let room = self.max_calls - self.metrics.calls;
+        let votes = if self.enabled(FlowLoop::Vote) {
+            self.votes.min(room)
+        } else {
+            1
+        };
+        if votes > 1 {
+            log.used(FlowLoop::Vote);
+        }
+        let framings = vote::framings(&request, votes);
+        let asked = framings
+            .iter()
+            .map(|framing| {
+                let client = self.runtime.client.clone();
+                let request = framing.request.clone();
+                tokio::spawn(async move { client.evaluate(&request).await })
+            })
+            .collect::<Vec<_>>();
+        let mut answered = Vec::new();
+        let mut failure = None;
+        for (framing, handle) in framings.into_iter().zip(asked) {
+            match handle.await {
+                Ok(Ok(evaluation)) => {
+                    merge_metrics(&mut self.metrics, &evaluation);
+                    log.calls = log.calls.saturating_add(1);
+                    answered.push((framing, evaluation.response.answers));
+                }
+                Ok(Err(error)) => {
+                    failure.get_or_insert(error);
+                }
+                Err(_) => {}
+            }
+        }
+        let answers = match (answered.is_empty(), failure) {
+            (true, Some(failure)) => return Err(Halt::Error(provider_error(&failure))),
+            (true, None) => {
+                return Err(Halt::Failed("no Jev evaluation completed".to_owned()));
+            }
+            _ => vote::merge(&answered),
+        };
         if self.tracing {
             self.trace.push(JevExchange {
                 step: self.step.clone(),
                 state: request.state.clone(),
                 questions: serde_json::to_value(&request.questions).unwrap_or_default(),
-                answers: serde_json::to_value(&evaluation.response.answers).unwrap_or_default(),
+                answers: serde_json::to_value(&answers).unwrap_or_default(),
             });
         }
-        Ok(evaluation.response.answers)
+        if let Some((kind, _)) = ask::chosen(&answers, PAGE_KIND) {
+            self.page = Some(kind);
+        }
+        Ok(answers)
+    }
+
+    /// Adds the run's brief — the goal, whom it is for, the plan with this
+    /// step marked, what has been chosen so far, and the kind of page showing
+    /// — to the questions that choose: which element, option, move, field,
+    /// or record, and whether an element is the right one.
+    ///
+    /// A yes/no judgement of the screen (is the step done, does a condition
+    /// hold, is something in the way) is left without it. Measured on a live
+    /// results page, the brief pulled Jev's "is the search done?" from 0.75
+    /// down to 0.39: it judged the step against the whole task.
+    fn brief_into(&self, request: &mut EvaluationRequest) {
+        let Some(brief) = self.brief() else {
+            return;
+        };
+        for (id, question) in &mut request.questions {
+            let instructions = match question {
+                Question::Choice(choice) if id != PAGE_KIND => &mut choice.instructions,
+                Question::Noul(noul) if BRIEFED_NOULS.contains(&id.as_str()) => {
+                    &mut noul.instructions
+                }
+                _ => continue,
+            };
+            if let Value::Object(fields) = instructions {
+                fields.insert("brief".to_owned(), brief.clone());
+            }
+        }
+    }
+
+    /// The brief as Jev reads it, or `None` when there is nothing to say.
+    fn brief(&self) -> Option<Value> {
+        let current = self
+            .step
+            .split('.')
+            .next()
+            .and_then(|top| top.parse::<usize>().ok())
+            .unwrap_or(0);
+        let plan = self
+            .outline
+            .iter()
+            .enumerate()
+            .map(|(index, step)| {
+                let mark = match (index + 1).cmp(&current) {
+                    std::cmp::Ordering::Less => "done",
+                    std::cmp::Ordering::Equal => "now",
+                    std::cmp::Ordering::Greater => "next",
+                };
+                clip(&format!("{}. [{mark}] {step}", index + 1), MAX_PLAN_LINE)
+            })
+            .collect::<Vec<_>>();
+        let mut brief = serde_json::Map::new();
+        if !self.brief.goal.is_empty() {
+            brief.insert("goal".to_owned(), json!(clip(&self.brief.goal, MAX_GOAL)));
+        }
+        if !self.brief.details.is_empty() {
+            brief.insert("for".to_owned(), json!(self.brief.details));
+        }
+        if !self.brief.secrets.is_empty() {
+            brief.insert(
+                "secrets".to_owned(),
+                json!({
+                    "note": "Held locally and typed by the module; you only ever see them as these names.",
+                    "names": self.brief.secrets.iter().map(|name| format!("${{{name}}}")).collect::<Vec<_>>(),
+                }),
+            );
+        }
+        if !self.brief.rules.is_empty() {
+            brief.insert("rules".to_owned(), json!(self.brief.rules));
+        }
+        if plan.len() > 1 {
+            brief.insert("plan".to_owned(), json!(plan));
+        }
+        if !self.so_far.is_empty() {
+            brief.insert(
+                "so_far".to_owned(),
+                json!(
+                    self.so_far
+                        .iter()
+                        .map(|note| clip(note, MAX_SO_FAR_NOTE))
+                        .collect::<Vec<_>>()
+                ),
+            );
+        }
+        if let Some(page) = &self.page {
+            brief.insert("page".to_owned(), json!(page));
+        }
+        (!brief.is_empty()).then_some(Value::Object(brief))
+    }
+
+    /// Masks every secret out of a request, wherever it appears.
+    fn mask(&self, request: &mut EvaluationRequest) {
+        if self.secrets.secret_names().is_empty() {
+            return;
+        }
+        mask_value(&mut request.state, &self.secrets);
+        for question in request.questions.values_mut() {
+            let mut value = serde_json::to_value(&*question).unwrap_or_default();
+            mask_value(&mut value, &self.secrets);
+            if let Ok(masked) = serde_json::from_value(value) {
+                *question = masked;
+            }
+        }
+    }
+
+    /// Notes something the run chose or entered, for the brief's `so_far`.
+    pub(super) fn remember_choice(&mut self, note: &str) {
+        self.so_far.push(self.secrets.mask(note));
+        if self.so_far.len() > MAX_SO_FAR {
+            self.so_far.remove(0);
+        }
     }
 
     /// Reads the application's current surface.
@@ -524,6 +745,97 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 trace: self.trace,
             },
         )
+    }
+}
+
+/// The id of the page-kind question a request on a web page carries.
+const PAGE_KIND: &str = "page_kind";
+
+/// The yes/no questions that are about choosing, not judging the screen:
+/// whether an element is the right one for a purpose.
+const BRIEFED_NOULS: &[&str] = &["confirm"];
+
+/// `text` cut to `limit` characters, marked with `…` when it was cut.
+fn clip(text: &str, limit: usize) -> String {
+    if text.chars().count() <= limit {
+        return text.to_owned();
+    }
+    let mut clipped = text.chars().take(limit).collect::<String>();
+    clipped.push('…');
+    clipped
+}
+
+/// Shrinks `request` until its JSON is at most `limit` bytes: first the
+/// brief is kept on the first briefed question only, then the longest lists
+/// of screen text and elements in the shared state lose their last entries.
+/// What remains is the part of the screen read first.
+pub(super) fn fit(request: &mut EvaluationRequest, limit: usize) {
+    let size =
+        |request: &EvaluationRequest| serde_json::to_vec(request).map_or(0, |json| json.len());
+    if size(request) <= limit {
+        return;
+    }
+    let mut kept = false;
+    for question in request.questions.values_mut() {
+        let instructions = match question {
+            Question::Choice(choice) => &mut choice.instructions,
+            Question::Noul(noul) => &mut noul.instructions,
+            Question::Score(score) => &mut score.instructions,
+        };
+        if let Value::Object(fields) = instructions
+            && fields.contains_key("brief")
+        {
+            if kept {
+                fields.remove("brief");
+            }
+            kept = true;
+        }
+    }
+    while size(request) > limit {
+        let Some(longest) = longest_list(&mut request.state) else {
+            return;
+        };
+        let cut = (longest.len() / 4).max(1);
+        longest.truncate(longest.len() - cut);
+    }
+}
+
+/// The longest non-empty array anywhere in `value`.
+fn longest_list(value: &mut Value) -> Option<&mut Vec<Value>> {
+    let mut best: Option<&mut Vec<Value>> = None;
+    let candidates: Vec<&mut Vec<Value>> = match value {
+        Value::Array(items) => {
+            if items
+                .iter()
+                .all(|item| !item.is_array() && !item.is_object())
+            {
+                return (!items.is_empty()).then_some(items);
+            }
+            items.iter_mut().filter_map(longest_list).collect()
+        }
+        Value::Object(fields) => fields.values_mut().filter_map(longest_list).collect(),
+        _ => Vec::new(),
+    };
+    for candidate in candidates {
+        if best
+            .as_ref()
+            .is_none_or(|best| candidate.len() > best.len())
+        {
+            best = Some(candidate);
+        }
+    }
+    best
+}
+
+/// Every string inside `value` with the secrets masked.
+fn mask_value(value: &mut Value, secrets: &Facts) {
+    match value {
+        Value::String(text) => *text = secrets.mask(text),
+        Value::Array(items) => items.iter_mut().for_each(|item| mask_value(item, secrets)),
+        Value::Object(fields) => fields
+            .values_mut()
+            .for_each(|field| mask_value(field, secrets)),
+        _ => {}
     }
 }
 

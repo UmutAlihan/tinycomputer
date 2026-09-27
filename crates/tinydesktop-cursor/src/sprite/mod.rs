@@ -107,13 +107,15 @@ impl Sprite {
             .get(index)
             .map(|frame| {
                 frame
-                    .chunks_exact(4)
-                    .flat_map(|pixel| {
-                        let alpha = u16::from(pixel[3]);
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .flat_map(|&[red, green, blue, alpha]| {
                         let scale = |channel: u8| {
-                            u8::try_from(u16::from(channel) * alpha / 255).unwrap_or(u8::MAX)
+                            u8::try_from(u16::from(channel) * u16::from(alpha) / 255)
+                                .unwrap_or(u8::MAX)
                         };
-                        [scale(pixel[2]), scale(pixel[1]), scale(pixel[0]), pixel[3]]
+                        [scale(blue), scale(green), scale(red), alpha]
                     })
                     .collect()
             })

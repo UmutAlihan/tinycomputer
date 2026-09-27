@@ -13,24 +13,26 @@ pub(in crate::agentic) use tinydesktop_core::surface::{
 /// Least probability a target choice needs to be used without re-asking.
 pub(in crate::agentic) const ACT: f64 = 0.70;
 
-/// Whether a lower-cased label names an action that is hard to undo.
+/// Whether a lower-cased label names an action that is hard to undo. A
+/// counter's minus button ("remove adult") is not: it only lowers a number.
 pub(in crate::agentic) fn destructive_label(evidence: &str) -> bool {
-    [
-        "delete",
-        "remove",
-        "send",
-        "purchase",
-        "buy",
-        "pay",
-        "submit",
-        "confirm",
-        "overwrite",
-        "quit without saving",
-        "empty trash",
-        "sign out",
-    ]
-    .iter()
-    .any(|term| evidence.contains(term))
+    !tinydesktop_core::adjusts_a_count(evidence)
+        && [
+            "delete",
+            "remove",
+            "send",
+            "purchase",
+            "buy",
+            "pay",
+            "submit",
+            "confirm",
+            "overwrite",
+            "quit without saving",
+            "empty trash",
+            "sign out",
+        ]
+        .iter()
+        .any(|term| evidence.contains(term))
 }
 
 /// Whether `label` is named by a `stop_before` phrase the flow itself
@@ -57,7 +59,10 @@ pub(in crate::agentic) fn named_in_stop_before(label: &str, stop_before: &[Strin
 /// button carries no accessible name on some platforms, so the denylist can
 /// never see the word that would otherwise gate it — or the screen itself
 /// shows payment evidence, so a control worded only "Continue" on a card form
-/// is caught even though its own label says nothing about money.
+/// is caught even though its own label says nothing about money. A form
+/// control on that page — a card field, an expiry month, a saved-card radio —
+/// is not: filling a payment form commits to nothing until its button is
+/// pressed, and that button stays gated.
 pub(in crate::agentic) fn is_destructive(
     candidate: &Candidate,
     screen: &Screen,
@@ -71,7 +76,32 @@ pub(in crate::agentic) fn is_destructive(
     destructive_label(&label(candidate).to_ascii_lowercase())
         || named_in_stop_before(name, stop_before)
         || (screen.surface == "sheet" && candidate.name.is_none())
-        || tinydesktop_core::screen_payment_evidence(screen).is_some()
+        || (!is_form_control(candidate)
+            && tinydesktop_core::screen_payment_evidence(screen).is_some())
+}
+
+/// Roles that hold or choose a value rather than submit anything.
+const FORM_ROLES: &[&str] = &[
+    "textbox",
+    "textfield",
+    "text field",
+    "searchbox",
+    "combobox",
+    "listbox",
+    "option",
+    "radio",
+    "radiobutton",
+    "checkbox",
+    "spinbutton",
+    "menuitemradio",
+    "popupbutton",
+];
+
+/// Whether `candidate` holds or chooses a value: a field, a list, an option.
+fn is_form_control(candidate: &Candidate) -> bool {
+    FORM_ROLES
+        .iter()
+        .any(|role| candidate.role.eq_ignore_ascii_case(role))
 }
 
 #[cfg(test)]
