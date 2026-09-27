@@ -4,9 +4,9 @@
 //! the desktop surface, so it glides from an application into a web page and
 //! back without jumping. Before the surface acts on an element, the element's
 //! box is converted from viewport pixels to screen points and the cursor
-//! starts gliding onto it; the engine performs the action straight away,
-//! exactly as it would with no cursor on screen. Nothing is added to the
-//! page.
+//! glides onto it; the engine performs the action as the cursor lands, in
+//! time with its pulse, exactly as it would with no cursor on screen.
+//! Nothing is added to the page.
 //!
 //! Only a visible session — headed, or attached to an existing browser — has
 //! a window on screen to draw over. The conversion assumes 100% page zoom and
@@ -82,7 +82,7 @@ impl BrowserSurface {
         (rect.is_valid() && rect.width > 0.0 && rect.height > 0.0).then_some(rect)
     }
 
-    /// Glides the cursor onto `reference` without waiting for it. Does
+    /// Glides the cursor onto `reference` and returns as it lands. Does
     /// nothing when no one can see the page or the element has no box; the
     /// action proceeds regardless.
     pub(super) fn show_cursor(&self, reference: &str) {
@@ -90,7 +90,7 @@ impl BrowserSurface {
             return;
         }
         if let Some(target) = self.screen_bounds(reference) {
-            self.cursor.show(target);
+            self.cursor.arrive(target);
         }
     }
 }

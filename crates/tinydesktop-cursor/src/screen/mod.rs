@@ -4,16 +4,18 @@
 //! The desktop and a browser window are both just places on the screen, so
 //! the agent gets one cursor that glides from a Mail button to a button in a
 //! web page and back without jumping. Each surface converts its target to
-//! global screen points and calls [`ScreenCursor::show`]; the cursor plans
-//! the glide from wherever it last landed and hands it to an
-//! [`OverlaySink`] to draw. It never waits: the cursor is cosmetic, and the
-//! engine performs the action at the same moment it would with no cursor.
+//! global screen points and calls [`ScreenCursor::arrive`]; the cursor plans
+//! the glide from wherever it last landed, hands it to an [`OverlaySink`] to
+//! draw, and returns when the cursor lands — so the action the surface then
+//! performs happens as the cursor arrives, in time with its landing pulse,
+//! like a click. The cursor is cosmetic: the action itself is unchanged.
 //!
 //! The default sink is the `tinydesktop-cursor-overlay` helper process,
-//! started on first use and written to from a background thread, so a slow
-//! or stuck helper can never hold an action up. A host with its own UI can
-//! supply a sink instead and draw the cursor itself. Everything here is best
-//! effort: when nothing can draw, nothing fails.
+//! started on first use and written to from a background thread. Everything
+//! here is best effort, and only a glide that was actually delivered is
+//! waited for: with no helper, a failed one, or one too far behind to take
+//! the glide, the action goes ahead at once. A host with its own UI can
+//! supply a sink instead and draw the cursor itself.
 
 mod process;
 
@@ -33,8 +35,24 @@ pub trait OverlaySink: Send {
     ///
     /// # Errors
     ///
-    /// Any failure to deliver; the cursor then stops drawing.
+    /// [`std::io::ErrorKind::WouldBlock`] when the command was dropped
+    /// because the sink is busy — the cursor keeps the sink but does not wait
+    /// for that glide; any other error when the sink is gone, and the cursor
+    /// then stops drawing.
     fn send(&mut self, command: &OverlayCommand) -> std::io::Result<()>;
+}
+
+/// How long a freshly started helper takes to draw its sprite and show its
+/// window, added to the first glide's wait so the first action still lands
+/// with the cursor.
+const HELPER_STARTUP: Duration = Duration::from_millis(300);
+
+/// Whether a command reached the sink.
+enum Sent {
+    /// Delivered; `fresh` when the sink was started by this very send.
+    Delivered { fresh: bool },
+    /// Not delivered; nothing will be drawn for it.
+    Lost,
 }
 
 /// How a [`ScreenCursor`] gets a sink the first time it needs one.
@@ -54,6 +72,7 @@ pub struct ScreenCursor {
     cursor: Mutex<VirtualCursor>,
     link: Mutex<Link>,
     connect: Connect,
+    wait: fn(Duration),
 }
 
 impl std::fmt::Debug for ScreenCursor {
@@ -103,7 +122,16 @@ impl ScreenCursor {
             cursor: Mutex::new(VirtualCursor::new(pace)),
             link: Mutex::new(Link::Pending),
             connect,
+            wait: std::thread::sleep,
         }
+    }
+
+    /// The same cursor, returning from [`ScreenCursor::arrive`] without
+    /// waiting, so tests run at full speed.
+    #[must_use]
+    pub fn without_waiting(mut self) -> Self {
+        self.wait = |_| {};
+        self
     }
 
     /// The pace glides are drawn at.
@@ -112,30 +140,31 @@ impl ScreenCursor {
         self.pace
     }
 
-    fn send(&self, command: &OverlayCommand) -> bool {
+    fn send(&self, command: &OverlayCommand) -> Sent {
         let Ok(mut link) = self.link.lock() else {
-            return false;
+            return Sent::Lost;
         };
-        if matches!(*link, Link::Pending) {
+        let fresh = matches!(*link, Link::Pending);
+        if fresh {
             *link = (self.connect)().map_or(Link::Broken, Link::Open);
         }
         let Link::Open(sink) = &mut *link else {
-            return false;
+            return Sent::Lost;
         };
-        if sink.send(command).is_ok() {
-            return true;
+        match sink.send(command) {
+            Ok(()) => Sent::Delivered { fresh },
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => Sent::Lost,
+            Err(_) => {
+                *link = Link::Broken;
+                Sent::Lost
+            }
         }
-        *link = Link::Broken;
-        false
     }
 
-    /// Glides the cursor onto `target`, in global screen points.
-    ///
-    /// Returns at once: the glide is handed to the overlay and animates on
-    /// its own while the action goes ahead, so the cursor never delays or
-    /// changes what the agent does. Returns how long the glide will take to
-    /// land, for a caller that wants to pace itself to it (a demo); `None`
-    /// when nothing is drawn.
+    /// Starts the cursor gliding onto `target`, in global screen points, and
+    /// returns at once with how long it will take to land — `None` when
+    /// nothing will be drawn. [`ScreenCursor::arrive`] is the same, waiting
+    /// for the landing.
     pub fn show(&self, target: Rect) -> Option<Duration> {
         if self.pace.is_off() || !target.is_valid() || target.width <= 0.0 || target.height <= 0.0 {
             return None;
@@ -145,13 +174,30 @@ impl ScreenCursor {
             .lock()
             .ok()
             .and_then(|mut cursor| cursor.glide(target))?;
-        if self.send(&OverlayCommand::glide(&glide)) {
-            return Some(Duration::from_secs_f64(glide.duration_ms() / 1_000.0));
+        match self.send(&OverlayCommand::glide(&glide)) {
+            Sent::Delivered { fresh } => {
+                let travel = Duration::from_secs_f64(glide.duration_ms() / 1_000.0);
+                Some(if fresh { travel + HELPER_STARTUP } else { travel })
+            }
+            Sent::Lost => {
+                if let Ok(mut cursor) = self.cursor.lock() {
+                    cursor.forget();
+                }
+                None
+            }
         }
-        if let Ok(mut cursor) = self.cursor.lock() {
-            cursor.forget();
+    }
+
+    /// Glides the cursor onto `target`, in global screen points, and returns
+    /// once it lands, so the action that follows happens as the cursor
+    /// arrives — in time with its landing pulse, like a click.
+    ///
+    /// Returns at once when nothing will be drawn: the pace is off, the
+    /// target has no area, or no overlay took the glide.
+    pub fn arrive(&self, target: Rect) {
+        if let Some(landing) = self.show(target) {
+            (self.wait)(landing);
         }
-        None
     }
 
     /// Fades the cursor out, as when a run ends. The next glide fades it back
@@ -166,7 +212,7 @@ impl ScreenCursor {
             }
             cursor.forget();
         }
-        self.send(&OverlayCommand::Hide);
+        let _sent = self.send(&OverlayCommand::Hide);
     }
 }
 

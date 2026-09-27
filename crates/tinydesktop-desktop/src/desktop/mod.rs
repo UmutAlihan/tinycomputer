@@ -168,8 +168,8 @@ impl Desktop {
     /// cursor, shared with the browser surface.
     ///
     /// Before a decision loop clicks, checks, expands, or collapses an element
-    /// that has bounds, the cursor glides onto it, and the action lands once
-    /// it arrives. The cursor is cosmetic: the action is the same accessibility
+    /// that has bounds, the cursor glides onto it, and the action lands as it
+    /// arrives, in time with its landing pulse. The cursor is cosmetic: the action is the same accessibility
     /// action with or without it, and the user's own pointer never moves.
     ///
     /// # Examples

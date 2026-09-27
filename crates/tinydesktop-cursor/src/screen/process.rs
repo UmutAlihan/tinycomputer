@@ -107,14 +107,15 @@ impl ProcessOverlay {
 
 impl OverlaySink for ProcessOverlay {
     /// Queues `command` for the helper without waiting for it. A full queue
-    /// drops the command; a helper that has gone is an error, so the cursor
-    /// stops drawing.
+    /// drops the command and reports [`std::io::ErrorKind::WouldBlock`]; a
+    /// helper that has gone is any other error, so the cursor stops drawing.
     fn send(&mut self, command: &OverlayCommand) -> std::io::Result<()> {
         if self.broken.load(Ordering::Relaxed) {
             return Err(std::io::Error::other("the cursor overlay has gone"));
         }
         match self.queue.try_send(command.to_line()) {
-            Ok(()) | Err(TrySendError::Full(_)) => Ok(()),
+            Ok(()) => Ok(()),
+            Err(TrySendError::Full(_)) => Err(std::io::ErrorKind::WouldBlock.into()),
             Err(TrySendError::Disconnected(_)) => {
                 Err(std::io::Error::other("the cursor overlay has gone"))
             }

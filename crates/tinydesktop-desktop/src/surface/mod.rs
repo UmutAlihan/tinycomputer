@@ -589,7 +589,7 @@ pub(crate) fn execute_desktop(
             .filter(|_| uses_pointer(operation))
             .and_then(screen_bounds),
     ) {
-        cursor.show(bounds);
+        cursor.arrive(bounds);
     }
     let ref_id = target.map(|node| node.ref_id.clone());
     match operation {
