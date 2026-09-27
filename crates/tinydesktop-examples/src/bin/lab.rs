@@ -256,6 +256,7 @@ async fn run_flow(
     dir: &Path,
     suffix: &str,
     run: &str,
+    mode: &str,
 ) -> Result<FlowRunResult, LabError> {
     let mut request = RunFlowRequest {
         flow: serde_json::from_value(flow)?,
@@ -269,9 +270,16 @@ async fn run_flow(
         request.memory = load_memory(Path::new(MEMORY));
     }
     if options.send {
-        if !request.flow.vars.contains_key("to") {
+        if mode == "authored" {
             return Err(io::Error::other(
-                "--send is only allowed for a flow whose recipient is the `to` variable",
+                "--send is not allowed in authored mode: an LLM-written flow's recipient cannot be trusted",
+            )
+            .into());
+        }
+        if !recipient_is_exactly_to(&request.flow) {
+            return Err(io::Error::other(
+                "--send is only allowed for a flow whose recipient slot is exactly ${to}, \
+with no other recipient source",
             )
             .into());
         }
