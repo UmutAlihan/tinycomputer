@@ -6,7 +6,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::Error;
-use tinybrowser_bus::errors;
+use tinydesktop_bus::browser::errors;
 
 #[test]
 fn every_variant_maps_to_a_published_name() {
@@ -62,17 +62,15 @@ fn a_lost_connection_tells_the_host_to_open_a_new_session() {
 }
 
 #[test]
-fn stale_ref_says_which_snapshot_minted_it() {
+fn stale_ref_tells_the_caller_to_snapshot_again() {
     let error = Error::StaleRef {
         reference: "e12".to_string(),
-        minted: 1,
-        current: 3,
     };
 
     assert_eq!(error.wire_name(), errors::STALE_REF);
     assert_eq!(
         error.to_string(),
-        "ref @e12 is from snapshot 1, the page is now at snapshot 3"
+        "ref @e12 is not in the latest snapshot, take a fresh one"
     );
 }
 
@@ -102,8 +100,6 @@ fn every_variant() -> Vec<Error> {
         },
         Error::StaleRef {
             reference: "e1".to_string(),
-            minted: 1,
-            current: 2,
         },
         Error::not_actionable("covered by a banner"),
         Error::timeout("navigate", 30_000),

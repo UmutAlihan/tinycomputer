@@ -1,4 +1,8 @@
-//! The held outputs, and the bounds on them.
+//! Held outputs — screenshots and PDFs waiting to be collected — and the
+//! bounds on them.
+//!
+//! Ported from tinybrowser's `capture/store.rs`: the handle protocol is
+//! engine-agnostic, and hosts written against it keep working.
 //!
 //! # What this is defending against
 //!
@@ -20,7 +24,7 @@ use std::time::{Duration, Instant};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use sha2::{Digest, Sha256};
-use tinybrowser_bus::{OutputChunk, OutputId, OutputRef};
+use tinydesktop_bus::browser::{OutputChunk, OutputId, OutputRef};
 
 use crate::error::{Error, Result};
 
@@ -106,7 +110,7 @@ impl OutputStore {
         for byte in digest.as_slice() {
             let _ = write!(sha256, "{byte:02x}");
         }
-        let id = OutputId::new(uuid::Uuid::new_v4().to_string());
+        let id = OutputId::new(fresh_id()?);
         let handle = OutputRef {
             id: id.clone(),
             total_bytes: bytes.len() as u64,
@@ -209,3 +213,45 @@ impl OutputStore {
         }
     }
 }
+
+/// A new unguessable output identity: 128 random bits, hex-encoded.
+///
+/// # Errors
+///
+/// [`Error::ModuleFailed`] when the platform's random source is unavailable.
+fn fresh_id() -> Result<String> {
+    let mut bytes = [0_u8; 16];
+    getrandom::fill(&mut bytes)
+        .map_err(|error| Error::failed(format!("no randomness for an output id: {error}")))?;
+    let mut id = String::with_capacity(32);
+    for byte in bytes {
+        let _ = write!(id, "{byte:02x}");
+    }
+    Ok(id)
+}
+
+/// Checks a base64-encoded image against the cap *before* decoding it, so an
+/// oversized capture is refused without first being held twice in memory.
+///
+/// Four base64 characters carry three bytes, which bounds the decoded size to
+/// within the padding.
+///
+/// # Errors
+///
+/// [`Error::LimitExceeded`] when the image would exceed the module's cap.
+pub(crate) fn within_cap(encoded_len: usize) -> Result<()> {
+    let decoded_len = encoded_len / 4 * 3;
+
+    if decoded_len > MAX_OUTPUT_BYTES {
+        return Err(Error::LimitExceeded {
+            message: format!(
+                "screenshot of about {decoded_len} bytes exceeds the {MAX_OUTPUT_BYTES} byte cap"
+            ),
+        });
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod test;

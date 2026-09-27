@@ -7,11 +7,11 @@
 //! do next*, which is the only distinction that survives the trip across the
 //! bus: fix the request, take a fresh snapshot, give up and tell an operator.
 //!
-//! Each one maps to exactly one name in [`tinybrowser_bus::errors`], and
+//! Each one maps to exactly one name in [`tinydesktop_bus::browser::errors`], and
 //! [`Error::wire_name`] is that mapping. It lives here rather than in the bus
 //! adapter so a new variant cannot be added without deciding what a host sees.
 
-use tinybrowser_bus::errors;
+use tinydesktop_bus::browser::errors;
 
 /// The result type every fallible public function in this crate returns.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -42,15 +42,14 @@ pub enum Error {
         target: String,
     },
 
-    /// The ref came from an earlier snapshot of this page.
-    #[error("ref @{reference} is from snapshot {minted}, the page is now at snapshot {current}")]
+    /// The ref came from an earlier snapshot of this page, or from none.
+    ///
+    /// agent-browser re-mints refs with every snapshot, so the remedy is always
+    /// the same: take a fresh snapshot and choose again.
+    #[error("ref @{reference} is not in the latest snapshot, take a fresh one")]
     StaleRef {
-        /// The ref that was used.
+        /// The ref that was used, without its `@`.
         reference: String,
-        /// The snapshot that minted it.
-        minted: u64,
-        /// The snapshot the page is on now.
-        current: u64,
     },
 
     /// The element was found but could not be acted on.
@@ -130,7 +129,7 @@ impl Error {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser::{errors, Error};
+    /// # use tinydesktop_browser::{errors, Error};
     /// let error = Error::invalid_input("empty expression");
     /// assert_eq!(error.wire_name(), errors::INVALID_INPUT);
     /// ```

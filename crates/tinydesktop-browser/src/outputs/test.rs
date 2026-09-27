@@ -9,10 +9,9 @@
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use tinybrowser_bus::OutputId;
+use tinydesktop_bus::browser::OutputId;
 
-use super::store::{MAX_OUTPUT_BYTES, OutputStore, TTL};
-use super::within_cap;
+use super::{MAX_OUTPUT_BYTES, OutputStore, TTL, within_cap};
 use crate::error::Error;
 
 fn store_with(bytes: Vec<u8>) -> (OutputStore, OutputId) {
