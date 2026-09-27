@@ -52,7 +52,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             if pending.is_empty() {
                 break;
             }
-            let screen = self.look().await?;
+            let mut screen = self.look().await?;
+            if editable(&screen).len() < pending.len() && !screen.unexplored.is_empty() {
+                self.explore(&mut screen).await;
+            }
             let fields = editable(&screen);
             if fields.is_empty() {
                 if revealed {

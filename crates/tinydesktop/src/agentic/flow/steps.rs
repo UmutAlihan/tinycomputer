@@ -22,6 +22,8 @@ use super::{
 const DO_TURNS: u32 = 8;
 /// Turns spent opening the thing a `choose` step picks from.
 const REVEAL_TURNS: u32 = 3;
+/// Times `open` checks for a readable window, waiting between checks.
+const WINDOW_CHECKS: u32 = 10;
 /// Times a `wait_for` checks its condition, waiting between checks.
 const WAIT_CHECKS: u32 = 10;
 /// Least probability a `read` or `stop_before` target needs.
@@ -60,7 +62,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             })
             .await?;
         if reply.ok {
-            Ok(Ended::new(StepOutcome::Done, format!("{app} is open")))
+            let ready = self.await_window().await;
+            Ok(Ended::new(
+                StepOutcome::Done,
+                if ready {
+                    format!("{app} is open")
+                } else {
+                    format!("{app} is open but shows no readable window yet")
+                },
+            ))
         } else {
             Err(Halt::Failed(format!(
                 "{app} could not be opened: {}",
@@ -70,6 +80,29 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .map_or("unknown error", |error| error.code.as_str())
             )))
         }
+    }
+
+    /// Waits for the application to show a readable window, as a freshly
+    /// launched one takes a moment to.
+    async fn await_window(&self) -> bool {
+        for _ in 0..WINDOW_CHECKS {
+            if super::super::backend::observe_async(
+                self.backend.clone(),
+                self.app.clone(),
+                None,
+                super::super::screen::Depth::Skeleton,
+            )
+            .await
+            .is_ok()
+            {
+                return true;
+            }
+            let _ = super::super::backend::blocking(self.backend.clone(), |backend| {
+                backend.execute(JevOperation::Wait, None, None)
+            })
+            .await;
+        }
+        false
     }
 
     /// Judges one condition on the current screen.
@@ -172,7 +205,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
         let what = substitute(&read.what, &self.vars);
-        let screen = self.look().await?;
+        let mut screen = self.look().await?;
+        self.explore(&mut screen).await;
         let mut sources: Vec<(String, Value, String)> = screen
             .candidates
             .iter()

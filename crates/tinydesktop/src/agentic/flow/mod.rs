@@ -59,6 +59,8 @@ const MAX_ACTIONS: u32 = 120;
 const MAX_CALLS: u32 = 300;
 /// Consecutive unreadable observations that fail a step.
 const MAX_BLIND_LOOKS: u32 = 3;
+/// Truncated subtrees one exploration reads at most.
+const MAX_EXPLORED: usize = 4;
 
 /// Runs `request` against the live desktop.
 pub(crate) async fn run_flow(
@@ -375,6 +377,30 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                     truncated: None,
                     unexplored: Vec::new(),
                 })
+            }
+        }
+    }
+
+    /// Reads the subtrees the engine cut short and adds what they hold.
+    ///
+    /// Called only when a step did not find what it needs in the budgeted
+    /// view — a note editor below a long folder list — so the common case
+    /// still reads one bounded snapshot.
+    pub(super) async fn explore(&self, screen: &mut Screen) {
+        for root in std::mem::take(&mut screen.unexplored)
+            .into_iter()
+            .take(MAX_EXPLORED)
+        {
+            if let Ok(part) = observe_async(
+                self.backend.clone(),
+                self.app.clone(),
+                Some(root),
+                Depth::Full,
+            )
+            .await
+            {
+                screen.candidates.extend(part.candidates);
+                screen.context.extend(part.context);
             }
         }
     }
