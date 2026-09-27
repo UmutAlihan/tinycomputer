@@ -78,6 +78,12 @@ impl std::fmt::Debug for JevRuntime {
 }
 
 impl JevRuntime {
+    /// Build a runtime from the module's private `jev` configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `JEV_CONFIG_INVALID`-style [`DesktopError`] when the provider,
+    /// endpoint, or credentials in `request` cannot form a trusted client.
     pub fn configure(request: &JevConfig) -> Result<Self, Box<DesktopError>> {
         let mut config = match request.provider {
             JevProvider::TypeSafe => ClientConfig::new(request.api_key()),
@@ -180,6 +186,8 @@ fn trusted_endpoint(provider: JevProvider, endpoint: &str) -> bool {
     false
 }
 
+/// Resolves `request.intent` to one element on the live desktop with Jev, and
+/// acts on it when `request.execute` is set.
 pub async fn resolve_intent(
     desktop: Desktop,
     runtime: JevRuntime,
@@ -214,6 +222,7 @@ async fn resolve_intent_with<B: AgentBackend>(
     }
 }
 
+/// Runs a bounded, scoped `RunGoal` task on the live desktop.
 pub async fn run_goal(
     desktop: Desktop,
     runtime: JevRuntime,
