@@ -882,7 +882,13 @@ async fn a_regression_is_undone_and_the_element_is_not_tried_again() {
                 0.9,
             )),
             "target" => Some(pick(question, "Archive", 0.9)),
-            "progress" => Some(level(if sim.clicks.is_empty() { 3 } else { 0 })),
+            "progress" => Some(level(if sim.compose_open {
+                4
+            } else if sim.clicks.is_empty() {
+                3
+            } else {
+                0
+            })),
             _ => None,
         },
     )
