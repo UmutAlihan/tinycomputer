@@ -312,6 +312,49 @@ with no other recipient source",
     Ok(result)
 }
 
+/// Whether `flow`'s only recipient source is exactly the `${to}` variable.
+///
+/// `--send` must never address anywhere but the operator's own inbox, so an
+/// authored or hand-edited flow that names a literal address, another
+/// variable, or a reply recipient in place of `${to}` is rejected rather than
+/// trusted. Only an `enter` slot named `recipient` or `to` whose text is
+/// exactly `${to}` counts as the recipient; any other such slot disqualifies
+/// the flow.
+fn recipient_is_exactly_to(flow: &Flow) -> bool {
+    fn walk(steps: &[FlowStep], found: &mut bool, other: &mut bool) {
+        for step in steps {
+            match step.action() {
+                FlowAction::Enter(slots) => {
+                    for slot in slots.0 {
+                        if slot.slot.eq_ignore_ascii_case("recipient")
+                            || slot.slot.eq_ignore_ascii_case("to")
+                        {
+                            if slot.text.trim() == "${to}" {
+                                *found = true;
+                            } else {
+                                *other = true;
+                            }
+                        }
+                    }
+                }
+                FlowAction::RepeatUntil(repeat) => walk(&repeat.steps, found, other),
+                FlowAction::If(branch) => {
+                    walk(&branch.then, found, other);
+                    walk(&branch.otherwise, found, other);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    if !flow.vars.contains_key("to") {
+        return false;
+    }
+    let (mut found, mut other) = (false, false);
+    walk(&flow.steps, &mut found, &mut other);
+    found && !other
+}
+
 #[cfg(feature = "inference")]
 async fn authored(
     host: &Host,
