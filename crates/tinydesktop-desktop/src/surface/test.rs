@@ -11,7 +11,7 @@ use tinydesktop_core::surface::{
 
 use super::{
     Restore, execute_desktop, front_of, observe, parse_reply, platform_combo, restore_plan,
-    running_is_launched, with_restoration,
+    running_is_launched, screen_bounds, with_restoration,
 };
 
 fn parsed(tree: &serde_json::Value) -> Screen {
@@ -356,4 +356,68 @@ fn the_front_window_is_the_focused_then_the_first_visible_titled_one() {
     assert_eq!(front_of(&windows[..2]).as_deref(), Some("w-2"));
     assert_eq!(front_of(&windows[..1]).as_deref(), Some("w-1"));
     assert!(front_of(&[]).is_none());
+}
+
+#[derive(Clone, Default)]
+struct Drawn(std::sync::Arc<std::sync::Mutex<Vec<tinydesktop_cursor::OverlayCommand>>>);
+
+impl tinydesktop_cursor::OverlaySink for Drawn {
+    fn send(&mut self, command: &tinydesktop_cursor::OverlayCommand) -> std::io::Result<()> {
+        self.0.lock().unwrap().push(command.clone());
+        Ok(())
+    }
+}
+
+fn boxed(bounds: serde_json::Value) -> Candidate {
+    Candidate {
+        ref_id: "@s:e1".to_owned(),
+        role: "button".to_owned(),
+        bounds: Some(bounds),
+        ..Candidate::default()
+    }
+}
+
+#[test]
+fn a_candidates_screen_bounds_are_read_when_complete_and_positive() {
+    let rect = screen_bounds(&boxed(
+        json!({"x": 10.0, "y": 20.0, "width": 80.0, "height": 24.0}),
+    ))
+    .expect("complete bounds parse");
+    assert!((rect.width - 80.0).abs() < f64::EPSILON && (rect.y - 20.0).abs() < f64::EPSILON);
+    for broken in [
+        json!({"x": 10.0, "y": 20.0}),
+        json!({"x": 10.0, "y": 20.0, "width": 0.0, "height": 24.0}),
+        json!("somewhere"),
+    ] {
+        assert!(screen_bounds(&boxed(broken)).is_none());
+    }
+    assert!(screen_bounds(&Candidate::default()).is_none());
+}
+
+#[test]
+fn a_pointer_operation_glides_the_cursor_onto_its_target_first() {
+    use tinydesktop_cursor::{CursorPace, OverlayCommand, ScreenCursor};
+    let drawn = Drawn::default();
+    let cursor =
+        ScreenCursor::with_sink(CursorPace::Natural, Box::new(drawn.clone())).without_waiting();
+    let desktop = crate::Desktop::new().with_cursor(std::sync::Arc::new(cursor));
+    let target = boxed(json!({"x": 400.0, "y": 300.0, "width": 120.0, "height": 32.0}));
+
+    // Headless and permission-less, the action itself fails closed as before;
+    // the cursor has already glided onto where it would land.
+    let _clicked = execute_desktop(&desktop, JevOperation::Click, Some(&target), None);
+    let _scrolled = execute_desktop(&desktop, JevOperation::Scroll, Some(&target), None);
+    let _unboxed = execute_desktop(
+        &desktop,
+        JevOperation::Check,
+        Some(&Candidate::default()),
+        None,
+    );
+    let sent = drawn.0.lock().unwrap();
+    assert_eq!(sent.len(), 1, "only the boxed pointer operation glides");
+    let OverlayCommand::Glide { path, .. } = &sent[0] else {
+        panic!("a glide");
+    };
+    let [_, x, y] = *path.last().unwrap();
+    assert!((400.0..=520.0).contains(&x) && (300.0..=332.0).contains(&y));
 }

@@ -52,10 +52,12 @@ mod system;
 mod waiting;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use agent_desktop_core::{AppError, PermissionReport, PlatformAdapter, context::CommandContext};
 use serde_json::Value;
 use tinydesktop_bus::DesktopResponse;
+use tinydesktop_cursor::ScreenCursor;
 
 use crate::{Error, Result};
 use permission::Need;
@@ -84,6 +86,7 @@ pub struct Desktop {
     trace_path: Option<PathBuf>,
     trace_strict: bool,
     headed: bool,
+    cursor: Option<Arc<ScreenCursor>>,
 }
 
 impl Desktop {
@@ -161,6 +164,35 @@ impl Desktop {
         self
     }
 
+    /// Returns this `Desktop` drawing on `cursor`, the screen's one agent
+    /// cursor, shared with the browser surface.
+    ///
+    /// Before a decision loop clicks, checks, expands, or collapses an element
+    /// that has bounds, the cursor glides onto it, and the action lands once
+    /// it arrives. The cursor is cosmetic: the action is the same accessibility
+    /// action with or without it, and the user's own pointer never moves.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// # use tinydesktop_desktop::{Desktop, ScreenCursor};
+    /// let desktop = Desktop::new().with_cursor(Arc::new(ScreenCursor::off()));
+    /// assert!(desktop.cursor().is_some());
+    /// assert!(Desktop::new().cursor().is_none());
+    /// ```
+    #[must_use]
+    pub fn with_cursor(mut self, cursor: Arc<ScreenCursor>) -> Self {
+        self.cursor = Some(cursor);
+        self
+    }
+
+    /// The cursor this `Desktop` draws on, when it has one.
+    #[must_use]
+    pub fn cursor(&self) -> Option<&ScreenCursor> {
+        self.cursor.as_deref()
+    }
+
     /// Builds a `Desktop` from the configuration blob the module loader
     /// supplies.
     ///
@@ -202,6 +234,7 @@ impl Desktop {
             trace_path: text(object.get("trace_path"), "trace_path")?.map(PathBuf::from),
             trace_strict: flag(object.get("trace_strict"), "trace_strict")?,
             headed: flag(object.get("headed"), "headed")?,
+            cursor: None,
         })
     }
 
