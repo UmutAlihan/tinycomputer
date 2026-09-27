@@ -1246,6 +1246,29 @@ async fn enter_reveals_fields_and_fails_for_a_slot_with_no_field() {
 }
 
 #[tokio::test]
+async fn entered_values_are_never_previewed_in_a_slot_matching_question() {
+    // A slot's text can be a password, token, or private message; the model
+    // only needs to know which field to type it into, not a preview of it.
+    let run = run_with(
+        App::with(|sim| sim.compose_open = true),
+        json!({"app": "Mail", "steps": [{"enter": {"shoe size": "hunter2 super secret token"}}]}),
+        |request| request.max_actions = 6,
+        |id, question, _| {
+            (id.starts_with("slot_") || id == "target").then(|| pick(question, "none", 0.9))
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        run.requests.iter().all(|request| request
+            .questions
+            .values()
+            .all(|question| !text_of(question, "purpose").contains("hunter2"))),
+        "the entered value must never reach a slot-matching question"
+    );
+}
+
+#[tokio::test]
 async fn the_implicit_launch_is_charged_to_the_action_budget() {
     // A run with no actions left must stop before touching the desktop at
     // all, and the launch it would otherwise perform for free must not be
