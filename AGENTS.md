@@ -25,10 +25,9 @@ preflight, the bus surface, and the Jev decision loops that drive them.
 
 ## Read The Right Document First
 
-Before changing anything, find your task below and read what it names, in
-order. Each document is short, current, and written for someone who has
-never seen the code; reading it first is cheaper than rediscovering a rule
-by breaking it. [`docs/README.md`](docs/README.md) indexes everything.
+Before changing anything, find your task and read what it names, in order;
+reading first is cheaper than rediscovering a rule by breaking it.
+[`docs/README.md`](docs/README.md) indexes everything.
 
 | If you are about to… | Read, in order |
 |---|---|
@@ -48,8 +47,6 @@ by breaking it. [`docs/README.md`](docs/README.md) indexes everything.
 | fix the Jev client itself | nothing here: it is `tinyinference_decisions` in `vendor/tinyinference`, fixed upstream |
 | run things on a real desktop or browser | [`docs/lab.md`](docs/lab.md), [`docs/docker-lab.md`](docs/docker-lab.md), past results in [`docs/evals/`](docs/evals/) |
 | start a new feature | [`docs/specs/README.md`](docs/specs/README.md), [`docs/plans/README.md`](docs/plans/README.md), [`docs/adr/`](docs/adr/0001-record-architecture-decisions.md), [`ROADMAP.md`](ROADMAP.md) |
-
-When you add a document, add it to this table and to `docs/README.md`.
 
 ## Project Structure
 
@@ -284,10 +281,9 @@ or the **engine** (the action reached the wrong element — an upstream bug).
 When a run is slow, read the summary's split first and change one lever from
 the table in [`docs/jev-harness.md`](docs/jev-harness.md) at a time.
 
-Journals and traces hold screen text, which can be personal data. They are
-git-ignored; never commit one or paste one into an issue or pull request.
-Every environment variable a crate, test, example, or script reads is listed
-in [`.env.example`](.env.example).
+Journals and traces hold screen text, possibly personal data: they are
+git-ignored, and never go into a commit, issue, or pull request. Every
+environment variable anything here reads is listed in [`.env.example`](.env.example).
 
 ## Coding Style
 
