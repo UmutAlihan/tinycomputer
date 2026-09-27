@@ -59,7 +59,11 @@ pub(super) async fn run<B: AgentBackend + Sync>(
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     async fn open(&mut self, log: &mut StepLog, app: &str) -> Result<Ended, Halt> {
-        let app = substitute(app, &self.vars);
+        // The launched application becomes `self.app`, and this step's note
+        // joins `history` — both reach Jev on a later step — so a fact here
+        // is rejected by validation and never expanded, same as everywhere
+        // else but an `enter` value.
+        let app = substitute_safe(app, &self.vars, &self.facts);
         self.app.clone_from(&app);
         let launched = app.clone();
         let reply = self
