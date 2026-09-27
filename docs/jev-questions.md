@@ -98,6 +98,13 @@ Choices over elements describe each option with `describe`
 Keys are `1`, `2`, … on a first ask and `A`, `B`, … on the relabelled re-ask,
 so a bias toward a position or a label shows up as disagreement.
 
+An element with no name of its own carries `near`, the nearest named
+container it sits in (`button "destinationCity …"`), and its state line
+reads `combobox in button "destinationCity …"`: on a booking widget that is
+all that tells one unnamed search box from another dropdown's. Elements whose
+descriptions match, bounds aside, are offered once — the first in page order
+— because lookalikes side by side split a voted answer below its floor.
+
 ## The brief
 
 Questions that *choose* — every Choice except `page_kind`, and the `confirm`
