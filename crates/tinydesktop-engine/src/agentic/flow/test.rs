@@ -3381,3 +3381,33 @@ async fn a_field_the_form_flags_is_entered_again_and_then_gives_up() {
         stuck.result.steps[2].note
     );
 }
+
+#[tokio::test]
+async fn waits_that_change_nothing_are_not_a_stall_and_stop_being_offered() {
+    let run = run_with(
+        App::quirky(Quirk::Frozen),
+        json!({"app": "Mail", "steps": ["open the search results"]}),
+        |_| {},
+        |id, question, _| (id == "move").then(|| pick(question, "wait", 0.9)),
+    )
+    .await;
+    let step = &run.result.steps[0];
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        step.note.contains("not accomplished after"),
+        "a settled page is not a stall: {}",
+        step.note
+    );
+    let waits = step
+        .actions
+        .iter()
+        .filter(|action| action.action == "wait")
+        .count();
+    assert_eq!(waits, 2, "no third wait on a settled page");
+    let told = run.requests.iter().any(|request| {
+        serde_json::to_string(&request.state)
+            .unwrap()
+            .contains("the page has finished loading and nothing changed")
+    });
+    assert!(told, "Jev is told the page has settled");
+}
