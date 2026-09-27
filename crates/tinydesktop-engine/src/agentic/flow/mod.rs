@@ -74,7 +74,7 @@ pub async fn run_flow<S: AgentBackend + Sync>(
 /// Checks a flow without touching the desktop or Jev.
 #[must_use]
 pub fn validate_flow(request: &ValidateFlowRequest) -> DesktopResponse {
-    let (_, validation) = validate::validate(&request.flow, &BTreeSet::new());
+    let (_, validation) = validate::validate(&request.flow, &BTreeSet::new(), &BTreeSet::new());
     response("validate-flow", &validation)
 }
 
