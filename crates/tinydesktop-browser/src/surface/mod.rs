@@ -59,7 +59,6 @@ const SAME_CARD_JS: &str = r#"((x, y, name) => {
   return stack.some((element) => shown(element) === name && card.contains(element));
 })"#;
 
-
 /// One browser session, lazily opened, as a [`Surface`].
 #[derive(Clone)]
 pub struct BrowserSurface {
