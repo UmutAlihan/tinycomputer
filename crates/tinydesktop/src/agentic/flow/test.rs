@@ -1200,6 +1200,28 @@ async fn a_repeat_that_never_holds_and_a_failing_verify_fail_the_flow() {
 }
 
 #[tokio::test]
+async fn a_repeat_conditions_trace_is_attributed_to_the_repeat_step_not_its_last_child() {
+    // Round 0 runs its child ("start a new email message", path "1.r1.1"),
+    // which opens the compose window. Round 1's condition check must then be
+    // traced to "1", the repeat_until step itself, not left tagged with the
+    // path of the child that last ran.
+    let run = run(
+        App::default(),
+        json!({"app": "Mail", "steps": [
+            {"repeat_until": {"condition": "a compose window is open",
+                              "steps": ["start a new email message"], "max": 2}}
+        ]}),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(
+        run.result.trace.last().map(|exchange| exchange.step.as_str()),
+        Some("1"),
+        "the condition check that ended the loop belongs to the repeat_until step"
+    );
+}
+
+#[tokio::test]
 async fn choose_reveals_the_list_first_when_the_option_is_not_visible() {
     let run = run_with(
         App::default(),
