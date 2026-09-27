@@ -324,6 +324,38 @@ impl Scenario {
     }
 }
 
+/// Checks the flow's read appearance mode against what `defaults` reports.
+///
+/// Accepts a read only when it names exactly one of `light`, `dark`, or
+/// `auto`: a read that mentions every mode, or one `osascript` could not
+/// answer, must not report a false pass.
+fn appearance_read_verdict(flow: Option<&FlowRunResult>) -> Verdict {
+    let dark =
+        osascript(r#"tell application "System Events" to tell appearance preferences to get dark mode"#);
+    let expected = match dark.trim() {
+        "true" => "dark",
+        "false" => "light",
+        other => {
+            return Verdict {
+                passed: false,
+                detail: format!("could not read the system appearance: {other}"),
+            };
+        }
+    };
+    let read = flow
+        .and_then(|result| result.vars.get("mode"))
+        .map(|mode| mode.to_ascii_lowercase())
+        .unwrap_or_default();
+    let named = ["light", "dark", "auto"]
+        .into_iter()
+        .filter(|mode| read.contains(mode))
+        .collect::<Vec<_>>();
+    Verdict {
+        passed: named.len() == 1 && (named[0] == expected || named[0] == "auto"),
+        detail: format!("read {read:?}; the system reports {expected}"),
+    }
+}
+
 /// Runs `AppleScript` and returns its output, or the error text on failure.
 #[must_use]
 pub fn osascript(script: &str) -> String {
