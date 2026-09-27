@@ -304,6 +304,17 @@ fn state(status: &TaskStatus) -> String {
         .unwrap_or_default()
 }
 
+/// The agent's cursor at the `TASK_CURSOR` pace.
+fn cursor() -> Result<ScreenCursor, Failure> {
+    let pace: CursorPace =
+        std::env::var("TASK_CURSOR").map_or(Ok(CursorPace::default()), |pace| pace.parse())?;
+    Ok(if pace.is_off() {
+        ScreenCursor::off()
+    } else {
+        ScreenCursor::new(pace, None)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
@@ -328,15 +339,4 @@ mod tests {
         assert_eq!(next_wait(LIMIT, LIMIT), None);
         assert_eq!(next_wait(Duration::from_secs(20 * 60 + 1), LIMIT), None);
     }
-}
-
-/// The agent's cursor at the `TASK_CURSOR` pace.
-fn cursor() -> Result<ScreenCursor, Failure> {
-    let pace: CursorPace =
-        std::env::var("TASK_CURSOR").map_or(Ok(CursorPace::default()), |pace| pace.parse())?;
-    Ok(if pace.is_off() {
-        ScreenCursor::off()
-    } else {
-        ScreenCursor::new(pace, None)
-    })
 }
