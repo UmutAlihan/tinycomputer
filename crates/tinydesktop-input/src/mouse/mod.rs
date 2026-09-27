@@ -93,8 +93,12 @@ impl VirtualMouse {
         self.position = None;
     }
 
-    /// A point on `target` where a hand would aim.
+    /// A point on `target` where a hand would aim; its centre for the
+    /// instant profile, which is what automation did before.
     pub fn aim(&mut self, target: Rect) -> Point {
+        if self.profile.is_instant() {
+            return target.center();
+        }
         aim(target, &mut self.rng)
     }
 

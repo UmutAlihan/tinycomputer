@@ -2029,6 +2029,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinydesktop-input"
+version = "0.5.1"
+dependencies = [
+ "getrandom 0.4.3",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "tinydesktop-skills"
 version = "0.5.1"
 dependencies = [
