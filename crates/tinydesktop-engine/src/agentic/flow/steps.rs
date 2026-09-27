@@ -229,7 +229,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         // expanded into them; validation already rejects one there.
         let what = substitute_safe(&choose.what, &self.vars, &self.facts);
         let option = substitute_safe(&choose.option, &self.vars, &self.facts);
-        self.pick_option(log, &what, &option, false).await
+        self.pick_option(log, &what, &option, false, true).await
     }
 
     /// Picks `option` in `what` as a person works a list, an autocomplete
@@ -238,15 +238,21 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// filter it. Only an element that shows the option is ever pressed, so
     /// a list that never shows it fails the step rather than picking another.
     ///
-    /// A `private` option — a value `enter` could not type into a field — is
+    /// A `private` option — a secret `enter` could not type into a field — is
     /// never written into a question: only elements that already show it are
     /// offered, so Jev sees nothing the page does not.
+    ///
+    /// `into_focus` lets it type the option wherever the focus is, as an
+    /// opened autocomplete expects. `enter` turns that off for a slot with
+    /// no field: the focus there is the field it just filled for another
+    /// slot, and typing into it would spoil that value.
     pub(super) async fn pick_option(
         &mut self,
         log: &mut StepLog,
         what: &str,
         option: &str,
         private: bool,
+        into_focus: bool,
     ) -> Result<Ended, Halt> {
         let purpose = if private {
             format!("pick the option in {what} that shows the value being entered")
@@ -340,7 +346,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 1 if looks_like_date(option) => self.page_to(log, option).await?,
                 // An opened autocomplete holds the focus in its search input,
                 // often unnamed; type there before anything moves the focus.
-                1 => self.type_into_focus(log, option).await?,
+                1 if into_focus => self.type_into_focus(log, option).await?,
                 2 if !looks_like_date(option) => {
                     self.type_to_filter(log, &screen, what, option).await?;
                 }

@@ -13,7 +13,7 @@ use tinydesktop_bus::{FlowLoop, Slot, StepOutcome};
 
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
-    ask::{self, CAP, Questions, chosen, elements, field_error, numbered, probability},
+    ask::{self, CAP, Questions, asks_for, chosen, elements, field_error, numbered, probability},
     backend::deliver_text,
     memory::{learn, recall, remember},
     validate::{references, substitute, substitute_safe},
@@ -26,6 +26,9 @@ const SLOT_FLOOR: f64 = 0.4;
 const REVEAL_TURNS: u32 = 4;
 /// Probability of an error shown about a field that makes it entered again.
 const FIELD_ERROR: f64 = 0.7;
+/// Probability that a form asks for a detail, under which a detail with no
+/// field is taken as not asked for rather than failing the step.
+const NOT_ASKED: f64 = 0.35;
 
 /// One slot matched to one field.
 #[derive(Debug, Clone)]
@@ -172,7 +175,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
             for assignment in assignments {
                 let slot = &slots[assignment.slot];
-                if self.fill(log, slot, &assignment.field).await? {
+                if self
+                    .fill(log, slot, &assignment.field, &screen.context)
+                    .await?
+                {
                     pending.remove(&assignment.slot);
                     learn(
                         &mut self.learned,
@@ -189,7 +195,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         for index in pending.clone() {
             let slot = &slots[index];
             if self
-                .pick_option(log, &slot.slot, &slot.text, private[index])
+                .pick_option(log, &slot.slot, &slot.text, private[index], false)
                 .await
                 .is_ok()
             {
@@ -290,15 +296,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Delivers one slot's text and reports whether it verifiably arrived.
+    ///
+    /// A date is typed in the layout the field or the page around it asks
+    /// for ("DD-MM-YYYY"), so an input mask does not mangle it.
     async fn fill(
         &mut self,
         log: &mut StepLog,
         slot: &Slot,
         field: &Candidate,
+        context: &[String],
     ) -> Result<bool, Halt> {
         let app = self.app.clone();
         let target = field.clone();
-        let text = slot.text.clone();
+        let hints = [field.name.as_deref(), field.description.as_deref()]
+            .into_iter()
+            .flatten()
+            .chain(context.iter().map(String::as_str));
+        let text = reformat_date(&slot.text, hints).unwrap_or_else(|| slot.text.clone());
         let reply = self
             .act(
                 log,
