@@ -433,7 +433,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .available_actions
                     .iter()
                     .any(|action| action == "Click")
-                    && !destructive_label(&label(candidate).to_ascii_lowercase())
+                    && !is_destructive(candidate, screen, &self.stop_before)
             })
             .take(ask::CAP)
             .cloned()
