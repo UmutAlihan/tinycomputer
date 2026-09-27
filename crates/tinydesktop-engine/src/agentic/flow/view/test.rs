@@ -86,6 +86,11 @@ fn is_destructive_gates_a_generic_control_on_a_payment_screen() {
     assert!(!is_destructive(&continue_button, &screen, &[]));
     // A card field on the same screen makes it a payment step, so even a
     // control worded only "Continue" must not be pressed by an ordinary step.
-    screen.context = vec!["Card number".to_owned()];
+    screen.candidates.push(Candidate {
+        role: "textbox".to_owned(),
+        name: Some("Card number".to_owned()),
+        available_actions: vec!["SetValue".to_owned()],
+        ..Candidate::default()
+    });
     assert!(is_destructive(&continue_button, &screen, &[]));
 }
