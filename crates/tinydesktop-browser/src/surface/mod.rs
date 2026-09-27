@@ -199,7 +199,7 @@ impl BrowserSurface {
     /// first: a stale or unexpected focus — an unrelated field, or none at
     /// all — must never silently receive text, including a private value.
     fn focused_field_is_editable(&self) -> bool {
-        const SCRIPT: &str = r#"(() => {
+        const SCRIPT: &str = r"(() => {
   const element = document.activeElement;
   if (!element) return false;
   const tag = (element.tagName || '').toLowerCase();
@@ -207,7 +207,7 @@ impl BrowserSurface {
   if (element.isContentEditable) return true;
   const role = (element.getAttribute('role') || '').toLowerCase();
   return ['combobox', 'searchbox', 'textbox'].includes(role);
-})()"#;
+})()";
         let Ok(id) = self.ensure_session() else {
             return false;
         };
