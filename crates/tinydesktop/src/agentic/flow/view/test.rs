@@ -96,7 +96,7 @@ fn a_rich_text_body_never_reaches_context_but_stays_in_text_nodes() {
             {"role": "statictext", "value": "Hi Sam, this is private."}
         ]}
     ]}));
-    assert_eq!(screen.context, vec!["New Message"]);
+    assert_eq!(screen.context, vec!["New Message", "message body"]);
     assert!(
         screen.text_nodes.iter().any(|node| node
             .value
