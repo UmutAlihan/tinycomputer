@@ -10,6 +10,7 @@ use tinydesktop_bus::JevOperation;
 use tinydesktop_bus::browser::SessionOptions;
 use tinydesktop_core::Platform;
 use tinydesktop_core::surface::{Candidate, Depth, Surface};
+use tinydesktop_input::MotionProfile;
 
 use super::tree::{parse_line, screen};
 use super::{BrowserSurface, browser_key};
@@ -161,6 +162,10 @@ struct Harness {
 }
 
 fn harness(name: &str, fake: Fake) -> Harness {
+    moving_harness(name, fake, MotionProfile::default())
+}
+
+fn moving_harness(name: &str, fake: Fake, motion: MotionProfile) -> Harness {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     let browser = Browser::with_scratch(
         Arc::new(fake.clone()),
@@ -174,6 +179,7 @@ fn harness(name: &str, fake: Fake) -> Harness {
         SessionOptions::default(),
         runtime.handle().clone(),
     )
+    .with_motion(motion)
     .without_waiting();
     Harness {
         fake,
@@ -246,7 +252,9 @@ fn a_failed_observation_is_an_envelope_with_the_wire_code() {
 
 #[test]
 fn every_operation_becomes_its_engine_command() {
-    let Harness { fake, surface, .. } = harness("execute", page_fake());
+    let Harness { fake, surface, .. } =
+        moving_harness("execute", page_fake(), MotionProfile::Instant);
+    assert_eq!(surface.motion(), MotionProfile::Instant);
     let button = node("e5", &["Click"]);
     for (operation, action) in [
         (JevOperation::Click, "click"),
@@ -316,21 +324,138 @@ fn a_click_covered_by_its_own_card_lands_on_the_card() {
     assert!(reply.ok, "{:?}", reply.error);
     let script = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
     assert!(script.ends_with(r#"(60, 40, "Select flight")"#), "{script}");
-    let mouse = fake
-        .actions()
+    let actions = fake.actions();
+    let pressed = actions
         .iter()
-        .filter(|action| *action == "mouse")
-        .count();
-    assert_eq!(mouse, 3, "move, press, release");
-    let released = fake.last("mouse");
+        .position(|action| action == "mousedown")
+        .unwrap();
+    let released = actions
+        .iter()
+        .position(|action| action == "mouseup")
+        .unwrap();
+    assert!(pressed < released, "press, then release");
+    assert!(
+        actions[..pressed]
+            .iter()
+            .filter(|action| *action == "mousemove")
+            .count()
+            > 1,
+        "the pointer travels to the card before pressing: {actions:?}"
+    );
+    let arrived = fake.last("mousemove");
     assert_eq!(
         (
-            released["eventType"].as_str(),
-            released["x"].as_f64(),
-            released["y"].as_f64()
+            arrived["x"].as_f64(),
+            arrived["y"].as_f64(),
+            arrived["inputMode"].as_str()
         ),
-        (Some("mouseReleased"), Some(60.0), Some(40.0))
+        (Some(60.0), Some(40.0), Some("instant"))
     );
+}
+
+#[test]
+fn a_click_glides_the_virtual_pointer_onto_its_target_first() {
+    let fake = Fake::scripted(|command| {
+        (command["action"] == "boundingbox")
+            .then(|| ok(&json!({"x": 400.0, "y": 300.0, "width": 120.0, "height": 32.0})))
+    });
+    let Harness { fake, surface, .. } = harness("glide", fake);
+    let reply = surface.execute(JevOperation::Click, Some(node("e5", &["Click"])), None);
+    assert!(reply.ok, "{:?}", reply.error);
+    let actions = fake.actions();
+    let clicked = actions.iter().position(|action| action == "click").unwrap();
+    let moves = actions[..clicked]
+        .iter()
+        .filter(|action| *action == "mousemove")
+        .count();
+    assert!(moves > 5, "{actions:?}");
+    let arrived = fake.last("mousemove");
+    let (x, y) = (
+        arrived["x"].as_f64().unwrap(),
+        arrived["y"].as_f64().unwrap(),
+    );
+    assert!((400.0..=520.0).contains(&x) && (300.0..=332.0).contains(&y));
+    assert_eq!(fake.last("click")["selector"], "@e5");
+
+    // The pointer stays where it ended: the next reach starts from there.
+    let before = fake.actions().len();
+    surface.execute(JevOperation::Check, Some(node("e5", &["Toggle"])), None);
+    let first_move = fake.actions()[before..]
+        .iter()
+        .position(|action| action == "mousemove")
+        .unwrap();
+    assert!(
+        first_move > 0,
+        "a known pointer needs no entry move before the box"
+    );
+}
+
+#[test]
+fn an_element_without_a_box_is_clicked_without_a_glide() {
+    let Harness { fake, surface, .. } = harness("no-box", page_fake());
+    assert!(
+        surface
+            .execute(JevOperation::Click, Some(node("e5", &["Click"])), None)
+            .ok
+    );
+    assert!(!fake.actions().iter().any(|action| action == "mousemove"));
+    assert_eq!(fake.last("click")["selector"], "@e5");
+}
+
+#[test]
+fn text_is_typed_key_by_key_into_a_clicked_and_selected_field() {
+    let Harness { fake, surface, .. } = harness("typed", page_fake());
+    let field = node("e2", &["SetValue"]);
+    let reply = surface.execute(JevOperation::TypeText, Some(field), Some("SXR".to_owned()));
+    assert!(reply.ok, "{:?}", reply.error);
+    assert_eq!(fake.last("click")["selector"], "@e2");
+    let select_all = fake.last("press");
+    assert!(
+        select_all["key"].as_str().unwrap().ends_with("+a"),
+        "{select_all}"
+    );
+    let sent = fake.sent();
+    let downs: String = sent
+        .iter()
+        .filter(|command| command["action"] == "keyboard" && command["eventType"] == "keyDown")
+        .map(|command| command["text"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(downs, "SXR");
+    let ups = sent
+        .iter()
+        .filter(|command| command["action"] == "keyboard" && command["eventType"] == "keyUp")
+        .count();
+    assert_eq!(ups, 3);
+    assert!(!fake.actions().iter().any(|action| action == "fill"));
+
+    let focused = surface.execute(JevOperation::TypeText, None, Some("a\nb".to_owned()));
+    assert!(focused.ok);
+    assert_eq!(fake.last("press")["key"], "Enter");
+}
+
+#[test]
+fn a_field_that_cannot_be_clicked_or_a_long_text_is_filled_instead() {
+    let refusing = Fake::scripted(|command| {
+        (command["action"] == "click").then(|| failure("Element '@e2' is not visible"))
+    });
+    let Harness { fake, surface, .. } = harness("typed-refused", refusing);
+    let reply = surface.execute(
+        JevOperation::TypeText,
+        Some(node("e2", &["SetValue"])),
+        Some("SXR".to_owned()),
+    );
+    assert!(reply.ok, "{:?}", reply.error);
+    assert_eq!(fake.last("fill")["value"], "SXR");
+
+    let Harness { fake, surface, .. } = harness("typed-long", page_fake());
+    let long = "x".repeat(401);
+    surface.execute(
+        JevOperation::TypeText,
+        Some(node("e2", &["SetValue"])),
+        Some(long.clone()),
+    );
+    assert_eq!(fake.last("fill")["value"], long.as_str());
+    assert!(!fake.actions().iter().any(|action| action == "keyboard"));
 }
 
 #[test]

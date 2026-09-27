@@ -48,6 +48,10 @@ impl Fake {
             .collect()
     }
 
+    pub(crate) fn sent(&self) -> Vec<Value> {
+        self.sent.lock().unwrap().clone()
+    }
+
     pub(crate) fn last(&self, action: &str) -> Value {
         self.sent
             .lock()
