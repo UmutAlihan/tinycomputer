@@ -80,7 +80,11 @@ impl Host {
                 json!({"jev": jev, "headed": options.headed, "session_id": "tinydesktop-lab"}),
             )
             .await?;
-        let proxy = client.proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)?;
+        // A flow drives a real application for minutes; the bus default is
+        // sized for single commands.
+        let proxy = client
+            .proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)?
+            .with_timeout(std::time::Duration::from_secs(1_800));
         if proxy.attestation().await?.is_none() {
             return Err(io::Error::other(
                 "tinydesktop is not attested; run scripts/lab so modules.toml is generated",
