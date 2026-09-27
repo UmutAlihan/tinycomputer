@@ -83,27 +83,67 @@ const CURRENCIES: &[(&str, &str)] = &[
 #[must_use]
 pub fn parse_price(text: &str) -> Option<Price> {
     let lower = text.to_lowercase();
-    let currency = CURRENCIES
-        .iter()
-        .find(|(marker, _)| {
-            lower.match_indices(marker).any(|(at, _)| {
-                // A letter code must stand alone, not sit inside a word.
-                marker.chars().all(char::is_alphabetic).then_some(()).map_or(true, |()| {
-                    let before = lower[..at].chars().next_back();
-                    let after = lower[at + marker.len()..].chars().next();
-                    !before.is_some_and(char::is_alphabetic) && !after.is_some_and(char::is_alphabetic)
-                })
-            })
-        })
-        .map(|(_, code)| *code);
+    let marked = CURRENCIES.iter().find_map(|(marker, code)| {
+        lower
+            .match_indices(marker)
+            .find(|(at, _)| standalone(&lower, *at, marker))
+            .map(|(at, _)| (at, at + marker.len(), *code))
+    });
+    let (number, currency) = match marked {
+        // The amount sits right after the marker (`₹6,840`), else right
+        // before it (`1.234,50 €`).
+        Some((start, end, code)) => (
+            number_after(&text[end..]).or_else(|| number_before(&text[..start]))?,
+            Some(code),
+        ),
+        None => (number_after(text)?, None),
+    };
+    Some(Price {
+        amount: decimal(&number)?,
+        currency,
+    })
+}
+
+/// Whether a letter marker at `at` stands alone rather than inside a word.
+fn standalone(text: &str, at: usize, marker: &str) -> bool {
+    if !marker.chars().any(char::is_alphabetic) {
+        return true;
+    }
+    let before = text[..at].chars().next_back();
+    let after = text[at + marker.len()..].chars().next();
+    !before.is_some_and(char::is_alphabetic) && !after.is_some_and(char::is_alphabetic)
+}
+
+/// The first number in `text` that starts within a few characters.
+fn number_after(text: &str) -> Option<String> {
     let start = text.find(|character: char| character.is_ascii_digit())?;
-    let number: String = text[start..]
+    if text[..start].chars().any(char::is_alphanumeric) {
+        return None;
+    }
+    Some(digits(&text[start..]))
+}
+
+/// The number that `text` ends with, ignoring trailing spaces.
+fn number_before(text: &str) -> Option<String> {
+    let trimmed = text.trim_end();
+    let length = trimmed
         .chars()
+        .rev()
         .take_while(|character| character.is_ascii_digit() || matches!(character, ',' | '.'))
-        .collect();
-    let number = number.trim_end_matches([',', '.']);
-    let amount = decimal(number)?;
-    Some(Price { amount, currency })
+        .map(char::len_utf8)
+        .sum::<usize>();
+    let number = &trimmed[trimmed.len() - length..];
+    number
+        .starts_with(|character: char| character.is_ascii_digit())
+        .then(|| digits(number))
+}
+
+fn digits(text: &str) -> String {
+    text.chars()
+        .take_while(|character| character.is_ascii_digit() || matches!(character, ',' | '.'))
+        .collect::<String>()
+        .trim_end_matches([',', '.'])
+        .to_owned()
 }
 
 fn decimal(number: &str) -> Option<f64> {
@@ -165,30 +205,31 @@ pub fn parse_clock(text: &str) -> Option<u32> {
 /// ```
 #[must_use]
 pub fn parse_duration(text: &str) -> Option<u32> {
+    const HOURS: &[&str] = &["h", "hr", "hrs", "hour", "hours"];
+    const MINUTES: &[&str] = &["m", "min", "mins", "minute", "minutes"];
     let lower = text.to_ascii_lowercase();
     let mut total = 0;
     let mut found = false;
-    let mut digits = String::new();
-    let mut chars = lower.chars().peekable();
-    while let Some(character) = chars.next() {
-        if character.is_ascii_digit() {
-            digits.push(character);
-            continue;
+    let mut rest = lower.as_str();
+    while let Some(start) = rest.find(|character: char| character.is_ascii_digit()) {
+        let after = &rest[start..];
+        let length = after
+            .find(|character: char| !character.is_ascii_digit())
+            .unwrap_or(after.len());
+        let value: u32 = after[..length].parse().ok()?;
+        let unit_text = after[length..].trim_start();
+        let unit_length = unit_text
+            .find(|character: char| !character.is_ascii_alphabetic())
+            .unwrap_or(unit_text.len());
+        let unit = &unit_text[..unit_length];
+        if HOURS.contains(&unit) {
+            total += value * 60;
+            found = true;
+        } else if MINUTES.contains(&unit) {
+            total += value;
+            found = true;
         }
-        if digits.is_empty() || character == ' ' && chars.peek().is_some_and(char::is_ascii_digit) {
-            continue;
-        }
-        if character == ' ' {
-            continue;
-        }
-        let value: u32 = digits.parse().ok()?;
-        digits.clear();
-        match character {
-            'h' => total += value * 60,
-            'm' => total += value,
-            _ => continue,
-        }
-        found = true;
+        rest = &after[length..];
     }
     found.then_some(total)
 }
@@ -256,28 +297,36 @@ impl Criterion {
     }
 
     fn key(self, record: &Record) -> Option<f64> {
-        let any_field = |parse: fn(&str) -> Option<f64>, hints: &[&str]| {
+        // A named field is read first; failing that, any field that parses.
+        // Prices found by scanning must show a currency, so a flight number
+        // such as `6E-2135` is never mistaken for one.
+        let named_or_any = |hints: &[&str], parse: &dyn Fn(&str) -> Option<f64>| {
             record
                 .field(hints)
                 .and_then(parse)
                 .or_else(|| record.fields.values().find_map(|text| parse(text)))
         };
         match self {
-            Self::LowestPrice | Self::HighestPrice => any_field(
-                |text| parse_price(text).map(|price| price.amount),
-                &["price", "fare", "cost", "total"],
-            ),
-            Self::Earliest | Self::Latest => any_field(
-                |text| parse_clock(text).map(f64::from),
-                &["depart", "time", "start"],
-            ),
+            Self::LowestPrice | Self::HighestPrice => record
+                .field(&["price", "fare", "cost", "total"])
+                .and_then(parse_price)
+                .or_else(|| {
+                    record
+                        .fields
+                        .values()
+                        .filter_map(|text| parse_price(text))
+                        .find(|price| price.currency.is_some())
+                })
+                .map(|price| price.amount),
+            Self::Earliest | Self::Latest => named_or_any(&["depart", "time", "start"], &|text| {
+                parse_clock(text).map(f64::from)
+            }),
             Self::FewestStops => {
-                any_field(|text| parse_stops(text).map(f64::from), &["stop"])
+                named_or_any(&["stop"], &|text| parse_stops(text).map(f64::from))
             }
-            Self::Shortest => any_field(
-                |text| parse_duration(text).map(f64::from),
-                &["duration", "length", "travel time"],
-            ),
+            Self::Shortest => named_or_any(&["duration", "length"], &|text| {
+                parse_duration(text).map(f64::from)
+            }),
         }
     }
 }
