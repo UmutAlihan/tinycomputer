@@ -1233,6 +1233,33 @@ async fn enter_reveals_fields_and_fails_for_a_slot_with_no_field() {
 }
 
 #[tokio::test]
+async fn the_implicit_launch_is_charged_to_the_action_budget() {
+    // A run with no actions left must stop before touching the desktop at
+    // all, and the launch it would otherwise perform for free must not be
+    // missing from the reported action count on a run that does proceed.
+    let starved = run_with(
+        App::default(),
+        mail_flow(),
+        |request| request.max_actions = 0,
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(starved.result.stop, FlowStopReason::ActionBudget);
+    assert_eq!(starved.result.actions, 0);
+    assert!(
+        starved.app.sim().launched.is_empty(),
+        "a starved run must never launch the application"
+    );
+
+    let launched = run_with(App::default(), mail_flow(), |_| {}, |_, _, _| None).await;
+    assert_eq!(launched.app.sim().launched, ["Mail"]);
+    assert!(
+        launched.result.actions >= 1,
+        "the implicit launch must count toward the reported actions"
+    );
+}
+
+#[tokio::test]
 async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
     let actions = run_with(
         App::default(),
