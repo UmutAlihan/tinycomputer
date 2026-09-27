@@ -41,6 +41,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arc::new(Browser::new(Arc::new(AgentBrowser))),
             SessionOptions {
                 executable: std::env::var("TINYDESKTOP_BROWSER_EXECUTABLE").ok(),
+                user_agent: std::env::var("PROBE_USER_AGENT").ok(),
+                args: std::env::var("PROBE_BROWSER_ARGS")
+                    .map(|args| args.split_whitespace().map(str::to_owned).collect())
+                    .unwrap_or_default(),
                 ..SessionOptions::default()
             },
             runtime.handle().clone(),
@@ -76,7 +80,7 @@ fn click(surface: &BrowserSurface, name: &str) {
         return;
     };
     let reply = surface.execute(JevOperation::Click, Some(target.clone()), None);
-    println!("click {} -> ok {}", target.ref_id, reply.ok);
+    println!("click {} -> ok {} {:?}", target.ref_id, reply.ok, reply.error.map(|error| error.message));
 }
 
 fn show(surface: &BrowserSurface) {
