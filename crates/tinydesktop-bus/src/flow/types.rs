@@ -237,51 +237,10 @@ pub struct IfStep {
     pub otherwise: Vec<FlowStep>,
 }
 
-/// The Jev decision loops a flow run may use.
+/// One Jev decision loop.
 ///
-/// Each is on by default. Turning one off is for measuring what it
-/// contributes, not for production use.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
-#[allow(clippy::struct_excessive_bools)]
-pub struct FlowLoops {
-    /// Ask whether a step is already accomplished, before and after acting.
-    pub completion: bool,
-    /// Score progress toward the step before and after an action.
-    pub progress: bool,
-    /// Choose among app-agnostic moves, including generic shortcuts.
-    pub moves: bool,
-    /// Narrow a large screen region by region instead of one flat choice.
-    pub narrowing: bool,
-    /// Confirm a low-confidence target with a yes/no question before acting.
-    pub corroboration: bool,
-    /// Re-ask a low-confidence choice with the options relabelled.
-    pub consistency: bool,
-    /// Detect and dismiss dialogs and popups that block the step.
-    pub obstacles: bool,
-    /// Undo an action that made things worse and try the next candidate.
-    pub undo: bool,
-    /// Try elements that grounded the same step before first.
-    pub memory: bool,
-}
-
-impl Default for FlowLoops {
-    fn default() -> Self {
-        Self {
-            completion: true,
-            progress: true,
-            moves: true,
-            narrowing: true,
-            corroboration: true,
-            consistency: true,
-            obstacles: true,
-            undo: true,
-            memory: true,
-        }
-    }
-}
-
-/// One decision loop, as reported in a [`StepReport`].
+/// Reported per step in [`StepReport::loops`], and named in
+/// [`RunFlowRequest::disabled_loops`] to measure what a loop contributes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FlowLoop {
@@ -345,8 +304,9 @@ pub struct RunFlowRequest {
     pub max_actions: u32,
     /// Most Jev evaluations for the whole run; capped by the module at 300.
     pub max_model_calls: u32,
-    /// Which decision loops are enabled.
-    pub loops: FlowLoops,
+    /// Decision loops to turn off. Empty in production; set to measure what
+    /// one loop contributes. [`FlowLoop::Slots`] cannot be turned off.
+    pub disabled_loops: Vec<FlowLoop>,
     /// Grounding hints from earlier runs.
     pub memory: Vec<GroundingHint>,
 }
@@ -360,7 +320,7 @@ impl Default for RunFlowRequest {
             include_values: false,
             max_actions: 60,
             max_model_calls: 150,
-            loops: FlowLoops::default(),
+            disabled_loops: Vec::new(),
             memory: Vec::new(),
         }
     }
