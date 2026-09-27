@@ -270,9 +270,11 @@ fn collect(
         out.unexplored.push(node.ref_id.clone());
     }
     if node.ref_id.is_empty() {
-        if !remembers_as_field_content(node) {
-            remember_text(node, out.context);
-        }
+        // Whether this text belongs in `context` is decided once the whole
+        // tree — and every node's document order — is known, in
+        // `build_context` below; a token field's chip labels are ordinary
+        // siblings of the field, not descendants, so that decision cannot be
+        // made node-by-node during this traversal.
         out.text_nodes.push(node.clone());
     } else {
         out.candidates.push(node.clone());
