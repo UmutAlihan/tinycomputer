@@ -113,18 +113,18 @@ pub fn parse_price(text: &str) -> Option<Price> {
                 .map(|number| (number, *code))
         })
     };
-    let (number, currency) = match marked {
+    let (number, currency) = match marked.map(|marker| (marker, None)).or_else(|| {
+        let first = text.find(|character: char| character.is_ascii_digit())?;
+        Some(((0, 0, ""), Some((first, named()))))
+    })? {
         // The amount sits right after the marker (`₹6,840`), else right
         // before it (`1.234,50 €`).
-        Some((start, end, code)) => (
+        ((start, end, code), None) => (
             number_after(&text[end..]).or_else(|| number_before(&text[..start]))?,
             Some(code),
         ),
-        None if let Some((number, code)) = named() => (number, Some(code)),
-        None => (
-            digits(&text[text.find(|character: char| character.is_ascii_digit())?..]),
-            None,
-        ),
+        (_, Some((_, Some((number, code))))) => (number, Some(code)),
+        (_, Some((first, None))) => (digits(&text[first..]), None),
     };
     Some(Price {
         amount: decimal(&number)?,
