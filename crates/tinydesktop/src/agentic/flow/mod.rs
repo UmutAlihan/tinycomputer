@@ -209,6 +209,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             backend,
             runtime,
             app: request.flow.app.clone(),
+            stop_before: stop_before_phrases(&request.flow.steps),
             vars,
             allow_destructive: request.allow_destructive,
             include_values: request.include_values,
