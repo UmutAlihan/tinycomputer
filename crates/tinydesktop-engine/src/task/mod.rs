@@ -693,7 +693,7 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
             Some(ms) => match tokio::time::timeout(Duration::from_millis(ms), run_call).await {
                 Ok(reply) => reply,
                 Err(_) => {
-                    stop_task(&cell, runner.as_ref(), elapsed_budget_failed()).await;
+                    stop_task(&cell, runner.as_ref(), elapsed_budget_failed());
                     return;
                 }
             },
