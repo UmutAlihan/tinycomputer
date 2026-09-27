@@ -13,4 +13,5 @@ pub(crate) use windows::run;
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod other;
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(not(test))]
 pub(crate) use other::run;
