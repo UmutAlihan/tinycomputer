@@ -229,6 +229,10 @@ const STRONG_CARD_WORDS: &[&str] = &[
     "expiry date",
     "expiration date",
     "valid thru",
+    // A payment identifier, never a promotional phrase: an ad says "pay by
+    // UPI", never "UPI ID" or "VPA" on their own.
+    "upi id",
+    "vpa",
 ];
 
 /// Whether the screen a flow is looking at is a payment step, from its
@@ -238,8 +242,11 @@ const STRONG_CARD_WORDS: &[&str] = &[
 /// `autocomplete` attribute — those are web-specific, and this check must
 /// hold for the desktop too — so it reads fields: an input labelled like a
 /// card field, or an input with strong card wording (CVV, card number)
-/// beside it. Card words on links, buttons, or promotional text alone
-/// ("save 10% with your credit card") do not make a payment page.
+/// beside it, within a few nodes of it in document order. A candidate with
+/// no role and no actions counts as a possible input, so its label alone
+/// can mark the page. Card words on links, buttons, or promotional text
+/// alone ("save 10% with your credit card"), or strong card wording far
+/// from every field, do not make a payment page.
 ///
 /// ```
 /// use tinydesktop_core::surface::{Candidate, Screen};
@@ -267,54 +274,71 @@ const STRONG_CARD_WORDS: &[&str] = &[
 /// ```
 #[must_use]
 pub fn screen_payment_evidence(screen: &Screen) -> Option<PaymentEvidence> {
-    let inputs = screen
+    let fields = screen
         .candidates
         .iter()
-        .filter(|candidate| is_input(candidate))
+        .filter(|candidate| may_take_input(candidate))
         .collect::<Vec<_>>();
-    if inputs.is_empty() {
+    if fields.is_empty() {
         return None;
     }
-    let labelled = inputs.iter().filter_map(|candidate| {
-        candidate
-            .name
-            .as_deref()
-            .or(candidate.description.as_deref())
-            .map(|label| FieldHint {
-                label: label.to_owned(),
-                ..FieldHint::default()
-            })
-    });
+    let labelled = fields.iter().filter_map(|field| label(field));
+    // `screen.context` is left out: it repeats `text_nodes`' text without
+    // their place in the tree, so it cannot show the wording is beside a
+    // field rather than in a footer or help panel.
     let beside = screen
-        .context
+        .text_nodes
         .iter()
-        .map(String::as_str)
         .chain(
             screen
-                .text_nodes
+                .candidates
                 .iter()
-                .filter_map(|node| node.name.as_deref()),
+                .filter(|candidate| !may_take_input(candidate)),
         )
+        .filter(|node| {
+            fields
+                .iter()
+                .any(|field| node.order.abs_diff(field.order) <= NEARBY_NODES)
+        })
+        .filter_map(label)
         .filter(|text| {
             let words = normalize(text);
             STRONG_CARD_WORDS
                 .iter()
                 .any(|term| has_phrase(&words, term))
-        })
+        });
+    let hints = labelled
+        .chain(beside)
         .map(|text| FieldHint {
             label: text.to_owned(),
             ..FieldHint::default()
-        });
-    let fields = labelled.chain(beside).collect::<Vec<_>>();
-    payment_evidence("", &fields, &[])
+        })
+        .collect::<Vec<_>>();
+    payment_evidence("", &hints, &[])
 }
 
-/// Whether a candidate takes typed input, on either surface.
-fn is_input(candidate: &Candidate) -> bool {
+/// How many nodes apart, in document order, wording and a field may sit and
+/// still be read as the field's label: room for the wrappers between a
+/// label and its input, not for a footer far down the page.
+const NEARBY_NODES: usize = 5;
+
+/// A candidate's name, or its description when it has no name.
+fn label(candidate: &Candidate) -> Option<&str> {
     candidate
-        .available_actions
-        .iter()
-        .any(|action| action == "SetValue" || action == "TypeText")
+        .name
+        .as_deref()
+        .or(candidate.description.as_deref())
+}
+
+/// Whether a candidate may take typed input, on either surface: it says it
+/// does, or it carries no role and no actions, so nothing says it does not.
+fn may_take_input(candidate: &Candidate) -> bool {
+    let unmarked = candidate.role.is_empty() && candidate.available_actions.is_empty();
+    unmarked
+        || candidate
+            .available_actions
+            .iter()
+            .any(|action| action == "SetValue" || action == "TypeText")
         || matches!(
             candidate.role.as_str(),
             "textbox" | "searchbox" | "combobox" | "spinbutton" | "textfield"

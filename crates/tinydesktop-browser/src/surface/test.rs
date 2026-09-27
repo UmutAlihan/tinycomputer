@@ -188,6 +188,8 @@ fn page_fake() -> Fake {
         "inputvalue" => Some(ok(&json!({"value": ""}))),
         "gettext" if command["selector"] == "@e2" => Some(ok(&json!({"text": "Srinagar"}))),
         "gettext" => Some(ok(&json!({"text": " "}))),
+        // A text field is focused, so targetless typing is accepted.
+        "evaluate" => Some(ok(&json!({"result": true}))),
         _ => None,
     })
 }
@@ -287,6 +289,22 @@ fn every_operation_becomes_its_engine_command() {
         json!({"action": "inserttext", "text": "Srinagar"})
     );
     assert!(surface.execute(JevOperation::Scroll, None, None).ok);
+}
+
+#[test]
+fn typing_without_a_target_refuses_when_nothing_editable_is_focused() {
+    // No `evaluate` script here: `default_reply` answers `{"result": 42}`,
+    // which is not `true`, so the focused element is read as not editable.
+    let fake = Fake::scripted(|command| {
+        (command["action"] == "snapshot").then(|| ok(&json!({"snapshot": PAGE})))
+    });
+    let Harness { fake, surface, .. } = harness("focus-not-editable", fake);
+    let refused = surface.execute(JevOperation::TypeText, None, Some("secret".to_owned()));
+    assert_eq!(refused.error.unwrap().code, "INVALID_TARGET");
+    assert!(
+        !fake.actions().iter().any(|action| action == "inserttext"),
+        "an unverified focus must never receive the text"
+    );
 }
 
 /// A page whose result card lays a click layer over its own "Select"

@@ -231,6 +231,11 @@ Any other answer is ignored and logged. The runtime never falls back to a click
 on an answer it does not recognise, because a malformed or injected answer must
 fail closed.
 
+After any action the backend reports as successful, the runtime calls the
+surface's `settle` before looking again — network-idle on the browser, a short
+pause on the desktop — so the next turn's screen reflects what the action did
+rather than the moment before it took effect.
+
 The shortcut list (`act.rs::SHORTCUTS`) is short and safe: new item, new
 folder, find, reply, settings, back, next field, confirm (Return), and dismiss
 (Escape). None of them sends, deletes, or quits. They are written in macOS
@@ -250,6 +255,24 @@ step, when:
   button of a "Delete?" dialog looks like on some platforms;
 - or the screen shows payment evidence (a card number, CVV, or expiry field),
   so a button that only says "Continue" on a card form is caught too.
+
+When a click is refused because it is covered — a result list's whole card
+often lies a transparent click layer over its own controls, so the card's own
+button is "covered" by the card itself — the runtime presses Escape once and
+retries the *same* already-vetted target. Escape never chooses a new element,
+so nothing exposed by dismissing whatever covered the click is ever pressed
+without going through grounding and `is_destructive` again on a later turn.
+
+A dismissal the completion judge would otherwise never see ends the step
+immediately: when the last action pressed a control whose own words the
+step's intent names ("Accept Essential Only" for a step about accepting
+cookies), or the intent asks to dismiss, close, accept, decline, reject, or
+skip a banner, dialog, popup, cookie notice, modal, overlay, or prompt, and
+the screen has returned to the application's own window, the step ends as
+`Done` — a closed overlay leaves no trace afterward for the judge to read.
+The same check runs once more after the very last turn, so a dismissal that
+lands on the last permitted turn is not reported as failed for want of
+another look.
 
 After eight turns without an end, the runtime looks one last time. If the
 completion estimate reaches 0.75 the step is `Done`; otherwise it fails with
@@ -335,7 +358,7 @@ not.
 |---|---|
 | `open` | launches the app (or brings it forward), then checks up to ten times for a readable window, waiting between checks |
 | `browse` | switches the flow to the browser, opens a session if needed, and navigates |
-| `choose` | grounds the option among clickable, non-destructive elements and clicks it; if that fails, runs a three-turn `do` loop to "open {what} so its options show" and tries once more |
+| `choose` | grounds the option among clickable, non-destructive elements (preferring ones inside the region `what` names, when the page carries one) and clicks it; failing that, reveals it with a three-turn `do` loop, then either pages a date picker's calendar forward to the requested day or types the option into the field that just gained focus to filter an autocomplete, retrying up to four times; a private option (a value `enter` could not type) is picked the same way but never asked about, so Jev never sees it |
 | `read` | offers every readable element and context line as options, 60 at a time, and stores the chosen text in a variable if Jev is at least 0.5 sure |
 | `extract` | finds the repeated cards on screen and stores them as JSON rows of their text; no Jev call |
 | `pick` | finds the repeated cards, ranks them exactly when the criterion parses, otherwise asks Jev, stores the winner's text, and clicks its primary control |
