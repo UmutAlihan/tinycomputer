@@ -231,6 +231,11 @@ Any other answer is ignored and logged. The runtime never falls back to a click
 on an answer it does not recognise, because a malformed or injected answer must
 fail closed.
 
+After any action the backend reports as successful, the runtime calls the
+surface's `settle` before looking again — network-idle on the browser, a short
+pause on the desktop — so the next turn's screen reflects what the action did
+rather than the moment before it took effect.
+
 The shortcut list (`act.rs::SHORTCUTS`) is short and safe: new item, new
 folder, find, reply, settings, back, next field, confirm (Return), and dismiss
 (Escape). None of them sends, deletes, or quits. They are written in macOS
