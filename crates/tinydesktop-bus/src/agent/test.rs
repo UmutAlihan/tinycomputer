@@ -32,7 +32,7 @@ fn a_bare_task_takes_safe_defaults() {
 #[test]
 fn a_flow_and_constraints_are_accepted_as_written() {
     let request: StartTaskRequest = serde_json::from_value(json!({
-        "flow": {"app": "Browser", "steps": [{"browse": "https://flights.test"}, "search for flights"]},
+        "flow": {"app": "Mail", "steps": [{"open": "Mail"}, "start a new email message"]},
         "constraints": {
             "surfaces": ["browser", "desktop"],
             "origins": ["https://.flights.test"],
