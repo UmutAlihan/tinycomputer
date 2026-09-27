@@ -175,10 +175,11 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
         depth: Depth,
     ) -> Result<Screen, Box<DesktopResponse>> {
         let side = Self::side_for(app);
-        let screen = match (side, &self.browser) {
-            (Side::Desktop, _) => self.desktop.observe(app, root, depth),
-            (Side::Browser, Some(browser)) => browser.observe(app, root, depth),
-            (Side::Browser, None) => Err(Box::new(no_browser("snapshot"))),
+        let screen = match (side, &self.desktop, &self.browser) {
+            (Side::Desktop, Some(desktop), _) => desktop.observe(app, root, depth),
+            (Side::Desktop, None, _) => Err(Box::new(no_desktop("snapshot"))),
+            (Side::Browser, _, Some(browser)) => browser.observe(app, root, depth),
+            (Side::Browser, _, None) => Err(Box::new(no_browser("snapshot"))),
         }?;
         self.activate(side);
         self.remember(app);
