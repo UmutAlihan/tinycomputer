@@ -742,6 +742,10 @@ async fn a_fact_is_typed_through_enter_but_never_reaches_a_jev_request() {
         mail_flow(),
         |request| {
             request.facts = BTreeSet::from(["to".to_owned()]);
+            // A task's flow always runs with `include_values` off (screen
+            // text is a separate, already-guarded leak path); this test is
+            // about `${to}` substitution, the bug this change fixes.
+            request.include_values = false;
         },
         |_, _, _| None,
     )
@@ -754,12 +758,12 @@ async fn a_fact_is_typed_through_enter_but_never_reaches_a_jev_request() {
         "the fact is still typed into the field"
     );
 
-    for (index, request) in run.requests.iter().enumerate() {
-        let text = serde_json::to_string(request).unwrap();
-        if text.contains("sam@example.com") {
-            panic!("request {index} leaked: {text}");
-        }
-    }
+    let leaked = run.requests.iter().any(|request| {
+        serde_json::to_string(request)
+            .unwrap()
+            .contains("sam@example.com")
+    });
+    assert!(!leaked, "a fact's value must never reach a Jev request");
     assert!(
         run.result
             .steps
