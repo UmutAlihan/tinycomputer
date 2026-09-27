@@ -242,6 +242,22 @@ fn restore_plan_leaves_the_pasteboard_alone_when_the_read_failed() {
 }
 
 #[test]
+fn platform_combo_keeps_cmd_on_macos_and_maps_it_to_ctrl_elsewhere() {
+    // Flows and the paste path only ever write app shortcuts in terms of
+    // `cmd`; the engine's own combo parser maps that literally to the Meta
+    // key, which is the Windows/Super key everywhere but macOS.
+    assert_eq!(platform_combo("cmd+n", true), "cmd+n");
+    assert_eq!(platform_combo("cmd+shift+n", true), "cmd+shift+n");
+    assert_eq!(platform_combo("cmd+n", false), "ctrl+n");
+    assert_eq!(platform_combo("cmd+shift+n", false), "ctrl+shift+n");
+    assert_eq!(platform_combo("cmd+a", false), "ctrl+a");
+    assert_eq!(platform_combo("cmd+v", false), "ctrl+v");
+    // Combos with no `cmd` modifier are left untouched on every platform.
+    assert_eq!(platform_combo("escape", false), "escape");
+    assert_eq!(platform_combo("tab", true), "tab");
+}
+
+#[test]
 fn an_app_with_several_windows_counts_as_launched() {
     let ambiguous = DesktopResponse::err(
         "launch",
