@@ -45,7 +45,7 @@ tinydesktop-engine = { path = "crates/tinydesktop-engine" }
 # crate of the vendored `vendor/tinyinference` submodule, pinned by its gitlink
 # so provider validation and retry behavior are reproducible. Only this crate
 # of TinyInference is linked into the module.
-tinyinference_decisions = { path = "vendor/tinyinference/crates/tinyinference_decisions" }
+tinyinference-decisions = { path = "vendor/tinyinference/crates/tinyinference-decisions" }
 # The optional LLM planner's model client (engine `planner` feature) and the
 # lab's author.
 tinyinference-llm = { path = "vendor/tinyinference/crates/tinyinference-llm" }
