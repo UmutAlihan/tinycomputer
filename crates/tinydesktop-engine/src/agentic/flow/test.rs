@@ -2808,8 +2808,25 @@ async fn extract_stores_every_item_of_the_list() {
 
 // ------------------------------------------------ brief, secrets, and votes
 
+/// The brief a request's choosing questions carry; `Null` when none does.
 fn brief_of(request: &EvaluationRequest) -> Value {
-    request.state.get("brief").cloned().unwrap_or(Value::Null)
+    request
+        .questions
+        .values()
+        .find_map(|question| match question {
+            Question::Choice(choice) => choice.instructions.get("brief").cloned(),
+            _ => None,
+        })
+        .unwrap_or(Value::Null)
+}
+
+/// Whether any yes/no or scale question about the screen carries a brief.
+fn judgements_are_briefed(request: &EvaluationRequest) -> bool {
+    request.questions.iter().any(|(id, question)| match question {
+        Question::Noul(noul) => id != "confirm" && noul.instructions.get("brief").is_some(),
+        Question::Score(score) => score.instructions.get("brief").is_some(),
+        Question::Choice(_) => false,
+    })
 }
 
 #[tokio::test]
@@ -2832,7 +2849,27 @@ async fn every_question_is_briefed_on_the_goal_the_person_and_the_plan() {
     )
     .await;
     assert!(!run.requests.is_empty());
-    for request in &run.requests {
+    assert!(
+        !run.requests.iter().any(judgements_are_briefed),
+        "judging the screen is left to the screen"
+    );
+    assert!(
+        run.requests
+            .iter()
+            .all(|request| request.state.get("brief").is_none())
+    );
+    let choosing = run
+        .requests
+        .iter()
+        .filter(|request| {
+            request
+                .questions
+                .values()
+                .any(|question| matches!(question, Question::Choice(_)))
+        })
+        .collect::<Vec<_>>();
+    assert!(!choosing.is_empty());
+    for request in choosing {
         let brief = brief_of(request);
         assert_eq!(brief["goal"], "move Thursday's sync with Sam to Friday");
         assert_eq!(brief["for"]["date of birth"], "2000-01-01");
@@ -2855,13 +2892,14 @@ async fn every_question_is_briefed_on_the_goal_the_person_and_the_plan() {
         plan[3].as_str().unwrap().starts_with("4. [next] verify:"),
         "{plan}"
     );
-    let verifying = run
+    let sending = run
         .requests
         .iter()
-        .find(|request| request.questions.contains_key("holds"))
+        .rev()
+        .find(|request| request.questions.contains_key("target"))
         .unwrap();
     assert_eq!(
-        brief_of(verifying)["so_far"],
+        brief_of(sending)["so_far"],
         json!(["entered: message body, recipient, subject"])
     );
 }
