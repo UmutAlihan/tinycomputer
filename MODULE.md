@@ -30,8 +30,10 @@ is optional:
   (booleans) for the desktop engine;
 - `jev`: the Jev provider and API key, needed by the Jev-driven and task
   members;
-- `browser.cursor`: the pace the agent's cursor is drawn at in a visible
-  browser session — `off`, `brisk`, `natural` (the default), or `calm`;
+- `cursor`: the agent's on-screen cursor, shared by the desktop and the
+  browser — a pace (`off`, `brisk`, `natural` (the default), `calm`), or an
+  object with an optional `pace` and an optional `overlay` path to the
+  `tinydesktop-cursor-overlay` helper shipped beside the module;
 - `planner`: an OpenRouter `api_key` and optional `model`, which lets
   `StartTask` accept a plain-language task;
 - `browser.executable`: the Chrome or Chromium binary to launch.

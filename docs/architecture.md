@@ -50,7 +50,8 @@ runtime at all.
 |---|---|---|
 | `tinydesktop-bus` | the wire contract: member names, request and reply types, the `DesktopResponse` envelope, the Agent types (`TaskView`, `TaskStatus`, …), the browser types, the flow grammar and its authoring guide, and the contract version | a transport, an async runtime, an HTTP client, a native library, or an engine. CI fails the build if one appears. |
 | `tinydesktop-core` | the `Surface` trait and the `Screen` it observes; fingerprints, change notes, verified text delivery, result-card grouping; the per-OS keymap; the safety classifier and payment detector; the facts store; price, time, duration, and stop parsers and `rank` | engines, Jev, TinyBus, and any tokio runtime |
-| `tinydesktop-cursor` | the agent's on-screen cursor: aim points inside an element, human glide paths, `CursorPace` ([spec](specs/virtual-cursor.md)) | input, engines, I/O, and rendering |
+| `tinydesktop-cursor` | the agent's one on-screen cursor, shared by desktop and browser: aim points, human glide paths, `CursorPace`, the sprite, the animator, and the overlay protocol ([spec](specs/virtual-cursor.md)) | input, engines, and platform windowing |
+| `tinydesktop-cursor-overlay` | the helper process that draws the cursor: a click-through, never-focused window (AppKit, Win32) | anything but putting pixels on screen |
 | `tinydesktop-desktop` | `Desktop`, one typed method per desktop member over agent-desktop, with the permission preflight; `Desktop` as a `Surface` | Jev, TinyBus |
 | `tinydesktop-browser` | `Browser` (sessions, navigate, snapshot, perform, read, evaluate, screenshots, downloads, held outputs) over agent-browser; `BrowserSurface`; the error taxonomy | Jev, TinyBus |
 | `tinydesktop-engine` | the Jev runtime, `RunGoal`, `ResolveIntent`, the flow runtime, the `Workspace`, the task controller, and the optional planner | TinyBus |
@@ -213,7 +214,7 @@ configuration validates.
 | `jev` | object | Jev provider, API key, optional model, endpoint, timeout, retries, and `sdk_name` for the TinyHumans proxy |
 | `planner` | object | OpenRouter `api_key` and optional `model` for the planner; absent means no planner |
 | `browser.executable` | string | the Chrome or Chromium binary to launch, when discovery would not find one |
-| `browser.cursor` | string | pace of the agent's drawn cursor in a visible session: `off`, `brisk`, `natural` (default), `calm` ([spec](specs/virtual-cursor.md)) |
+| `cursor` | string or object | the agent's on-screen cursor for desktop and browser: a pace (`off`, `brisk`, `natural` (default), `calm`) or `{pace, overlay}` with the overlay helper's path ([spec](specs/virtual-cursor.md)) |
 
 Without `jev`, `ResolveIntent`, `RunGoal`, `RunFlow`, and task runs answer
 with `JEV_NOT_CONFIGURED`, while the primitives, `ValidateFlow`, `FlowGuide`,

@@ -351,6 +351,10 @@ jobs:
             # and the flow runtime's paste fallback fail on macOS.
             cargo build --locked --release -p agent-desktop-macos --bin agent-desktop-macos-helper
             install -m 755 target/release/agent-desktop-macos-helper "$package_root/"
+            # The window that draws the agent's cursor; the host points the
+            # module's `cursor.overlay` configuration at it.
+            cargo build --locked --release -p tinydesktop-cursor-overlay
+            install -m 755 target/release/tinydesktop-cursor-overlay "$package_root/"
           fi
           install -m 644 LICENSE MODULE.md "$package_root/"
 
@@ -383,6 +387,10 @@ jobs:
           $packageRoot = "dist/$packageName"
           New-Item -ItemType Directory -Force $packageRoot | Out-Null
           Copy-Item -LiteralPath $module, 'LICENSE', 'MODULE.md' -Destination $packageRoot
+          # The window that draws the agent's cursor; the host points the
+          # module's `cursor.overlay` configuration at it.
+          cargo build --locked --release -p tinydesktop-cursor-overlay
+          Copy-Item -LiteralPath 'target/release/tinydesktop-cursor-overlay.exe' -Destination $packageRoot
 
           $moduleName = Split-Path -Leaf $module
           $hash = (Get-FileHash -LiteralPath "$packageRoot/$moduleName" -Algorithm SHA256).Hash.ToLowerInvariant()
