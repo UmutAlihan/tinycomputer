@@ -154,6 +154,12 @@ These are additive to the grammar in [`jev-intent-flows.md`](jev-intent-flows.md
 
 - An LLM runs only when the host configures `planner`. It never sees fact
   values, typed text, or payment pages.
+- Jev only ever sees a fact's name, never its value. A flow may substitute a
+  fact's value only into an `enter` step's typed text, or into a `browse`
+  address or an `open` application name; a `${fact}` reference anywhere else
+  in a flow — including an `enter` slot's own name — fails validation, and
+  `StartTask` fails fast rather than run it. The flow runtime also never
+  expands a fact into that text at run time, as a backstop behind validation.
 - A payment page ends at a `checkpoint`, and no payment data is typed, ever.
 - Irreversible actions need `allow_destructive` or an explicit approval via
   `ContinueTask`.
