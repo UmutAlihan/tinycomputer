@@ -139,7 +139,8 @@ pub use envelope::{
     RetryDisposition,
 };
 pub use flow::{
-    ChooseStep, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowLoop, FlowRunResult, FlowStep,
+    ChooseStep, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowBrief, FlowLoop, FlowRunResult,
+    FlowStep,
     FlowStopReason, FlowValidation, GroundingHint, IfStep, JevExchange, PickStep, ReadStep,
     RepeatStep, RunFlowRequest, STEP_KINDS, Slot, Slots, StepOutcome, StepReport,
     ValidateFlowRequest,
