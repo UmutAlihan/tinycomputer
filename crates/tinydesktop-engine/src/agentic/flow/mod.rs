@@ -770,7 +770,8 @@ fn clip(text: &str, limit: usize) -> String {
 /// of screen text and elements in the shared state lose their last entries.
 /// What remains is the part of the screen read first.
 pub(super) fn fit(request: &mut EvaluationRequest, limit: usize) {
-    let size = |request: &EvaluationRequest| serde_json::to_vec(request).map_or(0, |json| json.len());
+    let size =
+        |request: &EvaluationRequest| serde_json::to_vec(request).map_or(0, |json| json.len());
     if size(request) <= limit {
         return;
     }
@@ -804,7 +805,10 @@ fn longest_list(value: &mut Value) -> Option<&mut Vec<Value>> {
     let mut best: Option<&mut Vec<Value>> = None;
     let candidates: Vec<&mut Vec<Value>> = match value {
         Value::Array(items) => {
-            if items.iter().all(|item| !item.is_array() && !item.is_object()) {
+            if items
+                .iter()
+                .all(|item| !item.is_array() && !item.is_object())
+            {
                 return (!items.is_empty()).then_some(items);
             }
             items.iter_mut().filter_map(longest_list).collect()
@@ -813,7 +817,10 @@ fn longest_list(value: &mut Value) -> Option<&mut Vec<Value>> {
         _ => Vec::new(),
     };
     for candidate in candidates {
-        if best.as_ref().is_none_or(|best| candidate.len() > best.len()) {
+        if best
+            .as_ref()
+            .is_none_or(|best| candidate.len() > best.len())
+        {
             best = Some(candidate);
         }
     }
