@@ -149,6 +149,24 @@ async fn main() -> Result<(), LabError> {
     }
 }
 
+/// A scorecard row for a trial that errored before it produced its own
+/// record, so `scorecard` divides by every trial rather than only the ones
+/// that ran to completion.
+fn failed_run_record(scenario: &str, mode: &str, error: &LabError) -> RunRecord {
+    RunRecord {
+        scenario: scenario.to_owned(),
+        mode: mode.to_owned(),
+        passed: false,
+        detail: format!("run failed: {error}"),
+        stop: "Error".to_owned(),
+        actions: 0,
+        jev_calls: 0,
+        llm_calls: 0,
+        seconds: 0.0,
+        dir: PathBuf::new(),
+    }
+}
+
 async fn load(options: &Options) -> Result<Host, LabError> {
     Host::load(
         &module_path(),
