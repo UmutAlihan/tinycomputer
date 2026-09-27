@@ -3744,3 +3744,25 @@ async fn a_detail_the_form_does_not_ask_for_is_skipped_not_typed_blindly() {
         "a slot with no field is never typed into the focus"
     );
 }
+
+#[tokio::test]
+async fn an_option_given_as_a_description_is_matched_by_jev() {
+    let run = run_with(
+        App::with(|sim| sim.checked_fare = Some("Saver fare ₹7,346 with 15 kg check-in")),
+        json!({"app": "Mail", "steps": [
+            {"choose": {"what": "the fare types", "option": "the lowest priced fare (e.g. the cheapest one)"}}
+        ]}),
+        |_| {},
+        |id, question, _| {
+            (id == "target" && purpose_of(question).contains("that fits"))
+                .then(|| pick(question, "Saver", 0.9))
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::AlreadyDone);
+    assert!(
+        run.app.sim().clicks.is_empty(),
+        "the checked fare is left as is"
+    );
+}
