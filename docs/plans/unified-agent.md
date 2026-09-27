@@ -34,11 +34,13 @@ contract commands and the per-file coverage gate green.
       interface contract in `tinydesktop-bus::agent`.
 - [x] `tinydesktop-browser`: sessions, conversion, error mapping, and held
       outputs over an `Engine` seam, tested with a scripted engine.
-- [ ] Upstream: `lib.rs`, `StateOptions` and `DaemonState::with_options` in
-      `vercel-labs/agent-browser`. The `tinyhumansai/agent-browser` fork is
-      pinned meanwhile.
-- [ ] `vendor/agent-browser` submodule; the linked `Engine` over
-      `execute_command`; `BrowserSurface`.
+- [x] Upstream: `lib.rs`, `StateOptions` and `DaemonState::with_options`
+      (vercel-labs/agent-browser#2008); the `tinyhumansai/agent-browser` fork
+      is pinned meanwhile.
+- [x] `vendor/agent-browser` submodule; the linked `AgentBrowser` engine over
+      `execute_command`; `BrowserSurface`; each task gets its own session.
+- [ ] Upstream: trim agent-browser's dependencies so `cargo deny` passes
+      (the `image` codecs and `rustls-pemfile`).
 - [ ] The `Browser` interface in the cdylib, plus tabs, cookies, storage
       state, upload, dialog, find, and wait members.
 - [ ] Browser tests in the Docker lab; a CI job on the Playwright image;
@@ -88,6 +90,10 @@ contract commands and the per-file coverage gate green.
 - [ ] Replan after a failed step; summarize the answer from records.
 
 ## Phase 7 — lab
+
+- [x] `browser_fixture` and `task_fixture` pass on real Chromium in the Docker
+      lab; the booking task stops at the payment checkpoint
+      (`docs/evals/2026-09-27-unified-fixture.md`).
 
 - [ ] Fixture travel site; scenarios `flight-fixture`, `flight-google`,
       `kashmir-booking` and `cross-surface`; results in `docs/evals/`.
