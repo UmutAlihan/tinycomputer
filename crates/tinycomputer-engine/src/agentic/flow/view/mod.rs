@@ -81,6 +81,57 @@ pub(in crate::agentic) fn is_destructive(
             && tinycomputer_core::screen_payment_evidence(screen).is_some())
 }
 
+/// Words a purpose is phrased with that say nothing about which element
+/// serves it.
+const PURPOSE_FILLER: &[&str] = &[
+    "the", "and", "for", "with", "into", "from", "that", "this", "click", "press", "expand",
+    "scroll", "perform", "accomplish", "step", "choose", "type", "use",
+];
+
+/// Reorders `pool` so the elements whose label shares a word stem with
+/// `purpose` come first, keeping the order within each group.
+///
+/// Jev leans toward the first options it is shown: measured on a payment
+/// page, "perform: paying for the booking" picked `button "Pay ₹6,840"` at
+/// 0.44 when it came first and 0.01 when it came fifth. Putting the
+/// elements the purpose names first spends that lean where it helps.
+pub(in crate::agentic) fn named_first(purpose: &str, pool: &mut [Candidate]) {
+    let wanted = stems(purpose)
+        .into_iter()
+        .filter(|word| !PURPOSE_FILLER.contains(&word.as_str()))
+        .collect::<Vec<_>>();
+    if wanted.is_empty() {
+        return;
+    }
+    pool.sort_by_key(|candidate| {
+        let named = stems(&label(candidate))
+            .iter()
+            .any(|word| wanted.iter().any(|want| same_stem(word, want)));
+        !named
+    });
+}
+
+/// The lower-cased words of `text` at least three characters long.
+fn stems(text: &str) -> Vec<String> {
+    text.split(|character: char| !character.is_alphanumeric())
+        .filter(|word| word.chars().count() >= 3)
+        .map(str::to_lowercase)
+        .collect()
+}
+
+/// Whether two words share a stem: the shorter is a prefix of the longer,
+/// or they share their first four characters ("pay" and "paying", "book"
+/// and "booking").
+fn same_stem(left: &str, right: &str) -> bool {
+    let (short, long) = if left.len() <= right.len() {
+        (left, right)
+    } else {
+        (right, left)
+    };
+    long.starts_with(short)
+        || (short.len() >= 4 && long.starts_with(&short[..short.floor_char_boundary(4)]))
+}
+
 /// Roles that hold or choose a value rather than submit anything.
 const FORM_ROLES: &[&str] = &[
     "textbox",
