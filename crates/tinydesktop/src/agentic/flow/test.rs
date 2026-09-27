@@ -946,6 +946,15 @@ async fn an_irreversible_control_is_refused_inside_an_ordinary_step() {
     .await;
     assert!(!run.app.sim().sent);
     assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        run.result.steps[0].actions.is_empty(),
+        "a refused destructive click must never be recorded as an action the step took"
+    );
+    assert_eq!(
+        run.result.steps[0].turns, 1,
+        "a refused destructive click must fail the step immediately, not after it has been \
+         mistaken for a no-op action and stalled out"
+    );
 }
 
 #[tokio::test]
