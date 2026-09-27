@@ -183,9 +183,8 @@ for something the envelope can express.
   wire form, removing a member, or renaming one (including the interface) is
   a major bump. Update the pinned tests and note the bump in
   `docs/specs/desktop-module-contract.md`.
-- **The Jev client is upstream.** `tinyinference_decisions` (package
-  `tinyinference-decisions`) lives in `vendor/tinyinference`; a client bug is
-  fixed there and arrives as a gitlink bump.
+- **The Jev client is upstream** (`tinyinference-decisions` in
+  `vendor/tinyinference`): fix a client bug there, then bump the gitlink.
 
 Add a crate by creating `crates/<name>/` — `members = ["crates/*"]` picks it up
 by existing. Inherit `version`, `edition`, `rust-version`, `license`, and
