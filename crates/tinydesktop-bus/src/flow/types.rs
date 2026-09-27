@@ -385,6 +385,7 @@ impl Default for RunFlowRequest {
         Self {
             flow: Flow::default(),
             vars: BTreeMap::new(),
+            facts: BTreeSet::new(),
             allow_destructive: false,
             include_values: false,
             max_actions: 60,
