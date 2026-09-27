@@ -50,9 +50,11 @@ const NETWORK_IDLE_MS: u64 = 2_000;
 /// the point (`elementsFromPoint`, topmost first), or, when the card's
 /// content sits over it — Google Flights puts each card's duration text
 /// above its "Select flight" link — as the one element on the page whose
-/// `aria-label` is that name. A short name such as "Select" appears in
-/// almost any card, so containment is never enough, and a label shared by
-/// two elements matches neither. The click goes through only when what is
+/// `aria-label` is that name and whose box holds the point (Google renders
+/// each flight twice, once in a hidden tab). Whitespace runs count as one
+/// space, as they do in an accessible name. A short name such as "Select"
+/// appears in almost any card, so containment is never enough, and a label
+/// two elements at the point share matches neither. The click goes through only when what is
 /// on top sits inside the target's own card (`li`, `listitem`, `row`,
 /// `article`) and inside no dialog; a banner or dialog in front still
 /// blocks it.
@@ -61,9 +63,16 @@ const SAME_CARD_JS: &str = r#"((x, y, name) => {
   const stack = document.elementsFromPoint(x, y);
   const top = stack[0];
   if (!top) return false;
-  const shown = (element) => (element.getAttribute('aria-label') || element.innerText || '').trim();
+  const squash = (text) => text.replace(/\s+/g, ' ').trim();
+  name = squash(name);
+  const shown = (element) => squash(element.getAttribute('aria-label') || element.innerText || '');
+  const under = (element) => {
+    const box = element.getBoundingClientRect();
+    return box.width > 0 && box.height > 0
+      && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+  };
   const labelled = [...document.querySelectorAll('[aria-label]')]
-    .filter((element) => element.getAttribute('aria-label').trim() === name);
+    .filter((element) => squash(element.getAttribute('aria-label')) === name && under(element));
   const target = stack.find((element) => shown(element) === name)
     || (labelled.length === 1 ? labelled[0] : null);
   if (!target || target === top) return false;
