@@ -122,7 +122,12 @@ fn press_booking(sim: &mut Sim, name: &str) {
         "Going to?" => booking.searching = true,
         "Departure" => booking.calendar = Some(8),
         "Next Month" => booking.calendar = booking.calendar.map(|month| (month + 1) % 12),
-        day if booking.calendar.is_some() && day.ends_with(" 2026") => {
+        // The calendar's own aggregated-label container also ends with
+        // " 2026" (it lists every day of the open month), so this requires
+        // the exact "<day> <month> 2026" shape a single day button carries:
+        // a bug that let production code ground and press that container
+        // instead of a day must not be able to pass this simulated test.
+        day if booking.calendar.is_some() && is_single_day_label(day) => {
             booking.calendar = None;
             sim.fields.insert("Departure".to_owned(), day.to_owned());
         }
