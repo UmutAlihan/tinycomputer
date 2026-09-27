@@ -10,7 +10,7 @@
 //! offered first as targets, distractions collapsed and offered last — and
 //! are kept, by region name, until the step ends. When the page changes, only
 //! regions not seen before are asked about, and only when they are more than
-//! [`NEW_SHARE`] of the page: opening a dropdown adds a region or two and is
+//! [`NEW_TENTHS`] tenths of the page: opening a dropdown adds a region or two and is
 //! not worth another survey.
 //!
 //! A screen small enough to show in full is never surveyed: there is nothing
@@ -25,7 +25,7 @@ use tinyinference_decisions::{Noul, Question, Score};
 use super::{
     AgentBackend, FlowRun, Halt, StepLog,
     ask::{self, Questions, level, probability},
-    view::{Digest, RegionKind, Screen, label},
+    view::{Digest, Region, RegionKind, Screen, label},
 };
 
 /// Actionable elements above which a screen is surveyed before it is acted
@@ -35,9 +35,9 @@ pub(super) const CROWDED: usize = 40;
 const SURVEY_REGIONS: usize = 24;
 /// Distraction probability at which a region is collapsed and ranked last.
 pub(super) const DISTRACTION: f64 = 0.7;
-/// Share of a page's regions that must be new to it before it is surveyed
-/// again in the same step.
-pub(super) const NEW_SHARE: f64 = 0.3;
+/// Share of a page's regions, in tenths, that must be new to it before it is
+/// surveyed again in the same step.
+pub(super) const NEW_TENTHS: usize = 3;
 /// Example labels a region is described by.
 const EXAMPLES: usize = 6;
 
@@ -99,31 +99,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         {
             return Ok(());
         }
-        let known = self
-            .attention
-            .clone()
-            .filter(|attention| attention.step == self.step)
-            .unwrap_or_else(|| Attention {
-                step: self.step.clone(),
-                ..Attention::default()
-            });
-        let unknown = digest
-            .regions
-            .iter()
-            .filter(|region| region.kind != RegionKind::Front && !known.knows(&region.name))
-            .collect::<Vec<_>>();
-        let page = digest
-            .regions
-            .iter()
-            .filter(|region| region.kind != RegionKind::Front)
-            .count();
-        #[allow(clippy::cast_precision_loss)]
-        let new_share = unknown.len() as f64 / page.max(1) as f64;
-        if unknown.is_empty()
-            || (known.relevance.len() + known.distractions.len() > 0 && new_share <= NEW_SHARE)
-        {
+        let Some((known, unknown)) = self.unsurveyed(digest) else {
             return Ok(());
-        }
+        };
         log.used(FlowLoop::Survey);
         let used_before = self.regions_used_before(screen, digest);
         let asked = unknown.into_iter().take(SURVEY_REGIONS).collect::<Vec<_>>();
@@ -202,6 +180,34 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         });
         self.attention = Some(attention);
         Ok(())
+    }
+
+    /// What the step already knows, and the regions of `digest` it does
+    /// not; `None` when there is nothing worth surveying: no new region, or
+    /// too few of them to change the ranking.
+    fn unsurveyed<'d>(&self, digest: &'d Digest) -> Option<(Attention, Vec<&'d Region>)> {
+        let known = self
+            .attention
+            .clone()
+            .filter(|attention| attention.step == self.step)
+            .unwrap_or_else(|| Attention {
+                step: self.step.clone(),
+                ..Attention::default()
+            });
+        let page = digest
+            .regions
+            .iter()
+            .filter(|region| region.kind != RegionKind::Front)
+            .collect::<Vec<_>>();
+        let unknown = page
+            .iter()
+            .copied()
+            .filter(|region| !known.knows(&region.name))
+            .collect::<Vec<_>>();
+        let surveyed = !known.relevance.is_empty() || !known.distractions.is_empty();
+        let worth =
+            !unknown.is_empty() && (!surveyed || unknown.len() * 10 > page.len() * NEW_TENTHS);
+        worth.then_some((known, unknown))
     }
 
     /// Ids of the regions holding an element grounding memory remembers for
