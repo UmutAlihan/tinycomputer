@@ -176,7 +176,9 @@ pub const SCENARIOS: &[Scenario] = &[
             "Thanks for your note. I have read it and will follow up properly by tomorrow.\n\nBest,\nAlex",
         ],
         check: Check::MailReplyDraft,
-        reset: &[],
+        reset: &[Reset::AppleScript(
+            r#"tell application "Mail" to delete every outgoing message"#,
+        )],
     },
     Scenario {
         name: "spotify",
