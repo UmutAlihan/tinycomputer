@@ -258,6 +258,27 @@ fn platform_combo_keeps_cmd_on_macos_and_maps_it_to_ctrl_elsewhere() {
 }
 
 #[test]
+fn a_failed_clipboard_restoration_is_folded_into_the_response_instead_of_ignored() {
+    let ok = DesktopResponse::ok("press", json!({}));
+    // A successful restoration leaves the response untouched.
+    assert_eq!(with_restoration(ok.clone(), true), ok);
+    // A failed restoration is reported, not silently dropped, without
+    // turning a delivered field's own success into a failure.
+    let annotated = with_restoration(ok, false);
+    assert!(annotated.ok, "the field operation itself still succeeded");
+    assert_eq!(
+        annotated.data,
+        Some(json!({"clipboard_restored": false}))
+    );
+    // A failed operation's own error is left alone: nothing to fold into.
+    let failed = DesktopResponse::err(
+        "press",
+        tinydesktop_bus::DesktopError::new("PERM_DENIED", "no automation permission"),
+    );
+    assert_eq!(with_restoration(failed.clone(), false), failed);
+}
+
+#[test]
 fn an_app_with_several_windows_counts_as_launched() {
     let ambiguous = DesktopResponse::err(
         "launch",
