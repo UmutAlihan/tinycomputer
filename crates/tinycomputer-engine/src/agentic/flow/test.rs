@@ -4095,9 +4095,12 @@ async fn an_obstacle_in_front_is_cleared_from_the_turns_own_request_and_remember
             .contains("Delete Draft"),
         "an irreversible control is never offered to dismiss with"
     );
-    assert_eq!(
-        asked(&run.requests, "dismiss"),
-        asked(&run.requests, "done"),
+    assert_eq!(asked(&run.requests, "dismiss"), 1);
+    assert!(
+        run.requests
+            .iter()
+            .filter(|request| request.questions.contains_key("dismiss"))
+            .all(|request| request.questions.contains_key("done")),
         "the obstacle is asked about in the turn's own request, never alone"
     );
     let hint = run
