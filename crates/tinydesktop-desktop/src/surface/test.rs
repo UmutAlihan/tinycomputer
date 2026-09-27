@@ -9,6 +9,7 @@ use tinydesktop_core::surface::{
     Candidate, Depth, Screen, Surface, deliver_text, describe, fingerprint,
 };
 
+use super::pointer::{RealPointer, bounds, glide_onto, glide_plan};
 use super::{
     Restore, execute_desktop, front_of, observe, parse_reply, platform_combo, restore_plan,
     running_is_launched, with_restoration,
@@ -356,4 +357,79 @@ fn the_front_window_is_the_focused_then_the_first_visible_titled_one() {
     assert_eq!(front_of(&windows[..2]).as_deref(), Some("w-2"));
     assert_eq!(front_of(&windows[..1]).as_deref(), Some("w-1"));
     assert!(front_of(&[]).is_none());
+}
+
+fn boxed(bounds: serde_json::Value) -> Candidate {
+    Candidate {
+        ref_id: "@s:e1".to_owned(),
+        role: "button".to_owned(),
+        bounds: Some(bounds),
+        ..Candidate::default()
+    }
+}
+
+#[test]
+fn a_candidates_bounds_are_read_when_complete_and_positive() {
+    let rect = bounds(&boxed(
+        json!({"x": 10.0, "y": 20.0, "width": 80.0, "height": 24.0}),
+    ))
+    .expect("complete bounds parse");
+    assert_eq!(
+        (rect.x, rect.y, rect.width, rect.height),
+        (10.0, 20.0, 80.0, 24.0)
+    );
+    for broken in [
+        json!({"x": 10.0, "y": 20.0}),
+        json!({"x": 10.0, "y": 20.0, "width": 0.0, "height": 24.0}),
+        json!({"x": 10.0, "y": 20.0, "width": -5.0, "height": 24.0}),
+        json!("somewhere"),
+    ] {
+        assert!(bounds(&boxed(broken)).is_none());
+    }
+    assert!(bounds(&Candidate::default()).is_none());
+}
+
+#[test]
+fn only_a_headed_moving_desktop_plans_a_glide_onto_a_boxed_target() {
+    use tinydesktop_input::MotionProfile;
+    let target = boxed(json!({"x": 400.0, "y": 300.0, "width": 120.0, "height": 32.0}));
+
+    let headed = crate::Desktop::new().with_headed(true);
+    let plan = glide_plan(&headed, &target).expect("a headed desktop glides");
+    let landed = *plan.moves().last().unwrap();
+    assert!((400.0..=520.0).contains(&landed.x) && (300.0..=332.0).contains(&landed.y));
+    assert!(
+        plan.moves().len() > 5,
+        "the pointer travels rather than jumps"
+    );
+
+    assert!(
+        glide_plan(&crate::Desktop::new(), &target).is_none(),
+        "headless never moves it"
+    );
+    let instant = crate::Desktop::new()
+        .with_headed(true)
+        .with_motion(MotionProfile::Instant);
+    assert!(glide_plan(&instant, &target).is_none());
+    assert!(glide_plan(&headed, &Candidate::default()).is_none());
+
+    // Headless, the glide is a no-op and the pointer is never touched.
+    glide_onto(&crate::Desktop::new(), &target);
+}
+
+#[test]
+fn the_real_pointer_only_glides() {
+    use tinydesktop_input::{Button, InputSink, Key};
+    let desktop = crate::Desktop::new();
+    let mut pointer = RealPointer(&desktop);
+    let refusals = [
+        pointer.press(Button::Left).unwrap_err(),
+        pointer.release(Button::Left).unwrap_err(),
+        pointer.key_down(Key::Enter).unwrap_err(),
+        pointer.key_up(Key::Enter).unwrap_err(),
+        pointer.text("hi").unwrap_err(),
+    ];
+    for refusal in refusals {
+        assert_eq!(refusal.error.unwrap().code, "ACTION_NOT_SUPPORTED");
+    }
 }
