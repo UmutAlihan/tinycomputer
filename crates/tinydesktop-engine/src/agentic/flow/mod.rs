@@ -541,5 +541,5 @@ fn describe_step(
         FlowAction::RepeatUntil(repeat) => ("repeat_until", repeat.condition.clone()),
         FlowAction::If(branch) => ("if", branch.condition.clone()),
     };
-    (kind, substitute(&text, vars))
+    (kind, substitute_safe(&text, vars, facts))
 }
