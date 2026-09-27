@@ -122,7 +122,8 @@ Release packages ship the helper beside the module on macOS and Windows.
   off. The browser only adds read-only `boundingbox` and `evaluate` calls.
 - A glide's last sample is its target, and sample times strictly increase.
   The aim point is always inside the element.
-- A missing or failed overlay never fails or slows an action.
+- The cursor never fails, delays, or changes an action: `show` returns at once,
+  and a missing, stuck, or failed overlay is dropped.
 - The helper never outlives the module: it exits on EOF, and its
   `ProcessOverlay` kills it on drop.
 
@@ -140,7 +141,7 @@ Release packages ship the helper beside the module on macOS and Windows.
   - the protocol's wire form;
   - `ScreenCursor` with recording, failing, and missing sinks.
 - **Surface tests:**
-  - desktop and browser glides land inside the target's screen box before
+  - desktop and browser glides are sent, aimed inside the target's screen box, before
     the action;
   - no input is sent;
   - nothing is drawn headless, `off`, without a box, or for non-pointer
