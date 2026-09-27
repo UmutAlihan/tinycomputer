@@ -280,6 +280,60 @@ fn every_operation_becomes_its_engine_command() {
     assert!(surface.execute(JevOperation::Scroll, None, None).ok);
 }
 
+/// A page whose result card lays a click layer over its own "Select"
+/// button; `same_card` is what the page says about the covering element.
+fn covered_fake(same_card: bool) -> Fake {
+    Fake::scripted(move |command| match command["action"].as_str().unwrap() {
+        "click" => Some(failure(
+            "Element '@e5' is covered by <div.layer> at its click point, so the input would land on that element instead.",
+        )),
+        "boundingbox" => Some(ok(&json!({"x": 10.0, "y": 20.0, "width": 100.0, "height": 40.0}))),
+        "evaluate" => Some(ok(&json!({"result": same_card}))),
+        _ => None,
+    })
+}
+
+#[test]
+fn a_click_covered_by_its_own_card_lands_on_the_card() {
+    let Harness { fake, surface, .. } = harness("covered-card", covered_fake(true));
+    let select = Candidate {
+        name: Some("Select flight".to_owned()),
+        ..node("e5", &["Click"])
+    };
+    let reply = surface.execute(JevOperation::Click, Some(select), None);
+    assert!(reply.ok, "{:?}", reply.error);
+    let script = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
+    assert!(script.ends_with(r#"(60, 40, "Select flight")"#), "{script}");
+    let mouse = fake
+        .actions()
+        .iter()
+        .filter(|action| *action == "mouse")
+        .count();
+    assert_eq!(mouse, 3, "move, press, release");
+    let released = fake.last("mouse");
+    assert_eq!(
+        (released["eventType"].as_str(), released["x"].as_f64(), released["y"].as_f64()),
+        (Some("mouseReleased"), Some(60.0), Some(40.0))
+    );
+}
+
+#[test]
+fn a_click_covered_by_anything_else_stays_refused() {
+    let Harness { fake, surface, .. } = harness("covered-banner", covered_fake(false));
+    let select = Candidate {
+        name: Some("Select flight".to_owned()),
+        ..node("e5", &["Click"])
+    };
+    let reply = surface.execute(JevOperation::Click, Some(select), None);
+    assert!(!reply.ok);
+    assert!(reply.error.unwrap().message.contains("is covered by"));
+    assert!(!fake.actions().iter().any(|action| action == "mouse"));
+
+    let Harness { fake, surface, .. } = harness("covered-unnamed", covered_fake(true));
+    assert!(!surface.execute(JevOperation::Click, Some(node("e5", &["Click"])), None).ok);
+    assert!(!fake.actions().iter().any(|action| action == "evaluate"));
+}
+
 #[test]
 fn values_are_read_from_the_field_then_its_text() {
     let Harness { surface, .. } = harness("read", page_fake());
