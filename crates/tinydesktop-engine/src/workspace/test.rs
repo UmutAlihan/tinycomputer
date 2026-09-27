@@ -225,7 +225,7 @@ fn visible_text_rereads_whatever_was_last_looked_at() {
 
     let calls = Arc::new(Mutex::new(Vec::new()));
     let mut browser = Recorder::new("browser", &calls);
-    let broken = Workspace::new(Recorder::new("desktop", &calls), Some(browser.clone()));
+    let broken = Workspace::new(Some(Recorder::new("desktop", &calls)), Some(browser.clone()));
     broken.navigate("https://flights.test");
     browser.failing = true;
     let broken = Workspace {
