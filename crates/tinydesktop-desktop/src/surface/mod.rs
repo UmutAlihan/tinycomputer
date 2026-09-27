@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use tinydesktop_bus::{
     ClipboardFormat, ClipboardGetRequest, ClipboardSetRequest, DesktopResponse, Direction,
     ElementProperty, GetRequest, JevOperation, LaunchRequest, ListWindowsRequest, PressRequest,
-    RefRequest, ScrollRequest, SetValueRequest, SnapshotRequest, WaitRequest,
+    RefRequest, ScrollRequest, SetValueRequest, SnapshotRequest, Surface as Overlay, WaitRequest,
 };
 use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface};
 
@@ -117,11 +117,11 @@ pub fn parse_reply(
         && let Some(role) = overlay_role(reply.data.as_ref().and_then(|data| data.get("tree")))
     {
         let overlay = match role {
-            "sheet" => Surface::Sheet,
-            "alert" => Surface::Alert,
-            "menu" => Surface::Menu,
-            "popover" => Surface::Popover,
-            _ => Surface::Window,
+            "sheet" => Overlay::Sheet,
+            "alert" => Overlay::Alert,
+            "menu" => Overlay::Menu,
+            "popover" => Overlay::Popover,
+            _ => Overlay::Window,
         };
         let scoped = desktop.snapshot(SnapshotRequest {
             app: Some(app.to_owned()),
