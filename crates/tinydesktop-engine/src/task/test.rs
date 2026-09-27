@@ -393,8 +393,8 @@ async fn an_approved_irreversible_action_is_performed_and_the_rest_runs() {
 
 #[tokio::test]
 async fn an_approval_nested_in_an_if_resumes_the_whole_branch_and_what_follows() {
-    // The gated `stop_before` is nested one level inside the `if` at
-    // top-level index 3 (path "4.1"), so approving it must not silently drop
+    // The gated `stop_before` is nested one level inside the `if`, the third
+    // top-level step (path "3.1"), so approving it must not silently drop
     // the rest of that branch, or "finish another email" after it.
     let flow_value = json!({"app": "Notes", "steps": [
         {"open": "Mail"},
