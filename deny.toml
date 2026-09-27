@@ -49,3 +49,7 @@ deny = []
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# The lab's optional LLM author (`tinydesktop-examples`, feature `inference`)
+# takes `vendor/tinyinference`, which pins the organisation's own `tinytools`
+# by exact git revision. Nothing the shipped module links comes from here.
+allow-git = ["https://github.com/tinyhumansai/tinytools"]
