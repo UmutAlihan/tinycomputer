@@ -1002,6 +1002,58 @@ async fn move_outcomes_cover_finished_stuck_wait_and_a_missing_shortcut() {
 }
 
 #[tokio::test]
+async fn a_control_the_flows_own_stop_before_names_is_refused_in_an_ordinary_step() {
+    // "Archive" is not on the generic denylist, but this flow already plans
+    // to stop in front of it later; an ordinary step must not press it first.
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": [
+            "tidy up the inbox",
+            {"stop_before": "archive the conversation"}
+        ]}),
+        |request| request.max_actions = 4,
+        |id, question, _| match id {
+            "move" => Some(pick(question, "activate", 0.9)),
+            "target" => Some(pick(question, "Archive", 0.95)),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        run.app.sim().clicks.is_empty(),
+        "a control the flow's own stop_before names must never be clicked early"
+    );
+}
+
+#[tokio::test]
+async fn an_unrecognized_move_is_skipped_rather_than_clicked() {
+    // A malformed or prompt-injected answer must never fall through to
+    // `activate`'s default Click branch; only `activate`, `expand`, and
+    // `scroll` may ground and act.
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["tidy up"]}),
+        |request| request.max_actions = 4,
+        |id, _, _| {
+            (id == "move").then(|| {
+                Answer::Choice(ChoiceAnswer {
+                    choice: "delete_everything".to_owned(),
+                    probabilities: BTreeMap::from([("delete_everything".to_owned(), 0.9)]),
+                    confidence: 0.9,
+                })
+            })
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        run.app.sim().clicks.is_empty(),
+        "an unrecognized move must never ground and click a control"
+    );
+}
+
+#[tokio::test]
 async fn return_is_refused_while_a_dialog_is_showing() {
     let run = run_with(
         App::with(|sim| sim.obstacle = true),
@@ -1084,6 +1136,24 @@ async fn disabled_loops_are_not_asked_and_the_move_falls_back_to_pressing() {
 }
 
 #[tokio::test]
+async fn a_read_target_beyond_the_source_cap_is_still_found_by_paging() {
+    // 72 candidates ("New Message", "Archive", and 70 message rows) exceed
+    // `ask::MAX_READ_SOURCES` (60); a target past that cutoff must still be
+    // reachable a page at a time rather than permanently dropped.
+    let run = run_with(
+        App::with(|sim| sim.extra_buttons = 70),
+        json!({"app": "Mail", "steps": [
+            {"read": {"what": "the row for message 65", "into": "row"}}
+        ]}),
+        |_| {},
+        |id, question, _| (id == "source").then(|| pick(question, "Message 65", 0.9)),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.result.vars["row"], "Message 65");
+}
+
+#[tokio::test]
 async fn control_steps_branch_repeat_read_and_wait() {
     let run = run_with(
         App::default(),
@@ -1145,6 +1215,31 @@ async fn a_repeat_that_never_holds_and_a_failing_verify_fail_the_flow() {
     )
     .await;
     assert_eq!(branch_then.result.stop, FlowStopReason::Completed);
+}
+
+#[tokio::test]
+async fn a_repeat_conditions_trace_is_attributed_to_the_repeat_step_not_its_last_child() {
+    // Round 0 runs its child ("start a new email message", path "1.r1.1"),
+    // which opens the compose window. Round 1's condition check must then be
+    // traced to "1", the repeat_until step itself, not left tagged with the
+    // path of the child that last ran.
+    let run = run(
+        App::default(),
+        json!({"app": "Mail", "steps": [
+            {"repeat_until": {"condition": "a compose window is open",
+                              "steps": ["start a new email message"], "max": 2}}
+        ]}),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(
+        run.result
+            .trace
+            .last()
+            .map(|exchange| exchange.step.as_str()),
+        Some("1"),
+        "the condition check that ended the loop belongs to the repeat_until step"
+    );
 }
 
 #[tokio::test]

@@ -7,7 +7,7 @@ use tinydesktop_bus::DesktopResponse;
 
 use super::{
     Candidate, Depth, Screen, change_note, describe, destructive_label, exact_named_match,
-    fingerprint, observe, parse_reply, target_payload,
+    fingerprint, is_destructive, named_in_stop_before, observe, parse_reply, target_payload,
 };
 
 fn clickable_screen() -> Screen {
@@ -104,6 +104,35 @@ fn a_rich_text_body_never_reaches_context_but_stays_in_text_nodes() {
             .and_then(serde_json::Value::as_str)
             == Some("Hi Sam, this is private.")),
         "the body text must still be reachable for gated field-content extraction"
+    );
+}
+
+#[test]
+fn a_token_fields_chip_labels_never_reach_context_but_stay_in_text_nodes() {
+    // A token field (a mail recipient list) turns each typed address into an
+    // attachment and exposes it as a ref-less static-text sibling right after
+    // the field itself, rather than nested inside a rich-text area. That
+    // sibling is field content too, so it must never surface in `context`
+    // unconditionally, even though it carries no `webarea`/`document`
+    // ancestor for `remembers_as_field_content` to recognize.
+    let screen = parsed(&json!({"role": "window", "children": [
+        {"ref_id": "@s:to", "role": "textfield", "name": "To", "available_actions": ["SetValue"]},
+        {"role": "statictext", "name": "sam@example.com"}
+    ]}));
+    assert!(
+        !screen
+            .context
+            .iter()
+            .any(|line| line.contains("sam@example.com")),
+        "a token field's chip label must not leak into unconditional context: {:?}",
+        screen.context
+    );
+    assert!(
+        screen
+            .text_nodes
+            .iter()
+            .any(|node| node.name.as_deref() == Some("sam@example.com")),
+        "the chip label must still be reachable for gated field-content extraction"
     );
 }
 
@@ -266,4 +295,47 @@ fn irreversible_labels_and_exact_names_are_recognised() {
         ..Candidate::default()
     });
     assert_eq!(described.name.as_deref(), Some("described"));
+}
+
+#[test]
+fn a_stop_before_phrase_names_a_control_the_denylist_does_not_cover() {
+    let phrases = vec!["discard the draft".to_owned()];
+    assert!(named_in_stop_before("Discard", &phrases));
+    assert!(named_in_stop_before("discard", &phrases));
+    assert!(!named_in_stop_before("Reply", &phrases));
+    // Too short to mean anything on its own; must never match by accident.
+    assert!(!named_in_stop_before("Go", &phrases));
+    assert!(!named_in_stop_before("Reply", &[]));
+}
+
+#[test]
+fn is_destructive_covers_the_denylist_stop_before_phrases_and_unnamed_sheet_buttons() {
+    let mut screen = clickable_screen();
+    let discard = Candidate {
+        name: Some("Discard".to_owned()),
+        ..Candidate::default()
+    };
+    // Neither on the denylist nor named by any stop_before phrase.
+    assert!(!is_destructive(&discard, &screen, &[]));
+    // The flow's own words name it, even though the denylist does not.
+    assert!(is_destructive(
+        &discard,
+        &screen,
+        &["discard the draft".to_owned()]
+    ));
+    // The denylist alone is still enough, with no stop_before phrases at all.
+    let send = Candidate {
+        name: Some("Send".to_owned()),
+        ..Candidate::default()
+    };
+    assert!(is_destructive(&send, &screen, &[]));
+    // An unnamed button is only gated inside a confirmation sheet.
+    let unnamed = Candidate::default();
+    assert!(!is_destructive(&unnamed, &screen, &[]));
+    screen.surface = "sheet".to_owned();
+    assert!(is_destructive(&unnamed, &screen, &[]));
+    assert!(
+        !is_destructive(&discard, &screen, &[]),
+        "a named, non-denylisted control in a sheet is still safe"
+    );
 }

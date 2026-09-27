@@ -200,7 +200,6 @@ pub(in crate::agentic) fn parse_reply(
     let tree = data.get("tree").cloned().unwrap_or(Value::Null);
     let mut root_node: Candidate = serde_json::from_value(tree).unwrap_or_default();
     let mut candidates = Vec::new();
-    let mut context = Vec::new();
     let mut unexplored = Vec::new();
     let mut text_nodes = Vec::new();
     let mut visited = 0_usize;
@@ -209,13 +208,13 @@ pub(in crate::agentic) fn parse_reply(
         &[],
         &mut Collected {
             candidates: &mut candidates,
-            context: &mut context,
             unexplored: &mut unexplored,
             text_nodes: &mut text_nodes,
         },
         0,
         &mut visited,
     );
+    let context = build_context(&candidates, &text_nodes);
     // Not truncated here: a flow narrows a large pool region by region
     // instead of cutting it.
     candidates.retain(offerable);
@@ -241,7 +240,6 @@ pub(in crate::agentic) fn parse_reply(
 
 struct Collected<'a> {
     candidates: &'a mut Vec<Candidate>,
-    context: &'a mut Vec<String>,
     unexplored: &'a mut Vec<String>,
     text_nodes: &'a mut Vec<Candidate>,
 }
@@ -271,9 +269,11 @@ fn collect(
         out.unexplored.push(node.ref_id.clone());
     }
     if node.ref_id.is_empty() {
-        if !remembers_as_field_content(node) {
-            remember_text(node, out.context);
-        }
+        // Whether this text belongs in `context` is decided once the whole
+        // tree — and every node's document order — is known, in
+        // `build_context` below; a token field's chip labels are ordinary
+        // siblings of the field, not descendants, so that decision cannot be
+        // made node-by-node during this traversal.
         out.text_nodes.push(node.clone());
     } else {
         out.candidates.push(node.clone());
@@ -301,6 +301,54 @@ fn remembers_as_field_content(node: &Candidate) -> bool {
         let ancestor = ancestor.to_ascii_lowercase();
         ancestor.starts_with("webarea") || ancestor.starts_with("document")
     })
+}
+
+/// Builds `Screen::context` from the ref-less nodes `collect` set aside,
+/// leaving out whatever is field content rather than screen chrome.
+///
+/// This runs once the whole tree — and every node's [`Candidate::order`] — is
+/// known, because a token field's chip labels are its ordinary siblings, not
+/// its descendants: recognizing them needs the field that precedes them in
+/// document order, which [`remembers_as_field_content`]'s ancestor-only check
+/// cannot see during the traversal that builds `text_nodes` node by node.
+fn build_context(candidates: &[Candidate], text_nodes: &[Candidate]) -> Vec<String> {
+    let mut ordered = candidates
+        .iter()
+        .chain(text_nodes.iter())
+        .collect::<Vec<_>>();
+    ordered.sort_by_key(|node| node.order);
+    let mut context = Vec::new();
+    for node in text_nodes {
+        if !remembers_as_field_content(node) && !follows_a_settable_field(&ordered, node) {
+            remember_text(node, &mut context);
+        }
+    }
+    context
+}
+
+/// Whether `node` sits in the ref-less static-text run right after a field
+/// that can hold typed text: the shape a token field's chip labels take,
+/// mirroring [`crate::agentic::flow::ask::detokenize`]'s own selection of the
+/// nodes it reads as a field's tokens.
+fn follows_a_settable_field(ordered: &[&Candidate], node: &Candidate) -> bool {
+    let Some(position) = ordered
+        .iter()
+        .position(|candidate| candidate.order == node.order)
+    else {
+        return false;
+    };
+    let is_static_text = |candidate: &Candidate| {
+        candidate.ref_id.is_empty() && candidate.role.eq_ignore_ascii_case("statictext")
+    };
+    let mut start = position;
+    while start > 0 && is_static_text(ordered[start - 1]) {
+        start -= 1;
+    }
+    start > 0
+        && ordered[start - 1]
+            .available_actions
+            .iter()
+            .any(|action| action == "SetValue" || action == "TypeText")
 }
 
 /// Keeps a ref-less node's visible text as context for Jev.
@@ -566,6 +614,44 @@ pub(in crate::agentic) fn destructive_label(evidence: &str) -> bool {
     ]
     .iter()
     .any(|term| evidence.contains(term))
+}
+
+/// Whether `label` is named by a `stop_before` phrase the flow itself
+/// declares elsewhere.
+///
+/// A flow that already plans to `stop_before: "sending the email"` has told
+/// us, in its own words, that whatever performs that action is irreversible —
+/// even when the generic English denylist above does not happen to cover the
+/// word it uses. A label under three characters is never checked: it is too
+/// short for containment to mean anything ("ok", "go") and would otherwise
+/// match almost any phrase.
+pub(in crate::agentic) fn named_in_stop_before(label: &str, stop_before: &[String]) -> bool {
+    let label = label.trim().to_ascii_lowercase();
+    label.chars().count() >= 3
+        && stop_before
+            .iter()
+            .any(|phrase| phrase.to_ascii_lowercase().contains(&label))
+}
+
+/// Whether pressing `candidate` on `screen` must be treated as irreversible:
+/// its own label names a hard-to-undo action, the flow's own `stop_before`
+/// steps already name it, or it is an unnamed control offered inside a
+/// confirmation sheet — the shape of "Delete"/"Cancel" dialogs whose default
+/// button carries no accessible name on some platforms, so the denylist can
+/// never see the word that would otherwise gate it.
+pub(in crate::agentic) fn is_destructive(
+    candidate: &Candidate,
+    screen: &Screen,
+    stop_before: &[String],
+) -> bool {
+    let name = candidate
+        .name
+        .as_deref()
+        .or(candidate.description.as_deref())
+        .unwrap_or_default();
+    destructive_label(&label(candidate).to_ascii_lowercase())
+        || named_in_stop_before(name, stop_before)
+        || (screen.surface == "sheet" && candidate.name.is_none())
 }
 
 /// The wire form of an element a flow acted on.

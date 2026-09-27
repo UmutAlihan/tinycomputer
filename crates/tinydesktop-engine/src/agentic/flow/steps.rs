@@ -12,7 +12,7 @@ use super::{
     ask::{self, Questions, chosen, condition, numbered},
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute},
-    view::{Candidate, destructive_label, label, target_payload},
+    view::{Candidate, is_destructive, label, target_payload},
 };
 
 /// Turns a `do` step may spend.
@@ -173,7 +173,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let screen = self.look().await?;
             let pool = clickable(&screen.candidates)
                 .into_iter()
-                .filter(|candidate| !destructive_label(&label(candidate).to_ascii_lowercase()))
+                .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
                 .collect::<Vec<_>>();
             if let Some(grounded) = self.ground(log, &screen, &purpose, &purpose, pool).await? {
                 log.confidence = Some(grounded.confidence);
@@ -207,11 +207,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let what = substitute(&read.what, &self.vars);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
-        let mut sources: Vec<(String, Value, String)> = screen
+        let ordered = ask::ordered_nodes(&screen);
+        let sources: Vec<(String, Value, String)> = screen
             .candidates
             .iter()
             .filter_map(|candidate| {
-                let text = readable(candidate)?;
+                // A rich-text area (a mail body, a web view) holds no value
+                // of its own; its text is read from the ref-less nodes
+                // `screen.text_nodes` kept for it, the same source
+                // `field_contents` reads from for the state Jev already sees.
+                let text = ask::rich_text(&ordered, candidate).or_else(|| readable(candidate))?;
                 Some((
                     label(candidate),
                     json!({"untrusted_accessibility_data": {
@@ -222,71 +227,72 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     text,
                 ))
             })
+            .chain(screen.context.iter().map(|line| {
+                (
+                    line.clone(),
+                    json!({"untrusted_accessibility_data": {"text": line}}),
+                    line.clone(),
+                )
+            }))
             .collect();
-        sources.extend(screen.context.iter().map(|line| {
-            (
-                line.clone(),
-                json!({"untrusted_accessibility_data": {"text": line}}),
-                line.clone(),
-            )
-        }));
         if sources.is_empty() {
             return Err(Halt::Failed(format!("nothing readable shows {what}")));
         }
-        sources.truncate(ask::MAX_READ_SOURCES);
-        let keys = numbered(sources.len());
-        log.used(FlowLoop::Narrowing);
-        let answers = self
-            .ask(
-                log,
-                ask::request(
-                    self.model(),
-                    self.state(&screen, &format!("read {what}")),
-                    Questions::default().with(
-                        "source",
-                        ask::options(
-                            json!({
-                                "task": "Choose the piece of text on screen that shows this.",
-                                "what": what,
-                            }),
-                            keys.iter().cloned().zip(
-                                sources
-                                    .iter()
-                                    .map(|(_, description, _)| description.clone()),
+        // A screen with more than a page of sources is read a page at a
+        // time, rather than truncated: a valid target past the cutoff must
+        // still be found, not permanently dropped because of where it sits.
+        for page in sources.chunks(ask::MAX_READ_SOURCES) {
+            let keys = numbered(page.len());
+            log.used(FlowLoop::Narrowing);
+            let answers = self
+                .ask(
+                    log,
+                    ask::request(
+                        self.model(),
+                        self.state(&screen, &format!("read {what}")),
+                        Questions::default().with(
+                            "source",
+                            ask::options(
+                                json!({
+                                    "task": "Choose the piece of text on screen that shows this.",
+                                    "what": what,
+                                }),
+                                keys.iter().cloned().zip(
+                                    page.iter().map(|(_, description, _)| description.clone()),
+                                ),
                             ),
                         ),
                     ),
+                )
+                .await?;
+            let Some((choice, confidence)) =
+                chosen(&answers, "source").filter(|(_, confidence)| *confidence >= LOCATE_FLOOR)
+            else {
+                continue;
+            };
+            let Some((source, _, text)) = keys
+                .iter()
+                .position(|key| *key == choice)
+                .and_then(|index| page.get(index))
+            else {
+                continue;
+            };
+            log.confidence = Some(confidence);
+            self.vars.insert(read.into.clone(), text.clone());
+            self.history
+                .push(format!("read {what} from {source} into {}", read.into));
+            return Ok(Ended::new(
+                StepOutcome::Done,
+                format!(
+                    "read {} characters into {}",
+                    text.chars().count(),
+                    read.into
                 ),
-            )
-            .await?;
-        let Some((choice, confidence)) =
-            chosen(&answers, "source").filter(|(_, confidence)| *confidence >= LOCATE_FLOOR)
-        else {
-            return Err(Halt::Failed(format!(
-                "no text on screen clearly shows {what}"
-            )));
-        };
-        let Some((source, _, text)) = keys
-            .iter()
-            .position(|key| *key == choice)
-            .and_then(|index| sources.get(index))
-        else {
-            return Err(Halt::Failed(format!(
-                "no text on screen clearly shows {what}"
-            )));
-        };
-        log.confidence = Some(confidence);
-        self.vars.insert(read.into.clone(), text.clone());
-        self.history
-            .push(format!("read {what} from {source} into {}", read.into));
-        Ok(Ended::new(
-            StepOutcome::Done,
-            format!(
-                "read {} characters into {}",
-                text.chars().count(),
-                read.into
-            ),
-        ))
+            ));
+        }
+        Err(Halt::Failed(format!(
+            "no text on screen clearly shows {what}"
+        )))
     }
 
     async fn stop_before(&mut self, log: &mut StepLog, action: &str) -> Result<Ended, Halt> {
@@ -355,6 +361,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
             self.run_steps(&repeat.steps, format!("{path}.r{}", round + 1))
                 .await?;
+            // The last child left `self.step` at its own nested path; restore
+            // it before the next `holds` check so that call, and the final
+            // one below on the last round, are traced to this repeat_until
+            // step rather than misattributed to the child that just ran.
+            path.clone_into(&mut self.step);
         }
         if self.holds(log, &condition_text).await? >= DONE {
             return Ok(Ended::new(StepOutcome::Done, "held after the last round"));

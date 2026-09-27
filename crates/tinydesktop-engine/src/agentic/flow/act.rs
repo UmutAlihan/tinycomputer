@@ -19,7 +19,7 @@ use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
     memory::{learn, remember},
-    view::{Candidate, Screen, change_note, destructive_label, fingerprint, label, signature},
+    view::{Candidate, Screen, change_note, fingerprint, is_destructive, label, signature},
 };
 
 /// Completion probability that ends a step after acting.
@@ -341,11 +341,20 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .push(format!("pressed {combo} ({name}), ok={}", reply.ok));
                 Ok(Move::Acted(None))
             }
-            operation => Ok(Move::Acted(
+            operation @ ("activate" | "expand" | "scroll") => Ok(Move::Acted(
                 self.activate(log, screen, intent, operation, banned)
                     .await?
                     .map(Box::new),
             )),
+            other => {
+                // A malformed or prompt-injected answer must fail closed
+                // rather than default to a click: only the moves above are
+                // ever offered to Jev.
+                self.history.push(format!(
+                    "ignored an unrecognized move {other:?}; only activate, shortcut, expand, scroll, wait, finished, and stuck are valid"
+                ));
+                Ok(Move::Skipped)
+            }
         }
     }
 
@@ -385,7 +394,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let target = grounded.candidate;
         log.confidence = Some(grounded.confidence);
         if jev_operation == JevOperation::Click
-            && destructive_label(&label(&target).to_ascii_lowercase())
+            && is_destructive(&target, screen, &self.stop_before)
         {
             // Never call the backend, and never report this target through
             // `Move::Acted`: nothing happened, so it must not be banned as a
@@ -425,7 +434,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .available_actions
                     .iter()
                     .any(|action| action == "Click")
-                    && !destructive_label(&label(candidate).to_ascii_lowercase())
+                    && !is_destructive(candidate, screen, &self.stop_before)
             })
             .take(ask::CAP)
             .cloned()
