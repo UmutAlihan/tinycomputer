@@ -162,17 +162,19 @@ async fn run_once(
     options: &Options,
 ) -> Result<RunRecord, LabError> {
     let dir = run_dir(Path::new(RUNS), scenario.name, mode)?;
+    let run = run_id();
+    scenario.prepare(host).await?;
     let started = Instant::now();
     let mut llm_calls = 0;
     let (last, stop, actions, jev_calls) = match mode {
         "goal" => {
             let request = RunGoalRequest {
                 app: scenario.app.to_owned(),
-                goal: scenario.goal.to_owned(),
+                goal: scenario.goal.replace("{run}", &run),
                 text: scenario
                     .texts
                     .iter()
-                    .map(|text| (*text).to_owned())
+                    .map(|text| text.replace("{run}", &run))
                     .collect(),
                 include_values: true,
                 ..RunGoalRequest::default()
@@ -191,13 +193,13 @@ async fn run_once(
                 result.metrics.calls,
             )
         }
-        "authored" => authored(host, scenario, options, &dir, &mut llm_calls).await?,
+        "authored" => authored(host, scenario, options, &dir, &run, &mut llm_calls).await?,
         _ => {
             let flow = match &options.flow_file {
                 Some(path) => serde_json::from_str(&std::fs::read_to_string(path)?)?,
                 None => scenario.flow_json()?,
             };
-            let result = run_flow(host, flow, options, &dir, "").await?;
+            let result = run_flow(host, flow, options, &dir, "", &run).await?;
             let summary = (result.stop, result.actions, result.metrics.calls);
             (
                 Some(result),
@@ -207,7 +209,7 @@ async fn run_once(
             )
         }
     };
-    let verdict = scenario.verdict(host, last.as_ref()).await?;
+    let verdict = scenario.verdict(host, last.as_ref(), &run).await?;
     let record = RunRecord {
         scenario: scenario.name.to_owned(),
         mode: mode.to_owned(),
@@ -236,6 +238,7 @@ async fn run_flow(
     options: &Options,
     dir: &Path,
     suffix: &str,
+    run: &str,
 ) -> Result<FlowRunResult, LabError> {
     let mut request = RunFlowRequest {
         flow: serde_json::from_value(flow)?,
@@ -244,6 +247,7 @@ async fn run_flow(
         trace: true,
         ..RunFlowRequest::default()
     };
+    request.vars.insert("run".to_owned(), run.to_owned());
     if options.memory {
         request.memory = load_memory(Path::new(MEMORY));
     }
@@ -289,12 +293,15 @@ async fn authored(
     scenario: &Scenario,
     options: &Options,
     dir: &Path,
+    run: &str,
     llm_calls: &mut u32,
 ) -> Result<(Option<FlowRunResult>, String, u32, u32), LabError> {
     use tinydesktop_examples::lab::author::{Author, Authored};
 
     let mut author = Author::from_env(FLOW_GUIDE)?;
-    let mut answer = author.begin(host, scenario.brief).await?;
+    let mut answer = author
+        .begin(host, &scenario.brief.replace("{run}", run))
+        .await?;
     let (mut last, mut actions, mut jev_calls) = (None, 0, 0);
     for round in 1..=3 {
         let Authored::Flow(flow) = answer else {
@@ -305,7 +312,7 @@ async fn authored(
             serde_json::to_string_pretty(&flow)?
         );
         write_json(dir, &format!("authored-{round}.json"), &flow)?;
-        let result = run_flow(host, flow, options, dir, &format!("-{round}")).await?;
+        let result = run_flow(host, flow, options, dir, &format!("-{round}"), run).await?;
         actions += result.actions;
         jev_calls += result.metrics.calls;
         let summary = format!(
@@ -331,6 +338,7 @@ async fn authored(
     _scenario: &Scenario,
     _options: &Options,
     _dir: &Path,
+    _run: &str,
     _llm_calls: &mut u32,
 ) -> Result<(Option<FlowRunResult>, String, u32, u32), LabError> {
     Err(io::Error::other("authored mode needs the `inference` feature").into())
@@ -374,6 +382,15 @@ fn parse(args: &[String]) -> Result<Options, LabError> {
         }
     }
     Ok(options)
+}
+
+/// A short id that makes this run's artifacts on screen distinguishable.
+fn run_id() -> String {
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_millis())
+        .unwrap_or_default();
+    format!("{:06}", millis % 1_000_000)
 }
 
 fn unknown(name: &str) -> LabError {
