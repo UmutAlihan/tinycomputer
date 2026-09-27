@@ -192,6 +192,56 @@ fn text_that_never_arrives_is_reported_as_not_delivered() {
 }
 
 #[test]
+fn restore_plan_writes_back_whatever_flavor_the_pasteboard_held() {
+    let text = DesktopResponse::ok("clipboard-get", json!({"type": "text", "text": "hello"}));
+    assert_eq!(
+        restore_plan(&text),
+        Some(Restore::Set(tinydesktop_bus::ClipboardSetRequest::text(
+            "hello"
+        )))
+    );
+
+    let file_urls = DesktopResponse::ok(
+        "clipboard-get",
+        json!({"type": "file_urls", "file_urls": ["file:///tmp/a.txt"]}),
+    );
+    assert_eq!(
+        restore_plan(&file_urls),
+        Some(Restore::Set(tinydesktop_bus::ClipboardSetRequest {
+            file_urls: vec!["file:///tmp/a.txt".to_owned()],
+            ..tinydesktop_bus::ClipboardSetRequest::default()
+        }))
+    );
+
+    let image = DesktopResponse::ok(
+        "clipboard-get",
+        json!({"type": "image", "path": "/tmp/clip.png"}),
+    );
+    assert_eq!(
+        restore_plan(&image),
+        Some(Restore::Set(tinydesktop_bus::ClipboardSetRequest {
+            image: Some("/tmp/clip.png".to_owned()),
+            ..tinydesktop_bus::ClipboardSetRequest::default()
+        }))
+    );
+}
+
+#[test]
+fn restore_plan_clears_an_originally_empty_pasteboard() {
+    let empty = DesktopResponse::ok("clipboard-get", json!({"type": "text", "found": false}));
+    assert_eq!(restore_plan(&empty), Some(Restore::Clear));
+}
+
+#[test]
+fn restore_plan_leaves_the_pasteboard_alone_when_the_read_failed() {
+    let failed = DesktopResponse::err(
+        "clipboard-get",
+        tinydesktop_bus::DesktopError::new("PERM_DENIED", "no automation permission"),
+    );
+    assert_eq!(restore_plan(&failed), None);
+}
+
+#[test]
 fn an_app_with_several_windows_counts_as_launched() {
     let ambiguous = DesktopResponse::err(
         "launch",
