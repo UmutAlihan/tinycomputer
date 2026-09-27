@@ -135,6 +135,16 @@ fn press_booking(sim: &mut Sim, name: &str) {
     }
 }
 
+/// Whether `name` is exactly a single day button's label: `"<day> <month>
+/// 2026"`, nothing more. The calendar's own container control names every
+/// visible day, so a plain `ends_with(" 2026")` check would also treat
+/// pressing that container as picking a day.
+fn is_single_day_label(name: &str) -> bool {
+    let mut words = name.split(' ');
+    let day_is_a_number = words.next().is_some_and(|day| day.parse::<u8>().is_ok());
+    day_is_a_number && words.next().is_some() && words.next() == Some("2026") && words.next().is_none()
+}
+
 /// The booking form's controls, as they stand.
 fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec<Candidate>) {
     let widget = [root, "group \"Booking\""];
