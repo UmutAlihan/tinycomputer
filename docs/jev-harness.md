@@ -133,7 +133,7 @@ breakdown.
 ## Configuration
 
 `JevRuntime::configure` builds the client from the module's private `jev`
-configuration: the provider (`typesafe`, `openrouter`, or
+configuration: the provider (`type_safe`, `open_router`, or
 `tinyhumans_openrouter`), the key, an optional endpoint (only the approved
 URL for that provider is accepted), `timeout_ms`, `max_retries`, and the
 model, `jev-latest` by default. The runtime is cheap to clone: the client,
