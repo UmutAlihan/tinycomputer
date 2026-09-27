@@ -29,9 +29,10 @@ use tinyinference_decisions::{
 use super::{
     super::{Evaluator, JevRuntime},
     ask,
-    steps::{already_chosen, lists_more_than},
     backend::AgentBackend,
-    enter, fit, flow_guide, ground, memory, run_flow_with, validate, validate_flow,
+    enter, fit, flow_guide, ground, memory, run_flow_with,
+    steps::{already_chosen, lists_more_than},
+    validate, validate_flow,
     view::{Candidate, Depth, Screen},
     vote,
 };
@@ -3547,4 +3548,74 @@ async fn a_long_goal_is_clipped_in_the_brief() {
         .to_owned();
     assert_eq!(goal.chars().count(), 601);
     assert!(goal.ends_with('…'));
+}
+
+fn fare(name: &str, checked: bool) -> Candidate {
+    let mut candidate = node(
+        name,
+        "radio",
+        &["Click"],
+        &["window", "group \"Fare Types\""],
+        300.0,
+    );
+    if checked {
+        candidate.states = vec!["checked".to_owned()];
+    }
+    candidate
+}
+
+#[test]
+fn a_fare_card_is_one_option_and_a_checked_one_is_already_chosen() {
+    let saver = "Saver fare ₹7,346 + Earn 696 IndiGo BluChips 7 kg Cabin bag allowance 15 kg \
+                 Check-in bag allowance Zero change and cancellation charges within 48 hours of \
+                 booking Avail Flexi plus fare benefits For just ₹525 Upgrade";
+    let flexi = "Flexi plus fare ₹7,871 + Earn 756 IndiGo BluChips 7 kg Cabin bag allowance";
+    assert!(!lists_more_than(&fare(saver, false), "Saver"));
+    let list = node(saver, "button", &["Click"], &["window"], 1.0);
+    assert!(
+        lists_more_than(&list, "Saver"),
+        "a button this wordy is a list"
+    );
+
+    let mut screen = Screen {
+        app: "browser".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: vec![fare(saver, true), fare(flexi, false)],
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    assert_eq!(
+        already_chosen(&screen, "Saver").and_then(|chosen| chosen.name),
+        Some(saver.to_owned())
+    );
+    assert!(
+        already_chosen(&screen, "Flexi plus").is_none(),
+        "the checked card only mentions Flexi plus further in"
+    );
+    assert!(already_chosen(&screen, "").is_none());
+    screen.candidates[0].states.clear();
+    assert!(already_chosen(&screen, "Saver").is_none());
+}
+
+#[tokio::test]
+async fn a_reveal_that_fails_leaves_the_other_ways_to_try() {
+    let run = run_with(
+        App::quirky(Quirk::Frozen),
+        json!({"app": "Mail", "steps": [{"choose": {"what": "the message list", "option": "Message 7"}}]}),
+        |_| {},
+        |id, question, _| match id {
+            "target" => Some(pick(question, "none", 0.9)),
+            "move" => Some(pick(question, "activate", 0.9)),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        run.result.steps[0].note.contains("was not found"),
+        "every way was tried before giving up: {}",
+        run.result.steps[0].note
+    );
 }

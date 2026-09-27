@@ -329,9 +329,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         )
                         .await;
                     match revealed {
-                        Err(Halt::Failed(note)) => self
-                            .history
-                            .push(format!("could not open {what} ({note}); trying another way")),
+                        Err(Halt::Failed(note)) => self.history.push(format!(
+                            "could not open {what} ({note}); trying another way"
+                        )),
                         other => {
                             other?;
                         }
