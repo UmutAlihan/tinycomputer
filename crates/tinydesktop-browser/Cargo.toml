@@ -25,6 +25,11 @@ getrandom = { workspace = true }
 # Held outputs are handed out as base64 chunks and fingerprinted by SHA-256.
 base64 = { workspace = true }
 sha2 = { workspace = true }
+# Per-session locks held across engine calls.
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true }
 
 [lints]
 workspace = true
