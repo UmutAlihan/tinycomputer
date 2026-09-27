@@ -20,7 +20,10 @@ use std::{
     time::Instant,
 };
 
-use tinydesktop_bus::{FLOW_GUIDE, FlowLoop, FlowRunResult, RunFlowRequest, RunGoalRequest};
+use tinydesktop_bus::{
+    FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, RunFlowRequest,
+    RunGoalRequest,
+};
 use tinydesktop_examples::lab::{
     host::{Host, HostOptions, LabError, module_path},
     record::{
