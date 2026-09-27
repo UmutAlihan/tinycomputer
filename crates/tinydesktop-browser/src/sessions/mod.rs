@@ -301,7 +301,11 @@ impl Browser {
     /// [`Error::NoSuchSession`], [`Error::InvalidInput`] when `command` names
     /// no `action`, and whatever the engine reports.
     pub async fn command(&self, id: &SessionId, command: Value) -> Result<Value> {
-        if command.get("action").and_then(Value::as_str).is_none_or(str::is_empty) {
+        if command
+            .get("action")
+            .and_then(Value::as_str)
+            .is_none_or(str::is_empty)
+        {
             return Err(Error::invalid_input("a command needs an action"));
         }
         let session = self.session(id)?;

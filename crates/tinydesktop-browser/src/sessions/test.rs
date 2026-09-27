@@ -16,8 +16,8 @@ use tinydesktop_bus::browser::{
 };
 
 use super::{Browser, MAX_SESSIONS};
-use crate::fake::{Fake, failure, ok};
 use crate::error::Error;
+use crate::fake::{Fake, failure, ok};
 
 fn scratch(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(

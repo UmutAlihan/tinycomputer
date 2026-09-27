@@ -30,7 +30,9 @@ impl Fake {
         Self::scripted(|_| None)
     }
 
-    pub(crate) fn scripted(script: impl Fn(&Value) -> Option<Value> + Send + Sync + 'static) -> Self {
+    pub(crate) fn scripted(
+        script: impl Fn(&Value) -> Option<Value> + Send + Sync + 'static,
+    ) -> Self {
         Self {
             sent: Arc::new(Mutex::new(Vec::new())),
             script: Arc::new(script),

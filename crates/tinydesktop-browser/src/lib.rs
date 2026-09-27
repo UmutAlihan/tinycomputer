@@ -15,6 +15,8 @@
 //! - [`Engine`] and [`Launcher`] — the seam to agent-browser: one JSON command
 //!   in, one reply out, one engine per session. Tests script it; the linked
 //!   engine implements it over agent-browser's dispatcher.
+//! - [`BrowserSurface`] — one session as a `tinydesktop_core` surface, so the
+//!   engine's decision loops drive a web page as they drive a desktop app.
 //! - [`Error`] — what can go wrong, as a taxonomy of what a caller should do
 //!   next, each variant mapped to one published wire name.
 //!
@@ -24,12 +26,16 @@
 mod convert;
 mod engine;
 mod error;
+#[cfg(test)]
+mod fake;
 mod outputs;
 mod reply;
 mod sessions;
+mod surface;
 
 pub use engine::{Engine, Launcher, Reply};
 pub use error::{Error, Result};
 pub use outputs::SWEEP_INTERVAL;
 pub use sessions::{Browser, MAX_SESSIONS};
+pub use surface::BrowserSurface;
 pub use tinydesktop_bus::browser::*;

@@ -25,8 +25,12 @@ getrandom = { workspace = true }
 # Held outputs are handed out as base64 chunks and fingerprinted by SHA-256.
 base64 = { workspace = true }
 sha2 = { workspace = true }
-# Per-session locks held across engine calls.
-tokio = { workspace = true, features = ["sync"] }
+# The surface trait and screen model `BrowserSurface` implements, and the
+# platform keymap.
+tinydesktop-core = { workspace = true }
+# Per-session locks held across engine calls; `rt` for the runtime handle a
+# blocking surface call runs the async browser on.
+tokio = { workspace = true, features = ["sync", "rt"] }
 
 [dev-dependencies]
 tokio = { workspace = true }

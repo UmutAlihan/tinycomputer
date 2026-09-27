@@ -20,7 +20,13 @@ const FIELD_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "textarea", "
 const TYPED_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "spinbutton", "textarea"];
 
 /// Roles that are toggled.
-const TOGGLED_ROLES: &[&str] = &["checkbox", "radio", "switch", "menuitemcheckbox", "menuitemradio"];
+const TOGGLED_ROLES: &[&str] = &[
+    "checkbox",
+    "radio",
+    "switch",
+    "menuitemcheckbox",
+    "menuitemradio",
+];
 
 /// One parsed snapshot line.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -45,9 +51,10 @@ impl Line {
     }
 
     fn label(&self) -> String {
-        self.name
-            .as_deref()
-            .map_or_else(|| self.role.clone(), |name| format!("{} {name:?}", self.role))
+        self.name.as_deref().map_or_else(
+            || self.role.clone(),
+            |name| format!("{} {name:?}", self.role),
+        )
     }
 }
 

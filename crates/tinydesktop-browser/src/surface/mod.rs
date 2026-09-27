@@ -140,7 +140,9 @@ impl Surface for BrowserSurface {
                         DesktopError::new("INVALID_TARGET", "the operation needs a target"),
                     )
                 },
-                |reference| self.perform(command, action(Target::reference(reference), text.clone())),
+                |reference| {
+                    self.perform(command, action(Target::reference(reference), text.clone()))
+                },
             )
         };
         match operation {
@@ -219,7 +221,11 @@ impl Surface for BrowserSurface {
         if !focused.ok {
             return focused;
         }
-        if target.available_actions.iter().any(|action| action == "SetValue") {
+        if target
+            .available_actions
+            .iter()
+            .any(|action| action == "SetValue")
+        {
             let selected = self.press(app, "cmd+a");
             if !selected.ok {
                 return selected;
@@ -259,9 +265,9 @@ impl Surface for BrowserSurface {
     }
 
     fn navigate(&self, url: &str) -> DesktopResponse {
-        let page = self.ensure_session().and_then(|id| {
-            self.block(self.browser.navigate(&id, NavigateRequest::new(url)))
-        });
+        let page = self
+            .ensure_session()
+            .and_then(|id| self.block(self.browser.navigate(&id, NavigateRequest::new(url))));
         reply(
             "navigate",
             page.map(|page| json!({"url": page.url, "title": page.title})),
@@ -331,7 +337,11 @@ fn reply(command: &str, result: Result<Value>) -> DesktopResponse {
 /// A browser error as an envelope failure whose code is the error's wire
 /// name in `SCREAMING_SNAKE_CASE`, such as `STALE_REF`.
 fn failure(command: &str, error: &Error) -> DesktopResponse {
-    let name = error.wire_name().rsplit('.').next().unwrap_or("ModuleFailed");
+    let name = error
+        .wire_name()
+        .rsplit('.')
+        .next()
+        .unwrap_or("ModuleFailed");
     let mut code = String::with_capacity(name.len() + 4);
     for (index, character) in name.chars().enumerate() {
         if character.is_ascii_uppercase() && index > 0 {
