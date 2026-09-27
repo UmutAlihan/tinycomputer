@@ -91,6 +91,39 @@ struct LastAction {
     progress: Option<f64>,
 }
 
+/// Bookkeeping across the turns of one `do` step.
+#[derive(Debug, Default)]
+struct DoState {
+    last: Option<LastAction>,
+    banned: BTreeSet<String>,
+    unchanged: u32,
+    obstacles: u32,
+    undos: u32,
+}
+
+/// What a move did.
+#[derive(Debug)]
+enum Move {
+    /// The step is over.
+    Ended(Ended),
+    /// An action ran, on this element if it had one.
+    Acted(Option<Candidate>),
+    /// Nothing ran this turn.
+    Skipped,
+}
+
+/// Ends the step when the completion judge is confident enough.
+fn finished(log: &mut StepLog, judged: &Judgement, turn: u32) -> Option<Ended> {
+    let done = judged.done?;
+    log.confidence = Some(done);
+    let (threshold, outcome) = if turn == 0 {
+        (ALREADY_DONE, StepOutcome::AlreadyDone)
+    } else {
+        (DONE, StepOutcome::Done)
+    };
+    (done >= threshold).then(|| Ended::new(outcome, format!("accomplished (confidence {done:.2})")))
+}
+
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Runs the `do` loop for `intent` for at most `max_turns` turns.
     pub(super) async fn accomplish(
@@ -99,134 +132,34 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         intent: &str,
         max_turns: u32,
     ) -> Result<Ended, Halt> {
-        let mut banned: BTreeSet<String> = BTreeSet::new();
-        let mut last: Option<LastAction> = None;
-        let mut unchanged = 0_u32;
-        let mut obstacles = 0_u32;
-        let mut undos = 0_u32;
+        let mut state = DoState::default();
         for turn in 0..max_turns {
             log.turns = log.turns.saturating_add(1);
             let screen = self.look().await?;
-            if let Some(previous) = &last {
-                let note = change_note(
-                    &previous.before,
-                    &screen,
-                    fingerprint(&previous.before) != fingerprint(&screen),
-                );
-                if note == "nothing on screen changed" {
-                    unchanged = unchanged.saturating_add(1);
-                    if let Some(target) = &previous.target {
-                        banned.insert(signature(target));
-                    }
-                } else {
-                    unchanged = 0;
-                }
-                self.history.push(format!("after the last action: {note}"));
-                if unchanged >= STALL_TURNS {
-                    return Err(Halt::Failed(
-                        "the last three actions changed nothing on screen".to_owned(),
-                    ));
-                }
-            }
+            self.note_change(&mut state, &screen)?;
             let judged = self.judge(log, &screen, intent).await?;
-            if let Some(done) = judged.done {
-                log.confidence = Some(done);
-                let threshold = if turn == 0 { ALREADY_DONE } else { DONE };
-                if done >= threshold {
-                    return Ok(Ended::new(
-                        if turn == 0 {
-                            StepOutcome::AlreadyDone
-                        } else {
-                            StepOutcome::Done
-                        },
-                        format!("accomplished (confidence {done:.2})"),
-                    ));
-                }
+            if let Some(ended) = finished(log, &judged, turn) {
+                return Ok(ended);
             }
-            if judged.blocked.unwrap_or_default() >= BLOCKED && obstacles < MAX_OBSTACLES {
-                obstacles += 1;
-                log.used(FlowLoop::Obstacles);
-                self.clear_obstacle(log, &screen, intent).await?;
-                last = None;
-                continue;
-            }
-            if let (Some(previous), Some(now)) = (&last, judged.progress)
-                && self.enabled(FlowLoop::Undo)
-                && undos < MAX_UNDOS
-                && previous
-                    .progress
-                    .is_some_and(|before| before - now >= REGRESSION)
+            if self
+                .recover(log, &mut state, &screen, intent, &judged)
+                .await?
             {
-                undos += 1;
-                log.used(FlowLoop::Undo);
-                if let Some(target) = &previous.target {
-                    banned.insert(signature(target));
-                }
-                let app = self.app.clone();
-                self.act(log, "press escape (undo)", None, move |backend| {
-                    backend.press(&app, "escape")
-                })
-                .await?;
-                self.history.push(format!(
-                    "that made things worse (progress {:.2} -> {now:.2}); undid it and will try something else",
-                    previous.progress.unwrap_or_default()
-                ));
-                last = None;
                 continue;
             }
-            let before = LastAction {
-                target: None,
-                before: screen.clone(),
-                progress: judged.progress,
-            };
-            match judged.next.as_str() {
-                "finished" => {
-                    return Ok(Ended::new(
-                        if turn == 0 {
-                            StepOutcome::AlreadyDone
-                        } else {
-                            StepOutcome::Done
-                        },
-                        "Jev chose finished",
-                    ));
-                }
-                "stuck" => {
-                    return Err(Halt::Failed(
-                        "no visible control or standard shortcut moves toward the step".to_owned(),
-                    ));
-                }
-                "wait" => {
-                    self.act(log, "wait", None, |backend| {
-                        backend.execute(JevOperation::Wait, None, None)
-                    })
-                    .await?;
-                    last = Some(before);
-                }
-                "shortcut" => {
-                    let Some((combo, name)) = judged.shortcut else {
-                        self.history
-                            .push("no standard shortcut fits; press a visible control".to_owned());
-                        continue;
-                    };
-                    let app = self.app.clone();
-                    let reply = self
-                        .act(log, &format!("press {combo}"), None, move |backend| {
-                            backend.press(&app, combo)
-                        })
-                        .await?;
-                    self.history
-                        .push(format!("pressed {combo} ({name}), ok={}", reply.ok));
-                    last = Some(before);
-                }
-                operation => {
-                    let target = self
-                        .activate(log, &screen, intent, operation, &banned)
-                        .await?;
-                    last = Some(LastAction {
+            match self
+                .make_move(log, &screen, intent, &judged, &state.banned)
+                .await?
+            {
+                Move::Ended(ended) => return Ok(ended),
+                Move::Acted(target) => {
+                    state.last = Some(LastAction {
                         target,
-                        ..before
+                        before: screen,
+                        progress: judged.progress,
                     });
                 }
+                Move::Skipped => {}
             }
         }
         let screen = self.look().await?;
@@ -237,6 +170,124 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Err(Halt::Failed(format!(
             "not accomplished after {max_turns} turns"
         )))
+    }
+
+    /// Records what the last action changed, banning an element that changed
+    /// nothing and failing the step after [`STALL_TURNS`] such turns.
+    fn note_change(&mut self, state: &mut DoState, screen: &Screen) -> Result<(), Halt> {
+        let Some(previous) = &state.last else {
+            return Ok(());
+        };
+        let changed = fingerprint(&previous.before) != fingerprint(screen);
+        let note = change_note(&previous.before, screen, changed);
+        if changed {
+            state.unchanged = 0;
+        } else {
+            state.unchanged = state.unchanged.saturating_add(1);
+            if let Some(target) = &previous.target {
+                state.banned.insert(signature(target));
+            }
+        }
+        self.history.push(format!("after the last action: {note}"));
+        if state.unchanged >= STALL_TURNS {
+            return Err(Halt::Failed(
+                "the last three actions changed nothing on screen".to_owned(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Dismisses an obstacle or undoes a regression; `true` when it acted.
+    async fn recover(
+        &mut self,
+        log: &mut StepLog,
+        state: &mut DoState,
+        screen: &Screen,
+        intent: &str,
+        judged: &Judgement,
+    ) -> Result<bool, Halt> {
+        if judged.blocked.unwrap_or_default() >= BLOCKED && state.obstacles < MAX_OBSTACLES {
+            state.obstacles += 1;
+            log.used(FlowLoop::Obstacles);
+            self.clear_obstacle(log, screen, intent).await?;
+            state.last = None;
+            return Ok(true);
+        }
+        let regressed = match (&state.last, judged.progress) {
+            (Some(previous), Some(now)) => previous
+                .progress
+                .filter(|before| before - now >= REGRESSION)
+                .map(|before| (before, now, previous.target.clone())),
+            _ => None,
+        };
+        let Some((before, now, target)) = regressed else {
+            return Ok(false);
+        };
+        if !self.enabled(FlowLoop::Undo) || state.undos >= MAX_UNDOS {
+            return Ok(false);
+        }
+        state.undos += 1;
+        log.used(FlowLoop::Undo);
+        if let Some(target) = &target {
+            state.banned.insert(signature(target));
+        }
+        let app = self.app.clone();
+        self.act(log, "press escape (undo)", None, move |backend| {
+            backend.press(&app, "escape")
+        })
+        .await?;
+        self.history.push(format!(
+            "that made things worse (progress {before:.2} -> {now:.2}); undid it and will try something else"
+        ));
+        state.last = None;
+        Ok(true)
+    }
+
+    /// Carries out the move Jev chose.
+    async fn make_move(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        intent: &str,
+        judged: &Judgement,
+        banned: &BTreeSet<String>,
+    ) -> Result<Move, Halt> {
+        match judged.next.as_str() {
+            "finished" => Ok(Move::Ended(Ended::new(
+                StepOutcome::Done,
+                "Jev chose finished",
+            ))),
+            "stuck" => Err(Halt::Failed(
+                "no visible control or standard shortcut moves toward the step".to_owned(),
+            )),
+            "wait" => {
+                self.act(log, "wait", None, |backend| {
+                    backend.execute(JevOperation::Wait, None, None)
+                })
+                .await?;
+                Ok(Move::Acted(None))
+            }
+            "shortcut" => {
+                let Some((combo, name)) = judged.shortcut else {
+                    self.history
+                        .push("no standard shortcut fits; press a visible control".to_owned());
+                    return Ok(Move::Skipped);
+                };
+                let app = self.app.clone();
+                let reply = self
+                    .act(log, &format!("press {combo}"), None, move |backend| {
+                        backend.press(&app, combo)
+                    })
+                    .await?;
+                self.history
+                    .push(format!("pressed {combo} ({name}), ok={}", reply.ok));
+                Ok(Move::Acted(None))
+            }
+            operation => Ok(Move::Acted(
+                self.activate(log, screen, intent, operation, banned)
+                    .await?,
+            )),
+        }
     }
 
     /// Grounds and performs an `activate`, `expand`, or `scroll` move.
