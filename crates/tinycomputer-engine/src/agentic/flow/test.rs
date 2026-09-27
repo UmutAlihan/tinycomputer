@@ -4406,6 +4406,7 @@ async fn a_gated_stop_before_asks_to_find_the_control_not_to_press_it() {
             .requests
             .iter()
             .any(|request| request.questions.keys().collect::<Vec<_>>() == ["confirm"]),
-        "a hint stored under the step's own words is still recalled"
+        "a hint stored under the step's own words is still recalled: {:?}",
+        remembered.requests.iter().map(|r| r.questions.keys().cloned().collect::<Vec<_>>()).collect::<Vec<_>>()
     );
 }
