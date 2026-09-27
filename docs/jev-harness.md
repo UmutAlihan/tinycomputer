@@ -110,7 +110,7 @@ A step is a sequence of waits; nothing inside one step runs in parallel
 except the framings of a single decision. One `do` turn is roughly:
 
 ```text
-look (observe)  →  judge (1 decision)  →  [ground (1–4 decisions)]  →  act  →  settle
+look (observe)  →  judge (1 decision)  →  [ground (1+ decisions)]  →  act  →  settle
 ```
 
 So a turn's wall time is the observation, plus each decision's *slowest*
