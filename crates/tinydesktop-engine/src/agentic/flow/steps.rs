@@ -888,7 +888,7 @@ fn is_one_option(candidate: &Candidate) -> bool {
 
 /// The option control on `screen` that is already checked or selected and
 /// whose label starts with `option`: there is nothing to choose.
-fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate> {
+pub(super) fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate> {
     let wanted = plain(option);
     if wanted.is_empty() {
         return None;
@@ -914,7 +914,7 @@ fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate> {
 /// strings together a whole list (recent searches, every day of a month)
 /// mentions the option without being it. An option control is never such a
 /// list, however long its label.
-fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
+pub(super) fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
     if is_one_option(candidate) {
         return false;
     }
