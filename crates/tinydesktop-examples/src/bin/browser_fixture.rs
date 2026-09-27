@@ -52,19 +52,29 @@ fn main() -> ExitCode {
             );
             check(
                 "search form fields",
-                ["From", "To", "Departure date"]
-                    .iter()
-                    .all(|name| screen.candidates.iter().any(|node| node.name.as_deref() == Some(name))),
+                ["From", "To", "Departure date"].iter().all(|name| {
+                    screen
+                        .candidates
+                        .iter()
+                        .any(|node| node.name.as_deref() == Some(name))
+                }),
                 &format!("{} controls", screen.candidates.len()),
             );
         }
         Err(error) => check("search page", false, error),
     }
 
-    match open(&surface, &format!("{base}/results.html?from=Delhi&to=Srinagar&date=14%20October")) {
+    match open(
+        &surface,
+        &format!("{base}/results.html?from=Delhi&to=Srinagar&date=14%20October"),
+    ) {
         Ok(screen) => {
             let groups = result_groups(&screen);
-            check("four result cards", groups.len() == 4, &format!("{groups:?}"));
+            check(
+                "four result cards",
+                groups.len() == 4,
+                &format!("{groups:?}"),
+            );
             let records = groups
                 .iter()
                 .map(|group| Record {
@@ -76,9 +86,16 @@ fn main() -> ExitCode {
                         .collect(),
                 })
                 .collect::<Vec<_>>();
-            let best = rank(&records, Criterion::LowestPrice).and_then(|order| order.first().copied());
-            let picked = best.map(|index| groups[index].fields.join(" · ")).unwrap_or_default();
-            check("cheapest is IndiGo at ₹6,840", picked.contains("IndiGo") && picked.contains("6,840"), &picked);
+            let best =
+                rank(&records, Criterion::LowestPrice).and_then(|order| order.first().copied());
+            let picked = best
+                .map(|index| groups[index].fields.join(" · "))
+                .unwrap_or_default();
+            check(
+                "cheapest is IndiGo at ₹6,840",
+                picked.contains("IndiGo") && picked.contains("6,840"),
+                &picked,
+            );
             let opener = best.and_then(|index| groups[index].primary.clone());
             check(
                 "the card opens with Select",
@@ -105,7 +122,11 @@ fn main() -> ExitCode {
                 .filter_map(|node| node.name.as_deref())
                 .collect::<Vec<_>>();
             let evidence = payment_evidence(&format!("{base}/payment.html"), &fields, &controls);
-            check("payment page detected", evidence.is_some(), &format!("{evidence:?}"));
+            check(
+                "payment page detected",
+                evidence.is_some(),
+                &format!("{evidence:?}"),
+            );
         }
         Err(error) => check("payment page", false, &error),
     }

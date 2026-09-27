@@ -15,6 +15,8 @@ tinydesktop-bus = { workspace = true }
 # checks the shared domain logic against the travel fixture.
 tinydesktop-browser = { workspace = true, features = ["agent-browser"] }
 tinydesktop-core = { workspace = true }
+# `task_fixture` runs a whole task through the controller.
+tinydesktop-engine = { workspace = true }
 tinybus = { workspace = true, features = ["modules"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
