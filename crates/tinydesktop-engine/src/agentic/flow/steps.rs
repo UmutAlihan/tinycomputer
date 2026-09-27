@@ -250,12 +250,24 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .into_iter()
                 .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
                 .collect::<Vec<_>>();
+            // A field that holds the typed option is where it was typed,
+            // not one of the options it offers.
             let pool = closest(
                 pool.into_iter()
-                    .filter(|candidate| mentions(candidate, option))
+                    .filter(|candidate| mentions(candidate, option) && !editable(candidate))
                     .collect(),
             );
-            if let Some(grounded) = self.ground(log, &screen, &purpose, &purpose, pool).await? {
+            // Matches that all name one option leave nothing to judge; a
+            // private option is never judged, since Jev is not told it.
+            let grounded = if private || one_option(&pool) {
+                plainest(pool).map(|candidate| Grounded {
+                    candidate,
+                    confidence: 1.0,
+                })
+            } else {
+                self.ground(log, &screen, &purpose, &purpose, pool).await?
+            };
+            if let Some(grounded) = grounded {
                 log.confidence = Some(grounded.confidence);
                 let target = grounded.candidate;
                 let clicked = target.clone();
@@ -801,6 +813,38 @@ fn date_words(option: &str) -> Vec<String> {
         })
         .map(str::to_owned)
         .collect()
+}
+
+/// Whether an element takes typed text.
+fn editable(candidate: &Candidate) -> bool {
+    candidate
+        .available_actions
+        .iter()
+        .any(|action| action == "SetValue")
+}
+
+/// Whether every match carries the same label, as a day's button and its
+/// grid cell do.
+fn one_option(matches: &[Candidate]) -> bool {
+    let mut labels = matches
+        .iter()
+        .map(|candidate| plain(candidate.name.as_deref().unwrap_or_default()));
+    labels
+        .next()
+        .is_some_and(|first| labels.all(|label| label == first))
+}
+
+/// The match to press without judgement: a button, option, or link before a
+/// cell or container, then the shortest label.
+fn plainest(matches: Vec<Candidate>) -> Option<Candidate> {
+    let rank = |candidate: &Candidate| {
+        let role = match candidate.role.as_str() {
+            "button" | "option" | "menuitem" | "link" | "radio" => 0,
+            _ => 1,
+        };
+        (role, candidate.name.as_deref().map_or(0, str::len))
+    };
+    matches.into_iter().min_by_key(rank)
 }
 
 /// Whether an element shows `option` in its name, value, or description. A
