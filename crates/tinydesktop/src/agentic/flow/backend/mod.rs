@@ -201,6 +201,25 @@ pub(in crate::agentic) fn restore_plan(previous: &DesktopResponse) -> Option<Res
     }
 }
 
+/// Folds a failed clipboard restoration into the response `paste` would
+/// otherwise return, instead of discarding it.
+///
+/// The field operation's own success is left alone — the text still arrived,
+/// and a caller checking `ok` must keep seeing that — but `data` gains
+/// `clipboard_restored: false` so a caller that reads it can see the user's
+/// prior clipboard contents were not put back. An already-failed response has
+/// nothing to fold into and is returned unchanged.
+fn with_restoration(mut result: DesktopResponse, restored: bool) -> DesktopResponse {
+    if !restored && result.ok {
+        let mut data = result.data.take().unwrap_or_else(|| json!({}));
+        if let Value::Object(map) = &mut data {
+            map.insert("clipboard_restored".to_owned(), json!(false));
+        }
+        result.data = Some(data);
+    }
+    result
+}
+
 /// Treats "several windows match" as launched: the application is running,
 /// and which of its windows to act in is the next step's decision.
 pub(in crate::agentic) fn running_is_launched(reply: DesktopResponse) -> DesktopResponse {
