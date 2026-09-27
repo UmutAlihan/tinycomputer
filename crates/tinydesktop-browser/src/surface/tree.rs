@@ -19,6 +19,13 @@ const FIELD_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "textarea", "
 /// Roles a value is typed into.
 const TYPED_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "spinbutton", "textarea"];
 
+/// Container roles that repeat as the cards of a list; each gets an ordinal
+/// among its same-role siblings (`listitem #3`) so a card's contents share
+/// one distinct label in their paths.
+const REPEATED_ROLES: &[&str] = &[
+    "listitem", "row", "article", "group", "region", "option", "gridcell", "cell", "treeitem",
+];
+
 /// Roles that are toggled.
 const TOGGLED_ROLES: &[&str] = &[
     "checkbox",
@@ -125,6 +132,9 @@ pub(crate) fn screen(tree: &str, title: &str) -> Screen {
     let mut surface = "window".to_owned();
     // Labels of the open ancestors at each depth.
     let mut ancestors: Vec<(usize, String, String)> = Vec::new();
+    // Per depth, how many siblings of each role have been seen under the
+    // current parent.
+    let mut siblings: Vec<std::collections::BTreeMap<String, usize>> = Vec::new();
     for (order, line) in tree.lines().filter_map(parse_line).enumerate() {
         ancestors.retain(|(depth, _, _)| *depth < line.depth);
         let path = ancestors
@@ -150,7 +160,16 @@ pub(crate) fn screen(tree: &str, title: &str) -> Screen {
             }
             text_nodes.push(node);
         }
-        ancestors.push((line.depth, line.label(), line.role));
+        siblings.truncate(line.depth + 1);
+        siblings.resize_with(line.depth + 1, Default::default);
+        let seen = siblings[line.depth].entry(line.role.clone()).or_default();
+        *seen += 1;
+        let label = if REPEATED_ROLES.contains(&line.role.as_str()) {
+            format!("{} #{seen}", line.label())
+        } else {
+            line.label()
+        };
+        ancestors.push((line.depth, label, line.role));
     }
     Screen {
         app: "browser".to_owned(),

@@ -374,3 +374,26 @@ fn pressing_launching_settling_and_navigating() {
         "BLOCKED_BY_POLICY"
     );
 }
+
+#[test]
+fn repeated_containers_are_numbered_so_their_cards_group() {
+    let page = "- list \"Results\"\n  - listitem\n    - text: IndiGo\n    - text: ₹6,840\n    - button \"Select\" [ref=e1]\n  - listitem\n    - text: Vistara\n    - text: ₹7,210\n    - button \"Select\" [ref=e2]\n- list \"More\"\n  - listitem\n    - button \"Next page\" [ref=e3]\n";
+    let parsed = screen(page, "Results");
+    assert_eq!(
+        parsed.candidates[0].path,
+        ["list \"Results\"", "listitem #1"]
+    );
+    assert_eq!(
+        parsed.candidates[1].path,
+        ["list \"Results\"", "listitem #2"]
+    );
+    assert_eq!(
+        parsed.candidates[2].path,
+        ["list \"More\"", "listitem #1"],
+        "numbering restarts under a new parent"
+    );
+    let groups = tinydesktop_core::surface::result_groups(&parsed);
+    assert_eq!(groups.len(), 2);
+    assert_eq!(groups[0].fields, ["IndiGo", "₹6,840", "Select"]);
+    assert_eq!(groups[1].primary.as_ref().unwrap().ref_id, "e2");
+}
