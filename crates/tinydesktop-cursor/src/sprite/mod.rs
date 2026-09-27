@@ -19,8 +19,9 @@ use crate::geometry::Point;
 pub const SIZE: u32 = 64;
 
 /// How many pulse frames follow the resting frame.
-pub const PULSE_FRAMES: usize = PULSE_STEPS as usize;
+pub const PULSE_FRAMES: usize = 12;
 
+/// [`PULSE_FRAMES`] as the float arithmetic's integer type.
 const PULSE_STEPS: u32 = 12;
 
 /// Subsamples per pixel side, for anti-aliasing.
