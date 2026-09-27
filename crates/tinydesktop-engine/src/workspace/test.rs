@@ -103,7 +103,7 @@ impl Surface for Recorder {
 fn workspace(with_browser: bool) -> (Workspace<Recorder, Recorder>, Arc<Mutex<Vec<String>>>) {
     let calls = Arc::new(Mutex::new(Vec::new()));
     let workspace = Workspace::new(
-        Recorder::new("desktop", &calls),
+        Some(Recorder::new("desktop", &calls)),
         with_browser.then(|| Recorder::new("browser", &calls)),
     );
     (workspace, calls)
