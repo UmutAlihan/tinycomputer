@@ -35,7 +35,7 @@ const TOUR: [(&str, Rect); 12] = [
     ("Close", Rect::new(1300.0, 130.0, 16.0, 16.0)),
 ];
 
-/// How long the cursor rests on each target: what an action takes to land.
+/// How long the cursor rests on each target after landing.
 const REST: Duration = Duration::from_millis(900);
 
 fn main() {
@@ -68,8 +68,10 @@ fn main() {
     for lap in 1..=laps {
         for (name, target) in TOUR {
             println!("lap {lap}: {name}");
-            cursor.show(target);
-            std::thread::sleep(REST);
+            // The cursor never waits for itself; the demo does, so each
+            // glide lands before the next begins.
+            let glide = cursor.show(target).unwrap_or_default();
+            std::thread::sleep(glide + REST);
         }
     }
     cursor.hide();

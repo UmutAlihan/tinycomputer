@@ -20,6 +20,7 @@ mod process;
 pub use process::{HELPER_ENV, HELPER_NAME, ProcessOverlay};
 
 use std::sync::Mutex;
+use std::time::Duration;
 
 use crate::geometry::Rect;
 use crate::glide::VirtualCursor;
@@ -132,24 +133,25 @@ impl ScreenCursor {
     ///
     /// Returns at once: the glide is handed to the overlay and animates on
     /// its own while the action goes ahead, so the cursor never delays or
-    /// changes what the agent does.
-    pub fn show(&self, target: Rect) {
+    /// changes what the agent does. Returns how long the glide will take to
+    /// land, for a caller that wants to pace itself to it (a demo); `None`
+    /// when nothing is drawn.
+    pub fn show(&self, target: Rect) -> Option<Duration> {
         if self.pace.is_off() || !target.is_valid() || target.width <= 0.0 || target.height <= 0.0 {
-            return;
+            return None;
         }
-        let Some(glide) = self
+        let glide = self
             .cursor
             .lock()
             .ok()
-            .and_then(|mut cursor| cursor.glide(target))
-        else {
-            return;
-        };
-        if !self.send(&OverlayCommand::glide(&glide))
-            && let Ok(mut cursor) = self.cursor.lock()
-        {
+            .and_then(|mut cursor| cursor.glide(target))?;
+        if self.send(&OverlayCommand::glide(&glide)) {
+            return Some(Duration::from_secs_f64(glide.duration_ms() / 1_000.0));
+        }
+        if let Ok(mut cursor) = self.cursor.lock() {
             cursor.forget();
         }
+        None
     }
 
     /// Fades the cursor out, as when a run ends. The next glide fades it back

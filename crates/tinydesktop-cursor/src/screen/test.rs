@@ -96,10 +96,12 @@ fn showing_never_waits_for_the_glide() {
     let recorder = Recorder::default();
     let cursor = ScreenCursor::with_sink(CursorPace::Calm, Box::new(recorder));
     let started = std::time::Instant::now();
+    let mut animated = std::time::Duration::ZERO;
     for _ in 0..20 {
-        cursor.show(MAIL_BUTTON);
-        cursor.show(WEB_BUTTON);
+        animated += cursor.show(MAIL_BUTTON).unwrap();
+        animated += cursor.show(WEB_BUTTON).unwrap();
     }
+    assert!(animated > std::time::Duration::from_secs(10));
     // Forty calm glides take tens of seconds to animate; showing them is
     // instant, because the action never waits for the cursor.
     assert!(started.elapsed() < std::time::Duration::from_secs(1));
@@ -126,8 +128,8 @@ fn a_missing_helper_leaves_the_cursor_off() {
         CursorPace::Natural,
         Some("/nonexistent/tinydesktop-cursor-overlay".into()),
     );
-    cursor.show(MAIL_BUTTON);
-    cursor.show(WEB_BUTTON);
+    assert!(cursor.show(MAIL_BUTTON).is_none());
+    assert!(cursor.show(WEB_BUTTON).is_none());
 }
 
 #[cfg(unix)]
