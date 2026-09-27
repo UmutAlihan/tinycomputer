@@ -483,25 +483,16 @@ Then reproduce it in the simulator in
 `crates/tinycomputer-engine/src/agentic/flow/test.rs` (a scripted mail app,
 booking widgets, and an oracle Jev that answers from their state) and fix it.
 
-## Thresholds at a glance
+## The wide strategy
 
-| Constant | Value | Where | Meaning |
-|---|---|---|---|
-| `DONE` | 0.75 | `act.rs` | completion that ends a step after acting; also the bar for `verify`, `wait_for`, `if`, `repeat_until` |
-| `ALREADY_DONE` | 0.85 | `act.rs` | completion that skips a step before acting |
-| `BLOCKED` | 0.70 | `act.rs` | obstacle probability that triggers dismissal |
-| `LEANS_DONE` | 0.50 | `act.rs` | completion under which a `finished` move is overruled after acting |
-| `REGRESSION` | 0.25 | `act.rs` | progress drop that triggers undo |
-| `UNHELPFUL` | 0.20 | `act.rs` | `helped` probability that triggers undo |
-| `SHORTCUT_FLOOR` | 0.50 | `act.rs` | least probability for pressing a shortcut |
-| `STALL_TURNS` | 3 | `act.rs` | unchanged turns before a step fails |
-| `ACT` | 0.70 | `view/mod.rs` | element choice used without re-asking |
-| `NAMED_FLOOR` | 0.45 | `ground.rs` | element choice used when its name is in the purpose |
-| `CORROBORATED` | 0.80 | `ground.rs` | corroboration that accepts a target alone |
-| `AGREED` | 0.50 | `ground.rs` | corroboration that accepts a target the re-ask agreed on |
-| `SLOT_FLOOR` | 0.40 | `enter.rs` | least probability for a slot assignment |
-| `LOCATE_FLOOR` | 0.50 | `steps.rs` | least probability for a `read`, `pick`, or `stop_before` target |
-| `CAP` | 20 | `ask.rs` | most options in one Choice |
-| `DO_TURNS` | 8 | `steps.rs` | turns a `do` step may spend |
-| `MAX_ACTIONS` / `MAX_CALLS` | 120 / 5000 | `mod.rs` | per-run caps on actions and Jev calls |
-| `MAX_VOTES` | 9 | `vote.rs` | most framings one decision is asked in |
+`strategy: "wide"` keeps every loop and threshold above and changes how they
+are asked: one request per `do` turn over a digest of the screen, carrying
+the judgement, `dismiss` for whatever is in front, and a target for every
+move; a crowded screen is surveyed first for which regions matter; and every
+question sees the run's working memory in place of the flat history. See
+[`specs/jev-wide-turns.md`](specs/jev-wide-turns.md).
+
+## Thresholds
+
+Every constant a decision is thresholded on is listed, with its value and
+file, in [`decision-thresholds.md`](decision-thresholds.md).

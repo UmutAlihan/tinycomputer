@@ -101,8 +101,8 @@ Every flow question reaches Jev through `FlowRun::ask`
     request set `trace: true`; each raw framing, and the decision's wall
     time, go to the debug journal when it is on.
 
-The step's code then thresholds the merged answers (see the table at the end
-of [`decision-loops.md`](decision-loops.md)).
+The step's code then thresholds the merged answers (see
+[`decision-thresholds.md`](decision-thresholds.md)).
 
 ## Where the time goes
 
