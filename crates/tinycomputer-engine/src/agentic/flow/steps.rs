@@ -759,10 +759,19 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     async fn stop_before(&mut self, log: &mut StepLog, action: &str) -> Result<Ended, Halt> {
         let purpose = format!("perform: {action}");
+        // Asked to "perform: paying", Jev weighs the request against the
+        // brief's own rule to stop before paying and hesitates (measured:
+        // 0.44 on the Pay button); asked to find it without pressing it,
+        // which is all a gated step does, it answers 1.0.
+        let question = if self.allow_destructive {
+            purpose.clone()
+        } else {
+            format!("find, without pressing it, the control that would perform: {action}")
+        };
         let screen = self.look().await?;
         let pool = clickable(&screen.candidates);
         let Some(grounded) = self
-            .ground(log, &screen, &purpose, &purpose, pool)
+            .ground(log, &screen, &question, &purpose, pool)
             .await?
             .filter(|grounded| grounded.confidence >= LOCATE_FLOOR)
         else {
