@@ -928,3 +928,228 @@ fn response_helpers_classify_provider_failures_and_policy_reasons() {
     assert!(!internal_error("broken").ok);
     assert!(agent_response("test", &json!({"ok": true})).ok);
 }
+
+#[test]
+fn a_fingerprint_ignores_ref_churn_between_snapshots() {
+    let first = clickable_screen();
+    let mut second = clickable_screen();
+    second.candidates[0].ref_id = "@s2:e9".to_owned();
+    assert_eq!(fingerprint(&first), fingerprint(&second));
+
+    second.candidates[0].states = vec!["selected".to_owned()];
+    assert_ne!(fingerprint(&first), fingerprint(&second));
+}
+
+#[test]
+fn a_goal_mentioning_send_does_not_make_every_click_destructive() {
+    let compose = Candidate {
+        role: "button".to_owned(),
+        name: Some("New Message".to_owned()),
+        ..Candidate::default()
+    };
+    let send = Candidate {
+        role: "button".to_owned(),
+        name: Some("Send".to_owned()),
+        ..Candidate::default()
+    };
+    assert!(!deterministic_destructive(
+        JevOperation::Click,
+        Some(&compose)
+    ));
+    assert!(deterministic_destructive(JevOperation::Click, Some(&send)));
+    assert!(!deterministic_destructive(
+        JevOperation::TypeText,
+        Some(&send)
+    ));
+}
+
+#[test]
+fn static_text_is_kept_as_context_and_truncation_is_reported() {
+    let mut children = vec![
+        json!({"role": "statictext", "name": "New Message"}),
+        json!({"role": "statictext", "value": "Now   playing"}),
+        json!({"role": "statictext", "name": "New Message"}),
+        json!({"role": "group"}),
+    ];
+    children.extend((0..300).map(|index| {
+        json!({"ref_id": format!("@s:e{index}"), "role": "button",
+               "name": format!("b{index}"), "available_actions": ["Click"]})
+    }));
+    let screen = parse_reply(
+        &crate::Desktop::new(),
+        "App",
+        Some("@s:root"),
+        DesktopResponse::ok(
+            "snapshot",
+            json!({"app": "App", "tree": {"role": "window", "children": children}}),
+        ),
+    )
+    .expect("synthetic snapshot parses");
+    assert_eq!(screen.context, vec!["New Message", "Now playing"]);
+    assert_eq!(screen.truncated, Some((254, 300)));
+    assert_eq!(screen.candidates.len(), 254);
+}
+
+#[test]
+fn a_change_note_names_what_appeared_and_what_went_away() {
+    let before = clickable_screen();
+    let mut after = two_candidate_screen();
+    after.candidates.remove(0);
+    after.window = Some("Other".to_owned());
+    after.surface = "sheet".to_owned();
+    after.context = (0..8).map(|index| format!("line {index}")).collect();
+    let note = change_note(&before, &after, true);
+    assert!(note.contains("window is now \"Other\""), "{note}");
+    assert!(note.contains("surface is now sheet"), "{note}");
+    assert!(note.contains("appeared:"), "{note}");
+    assert!(note.contains("and 3 more"), "{note}");
+    assert!(note.contains("gone: button \"Play First Song"), "{note}");
+    assert_eq!(
+        change_note(&before, &before, false),
+        "nothing on screen changed"
+    );
+    let mut same_labels = clickable_screen();
+    same_labels.candidates[0].states = vec!["selected".to_owned()];
+    assert_eq!(
+        change_note(&before, &same_labels, true),
+        "the screen changed"
+    );
+}
+
+fn field() -> Candidate {
+    Candidate {
+        ref_id: "@s:e1".to_owned(),
+        role: "textfield".to_owned(),
+        name: Some("Subject".to_owned()),
+        available_actions: vec!["SetValue".to_owned()],
+        ..Candidate::default()
+    }
+}
+
+fn text_backend(reads: &[&str]) -> FakeBackend {
+    FakeBackend {
+        reads: Arc::new(Mutex::new(
+            reads.iter().map(|read| (*read).to_owned()).collect(),
+        )),
+        ..FakeBackend::default()
+    }
+}
+
+#[test]
+fn text_verified_by_read_back_is_not_pasted() {
+    let backend = text_backend(&["Hello   there"]);
+    let reply = deliver_text(&backend, "Mail", &field(), "Hello there");
+    assert!(reply.ok);
+    assert_eq!(reply.data.expect("data")["path"], json!("set_value"));
+    assert!(backend.pastes.lock().expect("paste lock").is_empty());
+}
+
+#[test]
+fn a_silently_ignored_set_value_falls_back_to_paste() {
+    let backend = text_backend(&["", "Dear Sam, see you Friday"]);
+    let reply = deliver_text(&backend, "Mail", &field(), "Dear Sam, see you Friday");
+    assert!(reply.ok);
+    let data = reply.data.expect("data");
+    assert_eq!(
+        (data["path"].clone(), data["verified"].clone()),
+        (json!("paste"), json!(true))
+    );
+    assert_eq!(backend.pastes.lock().expect("paste lock").len(), 1);
+}
+
+#[test]
+fn text_that_never_arrives_is_reported_as_not_delivered() {
+    let backend = text_backend(&["", "still empty"]);
+    let reply = deliver_text(&backend, "Mail", &field(), "Body");
+    assert_eq!(
+        reply.error.expect("error").code,
+        "TEXT_NOT_DELIVERED"
+    );
+
+    let unreadable = text_backend(&[]);
+    let reply = deliver_text(&unreadable, "Mail", &field(), "Body");
+    assert_eq!(reply.data.expect("data")["verified"], json!(false));
+
+    let failing = FakeBackend {
+        fail_execute: true,
+        fail_paste: true,
+        ..FakeBackend::default()
+    };
+    assert_eq!(
+        deliver_text(&failing, "Mail", &field(), "Body")
+            .error
+            .expect("error")
+            .code,
+        "ACTION_FAILED"
+    );
+    let paste_after_set = FakeBackend {
+        reads: Arc::new(Mutex::new(VecDeque::from(["x".to_owned()]))),
+        fail_paste: true,
+        ..FakeBackend::default()
+    };
+    assert_eq!(
+        deliver_text(&paste_after_set, "Mail", &field(), "Body")
+            .error
+            .expect("error")
+            .code,
+        "PASTE_FAILED"
+    );
+    let set_failed_paste_unverified = FakeBackend {
+        fail_execute: true,
+        ..FakeBackend::default()
+    };
+    assert!(deliver_text(&set_failed_paste_unverified, "Mail", &field(), "Body").ok);
+    assert!(!holds("anything", "   "));
+}
+
+#[tokio::test]
+async fn a_failed_action_is_retried_and_the_element_banned_after_two_strikes() {
+    let runtime = runtime(vec![
+        response("CLICK", 0.9, "1"),
+        response("CLICK", 0.9, "1"),
+        response("BLOCKED", 0.9, "none"),
+    ]);
+    let operations = Arc::new(Mutex::new(Vec::new()));
+    let backend = FakeBackend {
+        screens: Arc::new(Mutex::new(VecDeque::from(vec![clickable_screen(); 4]))),
+        operations: Arc::clone(&operations),
+        fail_execute: true,
+        ..FakeBackend::default()
+    };
+    let reply = run_goal_with(
+        backend,
+        runtime,
+        RunGoalRequest {
+            app: "Spotify".to_owned(),
+            goal: "play the topmost song".to_owned(),
+            max_retries: 3,
+            ..RunGoalRequest::default()
+        },
+    )
+    .await;
+    let result: tinydesktop_bus::JevRunResult =
+        serde_json::from_value(reply.data.expect("run data")).expect("result decodes");
+    assert_eq!(result.stop, JevStopReason::Blocked);
+    assert_eq!(result.turns.len(), 2);
+    assert!(result.turns.iter().all(|turn| !turn.ok));
+    assert!(result.turns[0].note.contains("ACTION_FAILED"));
+    assert_eq!(operations.lock().expect("operation lock").len(), 2);
+}
+
+#[tokio::test]
+async fn a_low_confidence_turn_is_retried_before_the_run_gives_up() {
+    let result = run_case(
+        vec![
+            response("CLICK", 0.9, "none"),
+            response("CLICK", 0.9, "1"),
+            response("DONE", 0.9, "none"),
+        ],
+        2,
+        4,
+        6,
+        "open the first song",
+    )
+    .await;
+    assert_eq!(result.stop, JevStopReason::Done);
+    assert_eq!(result.turns.len(), 1);
+}
