@@ -3909,10 +3909,7 @@ async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
         exchanges.len(),
         "one framing per decision"
     );
-    assert_eq!(
-        of("action").len(),
-        usize::try_from(result.actions).unwrap()
-    );
+    assert_eq!(of("action").len(), usize::try_from(result.actions).unwrap());
     assert!(of("action").iter().all(|action| action["wall_ms"].is_u64()));
     assert!(!of("observe").is_empty());
     let steps = of("step");

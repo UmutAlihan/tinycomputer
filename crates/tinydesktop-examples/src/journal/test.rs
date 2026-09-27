@@ -12,13 +12,13 @@ fn flow_events() -> Vec<Value> {
         json!({"event": "action", "seq": 1, "elapsed_ms": 40, "step": "", "action": "launch", "wall_ms": 30, "settle_ms": 10}),
         json!({"event": "observe", "seq": 2, "elapsed_ms": 60, "step": "1", "wall_ms": 20}),
         json!({"event": "exchange", "seq": 3, "elapsed_ms": 400, "step": "1", "ok": true,
-               "latency_ms": 300, "request_bytes": 1000, "input_tokens": 50, "output_tokens": 2,
-               "questions": ["done", "move"],
-               "answers": {
-                   "done": {"type": "noul", "noul": 0.2},
-                   "move": {"type": "choice", "choice": "shortcut", "probabilities": {"shortcut": 0.9}, "confidence": 0.8},
-                   "progress": {"type": "score", "score": 1.5, "legend": {}, "probabilities": {}, "confidence": 0.5}
-               }}),
+        "latency_ms": 300, "request_bytes": 1000, "input_tokens": 50, "output_tokens": 2,
+        "questions": ["done", "move"],
+        "answers": {
+            "done": {"type": "noul", "noul": 0.2},
+            "move": {"type": "choice", "choice": "shortcut", "probabilities": {"shortcut": 0.9}, "confidence": 0.8},
+            "progress": {"type": "score", "score": 1.5, "legend": {}, "probabilities": {}, "confidence": 0.5}
+        }}),
         json!({"event": "decision", "seq": 4, "elapsed_ms": 410, "step": "1", "wall_ms": 320}),
         json!({"event": "exchange", "seq": 5, "elapsed_ms": 900, "step": "1", "ok": false,
                "latency_ms": 500, "request_bytes": 3000, "questions": ["done"], "error": "timeout"}),
@@ -35,11 +35,17 @@ fn a_summary_splits_wall_time_by_where_it_went() {
     let summary = summarize(&flow_events());
     assert_eq!(summary.runs, ["flow: Mail"]);
     assert_eq!(summary.wall_ms, 1200, "the end event's wall time wins");
-    assert_eq!(summary.jev_ms, 820, "decisions, not calls, are what a flow waited on");
+    assert_eq!(
+        summary.jev_ms, 820,
+        "decisions, not calls, are what a flow waited on"
+    );
     assert_eq!(summary.observe_ms, 20);
     assert_eq!(summary.act_ms, 80);
     assert_eq!(summary.settle_ms, 50);
-    assert_eq!((summary.calls, summary.failed_calls, summary.decisions), (2, 1, 2));
+    assert_eq!(
+        (summary.calls, summary.failed_calls, summary.decisions),
+        (2, 1, 2)
+    );
     assert_eq!((summary.observations, summary.actions), (1, 2));
     assert_eq!(summary.latency_p50_ms, 300);
     assert_eq!(summary.latency_max_ms, 500);
@@ -51,7 +57,16 @@ fn a_summary_splits_wall_time_by_where_it_went() {
     assert_eq!(step.step, "1");
     assert_eq!(step.text, "do start a new message");
     assert_eq!(step.outcome, "done");
-    assert_eq!((step.wall_ms, step.jev_ms, step.observe_ms, step.act_ms, step.calls), (950, 820, 20, 90, 2));
+    assert_eq!(
+        (
+            step.wall_ms,
+            step.jev_ms,
+            step.observe_ms,
+            step.act_ms,
+            step.calls
+        ),
+        (950, 820, 20, 90, 2)
+    );
 
     assert_eq!(summary.slowest[0].seq, 5);
     assert_eq!(summary.slowest[0].questions, ["done"]);
@@ -99,7 +114,10 @@ fn the_transcript_shows_each_answer_compactly() {
     assert!(text.contains("move         -> shortcut (0.90)"), "{text}");
     assert!(text.contains("progress     score 1.50"), "{text}");
     assert!(text.contains("failed: timeout"), "{text}");
-    assert!(text.contains("-- step 1 do \"start a new message\": done"), "{text}");
+    assert!(
+        text.contains("-- step 1 do \"start a new message\": done"),
+        "{text}"
+    );
 }
 
 #[test]
@@ -120,7 +138,10 @@ fn runs_are_found_by_latest_by_part_of_their_id_or_by_path() {
             .unwrap()
             .as_nanos()
     ));
-    for id in ["20260101T000000Z-flow-aaaaaa", "20260102T000000Z-goal-bbbbbb"] {
+    for id in [
+        "20260101T000000Z-flow-aaaaaa",
+        "20260102T000000Z-goal-bbbbbb",
+    ] {
         std::fs::create_dir_all(root.join(id)).unwrap();
         std::fs::write(
             root.join(id).join(tinydesktop_engine::JOURNAL_FILE),
@@ -131,9 +152,21 @@ fn runs_are_found_by_latest_by_part_of_their_id_or_by_path() {
     std::fs::create_dir_all(root.join("empty")).unwrap();
 
     let listed = runs(&root).unwrap();
-    assert_eq!(listed.len(), 2, "a directory without a journal is not a run");
-    assert!(find(&root, "latest").unwrap().ends_with("20260102T000000Z-goal-bbbbbb"));
-    assert!(find(&root, "aaaa").unwrap().ends_with("20260101T000000Z-flow-aaaaaa"));
+    assert_eq!(
+        listed.len(),
+        2,
+        "a directory without a journal is not a run"
+    );
+    assert!(
+        find(&root, "latest")
+            .unwrap()
+            .ends_with("20260102T000000Z-goal-bbbbbb")
+    );
+    assert!(
+        find(&root, "aaaa")
+            .unwrap()
+            .ends_with("20260101T000000Z-flow-aaaaaa")
+    );
     let by_path = root.join("20260101T000000Z-flow-aaaaaa");
     assert_eq!(find(&root, by_path.to_str().unwrap()).unwrap(), by_path);
     assert!(find(&root, "2026").is_err(), "an ambiguous name is refused");

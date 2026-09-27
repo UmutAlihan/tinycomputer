@@ -45,8 +45,8 @@ use verify::{exact_label, satisfied, verify};
 
 pub(crate) use flow::{check_flow, missing_inputs};
 pub use flow::{flow_guide, run_flow, validate_flow};
-pub use journal::{DEFAULT_DIR as JOURNAL_DEFAULT_DIR, JOURNAL_ENV, JOURNAL_FILE};
 use journal::Journal;
+pub use journal::{DEFAULT_DIR as JOURNAL_DEFAULT_DIR, JOURNAL_ENV, JOURNAL_FILE};
 
 /// Configured Jev transport and non-secret policy metadata.
 #[derive(Clone)]
@@ -168,9 +168,7 @@ impl JevRuntime {
     /// This runtime with a run of `kind` begun in its journal.
     fn begin_run(&self, kind: &str, label: &str) -> Self {
         Self {
-            journal: self
-                .journal
-                .begin(kind, label, &self.configuration.model),
+            journal: self.journal.begin(kind, label, &self.configuration.model),
             ..self.clone()
         }
     }
@@ -983,13 +981,14 @@ async fn resolve_on_screen<B: AgentBackend>(
         .evaluate(
             Some(intent),
             &policy::request(
-            &runtime.configuration.model,
-            intent,
-            screen,
-            &space,
-            history,
-            include_values,
-        ))
+                &runtime.configuration.model,
+                intent,
+                screen,
+                &space,
+                history,
+                include_values,
+            ),
+        )
         .await
         .map_err(|error| provider_error(&error))?;
     let answers = &evaluation.response.answers;
@@ -1213,13 +1212,14 @@ async fn rerank(
         .evaluate(
             Some(input.intent),
             &policy::rerank_request(
-            &input.runtime.configuration.model,
-            input.intent,
-            input.screen,
-            input.operation,
-            &candidates,
-            input.include_values,
-        ))
+                &input.runtime.configuration.model,
+                input.intent,
+                input.screen,
+                input.operation,
+                &candidates,
+                input.include_values,
+            ),
+        )
         .await
         .map_err(|error| provider_error(&error))?;
     let selected =

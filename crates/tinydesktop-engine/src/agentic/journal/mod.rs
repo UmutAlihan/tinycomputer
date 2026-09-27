@@ -136,9 +136,10 @@ impl Journal {
         } else {
             self.named(&fresh_id(kind))
         };
-        journal.record("run", || {
-            json!({"kind": kind, "label": label, "model": model, "pid": std::process::id()})
-        });
+        journal.record(
+            "run",
+            || json!({"kind": kind, "label": label, "model": model, "pid": std::process::id()}),
+        );
         journal
     }
 
@@ -154,10 +155,7 @@ impl Journal {
             json!(run.seq.fetch_add(1, Ordering::Relaxed)),
         );
         line.insert("at".to_owned(), json!(timestamp(SystemTime::now())));
-        line.insert(
-            "elapsed_ms".to_owned(),
-            json!(millis(run.opened.elapsed())),
-        );
+        line.insert("elapsed_ms".to_owned(), json!(millis(run.opened.elapsed())));
         if let Value::Object(fields) = fields() {
             line.extend(fields);
         }
@@ -248,10 +246,7 @@ fn fresh_id(kind: &str) -> String {
     let _ = getrandom::fill(&mut nonce);
     let stamp = timestamp(SystemTime::now());
     // `2026-09-28T10:15:30.123Z` -> `20260928T101530Z`
-    let compact = stamp
-        .get(..19)
-        .unwrap_or_default()
-        .replace(['-', ':'], "");
+    let compact = stamp.get(..19).unwrap_or_default().replace(['-', ':'], "");
     sanitize(&format!(
         "{compact}Z-{kind}-{:02x}{:02x}{:02x}",
         nonce[0], nonce[1], nonce[2]

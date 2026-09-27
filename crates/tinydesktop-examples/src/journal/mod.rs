@@ -201,11 +201,11 @@ pub fn summarize(events: &[Value]) -> Summary {
         summary.wall_ms = summary.wall_ms.max(number(event, "elapsed_ms"));
         let step = event["step"].as_str().unwrap_or_default().to_owned();
         match event["event"].as_str().unwrap_or_default() {
-            "run" => summary.runs.push(format!(
-                "{}: {}",
-                text(event, "kind"),
-                text(event, "label")
-            )),
+            "run" => {
+                summary
+                    .runs
+                    .push(format!("{}: {}", text(event, "kind"), text(event, "label")))
+            }
             "exchange" => {
                 let latency = number(event, "latency_ms");
                 summary.calls += 1;
@@ -352,7 +352,11 @@ pub fn render(summary: &Summary) -> String {
                 "  #{:<5} {:>6} ms  step {:<5} {:>7} B  {}",
                 call.seq,
                 call.latency_ms,
-                if call.step.is_empty() { "-" } else { &call.step },
+                if call.step.is_empty() {
+                    "-"
+                } else {
+                    &call.step
+                },
                 call.request_bytes,
                 call.questions.join(", ")
             );
@@ -369,12 +373,7 @@ pub fn transcript(events: &[Value]) -> String {
     for event in events {
         match event["event"].as_str().unwrap_or_default() {
             "run" => {
-                let _ = writeln!(
-                    out,
-                    "== {}: {}",
-                    text(event, "kind"),
-                    text(event, "label")
-                );
+                let _ = writeln!(out, "== {}: {}", text(event, "kind"), text(event, "label"));
             }
             "step" => {
                 let _ = writeln!(

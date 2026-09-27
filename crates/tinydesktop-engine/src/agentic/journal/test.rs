@@ -64,7 +64,14 @@ fn request() -> EvaluationRequest {
 
 #[test]
 fn the_journal_is_off_unless_the_setting_turns_it_on() {
-    for off in [None, Some(""), Some("0"), Some("false"), Some("OFF"), Some(" no ")] {
+    for off in [
+        None,
+        Some(""),
+        Some("0"),
+        Some("false"),
+        Some("OFF"),
+        Some(" no "),
+    ] {
         let journal = Journal::from_setting(off.map(OsString::from));
         assert!(journal.root.is_none(), "{off:?} must leave it off");
     }
@@ -102,12 +109,9 @@ fn a_begun_run_writes_a_run_event_then_each_exchange() {
     let answered = EvaluationResult {
         response: EvaluationResponse {
             model: "jev-1".to_owned(),
-            answers: [(
-                "done".to_owned(),
-                Answer::Noul(NoulAnswer { noul: 0.9 }),
-            )]
-            .into_iter()
-            .collect(),
+            answers: [("done".to_owned(), Answer::Noul(NoulAnswer { noul: 0.9 }))]
+                .into_iter()
+                .collect(),
             usage: Usage {
                 input_tokens: Some(120),
                 output_tokens: Some(4),
@@ -131,7 +135,10 @@ fn a_begun_run_writes_a_run_event_then_each_exchange() {
     assert_eq!(events[0]["kind"], "flow");
     assert_eq!(events[0]["label"], "Mail: compose");
     assert_eq!(events[0]["model"], "jev-latest");
-    let seqs = events.iter().map(|event| event["seq"].clone()).collect::<Vec<_>>();
+    let seqs = events
+        .iter()
+        .map(|event| event["seq"].clone())
+        .collect::<Vec<_>>();
     assert_eq!(seqs, [json!(0), json!(1), json!(2)]);
 
     let ok = &events[1];
