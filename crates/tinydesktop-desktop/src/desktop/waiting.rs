@@ -18,7 +18,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, WaitRequest};
+    /// # use tinydesktop_desktop::{Desktop, WaitRequest};
     /// let reply = Desktop::new().wait(WaitRequest::sleep(1));
     ///
     /// assert!(reply.ok);

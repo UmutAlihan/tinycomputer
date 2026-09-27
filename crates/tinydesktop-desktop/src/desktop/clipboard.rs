@@ -13,7 +13,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{ClipboardGetRequest, Desktop};
+    /// # use tinydesktop_desktop::{ClipboardGetRequest, Desktop};
     /// let reply = Desktop::new().clipboard_get(ClipboardGetRequest::default());
     /// assert_eq!(reply.command, "clipboard-get");
     /// ```
@@ -36,7 +36,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{ClipboardSetRequest, Desktop};
+    /// # use tinydesktop_desktop::{ClipboardSetRequest, Desktop};
     /// let reply = Desktop::new().clipboard_set(ClipboardSetRequest::text("hello"));
     /// assert_eq!(reply.command, "clipboard-set");
     /// ```
@@ -59,7 +59,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// let reply = Desktop::new().clipboard_clear();
     /// assert_eq!(reply.command, "clipboard-clear");
     /// ```

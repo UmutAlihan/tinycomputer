@@ -14,7 +14,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// let reply = Desktop::new().version();
     ///
     /// assert!(reply.ok);
@@ -36,7 +36,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// let reply = Desktop::new().status();
     /// assert_eq!(reply.command, "status");
     /// ```
@@ -59,7 +59,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, PermissionsRequest};
+    /// # use tinydesktop_desktop::{Desktop, PermissionsRequest};
     /// let reply = Desktop::new().permissions(PermissionsRequest::default());
     /// assert_eq!(reply.command, "permissions");
     /// ```

@@ -35,7 +35,7 @@ impl Desktop {
         /// # Examples
         ///
         /// ```
-        /// # use tinydesktop::{Desktop, RefRequest};
+        /// # use tinydesktop_desktop::{Desktop, RefRequest};
         /// let reply = Desktop::new().click(RefRequest::new("@s1:e2"));
         /// assert_eq!(reply.command, "click");
         /// ```
@@ -113,7 +113,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, TypeRequest};
+    /// # use tinydesktop_desktop::{Desktop, TypeRequest};
     /// let reply = Desktop::new().type_text(TypeRequest {
     ///     ref_id: "@s1:e2".to_owned(),
     ///     text: "hello".to_owned(),
@@ -147,7 +147,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, SetValueRequest};
+    /// # use tinydesktop_desktop::{Desktop, SetValueRequest};
     /// let reply = Desktop::new().set_value(SetValueRequest {
     ///     ref_id: "@s1:e2".to_owned(),
     ///     value: "42".to_owned(),
@@ -177,7 +177,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, SelectRequest};
+    /// # use tinydesktop_desktop::{Desktop, SelectRequest};
     /// let reply = Desktop::new().select(SelectRequest {
     ///     ref_id: "@s1:e3".to_owned(),
     ///     value: "Monday".to_owned(),
@@ -207,7 +207,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, Direction, ScrollRequest};
+    /// # use tinydesktop_desktop::{Desktop, Direction, ScrollRequest};
     /// let reply = Desktop::new().scroll(ScrollRequest::new("@s1:e4", Direction::Down, 3));
     /// assert_eq!(reply.command, "scroll");
     /// ```

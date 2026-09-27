@@ -33,7 +33,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, LaunchRequest};
+    /// # use tinydesktop_desktop::{Desktop, LaunchRequest};
     /// let reply = Desktop::new().launch(LaunchRequest::new("Safari"));
     /// assert_eq!(reply.command, "launch");
     /// ```
@@ -66,7 +66,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{CloseAppRequest, Desktop};
+    /// # use tinydesktop_desktop::{CloseAppRequest, Desktop};
     /// let reply = Desktop::new().close_app(CloseAppRequest {
     ///     app: "Calculator".to_owned(),
     ///     force: false,
@@ -96,7 +96,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, ListAppsRequest};
+    /// # use tinydesktop_desktop::{Desktop, ListAppsRequest};
     /// let reply = Desktop::new().list_apps(ListAppsRequest::default());
     /// assert_eq!(reply.command, "list-apps");
     /// ```
@@ -112,7 +112,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, ListWindowsRequest};
+    /// # use tinydesktop_desktop::{Desktop, ListWindowsRequest};
     /// let reply = Desktop::new().list_windows(ListWindowsRequest::default());
     /// assert_eq!(reply.command, "list-windows");
     /// ```
@@ -128,7 +128,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// let reply = Desktop::new().list_displays();
     /// assert_eq!(reply.command, "list-displays");
     /// ```
@@ -147,7 +147,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, ListSurfacesRequest};
+    /// # use tinydesktop_desktop::{Desktop, ListSurfacesRequest};
     /// let reply = Desktop::new().list_surfaces(ListSurfacesRequest::default());
     /// assert_eq!(reply.command, "list-surfaces");
     /// ```
@@ -166,7 +166,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, FocusWindowRequest};
+    /// # use tinydesktop_desktop::{Desktop, FocusWindowRequest};
     /// let reply = Desktop::new().focus_window(FocusWindowRequest {
     ///     app: Some("Safari".to_owned()),
     ///     ..FocusWindowRequest::default()
@@ -193,7 +193,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, ResizeWindowRequest};
+    /// # use tinydesktop_desktop::{Desktop, ResizeWindowRequest};
     /// let reply = Desktop::new().resize_window(ResizeWindowRequest {
     ///     width: 1_280.0,
     ///     height: 720.0,
@@ -222,7 +222,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, MoveWindowRequest};
+    /// # use tinydesktop_desktop::{Desktop, MoveWindowRequest};
     /// let reply = Desktop::new().move_window(MoveWindowRequest {
     ///     x: 0.0,
     ///     y: 0.0,
@@ -252,7 +252,7 @@ impl Desktop {
         /// # Examples
         ///
         /// ```
-        /// # use tinydesktop::{Desktop, WindowRequest};
+        /// # use tinydesktop_desktop::{Desktop, WindowRequest};
         /// let reply = Desktop::new().minimize(WindowRequest::default());
         /// assert_eq!(reply.command, "minimize");
         /// ```

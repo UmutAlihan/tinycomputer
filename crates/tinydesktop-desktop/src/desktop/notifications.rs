@@ -20,7 +20,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, ListNotificationsRequest};
+    /// # use tinydesktop_desktop::{Desktop, ListNotificationsRequest};
     /// let reply = Desktop::new().list_notifications(ListNotificationsRequest::default());
     /// assert_eq!(reply.command, "list-notifications");
     /// ```
@@ -48,7 +48,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, NotificationActionRequest};
+    /// # use tinydesktop_desktop::{Desktop, NotificationActionRequest};
     /// let reply = Desktop::new().notification_action(NotificationActionRequest {
     ///     index: 0,
     ///     action: "Reply".to_owned(),
@@ -83,7 +83,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, DismissNotificationRequest};
+    /// # use tinydesktop_desktop::{Desktop, DismissNotificationRequest};
     /// let reply = Desktop::new().dismiss_notification(DismissNotificationRequest {
     ///     index: 0,
     ///     expected_app: Some("Mail".to_owned()),
@@ -120,7 +120,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, DismissAllNotificationsRequest};
+    /// # use tinydesktop_desktop::{Desktop, DismissAllNotificationsRequest};
     /// let reply =
     ///     Desktop::new().dismiss_all_notifications(DismissAllNotificationsRequest::default());
     /// assert_eq!(reply.command, "dismiss-all-notifications");

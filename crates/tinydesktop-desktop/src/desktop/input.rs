@@ -17,7 +17,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, PressRequest};
+    /// # use tinydesktop_desktop::{Desktop, PressRequest};
     /// let reply = Desktop::new().press(PressRequest::new("cmd+shift+p"));
     /// assert_eq!(reply.command, "press");
     /// ```
@@ -46,7 +46,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, HoldKeyRequest};
+    /// # use tinydesktop_desktop::{Desktop, HoldKeyRequest};
     /// let reply = Desktop::new().key_down(HoldKeyRequest {
     ///     combo: "shift".to_owned(),
     ///     force: false,
@@ -87,7 +87,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, HoverRequest};
+    /// # use tinydesktop_desktop::{Desktop, HoverRequest};
     /// let reply = Desktop::new().hover(HoverRequest {
     ///     ref_id: Some("@s1:e2".to_owned()),
     ///     ..HoverRequest::default()
@@ -117,7 +117,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, DragEndpoint, DragRequest};
+    /// # use tinydesktop_desktop::{Desktop, DragEndpoint, DragRequest};
     /// let reply = Desktop::new().drag(DragRequest {
     ///     from: DragEndpoint::at_ref("@s1:e2"),
     ///     to: DragEndpoint::at_point(400.0, 300.0),
@@ -150,7 +150,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, MouseMoveRequest};
+    /// # use tinydesktop_desktop::{Desktop, MouseMoveRequest};
     /// let reply = Desktop::new().mouse_move(MouseMoveRequest { x: 10.0, y: 20.0 });
     /// assert_eq!(reply.command, "mouse-move");
     /// ```
@@ -178,7 +178,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, MouseClickRequest};
+    /// # use tinydesktop_desktop::{Desktop, MouseClickRequest};
     /// let reply = Desktop::new().mouse_click(MouseClickRequest {
     ///     x: 10.0,
     ///     y: 20.0,
@@ -214,7 +214,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, HoldMouseRequest};
+    /// # use tinydesktop_desktop::{Desktop, HoldMouseRequest};
     /// let reply = Desktop::new().mouse_down(HoldMouseRequest::default());
     /// assert!(!reply.ok);
     /// ```
@@ -257,7 +257,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, MouseWheelRequest};
+    /// # use tinydesktop_desktop::{Desktop, MouseWheelRequest};
     /// let reply = Desktop::new().mouse_wheel(MouseWheelRequest {
     ///     x: 10.0,
     ///     y: 20.0,

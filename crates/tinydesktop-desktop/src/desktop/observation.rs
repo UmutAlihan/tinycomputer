@@ -22,7 +22,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, SnapshotRequest};
+    /// # use tinydesktop_desktop::{Desktop, SnapshotRequest};
     /// let reply = Desktop::new().snapshot(SnapshotRequest {
     ///     app: Some("Safari".to_owned()),
     ///     skeleton: true,
@@ -60,7 +60,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, FindRequest};
+    /// # use tinydesktop_desktop::{Desktop, FindRequest};
     /// let reply = Desktop::new().find(FindRequest {
     ///     role: Some("button".to_owned()),
     ///     name: Some("Save".to_owned()),
@@ -113,7 +113,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, ElementProperty, GetRequest};
+    /// # use tinydesktop_desktop::{Desktop, ElementProperty, GetRequest};
     /// let reply = Desktop::new().get(GetRequest::new("@s1:e2", ElementProperty::Value));
     /// assert_eq!(reply.command, "get");
     /// ```
@@ -140,7 +140,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, ElementStateProperty, IsRequest};
+    /// # use tinydesktop_desktop::{Desktop, ElementStateProperty, IsRequest};
     /// let reply = Desktop::new().is(IsRequest::new("@s1:e2", ElementStateProperty::Enabled));
     /// assert_eq!(reply.command, "is");
     /// ```
@@ -168,7 +168,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::{Desktop, ScreenshotRequest};
+    /// # use tinydesktop_desktop::{Desktop, ScreenshotRequest};
     /// let reply = Desktop::new().screenshot(ScreenshotRequest::default());
     /// assert_eq!(reply.command, "screenshot");
     /// ```

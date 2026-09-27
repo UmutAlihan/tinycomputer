@@ -70,7 +70,7 @@ use permission::Need;
 /// # Examples
 ///
 /// ```
-/// use tinydesktop::Desktop;
+/// use tinydesktop_desktop::Desktop;
 ///
 /// let desktop = Desktop::new();
 /// let reply = desktop.version();
@@ -92,7 +92,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// assert!(Desktop::new().version().ok);
     /// ```
     #[must_use]
@@ -110,7 +110,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// let desktop = Desktop::new().with_session("run-42");
     /// assert_eq!(desktop.session_id(), Some("run-42"));
     /// ```
@@ -131,7 +131,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// let desktop = Desktop::new().with_trace("/tmp/run.jsonl", false);
     /// assert!(desktop.is_tracing());
     /// ```
@@ -152,7 +152,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// assert!(Desktop::new().with_headed(true).is_headed());
     /// ```
     #[must_use]
@@ -173,7 +173,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// let desktop = Desktop::from_config(&serde_json::json!({
     ///     "session_id": "run-42",
     ///     "headed": true,
@@ -181,7 +181,7 @@ impl Desktop {
     ///
     /// assert_eq!(desktop.session_id(), Some("run-42"));
     /// assert!(desktop.is_headed());
-    /// # Ok::<(), tinydesktop::Error>(())
+    /// # Ok::<(), tinydesktop_desktop::Error>(())
     /// ```
     ///
     /// # Errors
@@ -210,7 +210,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// assert_eq!(Desktop::new().session_id(), None);
     /// ```
     #[must_use]
@@ -223,7 +223,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// assert!(!Desktop::new().is_tracing());
     /// ```
     #[must_use]
@@ -237,7 +237,7 @@ impl Desktop {
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// let desktop = Desktop::new().with_trace("/tmp/run.jsonl", true);
     /// assert_eq!(desktop.trace_path(), Some(Path::new("/tmp/run.jsonl")));
     /// ```
@@ -251,7 +251,7 @@ impl Desktop {
     /// # Examples
     ///
     /// ```
-    /// # use tinydesktop::Desktop;
+    /// # use tinydesktop_desktop::Desktop;
     /// assert!(!Desktop::new().is_headed());
     /// ```
     #[must_use]
