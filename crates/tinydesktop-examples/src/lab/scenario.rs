@@ -32,6 +32,20 @@ pub struct Scenario {
     pub texts: &'static [&'static str],
     /// How to tell whether the task really happened.
     pub check: Check,
+    /// What returns the application to a known state before each run, so a
+    /// run cannot pass on what an earlier one left behind.
+    pub reset: &'static [Reset],
+}
+
+/// One step of putting an application back into a known state.
+#[derive(Debug, Clone, Copy)]
+pub enum Reset {
+    /// Run this AppleScript, ignoring failure.
+    AppleScript(&'static str),
+    /// Press this key combination at the application.
+    Press(&'static str),
+    /// Remove this folder from the Desktop if it exists and is empty.
+    RemoveEmptyDesktopFolder(&'static str),
 }
 
 /// How a scenario is checked against the application's real state.
@@ -81,6 +95,9 @@ pub const SCENARIOS: &[Scenario] = &[
             "Desktop flows describe what to do, not how. Jev grounds every step on the live screen. This paragraph was written by a tinydesktop flow.",
         ],
         check: Check::TextEditContains("This paragraph was written by a tinydesktop flow."),
+        reset: &[Reset::AppleScript(
+            r#"tell application "TextEdit" to close every document saving no"#,
+        )],
     },
     Scenario {
         name: "calculator",
@@ -90,6 +107,7 @@ pub const SCENARIOS: &[Scenario] = &[
         goal: "Calculate 128 multiplied by 37 by pressing the Calculator buttons until the display shows 4736.",
         texts: &[],
         check: Check::CalculatorShows("4736"),
+        reset: &[Reset::Press("escape"), Reset::Press("escape")],
     },
     Scenario {
         name: "notes",
@@ -111,6 +129,7 @@ pub const SCENARIOS: &[Scenario] = &[
         goal: "Make sure a folder named tinydesktop-lab exists on the Desktop, creating it if needed.",
         texts: &["tinydesktop-lab"],
         check: Check::DesktopFolder("tinydesktop-lab"),
+        reset: &[Reset::RemoveEmptyDesktopFolder("tinydesktop-lab")],
     },
     Scenario {
         name: "settings-appearance",
@@ -120,6 +139,7 @@ pub const SCENARIOS: &[Scenario] = &[
         goal: "Open the Appearance settings and leave the current appearance mode visible.",
         texts: &[],
         check: Check::AppearanceRead,
+        reset: &[],
     },
     Scenario {
         name: "mail-compose",
@@ -136,6 +156,7 @@ pub const SCENARIOS: &[Scenario] = &[
             subject: "Friday",
             body: "3pm",
         },
+        reset: &[],
     },
     Scenario {
         name: "mail-reply",
@@ -147,6 +168,7 @@ pub const SCENARIOS: &[Scenario] = &[
             "Thanks for your note. I have read it and will follow up properly by tomorrow.\n\nBest,\nAlex",
         ],
         check: Check::MailReplyDraft,
+        reset: &[],
     },
     Scenario {
         name: "spotify",
@@ -156,6 +178,7 @@ pub const SCENARIOS: &[Scenario] = &[
         goal: "Open Liked Songs and make sure a song is playing; choose DONE if one already is.",
         texts: &[],
         check: Check::ShowsPause,
+        reset: &[],
     },
 ];
 
@@ -184,6 +207,7 @@ impl Scenario {
         &self,
         host: &Host,
         flow: Option<&FlowRunResult>,
+        run: &str,
     ) -> Result<Verdict, LabError> {
         match self.check {
             Check::TextEditContains(text) => Ok(contains(
@@ -206,7 +230,10 @@ impl Scenario {
                     ),
                 })
             }
-            Check::NoteNamed(name) => Ok(contains(&snapshot_text(host, self.app).await?, name)),
+            Check::NoteNamed(name) => Ok(contains(
+                &snapshot_text(host, self.app).await?,
+                &name.replace("{run}", run),
+            )),
             Check::DesktopFolder(name) => {
                 let path = std::env::var("HOME").map(|home| format!("{home}/Desktop/{name}"))?;
                 let exists = std::path::Path::new(&path).is_dir();
@@ -278,6 +305,42 @@ impl Scenario {
                 })
             }
         }
+    }
+}
+
+impl Scenario {
+    /// Launches the application and returns it to a known state.
+    ///
+    /// # Errors
+    ///
+    /// Fails only on a transport error.
+    pub async fn prepare(&self, host: &Host) -> Result<(), LabError> {
+        for step in self.reset {
+            match step {
+                Reset::AppleScript(script) => {
+                    let _ = osascript(script);
+                }
+                Reset::Press(combo) => {
+                    host.call(
+                        names::methods::PRESS,
+                        serde_json::json!({"combo": combo, "app": self.app}),
+                    )
+                    .await?;
+                }
+                Reset::RemoveEmptyDesktopFolder(name) => {
+                    if let Ok(home) = std::env::var("HOME") {
+                        let _ = std::fs::remove_dir(format!("{home}/Desktop/{name}"));
+                    }
+                }
+            }
+        }
+        host.call(
+            names::methods::LAUNCH,
+            serde_json::json!({"app": self.app, "activate": true}),
+        )
+        .await?;
+        tokio::time::sleep(std::time::Duration::from_millis(1_500)).await;
+        Ok(())
     }
 }
 
