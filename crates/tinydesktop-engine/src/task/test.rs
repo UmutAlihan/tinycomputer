@@ -214,9 +214,14 @@ async fn missing_values_are_asked_for_before_anything_runs() {
     let view = start(
         &tasks,
         json!({"app": "browser", "steps": [
-            {"enter": {"email": "${email}", "birth date": "${date of birth}", "phone": "${phone}"}},
+            {"enter": {
+                "email": "${email}",
+                "birth date": "${date of birth}",
+                "phone": "${phone}",
+                "traveller count": "${travellers}"
+            }},
             {"read": {"what": "the fare", "into": "fare"}},
-            {"verify": "the fare ${fare} is shown for ${travellers}"}
+            {"verify": "the fare ${fare} is shown"}
         ]}),
         &[("phone", "+91 98765 43210")],
     );
