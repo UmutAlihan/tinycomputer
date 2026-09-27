@@ -93,46 +93,31 @@ fn walk(
     for (index, step) in steps.iter().enumerate() {
         *count += 1;
         let path = step_path(prefix, index);
-        let mut text = |label: &str, value: &str| {
-            if value.trim().is_empty() {
-                errors.push(format!("step {path}: {label} must not be empty"));
-            }
-            for name in references(value) {
-                if !defined.contains(&name) {
-                    errors.push(format!(
-                        "step {path}: `${{{name}}}` is not defined in `vars` or by a `read` step"
-                    ));
-                }
-            }
+        let text = |errors: &mut Vec<String>, label: &str, value: &str| {
+            check_text(errors, &path, label, value, defined);
         };
         match step.action() {
-            FlowAction::Open(value) => text("the application", &value),
-            FlowAction::Do(value) => text("the intent", &value),
+            FlowAction::Open(value) => text(errors, "the application", &value),
+            FlowAction::Do(value) => text(errors, "the intent", &value),
             FlowAction::Verify(value) | FlowAction::WaitFor(value) => {
-                text("the condition", &value);
+                text(errors, "the condition", &value);
             }
-            FlowAction::StopBefore(value) => text("the irreversible action", &value),
+            FlowAction::StopBefore(value) => text(errors, "the irreversible action", &value),
             FlowAction::Enter(slots) => {
                 if slots.0.is_empty() {
                     errors.push(format!("step {path}: `enter` needs at least one slot"));
                 }
                 for slot in &slots.0 {
-                    text("a slot name", &slot.slot);
-                    for name in references(&slot.text) {
-                        if !defined.contains(&name) {
-                            errors.push(format!(
-                                "step {path}: `${{{name}}}` is not defined in `vars` or by a `read` step"
-                            ));
-                        }
-                    }
+                    text(errors, "a slot name", &slot.slot);
+                    undefined(errors, &path, &slot.text, defined);
                 }
             }
             FlowAction::Choose(choose) => {
-                text("`what`", &choose.what);
-                text("`option`", &choose.option);
+                text(errors, "`what`", &choose.what);
+                text(errors, "`option`", &choose.option);
             }
             FlowAction::Read(read) => {
-                text("`what`", &read.what);
+                text(errors, "`what`", &read.what);
                 if read.into.is_empty()
                     || !read
                         .into
@@ -145,7 +130,7 @@ fn walk(
                 }
             }
             FlowAction::RepeatUntil(repeat) => {
-                text("the condition", &repeat.condition);
+                text(errors, "the condition", &repeat.condition);
                 if !(1..=MAX_REPEAT).contains(&repeat.max) {
                     errors.push(format!(
                         "step {path}: `max` must be between 1 and {MAX_REPEAT}"
@@ -159,7 +144,7 @@ fn walk(
                 walk(&repeat.steps, &path, depth + 1, defined, count, errors);
             }
             FlowAction::If(branch) => {
-                text("the condition", &branch.condition);
+                text(errors, "the condition", &branch.condition);
                 if branch.then.is_empty() && branch.otherwise.is_empty() {
                     errors.push(format!(
                         "step {path}: `if` needs a `then` or an `else` branch"
@@ -168,6 +153,30 @@ fn walk(
                 walk(&branch.then, &path, depth + 1, defined, count, errors);
                 walk(&branch.otherwise, &path, depth + 1, defined, count, errors);
             }
+        }
+    }
+}
+
+/// Requires `value` to be non-empty and every `${name}` in it to be defined.
+fn check_text(
+    errors: &mut Vec<String>,
+    path: &str,
+    label: &str,
+    value: &str,
+    defined: &BTreeSet<String>,
+) {
+    if value.trim().is_empty() {
+        errors.push(format!("step {path}: {label} must not be empty"));
+    }
+    undefined(errors, path, value, defined);
+}
+
+fn undefined(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeSet<String>) {
+    for name in references(value) {
+        if !defined.contains(&name) {
+            errors.push(format!(
+                "step {path}: `${{{name}}}` is not defined in `vars` or by a `read` step"
+            ));
         }
     }
 }
