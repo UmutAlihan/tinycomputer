@@ -1,8 +1,5 @@
 //! One function per step kind; `run` dispatches between them.
 
-/// The surface name that routes a flow to the browser.
-pub(in crate::agentic) const BROWSER: &str = "browser";
-
 use serde_json::{Value, json};
 use tinydesktop_bus::{
     ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, ReadStep, RepeatStep,
@@ -17,6 +14,9 @@ use super::{
     validate::{MAX_REPEAT, substitute},
     view::{Candidate, is_destructive, label, target_payload},
 };
+
+/// The surface name that routes a flow to the browser.
+pub(in crate::agentic) const BROWSER: &str = "browser";
 
 /// Turns a `do` step may spend.
 const DO_TURNS: u32 = 8;
