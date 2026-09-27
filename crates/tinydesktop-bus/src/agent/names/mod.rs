@@ -1,11 +1,16 @@
-//! The Agent interface's bus identity: interface name, object path, and one
-//! constant per member, in dispatch order.
+//! The Agent members' bus identity: where they are served, and one constant
+//! per member, in dispatch order.
+//!
+//! A `TinyBus` module exports one interface at one object path, so the Agent
+//! members are served on the module's interface beside the desktop members
+//! (their names do not collide). [`INTERFACE`] and [`OBJECT_PATH`] are that
+//! interface's, and the members appear in [`crate::names::METHODS`] too.
 
-/// The well-known interface name the module claims for task execution.
-pub const INTERFACE: &str = "ai.tinyhumans.tinydesktop.Agent";
+/// The interface the Agent members are served on.
+pub const INTERFACE: &str = crate::names::INTERFACE;
 
-/// The object path the module serves the Agent interface at.
-pub const OBJECT_PATH: &str = "/ai/tinyhumans/tinydesktop/Agent";
+/// The object path the Agent members are served at.
+pub const OBJECT_PATH: &str = crate::names::OBJECT_PATH;
 
 /// One constant per member of [`INTERFACE`].
 pub mod methods {

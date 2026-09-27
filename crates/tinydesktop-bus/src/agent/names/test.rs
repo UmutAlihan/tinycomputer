@@ -5,9 +5,14 @@
 use super::{CONFIDENTIAL, INTERFACE, METHODS, OBJECT_PATH};
 
 #[test]
-fn the_interface_lives_beside_the_desktop_and_browser_ones() {
-    assert_eq!(INTERFACE, "ai.tinyhumans.tinydesktop.Agent");
-    assert_eq!(OBJECT_PATH, "/ai/tinyhumans/tinydesktop/Agent");
+fn the_members_are_served_on_the_modules_one_interface() {
+    assert_eq!(INTERFACE, crate::names::INTERFACE);
+    assert_eq!(OBJECT_PATH, crate::names::OBJECT_PATH);
+    assert!(
+        METHODS
+            .iter()
+            .all(|member| crate::names::METHODS.contains(member))
+    );
 }
 
 #[test]
