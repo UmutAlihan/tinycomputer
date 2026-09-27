@@ -93,7 +93,7 @@ pub(super) async fn run_flow_with<B: AgentBackend + Sync>(
     request: RunFlowRequest,
 ) -> DesktopResponse {
     let known = request.vars.keys().cloned().collect::<BTreeSet<_>>();
-    let validation = validate::check(&request.flow, &known);
+    let validation = validate::check(&request.flow, &known, &request.facts);
     if !validation.valid {
         return DesktopResponse::err(
             "run-flow",
