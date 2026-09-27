@@ -109,6 +109,9 @@ pub fn describe(node: &Candidate, include_values: bool) -> Value {
     if let Some(count) = node.children_count {
         value["contains"] = json!(count);
     }
+    if let Some(near) = near(node) {
+        value["near"] = Value::String(near);
+    }
     if node.name.is_none()
         && node.description.is_none()
         && node.value.is_none()
@@ -155,11 +158,35 @@ pub fn signature(node: &Candidate) -> String {
     )
 }
 
-/// One element as a line of the state Jev reads: its label, what it holds
-/// when `include_values` is set (up to 80 characters), and its states.
+/// Longest `near` label shown for an unnamed element, in characters.
+const NEAR_CHARS: usize = 60;
+
+/// For an element with no name of its own, the nearest named container it
+/// sits in, clipped: an unnamed search box inside `button "destinationCity"`
+/// is told apart from the unnamed boxes of every other dropdown only by it.
+/// `None` for a named element, or one with no named container.
+#[must_use]
+pub fn near(node: &Candidate) -> Option<String> {
+    if node.name.is_some() || node.description.is_some() {
+        return None;
+    }
+    let container = node.path.iter().rev().find(|label| label.contains('"'))?;
+    let mut clipped = container.chars().take(NEAR_CHARS).collect::<String>();
+    if container.chars().count() > NEAR_CHARS {
+        clipped.push('…');
+    }
+    Some(clipped)
+}
+
+/// One element as a line of the state Jev reads: its label, where an
+/// unnamed element sits, what it holds when `include_values` is set (up to
+/// 80 characters), and its states.
 #[must_use]
 pub fn element_line(node: &Candidate, include_values: bool) -> String {
     let mut line = label(node);
+    if let Some(near) = near(node) {
+        let _ = write!(line, " in {near}");
+    }
     if include_values
         && let Some(value) = node.value.as_ref().and_then(Value::as_str)
         && !value.is_empty()
