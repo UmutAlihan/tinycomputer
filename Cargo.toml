@@ -34,6 +34,8 @@ tinydesktop-bus = { path = "crates/tinydesktop-bus" }
 # The agent-desktop adapter: `Desktop`, one method per desktop member. Taken by
 # the engine and re-exported by the module crate.
 tinydesktop-desktop = { path = "crates/tinydesktop-desktop" }
+# The agent runtime: Jev loops, goals, and intent flows. Served by the module.
+tinydesktop-engine = { path = "crates/tinydesktop-engine" }
 # Native typed Jev transport used by the desktop-control policy: the decisions
 # crate of the vendored `vendor/tinyinference` submodule, pinned by its gitlink
 # so provider validation and retry behavior are reproducible. Only this crate

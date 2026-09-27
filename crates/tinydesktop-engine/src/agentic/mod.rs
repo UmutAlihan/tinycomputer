@@ -82,7 +82,7 @@ impl JevRuntime {
     ///
     /// # Errors
     ///
-    /// Returns a `JEV_CONFIG_INVALID`-style [`DesktopError`] when the provider,
+    /// Returns a `JEV_INVALID_CONFIG` [`DesktopError`] when the provider,
     /// endpoint, or credentials in `request` cannot form a trusted client.
     pub fn configure(request: &JevConfig) -> Result<Self, Box<DesktopError>> {
         let mut config = match request.provider {
