@@ -239,33 +239,7 @@ impl Scenario {
                     detail: format!("{path} {}", if exists { "exists" } else { "is missing" }),
                 })
             }
-            Check::AppearanceRead => {
-                let dark = osascript(
-                    r#"tell application "System Events" to tell appearance preferences to get dark mode"#,
-                );
-                let expected = match dark.trim() {
-                    "true" => "dark",
-                    "false" => "light",
-                    other => {
-                        return Ok(Verdict {
-                            passed: false,
-                            detail: format!("could not read the system appearance: {other}"),
-                        });
-                    }
-                };
-                let read = flow
-                    .and_then(|result| result.vars.get("mode"))
-                    .map(|mode| mode.to_ascii_lowercase())
-                    .unwrap_or_default();
-                let named = ["light", "dark", "auto"]
-                    .into_iter()
-                    .filter(|mode| read.contains(mode))
-                    .collect::<Vec<_>>();
-                Ok(Verdict {
-                    passed: named.len() == 1 && (named[0] == expected || named[0] == "auto"),
-                    detail: format!("read {read:?}; the system reports {expected}"),
-                })
-            }
+            Check::AppearanceRead => Ok(appearance_read_verdict(flow)),
             Check::MailDraft { subject, body } => {
                 let window = snapshot_text(host, self.app).await?;
                 Ok(Verdict {
