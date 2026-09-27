@@ -200,7 +200,6 @@ pub(in crate::agentic) fn parse_reply(
     let tree = data.get("tree").cloned().unwrap_or(Value::Null);
     let mut root_node: Candidate = serde_json::from_value(tree).unwrap_or_default();
     let mut candidates = Vec::new();
-    let mut context = Vec::new();
     let mut unexplored = Vec::new();
     let mut text_nodes = Vec::new();
     let mut visited = 0_usize;
@@ -209,13 +208,13 @@ pub(in crate::agentic) fn parse_reply(
         &[],
         &mut Collected {
             candidates: &mut candidates,
-            context: &mut context,
             unexplored: &mut unexplored,
             text_nodes: &mut text_nodes,
         },
         0,
         &mut visited,
     );
+    let context = build_context(&candidates, &text_nodes);
     // Not truncated here: a flow narrows a large pool region by region
     // instead of cutting it.
     candidates.retain(offerable);
