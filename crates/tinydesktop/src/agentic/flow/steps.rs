@@ -12,7 +12,7 @@ use super::{
     ask::{self, Questions, chosen, condition, numbered},
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute},
-    view::{Candidate, destructive_label, label, target_payload},
+    view::{Candidate, is_destructive, label, target_payload},
 };
 
 /// Turns a `do` step may spend.
