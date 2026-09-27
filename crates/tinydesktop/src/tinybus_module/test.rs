@@ -397,7 +397,9 @@ async fn the_ordinary_task_members_answer_over_a_real_bus() -> tinybus::Result<(
     let described: Capabilities = proxy.call(names::methods::DESCRIBE, json!([])).await?;
     assert!(!described.jev_configured);
     assert_eq!(described.members.len(), 8);
-    assert!(described.surfaces.iter().any(|surface| !surface.available));
+    assert!(described.surfaces.iter().any(|surface| surface.kind
+        == tinydesktop_bus::agent::SurfaceKind::Browser
+        && surface.available));
 
     let listed: AgentResponse<Vec<TaskView>> =
         proxy.call(names::methods::LIST_TASKS, json!([])).await?;
@@ -510,4 +512,15 @@ async fn the_runner_keeps_one_workspace_per_task_until_released() {
     assert_eq!(runner.workspaces.lock().unwrap().len(), 1);
     runner.release(&task);
     assert!(runner.workspaces.lock().unwrap().is_empty());
+}
+
+#[test]
+fn the_browser_executable_is_configured_or_refused() {
+    assert!(DesktopService::from_config(&json!({"browser": {}})).is_ok());
+    assert!(
+        DesktopService::from_config(&json!({"browser": {"executable": "/usr/bin/chromium"}}))
+            .is_ok()
+    );
+    assert!(DesktopService::from_config(&json!({"browser": {"executable": 7}})).is_err());
+    assert!(DesktopService::from_config(&json!({"browser": "chrome"})).is_err());
 }

@@ -76,7 +76,12 @@ impl BrowserSurface {
     /// Closes the session, if one is open, without waiting for it: safe to
     /// call from async code, where a blocking surface call is not.
     pub fn close(&self) {
-        let Some(id) = self.session.lock().ok().and_then(|mut session| session.take()) else {
+        let Some(id) = self
+            .session
+            .lock()
+            .ok()
+            .and_then(|mut session| session.take())
+        else {
             return;
         };
         let browser = self.browser.clone();

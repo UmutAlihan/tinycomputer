@@ -38,9 +38,9 @@ mod sessions;
 mod surface;
 
 pub use engine::{Engine, Launcher, Reply};
+pub use error::{Error, Result};
 #[cfg(feature = "agent-browser")]
 pub use linked::AgentBrowser;
-pub use error::{Error, Result};
 pub use outputs::SWEEP_INTERVAL;
 pub use sessions::{Browser, MAX_SESSIONS};
 pub use surface::BrowserSurface;

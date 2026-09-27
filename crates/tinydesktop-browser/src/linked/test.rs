@@ -16,5 +16,9 @@ async fn an_empty_command_is_answered_without_launching_a_browser() {
     let mut engine = AgentBrowser.open("unit");
     let reply = engine.execute(json!({"id": "1", "action": ""})).await;
     assert_eq!(reply["success"], false);
-    assert!(reply["error"].as_str().is_some_and(|error| !error.is_empty()));
+    assert!(
+        reply["error"]
+            .as_str()
+            .is_some_and(|error| !error.is_empty())
+    );
 }

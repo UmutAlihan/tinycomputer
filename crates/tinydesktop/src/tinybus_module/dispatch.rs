@@ -169,8 +169,8 @@ impl DesktopService {
                 desktop_availability(&permissions),
                 SurfaceAvailability {
                     kind: SurfaceKind::Browser,
-                    available: false,
-                    reason: Some("the browser engine is not linked into this build yet".to_owned()),
+                    available: true,
+                    reason: None,
                 },
             ],
             self.jev.is_some(),
@@ -567,5 +567,23 @@ pub(super) fn desktop_availability(permissions: &DesktopResponse) -> SurfaceAvai
         kind: SurfaceKind::Desktop,
         available: reason.is_none(),
         reason,
+    }
+}
+
+/// The `browser.executable` configuration: the Chrome or Chromium binary to
+/// launch where the platform's own discovery would not find one.
+fn browser_executable(config: &serde_json::Value) -> Result<Option<String>> {
+    let Some(browser) = config.as_object().and_then(|object| object.get("browser")) else {
+        return Ok(None);
+    };
+    let invalid = || crate::Error::ConfigFieldType {
+        field: "browser",
+        expected: "an object whose optional `executable` is a string",
+    };
+    let browser = browser.as_object().ok_or_else(invalid)?;
+    match browser.get("executable") {
+        None => Ok(None),
+        Some(serde_json::Value::String(path)) => Ok(Some(path.clone())),
+        Some(_) => Err(invalid()),
     }
 }

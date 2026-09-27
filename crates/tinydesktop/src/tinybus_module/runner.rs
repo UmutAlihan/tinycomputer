@@ -59,11 +59,20 @@ impl WorkspaceRunner {
                     tokio::runtime::Handle::current(),
                 )
             });
-            (Workspace::new(self.desktop.clone(), browser.clone()), browser)
+            (
+                Workspace::new(self.desktop.clone(), browser.clone()),
+                browser,
+            )
         };
         self.workspaces.lock().map_or_else(
             |_| fresh().0,
-            |mut workspaces| workspaces.entry(task.clone()).or_insert_with(fresh).0.clone(),
+            |mut workspaces| {
+                workspaces
+                    .entry(task.clone())
+                    .or_insert_with(fresh)
+                    .0
+                    .clone()
+            },
         )
     }
 }
