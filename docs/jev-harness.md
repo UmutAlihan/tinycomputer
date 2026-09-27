@@ -36,6 +36,8 @@ crates/tinycomputer-engine/src/
   ├─ act.rs              the `do` loop: judge, recover, move
   ├─ ground.rs           one element for a purpose
   ├─ enter.rs            slots to fields, verified delivery
+  ├─ wide.rs, survey.rs  the wide strategy: one request per turn, the survey
+  ├─ ledger.rs           the working memory wide questions see
   └─ ask.rs, vote.rs     question builders; framings and merging
   ▼
   agentic/mod.rs         JevRuntime::evaluate — the one door every call
@@ -118,6 +120,7 @@ framing, plus the action, plus settling. The levers:
 
 | Lever | Effect on latency | Effect on accuracy |
 |---|---|---|
+| `strategy` | `wide` asks one request per `do` turn instead of two to seven in sequence | the digest, survey, and memory show more of what matters; measure with the lab's `--strategy` |
 | `votes` | a decision waits for its slowest framing: more framings, longer tail | more framings average out position and phrasing bias |
 | request size | Jev's latency grows with input tokens; a big element list is the usual cause | trimming can drop the element that was needed |
 | grounding memory | a remembered element is confirmed with one Noul instead of narrowing | none when the hint is right |
