@@ -269,7 +269,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 
     async fn run_step(&mut self, step: &FlowStep, path: String) -> Result<(), Halt> {
         let action = step.action();
-        let (kind, text) = describe_step(&action, &self.vars);
+        let (kind, text) = describe_step(&action, &self.vars, &self.facts);
         let mut log = StepLog::default();
         self.step.clone_from(&path);
         let result = steps::run(self, &mut log, &action, &text, &path).await;
