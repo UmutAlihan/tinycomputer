@@ -393,8 +393,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         };
         let target = grounded.candidate;
         log.confidence = Some(grounded.confidence);
-        if jev_operation == JevOperation::Click
-            && destructive_label(&label(&target).to_ascii_lowercase())
+        if jev_operation == JevOperation::Click && is_destructive(&target, screen, &self.stop_before)
         {
             // Never call the backend, and never report this target through
             // `Move::Acted`: nothing happened, so it must not be banned as a
