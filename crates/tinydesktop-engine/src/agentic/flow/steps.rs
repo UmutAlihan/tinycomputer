@@ -244,7 +244,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         } else {
             format!("pick the option {option:?} in {what}")
         };
-        for attempt in 0..3 {
+        for attempt in 0..4 {
             let screen = self.look().await?;
             let pool = clickable(&screen.candidates)
                 .into_iter()
@@ -288,7 +288,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .await?;
                 }
                 1 if looks_like_date(option) => self.page_to(log, option).await?,
-                1 => self.type_to_filter(log, &screen, what, option).await?,
+                // An opened autocomplete holds the focus in its search input,
+                // often unnamed; type there before anything moves the focus.
+                1 => self.type_into_focus(log, option).await?,
+                2 if !looks_like_date(option) => {
+                    self.type_to_filter(log, &screen, what, option).await?;
+                }
                 _ => {}
             }
         }
@@ -330,6 +335,18 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(())
     }
 
+    /// Types `option` wherever the focus is.
+    async fn type_into_focus(&mut self, log: &mut StepLog, option: &str) -> Result<(), Halt> {
+        let text = option.to_owned();
+        self.act(log, "type to filter", None, move |backend| {
+            backend.execute(JevOperation::TypeText, None, Some(text))
+        })
+        .await?;
+        self.history
+            .push("typed into the focused field to filter it".to_owned());
+        Ok(())
+    }
+
     /// Types `option` into the search box of `what`, so an autocomplete
     /// lists it; nothing happens when no field takes text.
     async fn type_to_filter(
@@ -351,32 +368,21 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .cloned()
             .collect::<Vec<_>>();
         let purpose = format!("the search box that filters the options of {what}");
-        let text = option.to_owned();
         if let Some(grounded) = self.ground(log, screen, &purpose, &purpose, fields).await? {
             let app = self.app.clone();
             let target = grounded.candidate;
             let field = target.clone();
-            let typed = text.clone();
+            let text = option.to_owned();
             let reply = self
                 .act(log, "type to filter", Some(&target), move |backend| {
-                    deliver_text(&backend, &app, &field, &typed)
+                    deliver_text(&backend, &app, &field, &text)
                 })
                 .await?;
             if reply.ok {
                 self.history
                     .push(format!("typed into {} to filter it", label(&target)));
-                return Ok(());
             }
         }
-        // An opened autocomplete often keeps its input unnamed but focused
-        // (and what looked like its box can be one of its rows); typing goes
-        // where the focus is.
-        self.act(log, "type to filter", None, move |backend| {
-            backend.execute(JevOperation::TypeText, None, Some(text))
-        })
-        .await?;
-        self.history
-            .push("typed into the focused field to filter it".to_owned());
         Ok(())
     }
 
