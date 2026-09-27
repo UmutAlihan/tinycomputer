@@ -43,7 +43,7 @@ use super::{
     memory::{learn, recall, remember},
     view::{
         ACT, Candidate, Digest, Rendering, Screen, digest, exact_named_match, is_destructive,
-        label, signature,
+        label, named_first, signature,
     },
 };
 
@@ -302,8 +302,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         operation: &'static str,
         purpose: String,
         intent: &str,
-        pool: Vec<Candidate>,
+        mut pool: Vec<Candidate>,
     ) -> (TargetPlan, Questions) {
+        named_first(&purpose, &mut pool);
         let mut questions = Questions::default();
         let known = if self.enabled(FlowLoop::Memory) {
             recall(&self.memory, &self.app, intent, &pool).cloned()

@@ -84,8 +84,24 @@ pub(in crate::agentic) fn is_destructive(
 /// Words a purpose is phrased with that say nothing about which element
 /// serves it.
 const PURPOSE_FILLER: &[&str] = &[
-    "the", "and", "for", "with", "into", "from", "that", "this", "click", "press", "expand",
-    "scroll", "perform", "accomplish", "step", "choose", "type", "use",
+    "the",
+    "and",
+    "for",
+    "with",
+    "into",
+    "from",
+    "that",
+    "this",
+    "click",
+    "press",
+    "expand",
+    "scroll",
+    "perform",
+    "accomplish",
+    "step",
+    "choose",
+    "type",
+    "use",
 ];
 
 /// Reorders `pool` so the elements whose label shares a word stem with
@@ -128,8 +144,8 @@ fn same_stem(left: &str, right: &str) -> bool {
     } else {
         (right, left)
     };
-    long.starts_with(short)
-        || (short.len() >= 4 && long.starts_with(&short[..short.floor_char_boundary(4)]))
+    let head = short.chars().take(4).collect::<String>();
+    long.starts_with(short) || (head.chars().count() == 4 && long.starts_with(&head))
 }
 
 /// Roles that hold or choose a value rather than submit anything.

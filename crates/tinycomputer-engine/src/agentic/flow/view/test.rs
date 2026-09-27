@@ -4,7 +4,9 @@
 
 use serde_json::json;
 
-use super::{Candidate, Screen, destructive_label, is_destructive, named_in_stop_before};
+use super::{
+    Candidate, Screen, destructive_label, is_destructive, named_first, named_in_stop_before,
+};
 
 fn clickable_screen() -> Screen {
     Screen {
@@ -120,4 +122,41 @@ fn is_destructive_gates_a_generic_control_on_a_payment_screen() {
 fn a_counters_minus_button_is_not_destructive() {
     assert!(!destructive_label("remove adult, 2 adult remaining"));
     assert!(destructive_label("remove"));
+}
+
+fn button(name: &str) -> Candidate {
+    Candidate {
+        ref_id: format!("@e:{name}"),
+        role: "button".to_owned(),
+        name: Some(name.to_owned()),
+        ..Candidate::default()
+    }
+}
+
+#[test]
+fn the_elements_a_purpose_names_are_offered_first_in_their_own_order() {
+    let mut pool = vec![
+        button("Payment"),
+        button("Card number"),
+        button("Pay ₹6,840"),
+        button("Booking summary"),
+    ];
+    named_first("perform: paying for the booking", &mut pool);
+    let names = pool
+        .iter()
+        .map(|candidate| candidate.name.clone().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        names,
+        ["Pay ₹6,840", "Booking summary", "Payment", "Card number"],
+        "every element sharing a stem moves ahead, in page order; \"payment\" and \"paying\" share only three letters"
+    );
+
+    let mut untouched = vec![button("B"), button("A")];
+    named_first("click to perform: the step", &mut untouched);
+    assert_eq!(
+        untouched[0].name.as_deref(),
+        Some("B"),
+        "filler names nothing"
+    );
 }
