@@ -121,7 +121,7 @@ pub(super) async fn run_goal_with<B: AgentBackend>(
         .await;
         match run.settle(&before, observed, decision, &target_label) {
             Ok(after) => current = Some(after),
-            Err(stopped) => return stopped,
+            Err(stopped) => return *stopped,
         }
     }
 }
@@ -176,10 +176,12 @@ impl GoalRun {
         observed: Result<Screen, Box<DesktopResponse>>,
         decision: JevDecision,
         target_label: &str,
-    ) -> Result<Screen, DesktopResponse> {
+    ) -> Result<Screen, Box<DesktopResponse>> {
         let Ok(after) = observed else {
             self.record_failure(&decision, "the screen could not be read after acting");
-            return Err(self.finish_ref(JevStopReason::ActionFailed, Some(decision)));
+            return Err(Box::new(
+                self.finish_ref(JevStopReason::ActionFailed, Some(decision)),
+            ));
         };
         let navigated = matches!(
             decision.operation,
@@ -189,7 +191,7 @@ impl GoalRun {
         let note = change_note(before, &after, changed);
         self.record(&decision, changed, target_label, note);
         if self.unchanged >= STALL_TURNS {
-            return Err(self.finish_ref(JevStopReason::Stalled, None));
+            return Err(Box::new(self.finish_ref(JevStopReason::Stalled, None)));
         }
         Ok(after)
     }
