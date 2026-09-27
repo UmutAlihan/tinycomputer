@@ -1011,7 +1011,8 @@ async fn return_is_refused_while_a_dialog_is_showing() {
     let confirmed = run_with(
         App::default(),
         json!({"app": "Mail", "steps": ["confirm the name"]}),
-        |request| request.max_actions = 1,
+        // 2: one for the implicit launch, one for the press itself.
+        |request| request.max_actions = 2,
         |id, question, _| match id {
             "shortcut" => Some(pick(question, "confirm", 0.9)),
             _ => None,
