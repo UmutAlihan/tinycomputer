@@ -291,15 +291,28 @@ impl Surface for BrowserSurface {
                 }
             }
             // Without a target the text goes where the focus is, as into an
-            // autocomplete's unnamed input once it has been opened.
-            JevOperation::TypeText if reference.is_none() => self.perform(
-                "type-text",
-                Action::Type {
-                    target: None,
-                    text: text.unwrap_or_default(),
-                    delay_ms: None,
-                },
-            ),
+            // autocomplete's unnamed input once it has been opened — but
+            // only once the focused element is verified to actually take
+            // typed text; a page that moved focus elsewhere (or nowhere)
+            // must refuse rather than silently deliver the text to whatever
+            // it finds, which could otherwise leak a private value into an
+            // unrelated field.
+            JevOperation::TypeText if reference.is_none() => {
+                if !self.focused_field_is_editable() {
+                    return DesktopResponse::err(
+                        "type-text",
+                        DesktopError::new("INVALID_TARGET", "no editable field has focus"),
+                    );
+                }
+                self.perform(
+                    "type-text",
+                    Action::Type {
+                        target: None,
+                        text: text.unwrap_or_default(),
+                        delay_ms: None,
+                    },
+                )
+            }
             JevOperation::TypeText => targeted("type-text", |target, text| Action::Fill {
                 target,
                 value: text.unwrap_or_default(),
