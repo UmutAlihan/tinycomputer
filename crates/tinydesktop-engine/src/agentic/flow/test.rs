@@ -942,6 +942,55 @@ async fn an_obstacle_is_dismissed_with_a_safe_control_only() {
     assert!(escaped.app.sim().presses.contains(&"escape".to_owned()));
 }
 
+/// Answers that press "Keep Editing" and never judge the step done, so only
+/// the screen can end it.
+fn press_keep_editing(id: &str, question: &Question, _: &Sim) -> Option<Answer> {
+    match id {
+        "done" => Some(noul(0.05)),
+        "blocked" => Some(noul(0.05)),
+        "move" => Some(pick(question, "activate", 0.9)),
+        _ if id == "target" || id == "region" || id.starts_with("group_") => {
+            Some(pick(question, "Keep Editing", 0.9))
+        }
+        _ => None,
+    }
+}
+
+#[tokio::test]
+async fn pressing_the_named_control_that_closes_an_overlay_ends_the_step() {
+    for step in [
+        "close the dialog by keeping editing",
+        "dismiss the save prompt",
+    ] {
+        let run = run_with(
+            App::with(|sim| sim.obstacle = true),
+            json!({"app": "Mail", "steps": [step]}),
+            |_| {},
+            press_keep_editing,
+        )
+        .await;
+        assert_eq!(run.result.stop, FlowStopReason::Completed, "{step}");
+        assert_eq!(run.app.sim().clicks, ["Keep Editing"], "{step}");
+        assert!(
+            run.result.steps[0].note.contains("closed"),
+            "{}",
+            run.result.steps[0].note
+        );
+    }
+    let unrelated = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["archive the message"]}),
+        |request| request.max_actions = 1,
+        press_keep_editing,
+    )
+    .await;
+    assert_ne!(
+        unrelated.result.stop,
+        FlowStopReason::Completed,
+        "closing an overlay the step never mentions does not finish it"
+    );
+}
+
 #[tokio::test]
 async fn a_regression_is_undone_and_the_element_is_not_tried_again() {
     let run = run_with(
