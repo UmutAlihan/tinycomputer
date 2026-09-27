@@ -4365,3 +4365,27 @@ async fn a_target_answered_none_is_not_asked_again_the_same_turn() {
     assert!(run.app.sim().clicks.is_empty());
     assert_eq!(run.result.steps[0].outcome, StepOutcome::Failed);
 }
+
+#[tokio::test]
+async fn a_gated_stop_before_asks_to_find_the_control_not_to_press_it() {
+    let run = run(App::default(), mail_flow()).await;
+    assert_eq!(run.result.stop, FlowStopReason::StoppedBeforeDestructive);
+    let purposes = run
+        .requests
+        .iter()
+        .filter_map(|request| request.questions.get("target"))
+        .map(|question| text_of(question, "purpose"))
+        .collect::<Vec<_>>();
+    assert!(
+        purposes.iter().any(|purpose| purpose
+            == "find, without pressing it, the control that would perform: sending the email"),
+        "{purposes:?}"
+    );
+    assert!(
+        run.result
+            .learned
+            .iter()
+            .any(|hint| hint.key == "perform sending the email"),
+        "memory keeps its key, so hints from earlier runs still match"
+    );
+}
