@@ -638,9 +638,11 @@ async fn plan_then_drive(
 fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraints, Option<u64>)> {
     let state = cell.state.lock().ok()?;
     let mut vars = run.flow.vars.clone();
+    let mut facts = BTreeSet::new();
     for name in state.facts.names() {
         if let Some(value) = state.facts.get(name) {
             vars.insert(name.to_owned(), value.to_owned());
+            facts.insert(name.to_owned());
         }
     }
     let max_actions = state
