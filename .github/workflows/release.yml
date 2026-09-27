@@ -328,6 +328,13 @@ jobs:
           package_root="dist/${package_name}"
           mkdir -p "$package_root"
           install -m 755 "$module" "$package_root/"
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            # The engine only trusts its clipboard helper when it sits beside
+            # the loaded module; without it `ClipboardSet`, `ClipboardClear`,
+            # and the flow runtime's paste fallback fail on macOS.
+            cargo build --locked --release -p agent-desktop-macos --bin agent-desktop-macos-helper
+            install -m 755 target/release/agent-desktop-macos-helper "$package_root/"
+          fi
           install -m 644 LICENSE MODULE.md "$package_root/"
 
           module_name="$(basename "$module")"
@@ -486,6 +493,13 @@ jobs:
           package_root="dist/${package_name}"
           mkdir -p "$package_root"
           install -m 755 "$module" "$package_root/"
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            # The engine only trusts its clipboard helper when it sits beside
+            # the loaded module; without it `ClipboardSet`, `ClipboardClear`,
+            # and the flow runtime's paste fallback fail on macOS.
+            cargo build --locked --release -p agent-desktop-macos --bin agent-desktop-macos-helper
+            install -m 755 target/release/agent-desktop-macos-helper "$package_root/"
+          fi
           install -m 644 LICENSE MODULE.md "$package_root/"
 
           module_name="$(basename "$module")"
