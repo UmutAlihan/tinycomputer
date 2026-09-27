@@ -19,6 +19,9 @@
 //! - [`observation`], [`interaction`], [`input`], [`apps`], [`clipboard`],
 //!   [`notifications`], [`waiting`], [`system`] — one module per family of
 //!   members, holding that family's request payloads.
+//! - [`browser`] — the browser interface's own vocabulary and member names,
+//!   namespaced so its snapshot and screenshot types never shadow the
+//!   desktop ones.
 //! - [`version`] — [`CONTRACT_VERSION`] and the [`is_compatible`] bind rule.
 //!
 //! # How the pieces fit together at a call site
@@ -103,6 +106,7 @@
 
 pub mod agentic;
 pub mod apps;
+pub mod browser;
 pub mod clipboard;
 pub mod envelope;
 pub mod flow;
