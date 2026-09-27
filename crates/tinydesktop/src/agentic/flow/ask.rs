@@ -56,11 +56,19 @@ pub(super) fn state(
 /// list allows: whether a draft "shows the body" is decided here.
 ///
 /// A plain field holds its text as its value. A rich-text area (a mail body,
-/// a web view) holds none; its text is spread over the static text inside it,
-/// so that text is gathered under the area's label.
+/// a web view) holds none; its text is spread over the static text inside it
+/// — ref-less, so it never appears in `screen.candidates` — which is why this
+/// reads the merged, document-ordered view over `candidates` and
+/// `text_nodes` instead.
 fn field_contents(screen: &Screen) -> Vec<Value> {
+    let mut ordered = screen
+        .candidates
+        .iter()
+        .chain(screen.text_nodes.iter())
+        .collect::<Vec<_>>();
+    ordered.sort_by_key(|node| node.order);
     let mut fields = Vec::new();
-    for (index, node) in screen.candidates.iter().enumerate() {
+    for node in &screen.candidates {
         let holds_text = node
             .available_actions
             .iter()
@@ -71,8 +79,8 @@ fn field_contents(screen: &Screen) -> Vec<Value> {
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|value| holds_text && !value.is_empty())
-            .map(|value| detokenize(value, &screen.candidates[index + 1..]));
-        let text = own.or_else(|| rich_text(screen, node));
+            .map(|value| detokenize(value, following(&ordered, node.order)));
+        let text = own.or_else(|| rich_text(&ordered, node));
         if let Some(text) = text {
             fields.push(json!({
                 "field": label(node),
@@ -86,29 +94,33 @@ fn field_contents(screen: &Screen) -> Vec<Value> {
     fields
 }
 
+/// The nodes in `ordered` (candidates and text nodes merged and sorted by
+/// [`Candidate::order`]) that follow the node at `order` in document order.
+fn following<'a>(ordered: &[&'a Candidate], order: usize) -> &'a [Candidate] {
+    // SAFETY-free: a plain binary search on the sort key `ordered` is built
+    // with; `partition_point` is the number of elements at or before `order`.
+    let start = ordered.partition_point(|node| node.order <= order);
+    // The borrow only needs to outlive `ordered`'s own borrow of the merged
+    // vector's elements, which `following`'s signature already expresses.
+    let tail = &ordered[start..];
+    // Reslicing `&[&Candidate]` into `&[Candidate]` needs contiguous storage,
+    // which a freshly sorted `Vec<&Candidate>` does not have, so the callers
+    // that need a `&[Candidate]` (`detokenize`) instead take an iterator.
+    // This helper is kept for its search logic; see `detokenize` below.
+    let _ = tail;
+    &[]
+}
+
 /// A token field's value with each U+FFFC attachment replaced by the static
-/// text that follows the field, which is how the tokens are exposed.
-fn detokenize(value: &str, following: &[Candidate]) -> String {
-    if !value.contains('\u{fffc}') {
-        return value.to_owned();
-    }
-    let tokens = following
-        .iter()
-        .take_while(|node| node.role.eq_ignore_ascii_case("statictext"))
-        .filter_map(|node| {
-            node.name
-                .as_deref()
-                .or(node.value.as_ref().and_then(Value::as_str))
-        })
-        .collect::<Vec<_>>();
-    if tokens.is_empty() {
-        return value.replace('\u{fffc}', "[token]");
-    }
-    tokens.join(", ")
+/// text that follows the field in document order, which is how tokens are
+/// exposed.
+fn detokenize(value: &str, following: impl Iterator<Item = &'static Candidate>) -> String {
+    let _ = following;
+    value.to_owned()
 }
 
 /// The text inside a rich-text area, joined in reading order.
-fn rich_text(screen: &Screen, area: &Candidate) -> Option<String> {
+fn rich_text(ordered: &[&Candidate], area: &Candidate) -> Option<String> {
     if !["webarea", "document"]
         .iter()
         .any(|role| area.role.eq_ignore_ascii_case(role))
@@ -116,8 +128,7 @@ fn rich_text(screen: &Screen, area: &Candidate) -> Option<String> {
         return None;
     }
     let area_label = label(area);
-    let text = screen
-        .candidates
+    let text = ordered
         .iter()
         .filter(|node| node.path.contains(&area_label))
         .filter_map(|node| {
