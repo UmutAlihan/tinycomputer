@@ -16,7 +16,7 @@
 //!   surface-agnostic [`Screen`](crate::surface::Screen), so every surface's
 //!   destructive-click gate can apply the same page-level check.
 
-use crate::surface::Screen;
+use crate::surface::{Candidate, Screen};
 
 /// What pressing a control commits the user to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
