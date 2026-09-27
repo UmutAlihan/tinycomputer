@@ -16,12 +16,18 @@
 //! for the reasons `tinydesktop-desktop` documents. A [`JevRuntime`] is built
 //! once from the module's private configuration and cloned per call.
 //!
+//! A [`Workspace`] joins the desktop and the browser into one surface, so a
+//! flow's `browse` and `open` steps move it between a web page and an
+//! application.
+//!
 //! The crate holds no bus: `tinydesktop` serves these functions over `TinyBus`.
 //! The browser surface and the task controller arrive here next
 //! (`docs/specs/unified-agent.md`).
 
 mod agentic;
+mod workspace;
 
 pub use agentic::{JevRuntime, flow_guide, resolve_intent, run_flow, run_goal, validate_flow};
 pub use tinydesktop_bus::DesktopResponse;
 use tinydesktop_desktop::Desktop;
+pub use workspace::{BROWSER, Workspace};

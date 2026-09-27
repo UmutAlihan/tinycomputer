@@ -6,6 +6,8 @@ use tinydesktop_bus::{
     StepOutcome,
 };
 
+use crate::workspace::BROWSER;
+
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     act::DONE,
@@ -14,9 +16,6 @@ use super::{
     validate::{MAX_REPEAT, substitute},
     view::{Candidate, is_destructive, label, target_payload},
 };
-
-/// The surface name that routes a flow to the browser.
-pub(in crate::agentic) const BROWSER: &str = "browser";
 
 /// Turns a `do` step may spend.
 const DO_TURNS: u32 = 8;

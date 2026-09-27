@@ -71,6 +71,14 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
         self.active.lock().map_or(Side::Desktop, |active| *active)
     }
 
+    /// The browser, when it is the side in use. The browser only becomes
+    /// active after a call on it succeeds, so it is never active when absent.
+    fn active_browser(&self) -> Option<&W> {
+        self.browser
+            .as_ref()
+            .filter(|_| self.active() == Side::Browser)
+    }
+
     /// Runs `call` on the side named by `side`, or refuses when that side is
     /// the browser and there is none.
     fn on(
@@ -121,19 +129,16 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
         target: Option<Candidate>,
         text: Option<String>,
     ) -> DesktopResponse {
-        self.on(
-            self.active(),
-            "execute",
-            |desktop| desktop.execute(operation, target.clone(), text.clone()),
-            |browser| browser.execute(operation, target.clone(), text.clone()),
-        )
+        match self.active_browser() {
+            Some(browser) => browser.execute(operation, target, text),
+            None => self.desktop.execute(operation, target, text),
+        }
     }
 
     fn read_value(&self, target: &Candidate) -> Option<String> {
-        match (self.active(), &self.browser) {
-            (Side::Browser, Some(browser)) => browser.read_value(target),
-            (Side::Browser, None) => None,
-            (Side::Desktop, _) => self.desktop.read_value(target),
+        match self.active_browser() {
+            Some(browser) => browser.read_value(target),
+            None => self.desktop.read_value(target),
         }
     }
 
@@ -170,20 +175,17 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
     }
 
     fn settle(&self) {
-        match (self.active(), &self.browser) {
-            (Side::Browser, Some(browser)) => browser.settle(),
-            (Side::Browser, None) => {}
-            (Side::Desktop, _) => self.desktop.settle(),
+        match self.active_browser() {
+            Some(browser) => browser.settle(),
+            None => self.desktop.settle(),
         }
     }
 
     fn navigate(&self, url: &str) -> DesktopResponse {
-        let reply = self.on(
-            Side::Browser,
-            "navigate",
-            |_| no_browser("navigate"),
-            |browser| browser.navigate(url),
-        );
+        let Some(browser) = &self.browser else {
+            return no_browser("navigate");
+        };
+        let reply = browser.navigate(url);
         if reply.ok {
             self.activate(Side::Browser);
         }
