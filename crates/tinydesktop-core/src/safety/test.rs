@@ -5,7 +5,7 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{Consequence, FieldHint, consequence, payment_evidence};
+use super::{Consequence, FieldHint, consequence, human_needed, payment_evidence};
 
 #[test]
 fn payment_controls_are_recognised_in_any_wording() {
@@ -124,4 +124,33 @@ fn a_traveller_form_is_not_a_payment_page() {
     assert!(
         payment_evidence("https://ota.test/traveller-details", &fields, &["Continue"]).is_none()
     );
+}
+
+#[test]
+fn walls_only_a_person_can_pass_are_named() {
+    let needs = |text: &str| human_needed(&[text.to_owned()]);
+    assert_eq!(
+        needs("Please complete the reCAPTCHA").as_deref(),
+        Some("solve the captcha")
+    );
+    assert_eq!(
+        needs("I'm not a robot").as_deref(),
+        Some("prove you are human")
+    );
+    assert_eq!(
+        needs("Enter the OTP sent to +91…").as_deref(),
+        Some("enter the one-time password")
+    );
+    assert_eq!(
+        needs("Two-factor authentication").as_deref(),
+        Some("complete two-factor authentication")
+    );
+    assert_eq!(needs("Sign in to continue").as_deref(), Some("sign in"));
+    assert_eq!(
+        needs("Sign in"),
+        None,
+        "a sign-in link on an ordinary page is no wall"
+    );
+    assert_eq!(needs("Verification complete"), None);
+    assert_eq!(human_needed(&[]), None);
 }

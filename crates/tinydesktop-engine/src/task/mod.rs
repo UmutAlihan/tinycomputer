@@ -40,15 +40,31 @@ use tinydesktop_core::Facts;
 use tokio::sync::watch;
 
 pub use describe::capabilities;
+
 use interpret::{Next, Resume, finished, run_outcome};
 
 /// The future a [`FlowRunner`] returns: the flow runtime's reply envelope.
 pub type FlowFuture = Pin<Box<dyn Future<Output = DesktopResponse> + Send>>;
 
-/// Runs one flow for a task.
+/// The future [`FlowRunner::visible_text`] returns.
+pub type TextFuture = Pin<Box<dyn Future<Output = Vec<String>> + Send>>;
+
+/// Runs a task's flows, on surfaces that live as long as the task.
 pub trait FlowRunner: Send + Sync + 'static {
-    /// Runs `request` within `constraints`, returning `RunFlow`'s reply.
-    fn run(&self, constraints: &TaskConstraints, request: RunFlowRequest) -> FlowFuture;
+    /// Runs `request` for `task` within `constraints`, returning `RunFlow`'s
+    /// reply. Runs of one task share its surfaces, so a continuation picks up
+    /// on the page or window the last run left.
+    fn run(&self, task: &TaskId, constraints: &TaskConstraints, request: RunFlowRequest)
+    -> FlowFuture;
+
+    /// The visible text of the task's surface now, to spot a wall only a
+    /// person can pass. Empty by default.
+    fn visible_text(&self, _task: &TaskId) -> TextFuture {
+        Box::pin(async { Vec::new() })
+    }
+
+    /// Lets go of whatever the task held, once it has ended.
+    fn release(&self, _task: &TaskId) {}
 }
 
 /// How many tasks the controller holds; finished ones are dropped first.
@@ -242,6 +258,7 @@ impl Tasks {
         match status {
             TaskStatus::NeedsInput { .. } => self.supply(&cell, request),
             TaskStatus::NeedsApproval { .. } => self.decide(&cell, request.approve),
+            TaskStatus::NeedsHuman { .. } => self.retry(&cell),
             other => AgentResponse::err(AgentError::new(
                 "NOT_WAITING",
                 format!(
@@ -265,6 +282,7 @@ impl Tasks {
                 worker.abort();
             }
             publish(&cell, TaskStatus::Cancelled, "The task was cancelled.");
+            self.runner.release(id);
         }
         AgentResponse::ok(cell.view.borrow().clone())
     }
@@ -369,32 +387,53 @@ impl Tasks {
         let vars = state.flow.vars.clone();
         drop(state);
         match (approve, resume) {
-            (true, Some(resume)) => {
+            (true, Some(Resume::Approval { phrase, app, rest })) => {
                 let mut runs = vec![Run {
                     flow: Flow {
-                        app: resume.app.clone(),
+                        app: app.clone(),
                         vars: vars.clone(),
-                        steps: vec![FlowStep::Action(FlowAction::StopBefore(resume.phrase))],
+                        steps: vec![FlowStep::Action(FlowAction::StopBefore(phrase))],
                     },
                     allow_destructive: true,
                 }];
-                if !resume.rest.is_empty() {
+                if !rest.is_empty() {
                     runs.push(Run {
                         flow: Flow {
-                            app: resume.app,
+                            app,
                             vars,
-                            steps: resume.rest,
+                            steps: rest,
                         },
                         allow_destructive: allow,
                     });
                 }
                 self.spawn(cell, runs);
             }
-            _ => publish(
-                cell,
-                TaskStatus::Cancelled,
-                "The irreversible action was declined, so the task stopped before it.",
-            ),
+            _ => {
+                publish(
+                    cell,
+                    TaskStatus::Cancelled,
+                    "The irreversible action was declined, so the task stopped before it.",
+                );
+                self.runner.release(&cell.view.borrow().id);
+            }
+        }
+        AgentResponse::ok(cell.view.borrow().clone())
+    }
+
+    /// Runs the step a person has just got the task past, and the rest.
+    fn retry(&self, cell: &Arc<Cell>) -> AgentResponse<TaskView> {
+        let Ok(mut state) = cell.state.lock() else {
+            return poisoned();
+        };
+        let resume = state.resume.take();
+        let allow = state.constraints.allow_destructive;
+        let vars = state.flow.vars.clone();
+        drop(state);
+        if let Some(Resume::Retry { app, steps }) = resume {
+            self.spawn(cell, vec![Run {
+                flow: Flow { app, vars, steps },
+                allow_destructive: allow,
+            }]);
         }
         AgentResponse::ok(cell.view.borrow().clone())
     }
@@ -594,7 +633,8 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
                 state.constraints.clone(),
             )
         };
-        let reply = runner.run(&constraints, request).await;
+        let id = cell.view.borrow().id.clone();
+        let reply = runner.run(&id, &constraints, request).await;
         let (next, result) = run_outcome(&run.flow, &reply);
         let redacted = {
             let Ok(mut state) = cell.state.lock() else {
@@ -617,8 +657,16 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
             state.facts.clone()
         };
         if let Next::Stop { status, .. } = next {
+            let status = human_wall(&cell, runner.as_ref(), *status).await;
             let summary = redacted.redact(&stopped_summary(&status));
-            publish(&cell, *status, &summary);
+            let ended = matches!(
+                status,
+                TaskStatus::Done { .. } | TaskStatus::Failed { .. } | TaskStatus::Cancelled
+            );
+            publish(&cell, status, &summary);
+            if ended {
+                runner.release(&cell.view.borrow().id);
+            }
             return;
         }
     }
@@ -650,10 +698,45 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         },
         &answer.0,
     );
+    runner.release(&cell.view.borrow().id);
+}
+
+/// A recoverable failure in front of something only a person can pass — a
+/// captcha, a one-time code, a login wall — becomes `needs_human`, and the
+/// failed step runs again once they have. Anything else stays a failure.
+async fn human_wall(cell: &Cell, runner: &dyn FlowRunner, status: TaskStatus) -> TaskStatus {
+    let (TaskStatus::Failed { recoverable: true, .. }, true) = (
+        &status,
+        cell.state
+            .lock()
+            .is_ok_and(|state| matches!(state.resume, Some(Resume::Retry { .. }))),
+    ) else {
+        if let Ok(mut state) = cell.state.lock()
+            && matches!(state.resume, Some(Resume::Retry { .. }))
+        {
+            state.resume = None;
+        }
+        return status;
+    };
+    let id = cell.view.borrow().id.clone();
+    let texts = runner.visible_text(&id).await;
+    match tinydesktop_core::human_needed(&texts) {
+        Some(action) => TaskStatus::NeedsHuman {
+            reason: format!("{action}, then continue the task"),
+            screenshot: None,
+        },
+        None => {
+            if let Ok(mut state) = cell.state.lock() {
+                state.resume = None;
+            }
+            status
+        }
+    }
 }
 
 fn stopped_summary(status: &TaskStatus) -> String {
     match status {
+        TaskStatus::NeedsHuman { reason, .. } => format!("A person is needed: {reason}."),
         TaskStatus::NeedsApproval { action, target, .. } => {
             format!(
                 "Stopped before an irreversible action ({action}: {target}); approve or decline it."

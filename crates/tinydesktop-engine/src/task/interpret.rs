@@ -21,15 +21,26 @@ pub(super) enum Next {
     },
 }
 
-/// What runs after an irreversible action is approved.
+/// What runs when a paused task is continued.
 #[derive(Debug, Clone, PartialEq)]
-pub(super) struct Resume {
-    /// The `stop_before` phrase, run again with the action allowed.
-    pub(super) phrase: String,
-    /// The application the flow was on when it stopped.
-    pub(super) app: String,
-    /// The top-level steps after the paused one.
-    pub(super) rest: Vec<FlowStep>,
+pub(super) enum Resume {
+    /// Perform the approved irreversible action, then the steps after it.
+    Approval {
+        /// The `stop_before` phrase, run again with the action allowed.
+        phrase: String,
+        /// The application the flow was on when it stopped.
+        app: String,
+        /// The top-level steps after the paused one.
+        rest: Vec<FlowStep>,
+    },
+    /// Run the failed step again, and everything after it, once a person has
+    /// got past what blocked it.
+    Retry {
+        /// The application the flow was on when it failed.
+        app: String,
+        /// The failed top-level step and the ones after it.
+        steps: Vec<FlowStep>,
+    },
 }
 
 /// Interprets a run of `flow`.
@@ -75,13 +86,21 @@ pub(super) fn run_outcome(flow: &Flow, reply: &DesktopResponse) -> (Next, Option
                 .iter()
                 .rev()
                 .find(|step| step.outcome == StepOutcome::Failed);
-            failed(
-                failure.and_then(|step| top_index(&step.path)),
+            let index = failure.and_then(|step| top_index(&step.path));
+            let mut next = failed(
+                index,
                 failure.map_or_else(|| "a step failed".to_owned(), |step| step.note.clone()),
                 "the screen may not offer what the step describes; reword it, split it, or take over"
                     .to_owned(),
                 true,
-            )
+            );
+            if let (Some(index), Next::Stop { resume, .. }) = (index, &mut next) {
+                *resume = Some(Resume::Retry {
+                    app: app_at(flow, index),
+                    steps: flow.steps[index..].to_vec(),
+                });
+            }
+            next
         }
         FlowStopReason::ActionBudget => failed(
             None,
@@ -143,7 +162,7 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult) -> Next {
             target,
             screenshot: None,
         }),
-        resume: Some(Resume {
+        resume: Some(Resume::Approval {
             phrase,
             app: app_at(flow, index.unwrap_or(flow.steps.len())),
             rest,

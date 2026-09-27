@@ -55,8 +55,11 @@ impl Surface for Recorder {
             app: app.to_owned(),
             window: None,
             surface: "window".to_owned(),
-            candidates: Vec::new(),
-            context: Vec::new(),
+            candidates: vec![Candidate {
+                name: Some(format!("{} control", self.name)),
+                ..Candidate::default()
+            }],
+            context: vec![format!("{} text", self.name)],
             unexplored: Vec::new(),
             text_nodes: Vec::new(),
         })
@@ -200,4 +203,37 @@ fn without_a_browser_web_calls_are_refused_and_nothing_else_changes() {
     // keep going to the desktop.
     workspace.execute(JevOperation::Click, None, None);
     assert_eq!(drain(&calls), ["desktop:execute"]);
+}
+
+#[test]
+fn visible_text_rereads_whatever_was_last_looked_at() {
+    let (workspace, calls) = workspace(true);
+    assert!(workspace.visible_text().is_empty(), "nothing observed yet");
+    workspace.launch("Mail");
+    assert_eq!(
+        workspace.visible_text(),
+        ["desktop text", "desktop control"]
+    );
+    workspace.navigate("https://flights.test");
+    assert_eq!(
+        workspace.visible_text(),
+        ["browser text", "browser control"]
+    );
+    workspace.observe("Notes", None, Depth::Full).unwrap();
+    assert_eq!(workspace.visible_text()[0], "desktop text");
+    drain(&calls);
+
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let mut browser = Recorder::new("browser", &calls);
+    let broken = Workspace::new(Recorder::new("desktop", &calls), Some(browser.clone()));
+    broken.navigate("https://flights.test");
+    browser.failing = true;
+    let broken = Workspace {
+        browser: Some(browser),
+        ..broken
+    };
+    assert!(
+        broken.visible_text().is_empty(),
+        "an unreadable screen shows nothing"
+    );
 }

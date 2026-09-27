@@ -28,6 +28,8 @@ pub struct Workspace<D, W> {
     desktop: D,
     browser: Option<W>,
     active: Arc<Mutex<Side>>,
+    /// The application (or `browser`) last observed or opened.
+    last_app: Arc<Mutex<String>>,
 }
 
 impl<D: Surface, W: Surface> Workspace<D, W> {
@@ -39,6 +41,46 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
             desktop,
             browser,
             active: Arc::new(Mutex::new(Side::Desktop)),
+            last_app: Arc::new(Mutex::new(String::new())),
+        }
+    }
+
+    /// The visible text of whatever was last observed or opened: its
+    /// context lines and control labels. Empty when nothing has been, or it
+    /// can no longer be read. Blocks, like every surface call.
+    #[must_use]
+    pub fn visible_text(&self) -> Vec<String>
+    where
+        D: Sync,
+        W: Sync,
+    {
+        let app = self
+            .last_app
+            .lock()
+            .map(|app| app.clone())
+            .unwrap_or_default();
+        if app.is_empty() {
+            return Vec::new();
+        }
+        self.observe(&app, None, Depth::Full)
+            .map(|screen| {
+                screen
+                    .context
+                    .into_iter()
+                    .chain(
+                        screen
+                            .candidates
+                            .iter()
+                            .filter_map(|node| node.name.clone()),
+                    )
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    fn remember(&self, app: &str) {
+        if let Ok(mut last) = self.last_app.lock() {
+            app.clone_into(&mut last);
         }
     }
 
@@ -120,6 +162,7 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
             (Side::Browser, None) => Err(Box::new(no_browser("snapshot"))),
         }?;
         self.activate(side);
+        self.remember(app);
         Ok(screen)
     }
 
@@ -170,6 +213,7 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
         );
         if reply.ok {
             self.activate(side);
+            self.remember(app);
         }
         reply
     }
@@ -188,6 +232,7 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
         let reply = browser.navigate(url);
         if reply.ok {
             self.activate(Side::Browser);
+            self.remember(BROWSER);
         }
         reply
     }

@@ -48,4 +48,6 @@ pub use keymap::{Key, Platform};
 pub use records::{
     Criterion, Price, Record, parse_clock, parse_duration, parse_price, parse_stops, rank,
 };
-pub use safety::{Consequence, FieldHint, PaymentEvidence, consequence, payment_evidence};
+pub use safety::{
+    Consequence, FieldHint, PaymentEvidence, consequence, human_needed, payment_evidence,
+};
