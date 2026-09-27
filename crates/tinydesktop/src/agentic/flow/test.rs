@@ -681,7 +681,7 @@ async fn something_new_is_never_taken_to_exist_before_acting() {
     .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
-    assert!(!run.app.sim().presses.is_empty() || !run.app.sim().clicks.is_empty());
+    assert_eq!(run.app.sim().presses, ["cmd+n"]);
     assert!(super::act::creates_new("Create a folder"));
     assert!(!super::act::creates_new("open the inbox"));
 }

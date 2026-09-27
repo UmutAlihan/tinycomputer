@@ -141,7 +141,7 @@ pub(super) fn creates_new(intent: &str) -> bool {
         .collect::<Vec<_>>();
     words
         .iter()
-        .any(|word| matches!(word.as_str(), "new" | "create" | "compose" | "draft"))
+        .any(|word| matches!(word.as_str(), "new" | "create"))
 }
 
 /// Ends the step when the completion judge is confident enough.
@@ -295,7 +295,19 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         banned: &BTreeSet<String>,
     ) -> Result<Move, Halt> {
         match judged.next.as_str() {
-            "finished" if creates_new(intent) && log.actions.is_empty() => Ok(Move::Skipped),
+            "finished" if creates_new(intent) && log.actions.is_empty() => {
+                // Jev sees an existing item and calls it done; make a new one
+                // with the shortcut it would use, or by pressing a control.
+                let next = Judgement {
+                    next: if judged.shortcut.is_some() {
+                        "shortcut".to_owned()
+                    } else {
+                        "activate".to_owned()
+                    },
+                    ..judged.clone()
+                };
+                Box::pin(self.make_move(log, screen, intent, &next, banned)).await
+            }
             "finished" => Ok(Move::Ended(Ended::new(
                 StepOutcome::Done,
                 "Jev chose finished",
@@ -552,7 +564,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 }
 
 /// One turn's reading of the screen.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Judgement {
     done: Option<f64>,
     progress: Option<f64>,
