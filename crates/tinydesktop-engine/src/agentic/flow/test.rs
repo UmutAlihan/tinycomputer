@@ -1559,6 +1559,32 @@ async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
     )
     .await;
     assert_eq!(invalid.error.unwrap().code, "FLOW_INVALID");
+
+    let fact_in_condition = run_flow_with(
+        App::default(),
+        &runtime(Oracle {
+            app: App::default(),
+            hook: Box::new(|_, _, _| None),
+            requests: Mutex::new(Vec::new()),
+            fail: false,
+        }),
+        RunFlowRequest {
+            flow: serde_json::from_value(json!({"app": "Mail", "steps": [
+                {"verify": "shows ${email}"}
+            ]}))
+            .unwrap(),
+            vars: BTreeMap::from([("email".to_owned(), "sam@example.com".to_owned())]),
+            facts: BTreeSet::from(["email".to_owned()]),
+            ..RunFlowRequest::default()
+        },
+    )
+    .await;
+    let error = fact_in_condition.error.unwrap();
+    assert_eq!(error.code, "FLOW_INVALID");
+    assert!(
+        error.message.contains("is a fact"),
+        "a fact referenced outside an enter step never starts running: {error:?}"
+    );
 }
 
 #[test]
