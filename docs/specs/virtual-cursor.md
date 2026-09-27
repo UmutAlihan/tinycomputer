@@ -48,7 +48,7 @@ So the cursor is **purely cosmetic**.
 |---|---|
 | `CursorPace` | `off`, `brisk`, `natural` (default), `calm`. These scale the tempo by ×0.6, ×1, ×1.6 |
 | `VirtualCursor::glide(rect)` | aims inside the element's middle 60% × 50% and glides from where the cursor last landed. With no previous position it appears 240–420 px away and fades in |
-| `ScreenCursor` | the shared cursor. `show(rect)` plans a glide, hands it to an `OverlaySink`, and returns at once with the glide's duration. It never waits and never delays an action. `hide()` fades the cursor out. It is best effort: with no sink, or a failing one, it sends nothing |
+| `ScreenCursor` | the shared cursor. `arrive(rect)` plans a glide, hands it to an `OverlaySink`, and returns as the cursor lands, so the surface's action fires in time with the landing pulse, like a click. The first glide through a freshly started helper adds 300 ms for it to appear. `show(rect)` does the same without waiting and returns the glide's duration. `hide()` fades the cursor out. Only a delivered glide is waited for: with no sink, a failing one, or a full queue, the action goes ahead at once |
 | `OverlaySink` / `ProcessOverlay` | the default sink starts the helper on first use and writes one `OverlayCommand` per line to its stdin from a background thread, through an 8-deep queue that drops glides rather than block. A host UI can supply its own sink and draw the cursor itself |
 | `OverlayCommand` | `{"type":"glide","path":[[t_ms,x,y],…],"appears":bool}` or `{"type":"hide"}` |
 | `animate::Animator` | turns commands plus time into frames: path interpolation, a 150 ms fade in or out, a 450 ms pulse, and a fade-out after 6 s idle |
@@ -122,8 +122,9 @@ Release packages ship the helper beside the module on macOS and Windows.
   off. The browser only adds read-only `boundingbox` and `evaluate` calls.
 - A glide's last sample is its target, and sample times strictly increase.
   The aim point is always inside the element.
-- The cursor never fails, delays, or changes an action: `show` returns at once,
-  and a missing, stuck, or failed overlay is dropped.
+- The cursor never fails or changes an action. It only times it to the
+  landing of a glide that was actually delivered; a missing, stuck, or failed
+  overlay adds no delay.
 - The helper never outlives the module: it exits on EOF, and its
   `ProcessOverlay` kills it on drop.
 

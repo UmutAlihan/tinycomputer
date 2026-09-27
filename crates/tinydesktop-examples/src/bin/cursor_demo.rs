@@ -68,10 +68,9 @@ fn main() {
     for lap in 1..=laps {
         for (name, target) in TOUR {
             println!("lap {lap}: {name}");
-            // The cursor never waits for itself; the demo does, so each
-            // glide lands before the next begins.
-            let glide = cursor.show(target).unwrap_or_default();
-            std::thread::sleep(glide + REST);
+            // Returns as the cursor lands, where a surface's action would fire.
+            cursor.arrive(target);
+            std::thread::sleep(REST);
         }
     }
     cursor.hide();
