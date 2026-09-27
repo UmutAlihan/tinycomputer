@@ -15,7 +15,7 @@ use super::{
     act::DONE,
     ask::{self, Questions, chosen, condition, numbered},
     memory::{learn, remember},
-    validate::{MAX_REPEAT, substitute, substitute_safe},
+    validate::{MAX_REPEAT, substitute_safe},
     view::{Candidate, is_destructive, label, target_payload},
 };
 
