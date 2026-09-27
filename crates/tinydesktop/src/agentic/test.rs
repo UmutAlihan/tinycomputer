@@ -1054,6 +1054,19 @@ fn a_field_that_commits_late_is_verified_on_the_settled_re_read() {
 }
 
 #[test]
+fn a_token_field_is_delivered_unverified_rather_than_pasted_over() {
+    let backend = text_backend(&["\u{fffc}", "\u{fffc}, \u{fffc}"]);
+    let reply = deliver_text(&backend, "Mail", &field(), "sam@example.com");
+    let data = reply.data.expect("data");
+    assert_eq!(
+        (data["path"].clone(), data["verified"].clone()),
+        (json!("set_value"), json!(false))
+    );
+    assert!(backend.pastes.lock().expect("paste lock").is_empty());
+    assert!(!super::backend::tokenized("plain"));
+}
+
+#[test]
 fn text_verified_by_read_back_is_not_pasted() {
     let backend = text_backend(&["Hello   there"]);
     let reply = deliver_text(&backend, "Mail", &field(), "Hello there");

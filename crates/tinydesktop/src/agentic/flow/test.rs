@@ -1458,11 +1458,21 @@ fn a_rich_text_area_reports_the_text_inside_it_as_its_contents() {
             ..Candidate::default()
         });
     }
+    screen.candidates[0].value = Some(json!("\u{fffc}"));
+    screen.candidates.insert(
+        1,
+        Candidate {
+            role: "statictext".to_owned(),
+            name: Some("sam@example.com".to_owned()),
+            ..Candidate::default()
+        },
+    );
     let state = ask::state(&screen, "check the draft", &[], true);
     let fields = state["field_contents"]["untrusted_accessibility_data"]
         .as_array()
         .unwrap();
     assert!(fields.contains(&json!({"field": "textfield \"Subject\"", "holds": "Hello"})));
+    assert!(fields.contains(&json!({"field": "textfield \"To\"", "holds": "sam@example.com"})));
     assert!(fields.contains(&json!({"field": area, "holds": "Hi Sam,\nSee you Friday."})));
     assert!(
         ask::state(&screen, "x", &[], false)

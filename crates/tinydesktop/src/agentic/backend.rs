@@ -225,6 +225,7 @@ pub(super) fn deliver_text<B: AgentBackend>(
     if set.ok {
         match read_settled(backend, target, text) {
             Some(held) if holds(&held, text) => return delivered("set_value", true),
+            Some(held) if tokenized(&held) => return delivered("set_value", false),
             None => return delivered("set_value", false),
             Some(_) => {}
         }
@@ -259,6 +260,18 @@ fn read_settled<B: AgentBackend>(backend: &B, target: &Candidate, text: &str) ->
 
 fn delivered(path: &str, verified: bool) -> DesktopResponse {
     DesktopResponse::ok("type-text", json!({"path": path, "verified": verified}))
+}
+
+/// Whether a read-back value is only attachment tokens.
+///
+/// A token field (a mail recipient list) turns each typed address into an
+/// attachment and reports it as U+FFFC, the object replacement character, so
+/// its value can never be compared with what was typed.
+pub(super) fn tokenized(held: &str) -> bool {
+    held.contains('\u{fffc}')
+        && held.chars().all(|character| {
+            character == '\u{fffc}' || character == ',' || character.is_whitespace()
+        })
 }
 
 /// Whether a field's read-back value carries the delivered text.

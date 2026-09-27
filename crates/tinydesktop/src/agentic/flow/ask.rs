@@ -63,7 +63,7 @@ pub(super) fn state(
 /// so that text is gathered under the area's label.
 fn field_contents(screen: &Screen) -> Vec<Value> {
     let mut fields = Vec::new();
-    for node in &screen.candidates {
+    for (index, node) in screen.candidates.iter().enumerate() {
         let holds_text = node
             .available_actions
             .iter()
@@ -74,7 +74,7 @@ fn field_contents(screen: &Screen) -> Vec<Value> {
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|value| holds_text && !value.is_empty())
-            .map(str::to_owned);
+            .map(|value| detokenize(value, &screen.candidates[index + 1..]));
         let text = own.or_else(|| rich_text(screen, node));
         if let Some(text) = text {
             fields.push(json!({
@@ -87,6 +87,27 @@ fn field_contents(screen: &Screen) -> Vec<Value> {
         }
     }
     fields
+}
+
+/// A token field's value with each U+FFFC attachment replaced by the static
+/// text that follows the field, which is how the tokens are exposed.
+fn detokenize(value: &str, following: &[Candidate]) -> String {
+    if !value.contains('\u{fffc}') {
+        return value.to_owned();
+    }
+    let tokens = following
+        .iter()
+        .take_while(|node| node.role.eq_ignore_ascii_case("statictext"))
+        .filter_map(|node| {
+            node.name
+                .as_deref()
+                .or(node.value.as_ref().and_then(Value::as_str))
+        })
+        .collect::<Vec<_>>();
+    if tokens.is_empty() {
+        return value.replace('\u{fffc}', "[token]");
+    }
+    tokens.join(", ")
 }
 
 /// The text inside a rich-text area, joined in reading order.
