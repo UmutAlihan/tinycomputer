@@ -130,9 +130,18 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
         FlowStopReason::Completed,
         vec![
             step("1", "browse", "https://flights.test", StepOutcome::Done, ""),
-            step("2", "enter", "email asha@example.com", StepOutcome::Done, ""),
+            step(
+                "2",
+                "enter",
+                "email asha@example.com",
+                StepOutcome::Done,
+                "",
+            ),
         ],
-        &[("email", "asha@example.com"), ("cheapest", "IndiGo ₹6,840 for asha@example.com")],
+        &[
+            ("email", "asha@example.com"),
+            ("cheapest", "IndiGo ₹6,840 for asha@example.com"),
+        ],
         None,
     )]);
     let view = start(
@@ -149,9 +158,15 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
     let TaskStatus::Done { answer, records } = &done.status else {
         panic!("{:?}", done.status);
     };
-    assert!(answer.contains("cheapest: IndiGo ₹6,840 for ‹email›"), "{answer}");
+    assert!(
+        answer.contains("cheapest: IndiGo ₹6,840 for ‹email›"),
+        "{answer}"
+    );
     assert!(!done.summary.contains("asha@"));
-    assert_eq!(records["cheapest"][0]["value"], "IndiGo ₹6,840 for asha@example.com");
+    assert_eq!(
+        records["cheapest"][0]["value"],
+        "IndiGo ₹6,840 for asha@example.com"
+    );
     assert!(!records.contains_key("email"), "facts are not records");
     assert!((done.progress - 1.0).abs() < f32::EPSILON);
     assert_eq!(done.step.as_ref().unwrap().intent, "email ‹email›");
@@ -172,7 +187,12 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
 
 #[tokio::test]
 async fn missing_values_are_asked_for_before_anything_runs() {
-    let (tasks, script) = controller(vec![finished_run(FlowStopReason::Completed, vec![], &[], None)]);
+    let (tasks, script) = controller(vec![finished_run(
+        FlowStopReason::Completed,
+        vec![],
+        &[],
+        None,
+    )]);
     let view = start(
         &tasks,
         json!({"app": "browser", "steps": [
@@ -261,10 +281,13 @@ async fn requests_that_cannot_start_are_refused_with_a_hint() {
     let view = planless.data.unwrap();
     assert!(matches!(view.status, TaskStatus::NeedsPlan { ref guide } if guide.contains("browse")));
     assert_eq!(view.next, ["StartTask"]);
-    assert_eq!(code(&tasks.continue_task(ContinueTaskRequest {
-        id: view.id,
-        ..ContinueTaskRequest::default()
-    })), "NOT_WAITING");
+    assert_eq!(
+        code(&tasks.continue_task(ContinueTaskRequest {
+            id: view.id,
+            ..ContinueTaskRequest::default()
+        })),
+        "NOT_WAITING"
+    );
 }
 
 fn mail_flow() -> serde_json::Value {
@@ -281,7 +304,13 @@ fn gated(target: &str, phrase: &str) -> DesktopResponse {
         FlowStopReason::StoppedBeforeDestructive,
         vec![
             step("1", "open", "Mail", StepOutcome::Done, ""),
-            step("2", "do", "start a new email message", StepOutcome::Done, ""),
+            step(
+                "2",
+                "do",
+                "start a new email message",
+                StepOutcome::Done,
+                "",
+            ),
             step("3", "stop_before", phrase, StepOutcome::Gated, "found it"),
         ],
         &[],
@@ -301,7 +330,10 @@ async fn an_approved_irreversible_action_is_performed_and_the_rest_runs() {
     let TaskStatus::NeedsApproval { action, target, .. } = &paused.status else {
         panic!("{:?}", paused.status);
     };
-    assert_eq!((action.as_str(), target.as_str()), ("sending the email", "Send"));
+    assert_eq!(
+        (action.as_str(), target.as_str()),
+        ("sending the email", "Send")
+    );
     assert_eq!(paused.next, ["ContinueTask", "CancelTask"]);
     assert!(paused.summary.contains("approve or decline"));
 
@@ -317,14 +349,25 @@ async fn an_approved_irreversible_action_is_performed_and_the_rest_runs() {
         ..ContinueTaskRequest::default()
     });
     assert!(approved.ok);
-    assert!(matches!(settle(&tasks, &view.id).await.status, TaskStatus::Done { .. }));
+    assert!(matches!(
+        settle(&tasks, &view.id).await.status,
+        TaskStatus::Done { .. }
+    ));
     let requests = script.requests.lock().unwrap();
     assert_eq!(requests.len(), 3);
-    assert!(requests[1].allow_destructive, "only the approved action may be performed");
-    assert_eq!(requests[1].flow.app, "Mail", "resumes on the app the flow had opened");
+    assert!(
+        requests[1].allow_destructive,
+        "only the approved action may be performed"
+    );
+    assert_eq!(
+        requests[1].flow.app, "Mail",
+        "resumes on the app the flow had opened"
+    );
     assert_eq!(
         requests[1].flow.steps,
-        [FlowStep::Action(FlowAction::StopBefore("sending the email".to_owned()))]
+        [FlowStep::Action(FlowAction::StopBefore(
+            "sending the email".to_owned()
+        ))]
     );
     assert!(!requests[2].allow_destructive);
     assert_eq!(requests[2].flow.steps.len(), 1);
@@ -381,7 +424,13 @@ async fn failures_carry_the_step_the_reason_and_what_to_change() {
         FlowStopReason::StepFailed,
         vec![
             step("1", "do", "a", StepOutcome::Done, ""),
-            step("2", "do", "b", StepOutcome::Failed, "no search field was found"),
+            step(
+                "2",
+                "do",
+                "b",
+                StepOutcome::Failed,
+                "no search field was found",
+            ),
         ],
         &[],
         None,
@@ -417,11 +466,15 @@ async fn failures_carry_the_step_the_reason_and_what_to_change() {
     .await;
     assert!(matches!(bare, TaskStatus::Failed { ref hint, .. } if hint.contains("Jev")));
     let unreadable = failure(DesktopResponse::ok("run-flow", json!({"nonsense": true}))).await;
-    assert!(matches!(unreadable, TaskStatus::Failed { ref reason, .. } if reason.contains("unreadable")));
+    assert!(
+        matches!(unreadable, TaskStatus::Failed { ref reason, .. } if reason.contains("unreadable"))
+    );
     let mut no_error = DesktopResponse::err("run-flow", DesktopError::new("X", "x"));
     no_error.error = None;
     let silent = failure(no_error).await;
-    assert!(matches!(silent, TaskStatus::Failed { ref reason, .. } if reason == "the flow could not run"));
+    assert!(
+        matches!(silent, TaskStatus::Failed { ref reason, .. } if reason == "the flow could not run")
+    );
 }
 
 #[tokio::test]
@@ -439,7 +492,10 @@ async fn a_running_task_can_be_awaited_briefly_and_cancelled() {
     assert_eq!(waited.status, TaskStatus::Running);
     let cancelled = tasks.cancel(&view.id).data.unwrap();
     assert_eq!(cancelled.status, TaskStatus::Cancelled);
-    assert_eq!(tasks.cancel(&view.id).data.unwrap().status, TaskStatus::Cancelled);
+    assert_eq!(
+        tasks.cancel(&view.id).data.unwrap().status,
+        TaskStatus::Cancelled
+    );
     assert_eq!(settle(&tasks, &view.id).await.status, TaskStatus::Cancelled);
 }
 

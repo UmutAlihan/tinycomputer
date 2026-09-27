@@ -33,7 +33,7 @@ mod task;
 mod workspace;
 
 pub use agentic::{JevRuntime, flow_guide, resolve_intent, run_flow, run_goal, validate_flow};
+pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks};
 pub use tinydesktop_bus::DesktopResponse;
 use tinydesktop_desktop::Desktop;
-pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks};
 pub use workspace::{BROWSER, Workspace};

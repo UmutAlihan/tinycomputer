@@ -157,12 +157,19 @@ impl Tasks {
         };
         let missing = crate::agentic::missing_inputs(&flow, &known);
         if missing.is_empty() {
-            self.spawn(&cell, vec![Run {
-                allow_destructive: request.constraints.allow_destructive,
-                flow,
-            }]);
+            self.spawn(
+                &cell,
+                vec![Run {
+                    allow_destructive: request.constraints.allow_destructive,
+                    flow,
+                }],
+            );
         } else {
-            publish(&cell, needs_input(&missing), "The task needs values before it can start.");
+            publish(
+                &cell,
+                needs_input(&missing),
+                "The task needs values before it can start.",
+            );
         }
         AgentResponse::ok(cell.view.borrow().clone())
     }
@@ -197,7 +204,10 @@ impl Tasks {
             TaskStatus::NeedsApproval { .. } => self.decide(&cell, request.approve),
             other => AgentResponse::err(AgentError::new(
                 "NOT_WAITING",
-                format!("the task is not waiting for an answer: {}", state_name(&other)),
+                format!(
+                    "the task is not waiting for an answer: {}",
+                    state_name(&other)
+                ),
                 "call AwaitTask until the task asks for something",
                 true,
             )),
@@ -286,7 +296,11 @@ impl Tasks {
         let missing = crate::agentic::missing_inputs(&state.flow, &known);
         if !missing.is_empty() {
             drop(state);
-            publish(cell, needs_input(&missing), "The task still needs values before it can start.");
+            publish(
+                cell,
+                needs_input(&missing),
+                "The task still needs values before it can start.",
+            );
             return AgentResponse::ok(cell.view.borrow().clone());
         }
         let run = Run {
@@ -487,7 +501,11 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         let answer = if reads.is_empty() {
             format!("Finished all {} steps.", state.flow.steps.len())
         } else {
-            format!("Finished all {} steps. {}", state.flow.steps.len(), reads.join("; "))
+            format!(
+                "Finished all {} steps. {}",
+                state.flow.steps.len(),
+                reads.join("; ")
+            )
         };
         (state.facts.redact(&answer), records(&state.reads))
     };
@@ -504,7 +522,9 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
 fn stopped_summary(status: &TaskStatus) -> String {
     match status {
         TaskStatus::NeedsApproval { action, target, .. } => {
-            format!("Stopped before an irreversible action ({action}: {target}); approve or decline it.")
+            format!(
+                "Stopped before an irreversible action ({action}: {target}); approve or decline it."
+            )
         }
         TaskStatus::Checkpoint { reason, .. } => format!("Stopped: {reason}."),
         TaskStatus::Failed { reason, .. } => format!("The task failed: {reason}"),

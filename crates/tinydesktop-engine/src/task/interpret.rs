@@ -97,10 +97,10 @@ pub(super) fn run_outcome(flow: &Flow, reply: &DesktopResponse) -> (Next, Option
         ),
         FlowStopReason::Invalid => failed(
             None,
-            result
-                .steps
-                .first()
-                .map_or_else(|| "the flow is invalid".to_owned(), |step| step.note.clone()),
+            result.steps.first().map_or_else(
+                || "the flow is invalid".to_owned(),
+                |step| step.note.clone(),
+            ),
             "fix the flow; Describe returns the guide".to_owned(),
             false,
         ),
@@ -120,10 +120,13 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult) -> Next {
         .as_ref()
         .and_then(|target| target.name.clone())
         .unwrap_or_default();
-    if consequence(&target) == Consequence::Payment || consequence(&phrase) == Consequence::Payment {
+    if consequence(&target) == Consequence::Payment || consequence(&phrase) == Consequence::Payment
+    {
         return Next::Stop {
             status: TaskStatus::Checkpoint {
-                reason: format!("reached the payment step ({target}); payment is always left to you"),
+                reason: format!(
+                    "reached the payment step ({target}); payment is always left to you"
+                ),
                 location: target,
                 screenshot: None,
                 summary: summary(result),
