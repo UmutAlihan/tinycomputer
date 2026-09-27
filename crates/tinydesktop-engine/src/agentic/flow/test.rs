@@ -49,6 +49,8 @@ enum Quirk {
     FailObserve,
     /// Launching fails.
     FailLaunch,
+    /// The surface has no addresses, as a desktop application has none.
+    NoAddresses,
     /// The compose fields sit in a subtree the budgeted snapshot cut short.
     HiddenEditor,
 }
@@ -62,6 +64,7 @@ struct Sim {
     presses: Vec<String>,
     clicks: Vec<String>,
     launched: Vec<String>,
+    navigated: Vec<String>,
     extra_buttons: usize,
     quirks: BTreeSet<Quirk>,
 }
@@ -299,6 +302,18 @@ impl AgentBackend for App {
             );
         }
         DesktopResponse::ok("launch", json!({}))
+    }
+
+    fn navigate(&self, url: &str) -> DesktopResponse {
+        let mut sim = self.sim();
+        if sim.has(Quirk::NoAddresses) {
+            return DesktopResponse::err(
+                "navigate",
+                tinydesktop_bus::DesktopError::new("ACTION_NOT_SUPPORTED", "no addresses"),
+            );
+        }
+        sim.navigated.push(url.to_owned());
+        DesktopResponse::ok("navigate", json!({"url": url, "title": "Flights"}))
     }
 }
 
@@ -1856,4 +1871,46 @@ async fn an_app_that_never_shows_a_window_is_reported_as_opened_but_unreadable()
     .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert!(run.result.steps[0].note.contains("no readable window yet"));
+}
+
+#[tokio::test]
+async fn browse_opens_the_address_and_moves_the_flow_onto_the_page() {
+    let run = run(
+        App::default(),
+        json!({
+            "app": "Mail",
+            "vars": {"to": "Srinagar"},
+            "steps": [{"browse": "https://flights.test/to/${to}"}]
+        }),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.app.sim().launched, ["browser"]);
+    assert_eq!(run.app.sim().navigated, ["https://flights.test/to/Srinagar"]);
+    assert_eq!(
+        run.result.steps[0].note,
+        "https://flights.test/to/Srinagar is open (Flights)"
+    );
+}
+
+#[tokio::test]
+async fn browse_fails_the_flow_where_there_is_no_browser_or_no_page() {
+    for (quirk, code) in [
+        (Quirk::FailLaunch, "APP_NOT_FOUND"),
+        (Quirk::NoAddresses, "ACTION_NOT_SUPPORTED"),
+    ] {
+        let run = run(
+            App::quirky(quirk),
+            json!({"app": "browser", "steps": [{"browse": "https://flights.test"}]}),
+        )
+        .await;
+        assert_eq!(run.result.stop, FlowStopReason::StepFailed, "{quirk:?}");
+        assert!(run.result.steps[0].note.contains(code), "{}", run.result.steps[0].note);
+    }
+    let unreadable = run(
+        App::quirky(Quirk::FailObserve),
+        json!({"app": "browser", "steps": [{"browse": "https://flights.test"}]}),
+    )
+    .await;
+    assert!(unreadable.result.steps[0].note.contains("no readable page yet"));
 }
