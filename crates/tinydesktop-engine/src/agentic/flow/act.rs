@@ -140,6 +140,53 @@ pub(super) fn creates_new(intent: &str) -> bool {
         .any(|word| matches!(word.as_str(), "new" | "create"))
 }
 
+/// Words of a step that ask for an overlay to go away.
+const DISMISS_VERBS: &[&str] = &["dismiss", "close", "accept", "decline", "reject", "skip"];
+
+/// What such a step asks to go away.
+const OVERLAYS: &[&str] = &[
+    "banner", "dialog", "popup", "cookie", "cookies", "consent", "modal", "overlay", "prompt",
+    "notice",
+];
+
+fn words(text: &str) -> Vec<String> {
+    text.split(|character: char| !character.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(str::to_lowercase)
+        .collect()
+}
+
+/// Ends a step the screen itself shows done: the last action pressed a
+/// control on an overlay — one the step names ("accepting essential only"
+/// for "Accept Essential Only"), or any control when the step is about
+/// dismissing that overlay — and the overlay has closed.
+///
+/// A completion judge sees only the screen after the fact, where a closed
+/// cookie banner leaves no trace of which button closed it; this is the
+/// evidence it cannot see.
+fn closed_the_overlay(last: &LastAction, screen: &Screen, intent: &str) -> Option<Ended> {
+    let name = last.target.as_ref()?.name.as_deref()?;
+    if last.before.surface == "window" || screen.surface != "window" {
+        return None;
+    }
+    let intent = words(intent);
+    let named = words(name)
+        .iter()
+        .filter(|word| word.len() > 2)
+        .all(|word| intent.iter().any(|said| said.starts_with(word.as_str())))
+        && words(name).iter().any(|word| word.len() > 2);
+    let dismissal = intent
+        .iter()
+        .any(|word| DISMISS_VERBS.contains(&word.as_str()))
+        && intent.iter().any(|word| OVERLAYS.contains(&word.as_str()));
+    (named || dismissal).then(|| {
+        Ended::new(
+            StepOutcome::Done,
+            format!("pressed {name:?} and the {} closed", last.before.surface),
+        )
+    })
+}
+
 /// Ends the step when the completion judge is confident enough.
 fn finished(log: &mut StepLog, judged: &Judgement, turn: u32) -> Option<Ended> {
     let done = judged.done?;
@@ -165,6 +212,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             log.turns = log.turns.saturating_add(1);
             let screen = self.look().await?;
             self.note_change(&mut state, &screen)?;
+            if let Some(ended) = state
+                .last
+                .as_ref()
+                .and_then(|last| closed_the_overlay(last, &screen, intent))
+            {
+                return Ok(ended);
+            }
             let judged = self.judge(log, &screen, intent).await?;
             let creating = creates_new(intent) && log.actions.is_empty();
             if !creating && let Some(ended) = finished(log, &judged, turn) {
