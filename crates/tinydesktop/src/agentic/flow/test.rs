@@ -1136,6 +1136,24 @@ async fn disabled_loops_are_not_asked_and_the_move_falls_back_to_pressing() {
 }
 
 #[tokio::test]
+async fn a_read_target_beyond_the_source_cap_is_still_found_by_paging() {
+    // 72 candidates ("New Message", "Archive", and 70 message rows) exceed
+    // `ask::MAX_READ_SOURCES` (60); a target past that cutoff must still be
+    // reachable a page at a time rather than permanently dropped.
+    let run = run_with(
+        App::with(|sim| sim.extra_buttons = 70),
+        json!({"app": "Mail", "steps": [
+            {"read": {"what": "the row for message 65", "into": "row"}}
+        ]}),
+        |_| {},
+        |id, question, _| (id == "source").then(|| pick(question, "Message 65", 0.9)),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.result.vars["row"], "Message 65");
+}
+
+#[tokio::test]
 async fn control_steps_branch_repeat_read_and_wait() {
     let run = run_with(
         App::default(),
