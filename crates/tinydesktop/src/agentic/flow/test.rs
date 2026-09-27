@@ -80,6 +80,12 @@ impl App {
         app
     }
 
+    fn quirky(quirk: Quirk) -> Self {
+        Self::with(|sim| {
+            sim.quirks.insert(quirk);
+        })
+    }
+
     fn sim(&self) -> std::sync::MutexGuard<'_, Sim> {
         self.0.lock().unwrap()
     }
@@ -549,7 +555,7 @@ fn choice_sizes(requests: &[EvaluationRequest]) -> Vec<usize> {
 
 #[tokio::test]
 async fn a_mail_compose_flow_fills_every_field_and_stops_in_front_of_send() {
-    let app = App::with(|sim| sim.quirks.insert(Quirk::BodyIgnoresSetValue));
+    let app = App::quirky(Quirk::BodyIgnoresSetValue);
     let run = run(app, mail_flow()).await;
 
     assert_eq!(run.result.stop, FlowStopReason::StoppedBeforeDestructive);
@@ -823,7 +829,7 @@ async fn a_regression_is_undone_and_the_element_is_not_tried_again() {
 #[tokio::test]
 async fn actions_that_change_nothing_fail_the_step() {
     let run = run(
-        App::with(|sim| sim.quirks.insert(Quirk::Frozen)),
+        App::quirky(Quirk::Frozen),
         json!({"app": "Mail", "steps": ["start a new email message"]}),
     )
     .await;
@@ -980,7 +986,7 @@ async fn control_steps_branch_repeat_read_and_wait() {
 #[tokio::test]
 async fn a_repeat_that_never_holds_and_a_failing_verify_fail_the_flow() {
     let repeat = run(
-        App::with(|sim| sim.quirks.insert(Quirk::Frozen)),
+        App::quirky(Quirk::Frozen),
         json!({"app": "Mail", "steps": [
             {"repeat_until": {"condition": "a compose window is open",
                               "steps": [{"wait_for": "nothing"}], "max": 1}}
@@ -1106,7 +1112,7 @@ async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
     assert_eq!(calls.result.stop, FlowStopReason::ModelBudget);
 
     let unopened = run(
-        App::with(|sim| sim.quirks.insert(Quirk::FailLaunch)),
+        App::quirky(Quirk::FailLaunch),
         json!({"app": "Mail", "steps": [{"open": "Nope"}]}),
     )
     .await;
@@ -1114,7 +1120,7 @@ async fn budgets_invalid_flows_and_provider_failures_stop_cleanly() {
     assert!(unopened.result.steps[0].note.contains("APP_NOT_FOUND"));
 
     let unreadable = run(
-        App::with(|sim| sim.quirks.insert(Quirk::FailObserve)),
+        App::quirky(Quirk::FailObserve),
         json!({"app": "Mail", "steps": ["anything"]}),
     )
     .await;
