@@ -508,7 +508,16 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 }
 
 /// A step's wire kind and its text with variables substituted.
-fn describe_step(action: &FlowAction, vars: &BTreeMap<String, String>) -> (&'static str, String) {
+///
+/// This text is what a step report shows and what `recent_actions` carries
+/// into every later Jev question, so it is built with [`substitute_safe`]:
+/// even a step kind that may substitute a fact operationally (`open`,
+/// `browse`) never repeats that value here.
+fn describe_step(
+    action: &FlowAction,
+    vars: &BTreeMap<String, String>,
+    facts: &BTreeSet<String>,
+) -> (&'static str, String) {
     let (kind, text) = match action {
         FlowAction::Open(app) => ("open", app.clone()),
         FlowAction::Browse(url) => ("browse", url.clone()),
