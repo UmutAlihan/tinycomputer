@@ -40,29 +40,36 @@ const SETTLE_MS: u64 = 400;
 /// that polls forever is never idle, so this is a cap, not an expectation.
 const NETWORK_IDLE_MS: u64 = 2_000;
 
-/// Whether what covers a point belongs to the same result card as the
-/// element that was meant: the card around the covering element names it.
-/// Many result lists lay a transparent click layer over each card, so the
-/// card's own controls are always "covered" — by the card itself.
+/// Whether what covers a point is the target's own card click layer, so the
+/// click may go through it. Many result lists lay a transparent click layer
+/// over each card, so the card's own controls are always "covered" — by the
+/// card itself. Two shapes of layer are accepted:
 ///
-/// A card-level substring match alone is not enough: a short target name
-/// such as "Select" matches almost any card, so `elementsFromPoint` — the
-/// full stack of every element stacked at the click point, topmost first —
-/// is used instead of the single topmost element, and the target's name is
-/// required to *exactly* match one of its own attributes (not merely appear
-/// somewhere inside the card's aggregated text), so a duplicate label
-/// elsewhere in the card can no longer stand in for the actual target.
+/// - the cover sits inside the same card (`li`, `listitem`, `row`,
+///   `article`) as the target;
+/// - the cover is an empty, non-interactive layer outside any dialog —
+///   Google Flights renders its card layer as a text-less `div` straight
+///   under `<body>` — so nothing a person could read or press is in the way.
+///
+/// Either way the target itself must be in the stack of elements at the
+/// point: `elementsFromPoint` returns every element stacked there, topmost
+/// first, and the target's name must *exactly* match one of them (a short
+/// name such as "Select" appears in almost any card, so containment is not
+/// enough). A dialog, banner, or anything with text or a role still blocks.
 const SAME_CARD_JS: &str = r#"((x, y, name) => {
   if (!name) return false;
   const stack = document.elementsFromPoint(x, y);
   const top = stack[0];
-  const card = top && top.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
-  if (!top || !card) return false;
+  if (!top) return false;
   const shown = (element) => (element.getAttribute('aria-label') || element.innerText || '').trim();
-  // The exact target must itself be part of the stack of elements at this
-  // point (so `top` genuinely overlaps it), and that element must sit
-  // inside the same card `top` does.
-  return stack.some((element) => shown(element) === name && card.contains(element));
+  const target = stack.find((element) => shown(element) === name);
+  if (!target || target === top) return false;
+  const card = top.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
+  if (card && card.contains(target)) return true;
+  const modal = top.closest('dialog,[role="dialog"],[role="alertdialog"],[aria-modal="true"]');
+  const interactive = top.closest('a,button,input,select,textarea,[role],[tabindex],[contenteditable="true"]');
+  const text = (top.innerText || '').trim() + (top.getAttribute('aria-label') || '');
+  return !modal && !interactive && text === '';
 })"#;
 
 /// One browser session, lazily opened, as a [`Surface`].
