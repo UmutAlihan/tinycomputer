@@ -103,6 +103,12 @@ pub struct RunGoalRequest {
     pub max_steps: u32,
     /// Maximum Jev evaluations, capped by the module at 80.
     pub max_model_calls: u32,
+    /// Failed or low-confidence turns tolerated before the loop gives up.
+    /// Each one is recorded and fed back to Jev; capped by the module at 5.
+    pub max_retries: u32,
+    /// Whether observation starts from a shallow skeleton that Jev drills
+    /// into, instead of the full tree.
+    pub skeleton: bool,
 }
 
 impl Default for RunGoalRequest {
@@ -115,6 +121,8 @@ impl Default for RunGoalRequest {
             include_values: false,
             max_steps: 40,
             max_model_calls: 80,
+            max_retries: 2,
+            skeleton: false,
         }
     }
 }
@@ -137,6 +145,8 @@ pub enum JevOperation {
     Collapse,
     /// Scroll one container downward.
     Scroll,
+    /// Scroll one container upward.
+    ScrollUp,
     /// Inspect one truncated container.
     Drill,
     /// Return observation to the full surface.
@@ -212,6 +222,9 @@ pub struct JevTurn {
     pub ok: bool,
     /// Whether the observed surface changed afterwards.
     pub changed: bool,
+    /// What the turn observed: elements that appeared, a failure, a retry.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub note: String,
 }
 
 /// Why a goal loop stopped.
