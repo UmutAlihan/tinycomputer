@@ -26,6 +26,8 @@ use super::{
 pub(super) const DONE: f64 = 0.75;
 /// Completion probability that skips a step before acting.
 const ALREADY_DONE: f64 = 0.85;
+/// Completion probability under which the judge leans "not done".
+const LEANS_DONE: f64 = 0.5;
 /// Obstacle probability that triggers dismissal.
 const BLOCKED: f64 = 0.7;
 /// A progress drop, as a fraction of the scale, that counts as a regression.
@@ -209,6 +211,11 @@ fn threshold(turn: u32) -> f64 {
     if turn == 0 { ALREADY_DONE } else { DONE }
 }
 
+/// The completion under which Jev's "finished" move is overruled on `turn`.
+fn finish_floor(turn: u32) -> f64 {
+    if turn == 0 { ALREADY_DONE } else { LEANS_DONE }
+}
+
 /// Ends the step when the completion judge is confident enough.
 fn finished(log: &mut StepLog, judged: &Judgement, turn: u32) -> Option<Ended> {
     let done = judged.done?;
@@ -248,10 +255,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .and_then(|last| last.target.as_ref())
                 .map(label);
             let mut judged = self.judge(log, &screen, intent, last.as_deref()).await?;
-            if judged.next == "finished" && judged.done.is_some_and(|done| done < threshold(turn)) {
-                // The move chooser's "finished" is one vote; the completion
-                // judge, calibrated against its negation, is the one that ends
-                // a step. Short of its bar, act instead.
+            if judged.next == "finished"
+                && judged.done.is_some_and(|done| done < finish_floor(turn))
+            {
+                // The move chooser's "finished" is one vote. Before anything
+                // is done it needs the completion judge's full bar, since
+                // skipping a step derails the rest; after acting it stands
+                // unless the judge leans the other way.
                 self.history.push(
                     "the screen does not yet clearly show this step done; act on it".to_owned(),
                 );
