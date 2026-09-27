@@ -11,6 +11,12 @@ publish = false
 [dependencies]
 tinydesktop = { path = "../tinydesktop" }
 tinydesktop-bus = { workspace = true }
+# `browser_fixture` drives a real browser through the linked agent-browser and
+# checks the shared domain logic against the travel fixture.
+tinydesktop-browser = { workspace = true, features = ["agent-browser"] }
+tinydesktop-core = { workspace = true }
+# `task_fixture` runs a whole task through the controller.
+tinydesktop-engine = { workspace = true }
 tinybus = { workspace = true, features = ["modules"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -19,7 +25,7 @@ tokio = { workspace = true }
 # writes flows from a brief and checks screenshots. Lab-only on purpose — the
 # shipped module stays Jev-only and never links it. Vendored as the
 # `vendor/tinyinference` submodule and pinned by its gitlink.
-tinyinference-llm = { path = "../../vendor/tinyinference/crates/tinyinference-llm", optional = true }
+tinyinference-llm = { workspace = true, optional = true }
 
 [features]
 default = ["inference"]

@@ -8,3 +8,7 @@
 [submodule "vendor/tinyinference"]
 	path = vendor/tinyinference
 	url = https://github.com/tinyhumansai/tinyinference
+[submodule "vendor/agent-browser"]
+	path = vendor/agent-browser
+	branch = library-target
+	url = https://github.com/tinyhumansai/agent-browser

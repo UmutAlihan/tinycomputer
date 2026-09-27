@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SkyFare · Traveller details</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+  <h1>Traveller details</h1>
+  <p id="flight">Your flight</p>
+  <form action="extras.html" method="get">
+    <input type="hidden" id="flight-field" name="flight">
+    <label for="first">First name</label>
+    <input id="first" name="first" autocomplete="given-name" required>
+    <label for="last">Last name</label>
+    <input id="last" name="last" autocomplete="family-name" required>
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required>
+    <label for="phone">Mobile number</label>
+    <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+    <label><input type="checkbox" name="insurance"> Add travel insurance (₹499)</label>
+    <button type="submit">Continue</button>
+  </form>
+</main>
+<script>
+  const flight = new URLSearchParams(location.search).get('flight') || '';
+  document.getElementById('flight').textContent = `Your flight: ${flight}`;
+  document.getElementById('flight-field').value = flight;
+</script>
+</body>
+</html>

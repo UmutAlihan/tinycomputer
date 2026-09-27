@@ -95,10 +95,13 @@ impl<'de> Visitor<'de> for StepVisitor {
         let context = |error: A::Error| de::Error::custom(format!("in `{kind}` step: {error}"));
         let action = match kind.as_str() {
             "open" => FlowAction::Open(access.next_value().map_err(context)?),
+            "browse" => FlowAction::Browse(access.next_value().map_err(context)?),
             "do" => FlowAction::Do(access.next_value().map_err(context)?),
             "enter" => FlowAction::Enter(access.next_value().map_err(context)?),
             "choose" => FlowAction::Choose(access.next_value().map_err(context)?),
             "read" => FlowAction::Read(access.next_value().map_err(context)?),
+            "pick" => FlowAction::Pick(access.next_value().map_err(context)?),
+            "extract" => FlowAction::Extract(access.next_value().map_err(context)?),
             "verify" => FlowAction::Verify(access.next_value().map_err(context)?),
             "wait_for" => FlowAction::WaitFor(access.next_value().map_err(context)?),
             "stop_before" => FlowAction::StopBefore(access.next_value().map_err(context)?),
@@ -123,10 +126,13 @@ impl<'de> Visitor<'de> for StepVisitor {
 /// Every structured step kind, as spelled on the wire.
 pub const STEP_KINDS: &[&str] = &[
     "open",
+    "browse",
     "do",
     "enter",
     "choose",
     "read",
+    "pick",
+    "extract",
     "verify",
     "wait_for",
     "stop_before",
@@ -140,6 +146,9 @@ pub const STEP_KINDS: &[&str] = &[
 pub enum FlowAction {
     /// Launch the named application, or bring it forward.
     Open(String),
+    /// Open a web address in the browser, and continue the flow there until
+    /// an `open` step switches back to an application.
+    Browse(String),
     /// Reach the described state ("the Liked Songs list is open").
     Do(String),
     /// Put each text into the thing its slot describes.
@@ -148,6 +157,10 @@ pub enum FlowAction {
     Choose(ChooseStep),
     /// Capture the visible text or value of the described thing.
     Read(ReadStep),
+    /// Choose the best of a list of results by a criterion, and open it.
+    Pick(PickStep),
+    /// Capture every item of a list of results into a variable.
+    Extract(ReadStep),
     /// Require a natural-language condition to hold; the flow fails if not.
     Verify(String),
     /// Wait until a natural-language condition holds.
@@ -231,6 +244,20 @@ pub struct ReadStep {
     pub what: String,
     /// The variable to store it in.
     pub into: String,
+}
+
+/// Payload of [`FlowAction::Pick`].
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PickStep {
+    /// The list to pick from ("the flight results").
+    pub from: String,
+    /// What makes one the best: "lowest price", "earliest departure", or any
+    /// plain description. Prices, times, durations, and stops are compared
+    /// exactly; anything else is judged.
+    pub by: String,
+    /// The variable to store the picked item's text in, when set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub into: Option<String>,
 }
 
 /// Payload of [`FlowAction::RepeatUntil`].

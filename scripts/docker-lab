@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Run a command in the Linux browser lab (docker/lab/Dockerfile).
+#
+# Usage: scripts/docker-lab [--src DIR] [--workdir SUBDIR] [--rebuild] [--] [CMD...]
+#
+#   --src DIR         directory mounted at /src (default: this repository)
+#   --workdir SUBDIR  directory under /src to run in (default: /src itself)
+#   --rebuild         rebuild the image even when it exists
+#   CMD               command to run (default: an interactive shell)
+#
+# Build output goes to <workdir>/target/docker-lab, beside the host's own
+# target directory, so Linux and macOS artifacts never mix. The cargo registry
+# is cached in the docker volume tinydesktop-lab-cargo.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Lab variables from .env are exported when the file exists, as scripts/lab
+# does; nothing is printed. Only the names in `forward` reach the container,
+# passed by name so no value appears on a command line.
+if [[ -f "$root/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$root/.env"
+  set +a
+fi
+forward=()
+for name in OPENROUTER_API_KEY TINYDESKTOP_LAB_MODEL; do
+  [ -n "${!name:-}" ] && forward+=(-e "$name")
+done
+image="tinydesktop-lab:$(shasum -a 256 "$root/docker/lab/Dockerfile" | cut -c1-12)"
+src="$root"
+workdir=""
+rebuild=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --src) src="$(cd "$2" && pwd)"; shift 2 ;;
+    --workdir) workdir="$2"; shift 2 ;;
+    --rebuild) rebuild=1; shift ;;
+    --) shift; break ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
+    *) break ;;
+  esac
+done
+
+if [ "$rebuild" = 1 ] || ! docker image inspect "$image" >/dev/null 2>&1; then
+  docker build -t "$image" "$root/docker/lab"
+fi
+
+dir="/src${workdir:+/$workdir}"
+tty=()
+color=never
+[ -t 0 ] && [ -t 1 ] && tty=(-it) && color=always
+[ $# -eq 0 ] && set -- bash
+
+exec docker run --rm "${tty[@]+"${tty[@]}"}" --init --shm-size=2g \
+  -v "$src:/src" \
+  -v tinydesktop-lab-cargo:/usr/local/cargo/registry \
+  -w "$dir" \
+  -e CARGO_TARGET_DIR="$dir/target/docker-lab" \
+  -e CARGO_TERM_COLOR="$color" \
+  ${forward[@]+"${forward[@]}"} \
+  "$image" "$@"

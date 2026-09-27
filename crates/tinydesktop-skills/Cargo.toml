@@ -1,0 +1,21 @@
+[package]
+name = "tinydesktop-skills"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Agent-facing skill and schemas for driving the tinydesktop module's task members."
+documentation = "https://docs.rs/tinydesktop-skills"
+readme = "README.md"
+keywords = ["agent", "skill", "automation"]
+categories = ["development-tools"]
+publish = false
+
+[dev-dependencies]
+# The contract the skill describes, to keep the two in step.
+tinydesktop-bus = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

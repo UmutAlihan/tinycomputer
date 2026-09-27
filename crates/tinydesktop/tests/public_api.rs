@@ -34,13 +34,14 @@ fn the_crate_re_exports_the_contract_rather_than_redefining_it() {
 #[test]
 fn the_shipped_contract_binds_to_itself() {
     assert!(is_compatible(CONTRACT_VERSION));
-    assert_eq!(CONTRACT_VERSION, (1, 6));
+    assert_eq!(CONTRACT_VERSION, (1, 7));
 }
 
 #[test]
 fn the_module_serves_every_member_the_contract_names() {
-    assert_eq!(METHODS.len(), 59);
+    assert_eq!(METHODS.len(), 67);
     assert!(METHODS.contains(&names::methods::SNAPSHOT));
+    assert!(METHODS.contains(&names::methods::START_TASK));
     assert!(METHODS.contains(&names::methods::PERMISSIONS));
 }
 

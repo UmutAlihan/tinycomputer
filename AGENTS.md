@@ -40,19 +40,28 @@ crates/
 │       ├── vocabulary/ # enumerations shared across payload families
 │       ├── version/    # contract version and the host bind rule
 │       └── <family>/   # one directory per payload family
-└── tinydesktop/        # the module: engine wrapper, adapter, and the cdylib
-    ├── src/
-    │   ├── lib.rs      # crate docs + public surface, re-exporting the contract
-    │   ├── error/mod.rs      # crate-wide `Error` and `Result<T>`
-    │   ├── desktop/          # the engine: one method per member, by family
-    │   │   ├── mod.rs        # `Desktop`, its configuration, and the run path
-    │   │   ├── convert.rs    # contract payloads -> engine arguments
-    │   │   ├── permission.rs # what each member needs, and the preflight
-    │   │   ├── reply.rs      # engine result -> response envelope
-    │   │   └── test.rs       # module-local unit tests
-    │   └── tinybus_module/   # TinyBus interface, ABI exports, integration tests
-    ├── tests/          # integration tests against the public API only
-    └── examples/       # runnable, compiled-in-CI usage examples
+├── tinydesktop-core/   # shared domain: Surface trait, keys, safety, records
+├── tinydesktop-browser/ # the agent-browser adapter: sessions, outputs
+├── tinydesktop-desktop/ # the agent-desktop adapter: no bus, no agent loop
+│   └── src/
+│       ├── lib.rs      # crate docs + public surface, re-exporting the contract
+│       ├── error/mod.rs      # crate-wide `Error` and `Result<T>`
+│       ├── desktop/          # the engine: one method per member, by family
+│       │   ├── mod.rs        # `Desktop`, its configuration, and the run path
+│       │   ├── convert.rs    # contract payloads -> engine arguments
+│       │   ├── permission.rs # what each member needs, and the preflight
+│       │   ├── reply.rs      # engine result -> response envelope
+│       │   └── test.rs       # module-local unit tests
+│       └── surface/          # `Desktop` as a core `Surface`
+├── tinydesktop-engine/ # the agent runtime: Jev, RunGoal, intent flows
+│   └── src/agentic/    # goal and intent loops; `flow/` runs intent flows
+├── tinydesktop/        # the module: TinyBus glue and the cdylib, no behavior
+│   ├── src/
+│   │   ├── lib.rs      # crate docs + public surface, re-exporting the rest
+│   │   └── tinybus_module/   # TinyBus interface, ABI exports, integration tests
+│   └── tests/          # integration tests against the public API only
+├── tinydesktop-skills/ # agent-facing SKILL.md and schemas for the task API
+└── tinydesktop-examples/ # runnable examples and the lab (`scripts/lab`)
 vendor/
 ├── tinybus/            # pinned TinyBus host types and module SDK
 └── agent-desktop/      # pinned desktop automation engine
@@ -69,7 +78,10 @@ the members that carry them. It has no transport, no runtime, no engine, and no
 behavior, and CI asserts it stays that way. A host that only makes calls depends
 on it alone.
 
-`crates/tinydesktop` depends on it and re-exports all of it, so
+`crates/tinydesktop-desktop` wraps the engine, `crates/tinydesktop-engine`
+builds the Jev loops on it, and `crates/tinydesktop` serves both over the bus
+(`docs/specs/unified-agent.md` describes where the browser joins). The module
+crate depends on the contract and re-exports all of it, so
 `tinydesktop::SnapshotRequest` and `tinydesktop_bus::SnapshotRequest` are the
 *same* type rather than structural twins. That direction is load-bearing: a
 parallel set of payload types for hosts would mean a conversion at every call
@@ -123,7 +135,8 @@ broad ones.
 
 Keep public exports centralized in each crate's `src/lib.rs` so downstream users
 have one predictable surface. Put shared error variants in
-`crates/tinydesktop/src/error/mod.rs` and return the crate-wide `Result<T>` from
+the owning crate's `src/error/mod.rs` (for the adapter,
+`crates/tinydesktop-desktop/src/error/mod.rs`) and return the crate-wide `Result<T>` from
 fallible public APIs.
 
 ## Build And Test

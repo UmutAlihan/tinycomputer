@@ -25,7 +25,16 @@ use tinydesktop_bus::{
     WindowRequest,
 };
 
-use crate::{Desktop, Result, agentic};
+use std::sync::Arc;
+
+use tinydesktop_bus::agent::{
+    AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, PlanTaskRequest,
+    StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport, TaskView,
+};
+
+use super::runner::{WorkspaceRunner, jev_not_configured};
+use crate::{Desktop, Result};
+use tinydesktop_engine as agentic;
 
 /// The object served at [`tinydesktop_bus::names::OBJECT_PATH`].
 ///
@@ -36,6 +45,7 @@ use crate::{Desktop, Result, agentic};
 pub(crate) struct DesktopService {
     desktop: Desktop,
     jev: Option<agentic::JevRuntime>,
+    tasks: Arc<agentic::Tasks>,
 }
 
 impl DesktopService {
@@ -62,7 +72,33 @@ impl DesktopService {
                 })
             })
             .transpose()?;
-        Ok(Self { desktop, jev })
+        let planner = config
+            .as_object()
+            .and_then(|object| object.get("planner"))
+            .map(|value| {
+                let config: agentic::PlannerConfig = serde_json::from_value(value.clone())
+                    .map_err(|_| crate::Error::ConfigFieldType {
+                        field: "planner",
+                        expected: "a planner configuration object with an api_key",
+                    })?;
+                agentic::open_router(&config).map_err(|_| crate::Error::ConfigFieldType {
+                    field: "planner",
+                    expected: "a planner configuration object with an api_key",
+                })
+            })
+            .transpose()?;
+        let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone());
+        runner.executable = browser_executable(config)?;
+        let mut tasks = agentic::Tasks::new(Arc::new(runner));
+        if let Some(planner) = planner {
+            tasks = tasks.with_planner(planner);
+        }
+        let tasks = Arc::new(tasks);
+        Ok(Self {
+            desktop,
+            jev,
+            tasks,
+        })
     }
 
     /// Runs one engine command on a blocking thread.
@@ -122,6 +158,73 @@ impl DesktopService {
     /// Returns the flow authoring guide as prompt text.
     async fn flow_guide(&self) -> TinyBusResult<DesktopResponse> {
         self.run(|_| agentic::flow_guide()).await
+    }
+
+    /// Everything a model needs to drive the task members, in one reply.
+    async fn describe(&self) -> TinyBusResult<Capabilities> {
+        let permissions = self
+            .run(|desktop| desktop.permissions(PermissionsRequest::default()))
+            .await?;
+        Ok(agentic::capabilities(
+            vec![
+                desktop_availability(&permissions),
+                SurfaceAvailability {
+                    kind: SurfaceKind::Browser,
+                    available: true,
+                    reason: None,
+                },
+            ],
+            self.jev.is_some(),
+            self.tasks.planner_configured(),
+        ))
+    }
+
+    /// Drafts a flow for a plain-language task; needs a planner.
+    async fn plan_task(&self, request: PlanTaskRequest) -> TinyBusResult<AgentResponse<TaskPlan>> {
+        Ok(self.tasks.plan(&request).await)
+    }
+
+    /// Starts a task and returns at once with its first view.
+    #[tinybus(confidential)]
+    async fn start_task(
+        &self,
+        request: StartTaskRequest,
+    ) -> TinyBusResult<AgentResponse<TaskView>> {
+        self.on_tasks(move |tasks| tasks.start(&request)).await
+    }
+
+    /// Waits until a task needs something, finishes, or the timeout passes.
+    async fn await_task(
+        &self,
+        request: AwaitTaskRequest,
+    ) -> TinyBusResult<AgentResponse<TaskView>> {
+        Ok(self.tasks.await_task(request).await)
+    }
+
+    /// Answers what a paused task asked for, and resumes it.
+    #[tinybus(confidential)]
+    async fn continue_task(
+        &self,
+        request: ContinueTaskRequest,
+    ) -> TinyBusResult<AgentResponse<TaskView>> {
+        self.on_tasks(move |tasks| tasks.continue_task(request))
+            .await
+    }
+
+    /// Stops a task.
+    async fn cancel_task(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskView>> {
+        self.on_tasks(move |tasks| tasks.cancel(&request.id)).await
+    }
+
+    /// Everything a task did.
+    #[tinybus(confidential)]
+    async fn task_report(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskReport>> {
+        self.on_tasks(move |tasks| tasks.report(&request.id)).await
+    }
+
+    /// The tasks this module holds, newest first.
+    async fn list_tasks(&self) -> TinyBusResult<AgentResponse<Vec<TaskView>>> {
+        self.on_tasks(agentic::Tasks::list).await
     }
 
     /// Walks an accessibility tree and allocates a ref per element.
@@ -417,17 +520,71 @@ impl DesktopService {
 }
 
 impl DesktopService {
+    /// Runs a task-store call on a blocking thread, as every member runs its
+    /// work off the dispatch task: the store takes locks, and starting a task
+    /// spawns its worker from there.
+    async fn on_tasks<T, F>(&self, call: F) -> TinyBusResult<T>
+    where
+        F: FnOnce(&agentic::Tasks) -> T + Send + 'static,
+        T: Send + 'static,
+    {
+        let tasks = self.tasks.clone();
+        tokio::task::spawn_blocking(move || call(&tasks))
+            .await
+            .map_err(|error| TinyBusError::failed(format!("task call failed: {error}")))
+    }
+
     fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
         self.jev.clone()
     }
 }
 
-fn jev_not_configured(command: &str) -> DesktopResponse {
-    DesktopResponse::err(
-        command,
-        tinydesktop_bus::DesktopError::new(
-            "JEV_NOT_CONFIGURED",
-            "Jev must be supplied through private module configuration",
+/// Whether the desktop surface is usable, from a `Permissions` reply: the
+/// accessibility permission must be granted (or not needed on this platform).
+pub(super) fn desktop_availability(permissions: &DesktopResponse) -> SurfaceAvailability {
+    let accessibility = permissions
+        .data
+        .as_ref()
+        .filter(|_| permissions.ok)
+        .and_then(|data| data.get("accessibility"));
+    let state = accessibility
+        .and_then(|value| value.get("state"))
+        .and_then(serde_json::Value::as_str);
+    let reason = match state {
+        Some("granted" | "not_required") => None,
+        Some("denied") => Some(
+            accessibility
+                .and_then(|value| value.get("suggestion"))
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("grant the accessibility permission")
+                .to_owned(),
         ),
-    )
+        _ => Some(permissions.error.as_ref().map_or_else(
+            || "the accessibility permission could not be read".to_owned(),
+            |error| error.message.clone(),
+        )),
+    };
+    SurfaceAvailability {
+        kind: SurfaceKind::Desktop,
+        available: reason.is_none(),
+        reason,
+    }
+}
+
+/// The `browser.executable` configuration: the Chrome or Chromium binary to
+/// launch where the platform's own discovery would not find one.
+fn browser_executable(config: &serde_json::Value) -> Result<Option<String>> {
+    let Some(browser) = config.as_object().and_then(|object| object.get("browser")) else {
+        return Ok(None);
+    };
+    let invalid = || crate::Error::ConfigFieldType {
+        field: "browser",
+        expected: "an object whose optional `executable` is a string",
+    };
+    let browser = browser.as_object().ok_or_else(invalid)?;
+    match browser.get("executable") {
+        None => Ok(None),
+        Some(serde_json::Value::String(path)) => Ok(Some(path.clone())),
+        Some(_) => Err(invalid()),
+    }
 }

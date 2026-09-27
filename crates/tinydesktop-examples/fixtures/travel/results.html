@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SkyFare · Results</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<main>
+  <h1>Flights</h1>
+  <p id="summary">Showing flights</p>
+  <ul aria-label="Flight results">
+    <li class="card"><p>Vistara UK-707</p><p>09:10 → 10:45</p><p>1h 35m · Nonstop</p><p>₹7,210</p>
+      <a class="button" href="traveller.html?flight=UK-707&amp;fare=7210">Select</a></li>
+    <li class="card"><p>IndiGo 6E-2135</p><p>6:45 PM → 10:55 PM</p><p>4h 10m · 1 stop</p><p>₹6,840</p>
+      <a class="button" href="traveller.html?flight=6E-2135&amp;fare=6840">Select</a></li>
+    <li class="card"><p>Air India AI-825</p><p>05:30 → 08:30</p><p>3h · 1 stop</p><p>₹8,050</p>
+      <a class="button" href="traveller.html?flight=AI-825&amp;fare=8050">Select</a></li>
+    <li class="card"><p>SpiceJet SG-8373</p><p>13:20 → 17:05</p><p>3h 45m · 1 stop</p><p>₹7,005</p>
+      <a class="button" href="traveller.html?flight=SG-8373&amp;fare=7005">Select</a></li>
+  </ul>
+</main>
+<script>
+  const query = new URLSearchParams(location.search);
+  document.getElementById('summary').textContent =
+    `Flights from ${query.get('from') || '?'} to ${query.get('to') || '?'} on ${query.get('date') || '?'}`;
+</script>
+</body>
+</html>
