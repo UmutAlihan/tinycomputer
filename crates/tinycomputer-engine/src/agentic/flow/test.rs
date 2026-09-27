@@ -4414,3 +4414,39 @@ async fn a_gated_stop_before_asks_to_find_the_control_not_to_press_it() {
             .collect::<Vec<_>>()
     );
 }
+
+#[tokio::test]
+async fn a_picked_card_whose_control_is_covered_is_uncovered_and_opened() {
+    // Live on Google Flights the cheapest card's "Select flight" link was
+    // refused as covered and the pick failed; it now presses Escape and
+    // tries the same card once more, as a `do` step's click does.
+    let app = flights();
+    app.sim().quirks.insert(Quirk::Drawer);
+    let run = run(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "lowest price"}}
+        ]}),
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+    let sim = run.app.sim();
+    assert_eq!(sim.presses, ["escape"]);
+    assert_eq!(sim.picked, ["@s:select-1"]);
+}
+
+#[tokio::test]
+async fn a_picked_card_that_cannot_be_opened_says_why() {
+    let app = flights();
+    app.sim().quirks.insert(Quirk::Frozen);
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "lowest price"}}
+        ]}),
+        |_| {},
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+}
