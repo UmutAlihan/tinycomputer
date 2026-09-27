@@ -154,7 +154,11 @@ impl BrowserSurface {
             Some(bounds.get(start)?.as_f64()? + bounds.get(size)?.as_f64()? / 2.0)
         };
         let (x, y) = (middle("x", "width")?, middle("y", "height")?);
-        let name: String = name.trim().chars().take(CARD_NAME_CHARS).collect();
+        // The JS side now requires an exact match against the target's own
+        // shown text, so the name is passed through untruncated: cutting it
+        // short would make an exact match against the page's full text
+        // impossible for any control with a longer name.
+        let name = name.trim();
         let script = format!(
             "{SAME_CARD_JS}({x}, {y}, {})",
             serde_json::to_string(&name).ok()?
