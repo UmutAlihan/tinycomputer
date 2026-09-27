@@ -118,6 +118,8 @@ fn walk(
                     errors.push(format!(
                         "step {path}: `into` must be a variable name of letters, digits, and `_`"
                     ));
+                } else {
+                    defined.insert(read.into);
                 }
             }
             FlowAction::RepeatUntil(repeat) => {
@@ -132,7 +134,9 @@ fn walk(
                         "step {path}: `repeat_until` needs at least one step"
                     ));
                 }
-                walk(&repeat.steps, &path, depth + 1, defined, count, errors);
+                // A round may never run, so what it defines does not survive it.
+                let mut inner = defined.clone();
+                walk(&repeat.steps, &path, depth + 1, &mut inner, count, errors);
             }
             FlowAction::If(branch) => {
                 text(errors, "the condition", &branch.condition);
@@ -141,8 +145,18 @@ fn walk(
                         "step {path}: `if` needs a `then` or an `else` branch"
                     ));
                 }
-                walk(&branch.then, &path, depth + 1, defined, count, errors);
-                walk(&branch.otherwise, &path, depth + 1, defined, count, errors);
+                // Only one branch runs, so neither one's variables survive it.
+                let mut then_defined = defined.clone();
+                walk(&branch.then, &path, depth + 1, &mut then_defined, count, errors);
+                let mut else_defined = defined.clone();
+                walk(
+                    &branch.otherwise,
+                    &path,
+                    depth + 1,
+                    &mut else_defined,
+                    count,
+                    errors,
+                );
             }
         }
     }
