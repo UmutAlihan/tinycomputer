@@ -1612,6 +1612,7 @@ fn validation_tracks_variables_along_execution_order() {
         }))
         .unwrap(),
         &BTreeSet::new(),
+        &BTreeSet::new(),
     );
     assert!(
         used_before_read
