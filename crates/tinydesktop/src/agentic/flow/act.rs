@@ -387,11 +387,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if jev_operation == JevOperation::Click
             && destructive_label(&label(&target).to_ascii_lowercase())
         {
-            self.history.push(format!(
+            // Never call the backend, and never report this target through
+            // `Move::Acted`: nothing happened, so it must not be banned as a
+            // no-op or stalled toward `note_change`'s three-turn failure. The
+            // step fails on this turn, with a note that says why.
+            return Err(Halt::Failed(format!(
                 "refused to press {} inside an ordinary step: it looks irreversible; a flow must use stop_before for that",
                 label(&target)
-            ));
-            return Ok(Some(target));
+            )));
         }
         let chosen_target = target.clone();
         let reply = self
