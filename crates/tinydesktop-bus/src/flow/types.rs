@@ -67,7 +67,8 @@ impl<'de> Deserialize<'de> for FlowStep {
 }
 
 /// Reads a step straight from the input rather than through a
-/// `serde_json::Value`, whose map would sort the keys of an `enter` step.
+/// `serde_json::Value`, so a parsed `enter` step keeps its document order and a
+/// malformed step gets an error naming its kind.
 struct StepVisitor;
 
 impl<'de> Visitor<'de> for StepVisitor {
@@ -141,7 +142,7 @@ pub enum FlowAction {
     Open(String),
     /// Reach the described state ("the Liked Songs list is open").
     Do(String),
-    /// Put each text into the thing its slot describes, in order.
+    /// Put each text into the thing its slot describes.
     Enter(Slots),
     /// Pick an option in a list, menu, or popup.
     Choose(ChooseStep),
@@ -169,10 +170,14 @@ pub struct Slot {
     pub text: String,
 }
 
-/// The slots of an [`FlowAction::Enter`] step, in document order.
+/// The slots of an [`FlowAction::Enter`] step.
 ///
-/// On the wire this is a JSON object from slot to text. Order is kept because
-/// filling a form top to bottom is what its tab order and autocomplete expect.
+/// On the wire this is a JSON object from slot to text. Document order is kept
+/// when parsing text, but key order does not survive a trip through a
+/// `serde_json::Value`, which is how `TinyBus` carries arguments. So the module
+/// never relies on it: it fills the matched fields top to bottom as they
+/// appear on screen, which is the order a form's tab order and autocomplete
+/// expect anyway.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Slots(pub Vec<Slot>);
 

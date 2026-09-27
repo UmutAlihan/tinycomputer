@@ -17,10 +17,10 @@ fn a_bare_string_step_is_a_do_intent() {
 }
 
 #[test]
-fn enter_keeps_its_slots_in_document_order() {
-    let step: FlowStep = serde_json::from_value(json!({
-        "enter": {"recipient": "a@b.c", "subject": "Hi", "body": "Text"}
-    }))
+fn enter_keeps_its_slots_in_document_order_when_parsed_from_text() {
+    let step: FlowStep = serde_json::from_str(
+        r#"{"enter": {"recipient": "a@b.c", "subject": "Hi", "body": "Text"}}"#,
+    )
     .unwrap();
     let FlowStep::Action(FlowAction::Enter(Slots(slots))) = &step else {
         panic!("expected an enter step, got {step:?}");
