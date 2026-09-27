@@ -1682,6 +1682,86 @@ fn validation_tracks_variables_along_execution_order() {
 }
 
 #[test]
+fn validation_rejects_a_fact_referenced_in_every_model_facing_position() {
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "Mail",
+        "steps": [
+            {"do": "tell Jev ${email}"},
+            {"verify": "shows ${email}"},
+            {"wait_for": "shows ${email}"},
+            {"stop_before": "sending to ${email}"},
+            {"choose": {"what": "${email}", "option": "ok"}},
+            {"choose": {"what": "list", "option": "${email}"}},
+            {"read": {"what": "the ${email} row", "into": "x"}},
+            {"extract": {"what": "the ${email} row", "into": "y"}},
+            {"pick": {"from": "${email}", "by": "lowest", "into": "z"}},
+            {"pick": {"from": "results", "by": "${email}", "into": "w"}},
+            {"repeat_until": {"condition": "shows ${email}", "steps": ["x"], "max": 1}},
+            {"if": {"condition": "shows ${email}", "then": ["x"]}},
+            {"enter": {"${email}": "hi"}}
+        ]
+    }))
+    .unwrap();
+    let facts = BTreeSet::from(["email".to_owned()]);
+    let validation = validate::check(&flow, &facts, &facts);
+    assert!(!validation.valid);
+    let hits = validation
+        .errors
+        .iter()
+        .filter(|error| error.contains("`${email}` is a fact"))
+        .count();
+    assert_eq!(
+        hits,
+        13,
+        "every model-facing position should reject the fact:\n{}",
+        validation.errors.join("\n")
+    );
+    for error in &validation.errors {
+        if error.contains("`${email}` is a fact") {
+            assert!(
+                error.contains("use an enter step to type it"),
+                "{error}"
+            );
+        }
+    }
+}
+
+#[test]
+fn validation_allows_a_fact_typed_locally_or_reached_by_open_or_browse() {
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "Mail",
+        "steps": [
+            {"open": "${app_name}"},
+            {"browse": "${site}"},
+            {"enter": {"email address": "${email}"}}
+        ]
+    }))
+    .unwrap();
+    let facts = BTreeSet::from([
+        "app_name".to_owned(),
+        "site".to_owned(),
+        "email".to_owned(),
+    ]);
+    let validation = validate::check(&flow, &facts, &facts);
+    assert!(validation.valid, "{:?}", validation.errors);
+}
+
+#[test]
+fn validation_allows_a_non_fact_variable_in_model_facing_text() {
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "Mail",
+        "vars": {"topic": "the budget"},
+        "steps": [
+            {"do": "start an email about ${topic}"},
+            {"verify": "mentions ${topic}"}
+        ]
+    }))
+    .unwrap();
+    let validation = validate::check(&flow, &BTreeSet::new(), &BTreeSet::new());
+    assert!(validation.valid, "{:?}", validation.errors);
+}
+
+#[test]
 fn text_helpers_substitute_reference_and_normalize() {
     let vars = BTreeMap::from([("to".to_owned(), "sam".to_owned())]);
     assert_eq!(
