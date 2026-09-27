@@ -10,6 +10,7 @@ use std::collections::BTreeSet;
 
 use serde_json::Value;
 use tinydesktop_bus::{FlowLoop, Slot, StepOutcome};
+use tinydesktop_core::reformat_date;
 
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
@@ -65,6 +66,19 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let mut pending = (0..slots.len()).collect::<BTreeSet<_>>();
         self.fill_pending(log, &slots, &private, &mut pending)
             .await?;
+        // A detail the form never asks for — a title where it only asks for
+        // gender — has no field; that is not a failure.
+        let mut unasked = BTreeSet::new();
+        if !pending.is_empty() && self.enabled(FlowLoop::Validation) {
+            unasked = self.unasked(log, &slots, &pending).await?;
+            pending.retain(|index| !unasked.contains(index));
+            if !unasked.is_empty() {
+                self.history.push(format!(
+                    "the form does not ask for: {}",
+                    names(&slots, &unasked)
+                ));
+            }
+        }
         if pending.is_empty() && self.enabled(FlowLoop::Validation) {
             // A form that rejects a value says so next to its field; enter
             // those once more, then give up naming them.
@@ -95,9 +109,17 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .collect::<Vec<_>>()
                     .join(", ")
             ));
+            let entered = slots.len() - unasked.len();
             Ok(Ended::new(
                 StepOutcome::Done,
-                format!("entered {} value(s)", slots.len()),
+                if unasked.is_empty() {
+                    format!("entered {entered} value(s)")
+                } else {
+                    format!(
+                        "entered {entered} value(s); the form does not ask for: {}",
+                        names(&slots, &unasked)
+                    )
+                },
             ))
         } else {
             Err(Halt::Failed(format!(
@@ -105,6 +127,38 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 names(&slots, &pending)
             )))
         }
+    }
+
+    /// The `pending` slots the form on screen does not ask for, by one Noul
+    /// each.
+    async fn unasked(
+        &mut self,
+        log: &mut StepLog,
+        slots: &[Slot],
+        pending: &BTreeSet<usize>,
+    ) -> Result<BTreeSet<usize>, Halt> {
+        let screen = self.look().await?;
+        let mut questions = Questions::default();
+        for index in pending {
+            questions = questions.with(&format!("asks_{index}"), asks_for(&slots[*index].slot));
+        }
+        let answers = self
+            .ask(
+                log,
+                ask::request(
+                    self.model(),
+                    self.state(&screen, "check which details the form asks for"),
+                    questions,
+                ),
+            )
+            .await?;
+        Ok(pending
+            .iter()
+            .copied()
+            .filter(|index| {
+                probability(&answers, &format!("asks_{index}")).is_some_and(|asks| asks < NOT_ASKED)
+            })
+            .collect())
     }
 
     /// The slots the screen shows an error about, by one Noul each.
