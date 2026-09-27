@@ -157,7 +157,7 @@ fn check_step(
         }
         FlowAction::Read(read) | FlowAction::Extract(read) => {
             model(errors, "`what`", &read.what);
-            define(errors, path, read.into, defined);
+            define(errors, path, read.into.clone(), defined);
         }
         FlowAction::Pick(pick) => {
             model(errors, "`from`", &pick.from);
