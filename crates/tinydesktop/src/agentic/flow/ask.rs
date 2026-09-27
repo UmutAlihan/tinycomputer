@@ -57,40 +57,62 @@ pub(super) fn state(
 
 /// What each text-holding element shows, at more length than the element
 /// list allows: whether a draft "shows the body" is decided here.
+///
+/// A plain field holds its text as its value. A rich-text area (a mail body,
+/// a web view) holds none; its text is spread over the static text inside it,
+/// so that text is gathered under the area's label.
 fn field_contents(screen: &Screen) -> Vec<Value> {
-    screen
-        .candidates
-        .iter()
-        .filter_map(|node| {
-            let value = node.value.as_ref()?.as_str()?.trim();
-            let holds_text = node
-                .available_actions
-                .iter()
-                .any(|action| action == "SetValue" || action == "TypeText");
-            (holds_text && !value.is_empty()).then(|| {
-                json!({
-                    "field": label(node),
-                    "holds": value.chars().take(MAX_FIELD_CHARS).collect::<String>(),
-                })
-            })
-        })
-        .take(MAX_FIELDS)
-        .collect()
+    let mut fields = Vec::new();
+    for node in &screen.candidates {
+        let holds_text = node
+            .available_actions
+            .iter()
+            .any(|action| action == "SetValue" || action == "TypeText");
+        let own = node
+            .value
+            .as_ref()
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| holds_text && !value.is_empty())
+            .map(str::to_owned);
+        let text = own.or_else(|| rich_text(screen, node));
+        if let Some(text) = text {
+            fields.push(json!({
+                "field": label(node),
+                "holds": text.chars().take(MAX_FIELD_CHARS).collect::<String>(),
+            }));
+        }
+        if fields.len() >= MAX_FIELDS {
+            break;
+        }
+    }
+    fields
 }
 
-fn element_line(node: &Candidate, include_values: bool) -> String {
-    let mut line = label(node);
-    if include_values
-        && let Some(value) = node.value.as_ref().and_then(Value::as_str)
-        && !value.is_empty()
+/// The text inside a rich-text area, joined in reading order.
+fn rich_text(screen: &Screen, area: &Candidate) -> Option<String> {
+    if !["webarea", "document"]
+        .iter()
+        .any(|role| area.role.eq_ignore_ascii_case(role))
     {
-        let shown: String = value.chars().take(80).collect();
-        let _ = write!(line, " = {shown:?}");
+        return None;
     }
-    if !node.states.is_empty() {
-        let _ = write!(line, " [{}]", node.states.join(", "));
-    }
-    line
+    let area_label = label(area);
+    let text = screen
+        .candidates
+        .iter()
+        .filter(|node| node.path.contains(&area_label))
+        .filter_map(|node| {
+            node.value
+                .as_ref()
+                .and_then(Value::as_str)
+                .or(node.name.as_deref())
+        })
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    (!text.is_empty()).then_some(text)
 }
 
 pub(super) fn request(model: &str, state: Value, questions: Questions) -> EvaluationRequest {
