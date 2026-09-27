@@ -165,6 +165,11 @@ impl JevRuntime {
         self.journal.run_dir()
     }
 
+    /// This runtime writing to `journal`.
+    fn within(self, journal: Journal) -> Self {
+        Self { journal, ..self }
+    }
+
     /// This runtime with a run of `kind` begun in its journal.
     fn begin_run(&self, kind: &str, label: &str) -> Self {
         Self {
@@ -428,11 +433,9 @@ async fn continue_goal<B: AgentBackend>(
         Err(reply) => return *reply,
     };
     // A continuation writes to the journal of the run it continues.
-    let runtime = JevRuntime {
-        journal: pending.journal.clone(),
-        ..runtime
-    }
-    .begin_run("goal-continuation", &pending.request.goal);
+    let runtime = runtime
+        .within(pending.journal.clone())
+        .begin_run("goal-continuation", &pending.request.goal);
     let (fresh, delivered_unverified) = match execute_pending_action(&backend, &pending).await {
         Ok(executed) => executed,
         Err(reply) => return *reply,
