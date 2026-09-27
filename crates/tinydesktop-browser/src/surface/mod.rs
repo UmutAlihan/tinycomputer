@@ -73,6 +73,18 @@ impl BrowserSurface {
         self.session.lock().ok().and_then(|session| session.clone())
     }
 
+    /// Closes the session, if one is open, without waiting for it: safe to
+    /// call from async code, where a blocking surface call is not.
+    pub fn close(&self) {
+        let Some(id) = self.session.lock().ok().and_then(|mut session| session.take()) else {
+            return;
+        };
+        let browser = self.browser.clone();
+        self.handle.spawn(async move {
+            let _closed = browser.close_session(&id).await;
+        });
+    }
+
     fn block<T>(&self, future: impl std::future::Future<Output = T>) -> T {
         self.handle.block_on(future)
     }

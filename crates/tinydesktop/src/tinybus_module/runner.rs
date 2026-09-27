@@ -1,12 +1,12 @@
 //! The flow runner behind the Agent members: each task's flow runs on a
-//! [`Workspace`] joining the desktop and, once linked, the browser.
+//! [`Workspace`] joining the desktop and a browser session of its own.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
-use tinydesktop_browser::BrowserSurface;
+use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_bus::DesktopResponse;
-use tinydesktop_bus::agent::{TaskConstraints, TaskId};
+use tinydesktop_bus::agent::{SurfaceKind, TaskConstraints, TaskId};
 use tinydesktop_engine::{FlowFuture, FlowRunner, JevRuntime, TextFuture, Workspace};
 
 use crate::Desktop;
@@ -19,28 +19,51 @@ type TaskWorkspace = Workspace<Desktop, BrowserSurface>;
 pub(super) struct WorkspaceRunner {
     pub(super) desktop: Desktop,
     pub(super) jev: Option<JevRuntime>,
-    pub(super) workspaces: Mutex<HashMap<TaskId, TaskWorkspace>>,
+    pub(super) browser: Arc<Browser>,
+    /// The Chrome or Chromium binary sessions launch, when the platform's
+    /// own discovery would not find one.
+    pub(super) executable: Option<String>,
+    pub(super) workspaces: Mutex<HashMap<TaskId, (TaskWorkspace, Option<BrowserSurface>)>>,
 }
 
 impl WorkspaceRunner {
-    /// A runner with no task workspaces yet.
+    /// A runner with no task workspaces yet, launching browsers through the
+    /// linked agent-browser.
     pub(super) fn new(desktop: Desktop, jev: Option<JevRuntime>) -> Self {
         Self {
             desktop,
             jev,
+            browser: Arc::new(Browser::new(Arc::new(AgentBrowser))),
+            executable: None,
             workspaces: Mutex::new(HashMap::new()),
         }
     }
 
-    fn workspace(&self, task: &TaskId) -> TaskWorkspace {
+    /// The task's workspace, created on first use: the desktop, and a
+    /// browser session shaped by `constraints` unless they exclude the
+    /// browser. Needs a Tokio runtime, which every caller runs on.
+    fn workspace(&self, task: &TaskId, constraints: &TaskConstraints) -> TaskWorkspace {
         let fresh = || {
-            // The browser engine is not linked into this build yet, so web
-            // steps are refused with `BROWSER_NOT_AVAILABLE`.
-            Workspace::new(self.desktop.clone(), None)
+            let browser = (constraints.surfaces.is_empty()
+                || constraints.surfaces.contains(&SurfaceKind::Browser))
+            .then(|| {
+                BrowserSurface::new(
+                    self.browser.clone(),
+                    SessionOptions {
+                        endpoint: constraints.browser_endpoint.clone(),
+                        executable: self.executable.clone(),
+                        headless: !constraints.headed,
+                        allowed_origins: constraints.origins.clone(),
+                        ..SessionOptions::default()
+                    },
+                    tokio::runtime::Handle::current(),
+                )
+            });
+            (Workspace::new(self.desktop.clone(), browser.clone()), browser)
         };
         self.workspaces.lock().map_or_else(
-            |_| fresh(),
-            |mut workspaces| workspaces.entry(task.clone()).or_insert_with(fresh).clone(),
+            |_| fresh().0,
+            |mut workspaces| workspaces.entry(task.clone()).or_insert_with(fresh).0.clone(),
         )
     }
 }
@@ -49,7 +72,7 @@ impl FlowRunner for WorkspaceRunner {
     fn run(
         &self,
         task: &TaskId,
-        _constraints: &TaskConstraints,
+        constraints: &TaskConstraints,
         request: tinydesktop_bus::RunFlowRequest,
     ) -> FlowFuture {
         let Some(runtime) = self.jev.clone() else {
@@ -63,7 +86,7 @@ impl FlowRunner for WorkspaceRunner {
     }
 
     fn visible_text(&self, task: &TaskId) -> TextFuture {
-        let workspace = self.workspace(task);
+        let workspace = self.workspace(task, &TaskConstraints::default());
         Box::pin(async move {
             tokio::task::spawn_blocking(move || workspace.visible_text())
                 .await
@@ -72,8 +95,13 @@ impl FlowRunner for WorkspaceRunner {
     }
 
     fn release(&self, task: &TaskId) {
-        if let Ok(mut workspaces) = self.workspaces.lock() {
-            workspaces.remove(task);
+        let released = self
+            .workspaces
+            .lock()
+            .ok()
+            .and_then(|mut workspaces| workspaces.remove(task));
+        if let Some((_, Some(browser))) = released {
+            browser.close();
         }
     }
 }

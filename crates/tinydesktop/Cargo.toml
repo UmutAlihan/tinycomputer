@@ -30,8 +30,9 @@ tinydesktop-desktop = { workspace = true }
 # `planner` compiles the LLM planner in; it stays inert until the private
 # `planner` configuration supplies a key.
 tinydesktop-engine = { workspace = true, features = ["planner"] }
-# The browser surface type a task's workspace is built with.
-tinydesktop-browser = { workspace = true }
+# The browser surface a task's workspace drives, with agent-browser linked
+# in-process.
+tinydesktop-browser = { workspace = true, features = ["agent-browser"] }
 tinybus = { workspace = true }
 tinybus-module = { workspace = true }
 # Command replies are `serde_json::Value` the whole way through.

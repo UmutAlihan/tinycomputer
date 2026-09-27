@@ -397,3 +397,27 @@ fn repeated_containers_are_numbered_so_their_cards_group() {
     assert_eq!(groups[0].fields, ["IndiGo", "₹6,840", "Select"]);
     assert_eq!(groups[1].primary.as_ref().unwrap().ref_id, "e2");
 }
+
+#[test]
+fn closing_ends_the_session_and_is_harmless_twice() {
+    let Harness {
+        fake,
+        surface,
+        _runtime: runtime,
+    } = harness("close", page_fake());
+    surface.close();
+    assert!(surface.launch("browser").ok);
+    assert!(surface.session().is_some());
+    surface.close();
+    assert!(surface.session().is_none());
+    // The close runs on the runtime; wait for it to land.
+    runtime.block_on(async {
+        for _ in 0..100 {
+            if fake.actions().iter().any(|action| action == "close") {
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+        panic!("the session was never closed");
+    });
+}
