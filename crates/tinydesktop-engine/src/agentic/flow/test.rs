@@ -2007,6 +2007,41 @@ fn validation_tracks_variables_along_execution_order() {
     );
 }
 
+#[tokio::test]
+async fn a_flow_definition_naming_a_caller_value_is_expanded_once() {
+    let run = run_with(
+        App::with(|sim| sim.compose_open = true),
+        json!({
+            "app": "Mail",
+            "vars": {"subject_line": "${topic}"},
+            "steps": [{"enter": {"subject": "${subject_line}", "body": "${note}"}}]
+        }),
+        |request| {
+            request.vars = BTreeMap::from([
+                ("topic".to_owned(), "Kashmir".to_owned()),
+                ("note".to_owned(), "${topic}".to_owned()),
+            ]);
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    let sim = run.app.sim();
+    assert_eq!(
+        sim.fields["Subject"], "Kashmir",
+        "the definition names the caller's value"
+    );
+    assert_eq!(
+        sim.fields["Body"], "${topic}",
+        "a caller's value is text, never rescanned for references"
+    );
+}
+
 #[test]
 fn text_helpers_substitute_reference_and_normalize() {
     let vars = BTreeMap::from([("to".to_owned(), "sam".to_owned())]);
