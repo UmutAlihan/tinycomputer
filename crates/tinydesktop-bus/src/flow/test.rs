@@ -81,6 +81,7 @@ fn control_steps_pin_their_wire_form() {
             {"stop_before": "deleting"},
             {"open": "Finder"},
             {"browse": "https://flights.test"},
+            {"pick": {"from": "the flight results", "by": "lowest price", "into": "flight"}},
             {"do": "y"}
         ]
     }))
@@ -93,6 +94,13 @@ fn control_steps_pin_their_wire_form() {
         flow.steps[7],
         FlowStep::Action(FlowAction::Browse("https://flights.test".to_owned()))
     );
+    let FlowStep::Action(FlowAction::Pick(pick)) = &flow.steps[8] else {
+        panic!("expected pick");
+    };
+    assert_eq!(pick.into.as_deref(), Some("flight"));
+    let bare: crate::PickStep =
+        serde_json::from_value(json!({"from": "results", "by": "cheapest"})).unwrap();
+    assert!(serde_json::to_value(&bare).unwrap().get("into").is_none());
     let round_trip: Flow = serde_json::from_value(serde_json::to_value(&flow).unwrap()).unwrap();
     assert_eq!(round_trip, flow);
     assert_eq!(

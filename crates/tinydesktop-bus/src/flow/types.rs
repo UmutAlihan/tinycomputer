@@ -100,6 +100,7 @@ impl<'de> Visitor<'de> for StepVisitor {
             "enter" => FlowAction::Enter(access.next_value().map_err(context)?),
             "choose" => FlowAction::Choose(access.next_value().map_err(context)?),
             "read" => FlowAction::Read(access.next_value().map_err(context)?),
+            "pick" => FlowAction::Pick(access.next_value().map_err(context)?),
             "verify" => FlowAction::Verify(access.next_value().map_err(context)?),
             "wait_for" => FlowAction::WaitFor(access.next_value().map_err(context)?),
             "stop_before" => FlowAction::StopBefore(access.next_value().map_err(context)?),
@@ -129,6 +130,7 @@ pub const STEP_KINDS: &[&str] = &[
     "enter",
     "choose",
     "read",
+    "pick",
     "verify",
     "wait_for",
     "stop_before",
@@ -153,6 +155,8 @@ pub enum FlowAction {
     Choose(ChooseStep),
     /// Capture the visible text or value of the described thing.
     Read(ReadStep),
+    /// Choose the best of a list of results by a criterion, and open it.
+    Pick(PickStep),
     /// Require a natural-language condition to hold; the flow fails if not.
     Verify(String),
     /// Wait until a natural-language condition holds.
@@ -236,6 +240,20 @@ pub struct ReadStep {
     pub what: String,
     /// The variable to store it in.
     pub into: String,
+}
+
+/// Payload of [`FlowAction::Pick`].
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PickStep {
+    /// The list to pick from ("the flight results").
+    pub from: String,
+    /// What makes one the best: "lowest price", "earliest departure", or any
+    /// plain description. Prices, times, durations, and stops are compared
+    /// exactly; anything else is judged.
+    pub by: String,
+    /// The variable to store the picked item's text in, when set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub into: Option<String>,
 }
 
 /// Payload of [`FlowAction::RepeatUntil`].

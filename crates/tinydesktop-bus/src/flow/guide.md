@@ -40,6 +40,7 @@ do.
 | `enter` | `{"enter": {"subject": "Hi"}}` | Put each text into the field its key describes. |
 | `choose` | `{"choose": {"what": "the font list", "option": "Helvetica"}}` | Pick an option in a list, menu, or popup. |
 | `read` | `{"read": {"what": "the newest message's subject", "into": "subject"}}` | Store visible text in a variable. |
+| `pick` | `{"pick": {"from": "the flight results", "by": "lowest price", "into": "flight"}}` | Choose the best of a list of results and open it; `into` stores its text. Prices, times, durations, and stops are compared exactly. |
 | `verify` | `{"verify": "the draft shows a recipient"}` | Fail the flow unless this holds. |
 | `wait_for` | `{"wait_for": "the search results are showing"}` | Wait until this holds. |
 | `stop_before` | `{"stop_before": "sending the email"}` | Find an irreversible action and stop in front of it. |
@@ -130,7 +131,7 @@ can be typed on the other.
     { "enter": { "where from": "${from}", "where to": "${to}", "departure date": "${date}" } },
     "search for flights",
     { "wait_for": "flight results are listed" },
-    { "read": { "what": "the cheapest flight's airline, times, and price", "into": "cheapest" } },
+    { "pick": { "from": "the flight results", "by": "lowest price", "into": "cheapest" } },
     { "open": "Mail" },
     "start a new email message",
     { "enter": { "subject": "Flight to ${to}", "message body": "Cheapest option: ${cheapest}" } },

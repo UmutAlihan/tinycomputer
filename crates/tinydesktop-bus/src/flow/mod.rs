@@ -10,7 +10,7 @@ mod types;
 
 pub use types::{
     ChooseStep, Flow, FlowAction, FlowActionRecord, FlowLoop, FlowRunResult, FlowStep,
-    FlowStopReason, FlowValidation, GroundingHint, IfStep, JevExchange, ReadStep, RepeatStep,
+    FlowStopReason, FlowValidation, GroundingHint, IfStep, JevExchange, PickStep, ReadStep, RepeatStep,
     RunFlowRequest, STEP_KINDS, Slot, Slots, StepOutcome, StepReport, ValidateFlowRequest,
 };
 
