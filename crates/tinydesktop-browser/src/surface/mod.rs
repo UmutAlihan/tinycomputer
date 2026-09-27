@@ -6,10 +6,16 @@
 //! (`spawn_blocking`); each one here runs the async [`Browser`] call to
 //! completion on the runtime handle the surface was built with. The session
 //! opens lazily, on the first call that needs a page.
+//!
+//! When someone can see the page, the agent's cursor is drawn gliding onto
+//! each element before the surface acts on it (`cursor.rs`). It is cosmetic:
+//! the actions are the same with or without it.
 
+mod cursor;
 mod tree;
 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::{Value, json};
 use tinydesktop_bus::browser::{
@@ -17,8 +23,9 @@ use tinydesktop_bus::browser::{
     WaitState,
 };
 use tinydesktop_bus::{DesktopError, DesktopResponse, JevOperation};
-use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface};
+use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
 use tinydesktop_core::{Key, Platform};
+use tinydesktop_cursor::{CursorPace, VirtualCursor};
 
 use crate::error::{Error, Result};
 use crate::sessions::Browser;
@@ -58,6 +65,9 @@ pub struct BrowserSurface {
     session: Arc<Mutex<Option<SessionId>>>,
     handle: tokio::runtime::Handle,
     platform: Platform,
+    cursor_pace: CursorPace,
+    cursor: Arc<Mutex<VirtualCursor>>,
+    wait: fn(Duration),
 }
 
 impl std::fmt::Debug for BrowserSurface {
@@ -66,13 +76,16 @@ impl std::fmt::Debug for BrowserSurface {
             .debug_struct("BrowserSurface")
             .field("session", &self.session)
             .field("platform", &self.platform)
+            .field("cursor_pace", &self.cursor_pace)
             .finish_non_exhaustive()
     }
 }
 
 impl BrowserSurface {
     /// A surface that opens its session on `browser` with `options`, and
-    /// runs browser calls on `handle`.
+    /// runs browser calls on `handle`. When the session is visible, the
+    /// agent's cursor is drawn at the natural pace; see
+    /// [`BrowserSurface::with_cursor`].
     #[must_use]
     pub fn new(
         browser: Arc<Browser>,
@@ -85,7 +98,35 @@ impl BrowserSurface {
             session: Arc::new(Mutex::new(None)),
             handle,
             platform: Platform::current(),
+            cursor_pace: CursorPace::default(),
+            cursor: Arc::new(Mutex::new(VirtualCursor::new(CursorPace::default()))),
+            wait: std::thread::sleep,
         }
+    }
+
+    /// The same surface, drawing the agent's cursor at `pace` when the
+    /// session is visible — headed, or attached to an existing browser.
+    /// [`CursorPace::Off`] draws nothing. The cursor is cosmetic: every
+    /// action is performed the same way whatever the pace.
+    #[must_use]
+    pub fn with_cursor(mut self, pace: CursorPace) -> Self {
+        self.cursor_pace = pace;
+        self.cursor = Arc::new(Mutex::new(VirtualCursor::new(pace)));
+        self
+    }
+
+    /// The pace the agent's cursor is drawn at.
+    #[must_use]
+    pub const fn cursor_pace(&self) -> CursorPace {
+        self.cursor_pace
+    }
+
+    /// The same surface, not waiting for the cursor to land, so tests with
+    /// a drawn cursor run at full speed.
+    #[cfg(test)]
+    pub(crate) fn without_waiting(mut self) -> Self {
+        self.wait = |_| {};
+        self
     }
 
     /// The session this surface drives, once one is open.
@@ -234,6 +275,12 @@ impl Surface for BrowserSurface {
                 },
             )
         };
+        if let Some(reference) = reference
+            .as_deref()
+            .filter(|_| uses_pointer(operation) || operation == JevOperation::TypeText)
+        {
+            self.show_cursor(reference);
+        }
         match operation {
             JevOperation::Click | JevOperation::Expand | JevOperation::Collapse => {
                 let reply = targeted("click", |target, _| Action::Click {
