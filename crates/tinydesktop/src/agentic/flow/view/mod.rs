@@ -312,7 +312,10 @@ fn remembers_as_field_content(node: &Candidate) -> bool {
 /// document order, which [`remembers_as_field_content`]'s ancestor-only check
 /// cannot see during the traversal that builds `text_nodes` node by node.
 fn build_context(candidates: &[Candidate], text_nodes: &[Candidate]) -> Vec<String> {
-    let mut ordered = candidates.iter().chain(text_nodes.iter()).collect::<Vec<_>>();
+    let mut ordered = candidates
+        .iter()
+        .chain(text_nodes.iter())
+        .collect::<Vec<_>>();
     ordered.sort_by_key(|node| node.order);
     let mut context = Vec::new();
     for node in text_nodes {
@@ -328,7 +331,10 @@ fn build_context(candidates: &[Candidate], text_nodes: &[Candidate]) -> Vec<Stri
 /// mirroring [`crate::agentic::flow::ask::detokenize`]'s own selection of the
 /// nodes it reads as a field's tokens.
 fn follows_a_settable_field(ordered: &[&Candidate], node: &Candidate) -> bool {
-    let Some(position) = ordered.iter().position(|candidate| candidate.order == node.order) else {
+    let Some(position) = ordered
+        .iter()
+        .position(|candidate| candidate.order == node.order)
+    else {
         return false;
     };
     let is_static_text = |candidate: &Candidate| {

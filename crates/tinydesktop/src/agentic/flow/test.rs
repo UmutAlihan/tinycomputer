@@ -1233,7 +1233,10 @@ async fn a_repeat_conditions_trace_is_attributed_to_the_repeat_step_not_its_last
     .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert_eq!(
-        run.result.trace.last().map(|exchange| exchange.step.as_str()),
+        run.result
+            .trace
+            .last()
+            .map(|exchange| exchange.step.as_str()),
         Some("1"),
         "the condition check that ended the loop belongs to the repeat_until step"
     );

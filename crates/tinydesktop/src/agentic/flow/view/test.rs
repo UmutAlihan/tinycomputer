@@ -120,7 +120,10 @@ fn a_token_fields_chip_labels_never_reach_context_but_stay_in_text_nodes() {
         {"role": "statictext", "name": "sam@example.com"}
     ]}));
     assert!(
-        !screen.context.iter().any(|line| line.contains("sam@example.com")),
+        !screen
+            .context
+            .iter()
+            .any(|line| line.contains("sam@example.com")),
         "a token field's chip label must not leak into unconditional context: {:?}",
         screen.context
     );

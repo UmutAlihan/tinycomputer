@@ -266,10 +266,7 @@ fn a_failed_clipboard_restoration_is_folded_into_the_response_instead_of_ignored
     // turning a delivered field's own success into a failure.
     let annotated = with_restoration(ok, false);
     assert!(annotated.ok, "the field operation itself still succeeded");
-    assert_eq!(
-        annotated.data,
-        Some(json!({"clipboard_restored": false}))
-    );
+    assert_eq!(annotated.data, Some(json!({"clipboard_restored": false})));
     // A failed operation's own error is left alone: nothing to fold into.
     let failed = DesktopResponse::err(
         "press",
