@@ -63,6 +63,6 @@ pub use error::{Error, Result};
 pub use geometry::{Point, Rect};
 pub use keyboard::VirtualKeyboard;
 pub use mouse::{PathSample, VirtualMouse, aim, human_path};
-pub use plan::{Button, InputSink, Key, Plan, Step, play};
+pub use plan::{Button, InputSink, Key, Pacer, Plan, Step, play};
 pub use profile::MotionProfile;
 pub use rng::Rng;

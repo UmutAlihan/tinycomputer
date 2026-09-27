@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use super::{Button, InputSink, Key, Plan, Step, play};
+use super::{Button, InputSink, Key, Pacer, Plan, Step, play};
 use crate::geometry::Point;
 
 /// Records every primitive; fails the one named in `fail_on`.
@@ -128,4 +128,21 @@ fn keys_and_buttons_name_themselves() {
     assert_eq!(Key::Tab.text(), "\t");
     assert_eq!(Button::default().as_str(), "left");
     assert_eq!(Button::Middle.as_str(), "middle");
+}
+
+#[test]
+fn a_pacer_sleeps_only_for_what_the_engine_did_not_already_spend() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SLEPT_MS: AtomicU64 = AtomicU64::new(0);
+    fn record(duration: Duration) {
+        SLEPT_MS.fetch_add(u64::try_from(duration.as_millis()).unwrap(), Ordering::SeqCst);
+    }
+    let mut pacer = Pacer::new(record);
+    pacer.wait(Duration::from_secs(60));
+    let slept = SLEPT_MS.load(Ordering::SeqCst);
+    assert!((59_000..=60_000).contains(&slept), "{slept}");
+    std::thread::sleep(Duration::from_millis(5));
+    pacer.wait(Duration::from_millis(1));
+    assert_eq!(SLEPT_MS.load(Ordering::SeqCst), slept, "the engine already spent it");
+    assert!(format!("{pacer:?}").contains("Pacer"));
 }

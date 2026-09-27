@@ -6,7 +6,7 @@
 //! move, press, release, key down, key up, insert text — while the pacing
 //! stays in one place.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::geometry::Point;
 
@@ -233,6 +233,37 @@ pub fn play<S: InputSink + ?Sized>(
         }
     }
     Ok(())
+}
+
+/// Waits out a plan's pauses measured from when the previous primitive
+/// started, so an engine whose primitives take time of their own — a
+/// round trip, a synthetic event and its settle — still moves at the plan's
+/// tempo instead of adding its latency to every pause.
+#[derive(Debug)]
+pub struct Pacer {
+    last: Instant,
+    sleep: fn(Duration),
+}
+
+impl Pacer {
+    /// A pacer that sleeps with `sleep`, starting now.
+    #[must_use]
+    pub fn new(sleep: fn(Duration)) -> Self {
+        Self {
+            last: Instant::now(),
+            sleep,
+        }
+    }
+
+    /// Waits until `pause` has passed since the previous call returned,
+    /// or not at all if it already has.
+    pub fn wait(&mut self, pause: Duration) {
+        let spent = self.last.elapsed();
+        if pause > spent {
+            (self.sleep)(pause - spent);
+        }
+        self.last = Instant::now();
+    }
 }
 
 #[cfg(test)]
