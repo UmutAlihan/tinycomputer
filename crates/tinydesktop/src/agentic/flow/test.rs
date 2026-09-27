@@ -1165,6 +1165,25 @@ async fn choose_reveals_the_list_first_when_the_option_is_not_visible() {
 }
 
 #[tokio::test]
+async fn choose_never_clicks_an_irreversible_option() {
+    // "Send" is clickable and matches the requested option by name, but it is
+    // irreversible; `choose` must fail the step through the usual `stop_before`
+    // path rather than pressing it directly.
+    let app = App::with(|sim| sim.compose_open = true);
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": [{"choose": {"what": "the toolbar", "option": "Send"}}]}),
+        |_| {},
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(run.result.steps[0].note.contains("was not found"));
+    assert!(!run.app.sim().sent, "choose must never press an irreversible control");
+    assert!(!run.app.sim().clicks.contains(&"Send".to_owned()));
+}
+
+#[tokio::test]
 async fn enter_reveals_fields_and_fails_for_a_slot_with_no_field() {
     let revealed = run(
         App::default(),
