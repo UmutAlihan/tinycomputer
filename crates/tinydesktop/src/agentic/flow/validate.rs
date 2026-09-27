@@ -147,7 +147,14 @@ fn walk(
                 }
                 // Only one branch runs, so neither one's variables survive it.
                 let mut then_defined = defined.clone();
-                walk(&branch.then, &path, depth + 1, &mut then_defined, count, errors);
+                walk(
+                    &branch.then,
+                    &path,
+                    depth + 1,
+                    &mut then_defined,
+                    count,
+                    errors,
+                );
                 let mut else_defined = defined.clone();
                 walk(
                     &branch.otherwise,

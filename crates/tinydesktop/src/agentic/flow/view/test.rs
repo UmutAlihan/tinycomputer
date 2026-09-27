@@ -98,11 +98,11 @@ fn a_rich_text_body_never_reaches_context_but_stays_in_text_nodes() {
     ]}));
     assert_eq!(screen.context, vec!["New Message"]);
     assert!(
-        screen
-            .text_nodes
-            .iter()
-            .any(|node| node.value.as_ref().and_then(serde_json::Value::as_str)
-                == Some("Hi Sam, this is private.")),
+        screen.text_nodes.iter().any(|node| node
+            .value
+            .as_ref()
+            .and_then(serde_json::Value::as_str)
+            == Some("Hi Sam, this is private.")),
         "the body text must still be reachable for gated field-content extraction"
     );
 }

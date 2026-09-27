@@ -21,8 +21,7 @@ use std::{
 };
 
 use tinydesktop_bus::{
-    FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, RunFlowRequest,
-    RunGoalRequest,
+    FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, RunFlowRequest, RunGoalRequest,
 };
 use tinydesktop_examples::lab::{
     host::{Host, HostOptions, LabError, module_path},
@@ -380,8 +379,16 @@ async fn authored(
             serde_json::to_string_pretty(&flow)?
         );
         write_json(dir, &format!("authored-{round}.json"), &flow)?;
-        let result = run_flow(host, flow, options, dir, &format!("-{round}"), run, "authored")
-            .await?;
+        let result = run_flow(
+            host,
+            flow,
+            options,
+            dir,
+            &format!("-{round}"),
+            run,
+            "authored",
+        )
+        .await?;
         actions += result.actions;
         jev_calls += result.metrics.calls;
         let summary = format!(

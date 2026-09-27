@@ -1180,7 +1180,10 @@ async fn choose_never_clicks_an_irreversible_option() {
     .await;
     assert_eq!(run.result.stop, FlowStopReason::StepFailed);
     assert!(run.result.steps[0].note.contains("was not found"));
-    assert!(!run.app.sim().sent, "choose must never press an irreversible control");
+    assert!(
+        !run.app.sim().sent,
+        "choose must never press an irreversible control"
+    );
     assert!(!run.app.sim().clicks.contains(&"Send".to_owned()));
 }
 

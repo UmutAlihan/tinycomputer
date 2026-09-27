@@ -210,8 +210,10 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     async fn start(&mut self, flow: &Flow) -> Result<(), Halt> {
         let app = self.app.clone();
         let mut log = StepLog::default();
-        self.act(&mut log, "launch", None, move |backend| backend.launch(&app))
-            .await?;
+        self.act(&mut log, "launch", None, move |backend| {
+            backend.launch(&app)
+        })
+        .await?;
         self.run_steps(&flow.steps, String::new()).await
     }
 
