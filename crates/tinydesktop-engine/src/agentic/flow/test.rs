@@ -112,6 +112,36 @@ fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Cand
     }
 }
 
+/// The simulator's result list: each card's text as ref-less nodes, and its
+/// "Select" button among `candidates`, under an ordinal-labelled list item.
+fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<Candidate> {
+    let mut text_nodes = Vec::new();
+    for (index, (airline, price, departure)) in sim.results.iter().enumerate() {
+        let card = format!("listitem #{}", index + 1);
+        let path = vec![root.to_owned(), "list \"Results\"".to_owned(), card];
+        let order = 1_000 + index * 10;
+        for (offset, text) in [airline, price, departure].into_iter().enumerate() {
+            text_nodes.push(Candidate {
+                role: "text".to_owned(),
+                value: Some(json!(text)),
+                path: path.clone(),
+                order: order + offset,
+                ..Candidate::default()
+            });
+        }
+        candidates.push(Candidate {
+            ref_id: format!("@s:select-{}", index + 1),
+            role: "button".to_owned(),
+            name: Some("Select".to_owned()),
+            available_actions: vec!["Click".to_owned()],
+            path,
+            order: order + 5,
+            ..Candidate::default()
+        });
+    }
+    text_nodes
+}
+
 impl App {
     fn screen(&self) -> Screen {
         let sim = self.sim();
@@ -175,30 +205,7 @@ impl App {
                 ));
             }
         }
-        let mut text_nodes = Vec::new();
-        for (index, (airline, price, departure)) in sim.results.iter().enumerate() {
-            let card = format!("listitem #{}", index + 1);
-            let path = vec![root.clone(), "list \"Results\"".to_owned(), card];
-            let order = 1_000 + index * 10;
-            for (offset, text) in [airline, price, departure].into_iter().enumerate() {
-                text_nodes.push(Candidate {
-                    role: "text".to_owned(),
-                    value: Some(json!(text)),
-                    path: path.clone(),
-                    order: order + offset,
-                    ..Candidate::default()
-                });
-            }
-            candidates.push(Candidate {
-                ref_id: format!("@s:select-{}", index + 1),
-                role: "button".to_owned(),
-                name: Some("Select".to_owned()),
-                available_actions: vec!["Click".to_owned()],
-                path,
-                order: order + 5,
-                ..Candidate::default()
-            });
-        }
+        let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
         if sim.obstacle {
             surface = "sheet".to_owned();

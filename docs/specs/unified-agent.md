@@ -93,7 +93,8 @@ These are additive to the grammar in [`jev-intent-flows.md`](jev-intent-flows.md
 - `browse "<url or site>"`
 - `in "<surface>" {steps}`
 - `extract {what, fields, into}`
-- `pick {from, by, into}`
+- `pick {from, by, into}` (implemented): chooses the best result card and
+  opens it; prices, times, durations, and stops are ranked exactly
 - `ask [slots]`
 - `checkpoint "<why>"`
 

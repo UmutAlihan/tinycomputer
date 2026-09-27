@@ -53,16 +53,15 @@ pub fn result_groups(screen: &Screen) -> Vec<Group> {
         if ordinal(container).is_none() {
             continue;
         }
-        let index = match groups.iter().position(|group| &group.label == container) {
-            Some(index) => index,
-            None => {
-                groups.push(Group {
-                    label: container.clone(),
-                    fields: Vec::new(),
-                    primary: None,
-                });
-                groups.len() - 1
-            }
+        let index = if let Some(index) = groups.iter().position(|group| &group.label == container) {
+            index
+        } else {
+            groups.push(Group {
+                label: container.clone(),
+                fields: Vec::new(),
+                primary: None,
+            });
+            groups.len() - 1
         };
         let group = &mut groups[index];
         if let Some(text) = text_of(node).filter(|text| !group.fields.contains(text)) {

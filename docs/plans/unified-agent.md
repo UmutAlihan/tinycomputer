@@ -65,8 +65,10 @@ contract commands and the per-file coverage gate green.
       `needs_approval` for irreversible actions, a final checkpoint at payment.
 - [x] Agent members served by the module (contract 1.7, 67 members), with
       `Describe` returning schemas, the guide, and working examples.
-- [ ] `extract`, `pick`, and `in` steps; `needs_human` detection;
-      `tinydesktop-skills`.
+- [x] `pick {from, by, into}`: result cards grouped from ordinal-labelled
+      containers (`core::surface::result_groups`), ranked exactly for prices,
+      times, durations, and stops, judged by Jev otherwise, then opened.
+- [ ] `extract` and `in` steps; `needs_human` detection; `tinydesktop-skills`.
 
 ## Phase 6 — planner
 

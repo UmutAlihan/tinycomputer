@@ -110,34 +110,13 @@ fn walk(
             }
             FlowAction::Read(read) => {
                 text(errors, "`what`", &read.what);
-                if read.into.is_empty()
-                    || !read
-                        .into
-                        .chars()
-                        .all(|character| character.is_ascii_alphanumeric() || character == '_')
-                {
-                    errors.push(format!(
-                        "step {path}: `into` must be a variable name of letters, digits, and `_`"
-                    ));
-                } else {
-                    defined.insert(read.into);
-                }
+                define(errors, &path, read.into, defined);
             }
             FlowAction::Pick(pick) => {
                 text(errors, "`from`", &pick.from);
                 text(errors, "`by`", &pick.by);
                 if let Some(into) = pick.into {
-                    if into.is_empty()
-                        || !into
-                            .chars()
-                            .all(|character| character.is_ascii_alphanumeric() || character == '_')
-                    {
-                        errors.push(format!(
-                            "step {path}: `into` must be a variable name of letters, digits, and `_`"
-                        ));
-                    } else {
-                        defined.insert(into);
-                    }
+                    define(errors, &path, into, defined);
                 }
             }
             FlowAction::RepeatUntil(repeat) => {
@@ -188,6 +167,21 @@ fn walk(
 }
 
 /// Requires `value` to be non-empty and every `${name}` in it to be defined.
+/// Checks that `into` names a variable, and defines it for later steps.
+fn define(errors: &mut Vec<String>, path: &str, into: String, defined: &mut BTreeSet<String>) {
+    if into.is_empty()
+        || !into
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '_')
+    {
+        errors.push(format!(
+            "step {path}: `into` must be a variable name of letters, digits, and `_`"
+        ));
+    } else {
+        defined.insert(into);
+    }
+}
+
 fn check_text(
     errors: &mut Vec<String>,
     path: &str,
