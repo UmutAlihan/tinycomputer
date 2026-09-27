@@ -684,7 +684,7 @@ async fn a_plain_language_task_is_planned_then_run() {
     let requests = script.requests.lock().unwrap();
     assert_eq!(requests[0].flow.app, "Mail");
     assert_eq!(requests[0].vars["email"], "sam@example.com");
-    assert!(
+    assert_eq!(
         tasks
             .report(&started.id)
             .data
@@ -692,8 +692,8 @@ async fn a_plain_language_task_is_planned_then_run() {
             .flow
             .unwrap()
             .steps
-            .len()
-            == 1
+            .len(),
+        1
     );
 }
 
