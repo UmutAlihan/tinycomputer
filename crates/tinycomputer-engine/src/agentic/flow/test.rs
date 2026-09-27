@@ -4503,3 +4503,58 @@ fn the_control_pressed_last_turn_is_offered_last_even_with_new_states() {
     super::wide::pressed_last(&mut untouched, None);
     assert_eq!(untouched[0].name.as_deref(), Some("Destination"));
 }
+
+#[test]
+fn survey_answers_follow_a_region_by_name_when_its_id_moves() {
+    let form = node(
+        "From",
+        "textbox",
+        &["Click"],
+        &["webarea \"Book\"", "form \"Search\""],
+        1.0,
+    );
+    let ad = node(
+        "Deal",
+        "link",
+        &["Click"],
+        &["webarea \"Book\"", "region \"Offers\""],
+        2.0,
+    );
+    let before = Screen {
+        app: "IndiGo".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: vec![form.clone(), ad.clone()],
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    let digest = super::view::digest(&before);
+    let mut attention = super::survey::Attention::default();
+    attention
+        .relevance
+        .insert(digest.region_of(0).unwrap().name.clone(), 0.9);
+    attention
+        .distractions
+        .insert(digest.region_of(1).unwrap().name.clone());
+
+    // A dropdown opens above both: every region's id moves on by one.
+    let mut after = before.clone();
+    after.candidates.insert(
+        0,
+        node(
+            "Srinagar",
+            "option",
+            &["Click"],
+            &["webarea \"Book\"", "listbox"],
+            0.0,
+        ),
+    );
+    let moved = super::view::digest(&after);
+    let (relevance, distractions) = attention.for_digest(&moved);
+    let form_id = moved.region_of(1).unwrap().id.clone();
+    let ad_id = moved.region_of(2).unwrap().id.clone();
+    assert_eq!(relevance.get(&form_id), Some(&0.9));
+    assert!(distractions.contains(&ad_id));
+    assert_eq!(relevance.len(), 1, "the new listbox has no answer yet");
+}
