@@ -72,8 +72,9 @@ const MOVES: &[(&str, &str)] = &[
     ),
 ];
 
-/// Standard macOS shortcuts that are safe to try: none sends, deletes,
-/// submits, or quits.
+/// Standard macOS shortcuts that are safe to try: none sends, deletes, or
+/// quits. `confirm` (Return) commits text typed into a field; it is refused
+/// while a sheet or alert is showing, where Return presses the default button.
 pub(super) const SHORTCUTS: &[(&str, &str, &str)] = &[
     (
         "new_item",
@@ -86,6 +87,11 @@ pub(super) const SHORTCUTS: &[(&str, &str, &str)] = &[
     ("settings", "cmd+,", "Open the application's settings."),
     ("back", "cmd+[", "Go back to the previous view."),
     ("next_field", "tab", "Move focus to the next field."),
+    (
+        "confirm",
+        "return",
+        "Commit the text just typed into a field, such as a new name.",
+    ),
     (
         "dismiss",
         "escape",
@@ -286,6 +292,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         .push("no standard shortcut fits; press a visible control".to_owned());
                     return Ok(Move::Skipped);
                 };
+                if combo == "return" && screen.surface != "window" {
+                    self.history.push(format!(
+                        "refused return while a {} is showing: it would press its default button",
+                        screen.surface
+                    ));
+                    return Ok(Move::Skipped);
+                }
                 let app = self.app.clone();
                 let reply = self
                     .act(log, &format!("press {combo}"), None, move |backend| {

@@ -899,6 +899,35 @@ async fn move_outcomes_cover_finished_stuck_wait_and_a_missing_shortcut() {
 }
 
 #[tokio::test]
+async fn return_is_refused_while_a_dialog_is_showing() {
+    let run = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["confirm the name"]}),
+        |request| {
+            request.disabled_loops = vec![FlowLoop::Obstacles];
+            request.max_model_calls = 6;
+        },
+        |id, question, _| match id {
+            "shortcut" => Some(pick(question, "confirm", 0.9)),
+            _ => None,
+        },
+    )
+    .await;
+    assert!(!run.app.sim().presses.contains(&"return".to_owned()));
+    let confirmed = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["confirm the name"]}),
+        |request| request.max_actions = 1,
+        |id, question, _| match id {
+            "shortcut" => Some(pick(question, "confirm", 0.9)),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(confirmed.app.sim().presses, ["return"]);
+}
+
+#[tokio::test]
 async fn disabled_loops_are_not_asked_and_the_move_falls_back_to_pressing() {
     let run = run_with(
         App::default(),
