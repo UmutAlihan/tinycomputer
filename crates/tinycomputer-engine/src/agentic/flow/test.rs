@@ -4079,7 +4079,7 @@ async fn an_obstacle_in_front_is_cleared_from_the_turns_own_request_and_remember
         app,
         json!({"app": "Mail", "steps": ["start a new email message"]}),
         wide,
-        press_keep_editing,
+        |_, _, _| None,
     )
     .await;
     assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
@@ -4116,13 +4116,9 @@ async fn an_obstacle_in_front_is_cleared_from_the_turns_own_request_and_remember
             wide(request);
             request.memory = vec![hint.clone()];
         },
-        |id, question, sim| {
-            // Only the remembered control is confirmed; the chooser picks
-            // nothing, so the dismissal can only come from memory.
-            (id == "dismiss")
-                .then(|| pick(question, "none", 0.9))
-                .or_else(|| press_keep_editing(id, question, sim))
-        },
+        // Only the remembered control is confirmed; the chooser picks
+        // nothing, so the dismissal can only come from memory.
+        |id, question, _| (id == "dismiss").then(|| pick(question, "none", 0.9)),
     )
     .await;
     assert_eq!(asked(&again.requests, "dismiss_known"), 1);
