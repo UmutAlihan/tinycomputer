@@ -282,10 +282,10 @@ fn every_operation_becomes_its_engine_command() {
         focused.ok,
         "text without a target goes to the focused element"
     );
-    let typed = fake.last("type");
-    assert_eq!(typed["text"], "Srinagar");
-    assert!(
-        typed.get("selector").is_none_or(serde_json::Value::is_null),
+    assert_eq!(
+        fake.last("inserttext"),
+        json!({"action": "inserttext", "text": "Srinagar"})
+    );
         "{typed}"
     );
     assert!(surface.execute(JevOperation::Scroll, None, None).ok);
