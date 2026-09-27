@@ -193,6 +193,34 @@ impl BrowserSurface {
         ))
     }
 
+    /// Whether the page's currently focused element takes typed text: an
+    /// `<input>`, a `<textarea>`, a `contenteditable` region, or a control
+    /// whose ARIA role names a text box. Typing without a target sends keys
+    /// wherever the browser's own focus happens to be, so this is checked
+    /// first: a stale or unexpected focus — an unrelated field, or none at
+    /// all — must never silently receive text, including a private value.
+    fn focused_field_is_editable(&self) -> bool {
+        const SCRIPT: &str = r#"(() => {
+  const element = document.activeElement;
+  if (!element) return false;
+  const tag = (element.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return true;
+  if (element.isContentEditable) return true;
+  const role = (element.getAttribute('role') || '').toLowerCase();
+  return ['combobox', 'searchbox', 'textbox'].includes(role);
+})()"#;
+        let Ok(id) = self.ensure_session() else {
+            return false;
+        };
+        self.block(
+            self.browser
+                .command(&id, json!({"action": "evaluate", "script": SCRIPT})),
+        )
+        .ok()
+        .and_then(|data| data.get("result").and_then(Value::as_bool))
+        .unwrap_or(false)
+    }
+
     fn perform(&self, command: &str, action: Action) -> DesktopResponse {
         let outcome = self.ensure_session().and_then(|id| {
             self.block(self.browser.perform(&id, action))
