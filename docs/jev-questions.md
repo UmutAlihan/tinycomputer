@@ -196,7 +196,7 @@ A `do` turn asks, in one request, the judging questions above plus:
 | `dismiss_known` | Noul | the control that closed this overlay on an earlier run | used at 0.5 |
 | `target_<move>` | Choice | up to 20 candidates for `activate`, `expand`, or `scroll`, the purpose's named elements first | the narrow thresholds: at 0.70, or 0.45 when named; else one `confirm` |
 | `again_<move>` | Choice | the same, reversed and lettered | consistency, as `again` |
-| `group_<move>_<n>` | Choice each | a pool over 20, up to four groups | a knockout; several winners get one final `target` |
+| `group_<move>_<n>` | Choice each | a pool over 20, up to two groups | a knockout; several winners get one final `target` |
 | `known_<move>` | Noul | a remembered element | used at 0.5 |
 
 A crowded screen (over 40 actionable elements) is surveyed first, once per
