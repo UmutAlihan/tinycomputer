@@ -260,6 +260,7 @@ async fn resolve_intent_with<B: AgentBackend>(
     runtime: JevRuntime,
     request: ResolveIntentRequest,
 ) -> DesktopResponse {
+    let runtime = runtime.begin_run("intent", &format!("{}: {}", request.app, request.intent));
     let result = resolve(
         &backend,
         &runtime,
@@ -298,6 +299,7 @@ async fn run_goal_with<B: AgentBackend>(
     if let Some(continuation) = request.continuation.clone() {
         return continue_goal(backend, runtime, continuation).await;
     }
+    let runtime = runtime.begin_run("goal", &format!("{}: {}", request.app, request.goal));
     run_goal_fresh(backend, runtime, request, Vec::new(), 0).await
 }
 
@@ -427,6 +429,12 @@ async fn continue_goal<B: AgentBackend>(
         Ok(pending) => pending,
         Err(reply) => return *reply,
     };
+    // A continuation writes to the journal of the run it continues.
+    let runtime = JevRuntime {
+        journal: pending.journal.clone(),
+        ..runtime
+    }
+    .begin_run("goal-continuation", &pending.request.goal);
     let (fresh, delivered_unverified) = match execute_pending_action(&backend, &pending).await {
         Ok(executed) => executed,
         Err(reply) => return *reply,
