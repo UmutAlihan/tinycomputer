@@ -206,6 +206,29 @@ fn without_a_browser_web_calls_are_refused_and_nothing_else_changes() {
 }
 
 #[test]
+fn without_a_desktop_application_calls_are_refused_and_the_browser_stays_active() {
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let workspace: Workspace<Recorder, Recorder> =
+        Workspace::new(None, Some(Recorder::new("browser", &calls)));
+    assert!(!workspace.has_desktop());
+    let code = |reply: DesktopResponse| reply.error.unwrap().code;
+    assert_eq!(
+        code(workspace.launch("Mail")),
+        "DESKTOP_NOT_AVAILABLE"
+    );
+    assert_eq!(
+        code(workspace.press("Mail", "cmd+n")),
+        "DESKTOP_NOT_AVAILABLE"
+    );
+    let refused = workspace.observe("Mail", None, Depth::Full).unwrap_err();
+    assert_eq!(refused.error.unwrap().code, "DESKTOP_NOT_AVAILABLE");
+    // With no desktop, a task confined to the browser still works, and
+    // unnamed calls default to the only side it has.
+    workspace.execute(JevOperation::Click, None, None);
+    assert_eq!(drain(&calls), ["browser:execute"]);
+}
+
+#[test]
 fn visible_text_rereads_whatever_was_last_looked_at() {
     let (workspace, calls) = workspace(true);
     assert!(workspace.visible_text().is_empty(), "nothing observed yet");
