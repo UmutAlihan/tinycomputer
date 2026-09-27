@@ -212,11 +212,11 @@ async fn missing_values_are_asked_for_before_anything_runs() {
     assert_eq!(
         asked,
         [
-            ("email", InputKind::Email),
             ("date of birth", InputKind::Date),
+            ("email", InputKind::Email),
             ("travellers", InputKind::Number)
         ],
-        "a value a read step defines is not asked for"
+        "first-use order (json! sorts the slots), and never a value a read step defines"
     );
     assert_eq!(view.next, ["ContinueTask", "CancelTask"]);
     assert!(script.requests.lock().unwrap().is_empty());
