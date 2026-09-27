@@ -43,6 +43,7 @@ use task::run_goal_fresh;
 use verify::{exact_label, satisfied, verify};
 
 pub use flow::{flow_guide, run_flow, validate_flow};
+pub(crate) use flow::missing_inputs;
 
 /// Configured Jev transport and non-secret policy metadata.
 #[derive(Clone)]

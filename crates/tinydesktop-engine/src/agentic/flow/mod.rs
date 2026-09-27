@@ -28,6 +28,8 @@ mod steps;
 mod validate;
 mod view;
 
+pub(crate) use validate::missing_inputs;
+
 #[cfg(test)]
 mod test;
 
