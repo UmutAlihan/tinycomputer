@@ -867,9 +867,10 @@ fn next_calls(status: &TaskStatus) -> Vec<String> {
         } => &["ContinueTask", "TaskReport"],
         TaskStatus::NeedsPlan { .. } => &["StartTask"],
         TaskStatus::Failed { .. } => &["TaskReport", "StartTask"],
-        TaskStatus::Checkpoint { .. } | TaskStatus::Done { .. } | TaskStatus::Cancelled => {
-            &["TaskReport"]
-        }
+        // A final checkpoint's workspace is only ever released by
+        // `CancelTask`, so it must stay offered even though the task is done.
+        TaskStatus::Checkpoint { .. } => &["CancelTask", "TaskReport"],
+        TaskStatus::Done { .. } | TaskStatus::Cancelled => &["TaskReport"],
     };
     calls.iter().map(|call| (*call).to_owned()).collect()
 }
