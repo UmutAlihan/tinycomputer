@@ -26,6 +26,8 @@ fn flow_events() -> Vec<Value> {
                "latency_ms": 500, "request_bytes": 3000, "questions": ["done"], "error": "timeout"}),
         json!({"event": "decision", "seq": 6, "elapsed_ms": 910, "step": "1", "wall_ms": 500}),
         json!({"event": "action", "seq": 7, "elapsed_ms": 1000, "step": "1", "action": "press cmd+n", "wall_ms": 50, "settle_ms": 40}),
+        json!({"event": "turn", "seq": 71, "elapsed_ms": 1001, "step": "1", "turn": 0, "decisions": 2, "wall_ms": 900}),
+        json!({"event": "turn", "seq": 72, "elapsed_ms": 1002, "step": "1", "turn": 1, "decisions": 1, "wall_ms": 50}),
         json!({"event": "step", "seq": 8, "elapsed_ms": 1010, "step": "1", "kind": "do", "text": "start a new message",
                "outcome": "done", "note": "the step is complete", "wall_ms": 950}),
         json!({"event": "end", "seq": 9, "elapsed_ms": 1020, "stop": "completed", "wall_ms": 1200}),
@@ -53,6 +55,15 @@ fn a_summary_splits_wall_time_by_where_it_went() {
     assert_eq!(summary.latency_max_ms, 500);
     assert_eq!(summary.mean_request_bytes, 2000);
     assert_eq!((summary.input_tokens, summary.output_tokens), (50, 2));
+    assert_eq!((summary.max_input_tokens, summary.max_window_percent), (50, 0));
+    assert_eq!(
+        (
+            summary.turns,
+            summary.max_turn_decisions,
+            summary.mean_turn_decisions_x100
+        ),
+        (2, 2, 150)
+    );
 
     assert_eq!(summary.steps.len(), 1, "the launch has no step row");
     let step = &summary.steps[0];
@@ -105,6 +116,14 @@ fn the_rendered_summary_shows_shares_steps_and_slow_calls() {
     assert!(text.contains("do start a new message"), "{text}");
     assert!(text.contains("slowest Jev calls"), "{text}");
     assert!(text.contains("#5"), "{text}");
+    assert!(
+        text.contains("turns    2 do turns; decisions in sequence per turn: mean 1.50, most 2"),
+        "{text}"
+    );
+    assert!(
+        text.contains("window   largest call 50 tokens, 0% of Jev's 32 K"),
+        "{text}"
+    );
 }
 
 #[test]
