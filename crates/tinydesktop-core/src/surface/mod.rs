@@ -25,6 +25,12 @@ pub use screen::{
 /// them with a scripted implementation.
 pub trait Surface: Clone + Send + 'static {
     /// Reads the current surface of `app`, optionally rooted at a container.
+    ///
+    /// # Errors
+    ///
+    /// The engine's reply, boxed, when nothing readable could be observed:
+    /// the application is not running, a permission is missing, or the root
+    /// ref is stale.
     fn observe(
         &self,
         app: &str,
