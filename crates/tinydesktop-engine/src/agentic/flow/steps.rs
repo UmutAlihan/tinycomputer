@@ -225,8 +225,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Picks `option` in `what` as a person works a list, an autocomplete
     /// box, or a date picker: take the option if it shows, else open the
-    /// control, page a calendar forward to a date, type the option to filter
-    /// it, and only then (for a public option) judge every control.
+    /// control, page a calendar forward to a date, or type the option to
+    /// filter it. Only an element that shows the option is ever pressed, so
+    /// a list that never shows it fails the step rather than picking another.
     ///
     /// A `private` option — a value `enter` could not type into a field — is
     /// never written into a question: only elements that already show it are
@@ -243,22 +244,17 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         } else {
             format!("pick the option {option:?} in {what}")
         };
-        let attempts = if private { 3 } else { 4 };
-        for attempt in 0..attempts {
+        for attempt in 0..3 {
             let screen = self.look().await?;
             let pool = clickable(&screen.candidates)
                 .into_iter()
                 .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
                 .collect::<Vec<_>>();
-            let pool = if attempt == 3 {
-                pool
-            } else {
-                closest(
-                    pool.into_iter()
-                        .filter(|candidate| mentions(candidate, option))
-                        .collect(),
-                )
-            };
+            let pool = closest(
+                pool.into_iter()
+                    .filter(|candidate| mentions(candidate, option))
+                    .collect(),
+            );
             if let Some(grounded) = self.ground(log, &screen, &purpose, &purpose, pool).await? {
                 log.confidence = Some(grounded.confidence);
                 let target = grounded.candidate;
@@ -315,12 +311,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             {
                 return Ok(());
             }
-            let Some(next) = clickable(&screen.candidates).into_iter().find(|candidate| {
-                candidate
-                    .name
-                    .as_deref()
-                    .is_some_and(|name| name.to_lowercase().contains("next month"))
-            }) else {
+            let Some(next) = clickable(&screen.candidates)
+                .into_iter()
+                .find(|candidate| candidate.name.as_deref().is_some_and(is_next_month))
+            else {
                 return Ok(());
             };
             let clicked = next.clone();
@@ -362,22 +356,27 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let app = self.app.clone();
             let target = grounded.candidate;
             let field = target.clone();
-            self.act(log, "type to filter", Some(&target), move |backend| {
-                deliver_text(&backend, &app, &field, &text)
-            })
-            .await?;
-            self.history
-                .push(format!("typed into {} to filter it", label(&target)));
-        } else {
-            // An opened autocomplete often keeps its input unnamed but
-            // focused; typing goes where the focus is.
-            self.act(log, "type to filter", None, move |backend| {
-                backend.execute(JevOperation::TypeText, None, Some(text))
-            })
-            .await?;
-            self.history
-                .push("typed into the focused field to filter it".to_owned());
+            let typed = text.clone();
+            let reply = self
+                .act(log, "type to filter", Some(&target), move |backend| {
+                    deliver_text(&backend, &app, &field, &typed)
+                })
+                .await?;
+            if reply.ok {
+                self.history
+                    .push(format!("typed into {} to filter it", label(&target)));
+                return Ok(());
+            }
         }
+        // An opened autocomplete often keeps its input unnamed but focused
+        // (and what looked like its box can be one of its rows); typing goes
+        // where the focus is.
+        self.act(log, "type to filter", None, move |backend| {
+            backend.execute(JevOperation::TypeText, None, Some(text))
+        })
+        .await?;
+        self.history
+            .push("typed into the focused field to filter it".to_owned());
         Ok(())
     }
 
@@ -751,6 +750,13 @@ pub(super) fn looks_like_date(option: &str) -> bool {
         && words
             .iter()
             .any(|word| word.parse::<u8>().is_ok_and(|day| (1..=31).contains(&day)))
+}
+
+/// Whether a control's label says only that it shows the next month; a
+/// date field whose label lists the whole calendar says much more.
+fn is_next_month(name: &str) -> bool {
+    let words = plain(name);
+    words.contains("next month") && words.split(' ').count() <= 4
 }
 
 /// The matches whose labels say little besides the option: a container
