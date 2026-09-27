@@ -39,6 +39,9 @@ const MAX_REGION_DEPTH: usize = 8;
 /// Region rounds before the knockout takes over.
 const MAX_REGION_ROUNDS: usize = 3;
 
+/// Named groups of candidates, largest first.
+pub(super) type Regions = Vec<(String, Vec<Candidate>)>;
+
 /// An element chosen for a purpose.
 #[derive(Debug, Clone)]
 pub(super) struct Grounded {
@@ -298,7 +301,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
 /// Groups `pool` by the first ancestor level, at or below `from`, that splits
 /// it into more than one region. Regions beyond `CAP - 1` are merged.
-pub(super) fn split(pool: &[Candidate], from: usize) -> Option<(usize, Vec<(String, Vec<Candidate>)>)> {
+pub(super) fn split(pool: &[Candidate], from: usize) -> Option<(usize, Regions)> {
     for level in from..MAX_REGION_DEPTH {
         let mut regions: BTreeMap<String, Vec<Candidate>> = BTreeMap::new();
         for candidate in pool {
@@ -313,7 +316,7 @@ pub(super) fn split(pool: &[Candidate], from: usize) -> Option<(usize, Vec<(Stri
             continue;
         }
         let mut regions = regions.into_iter().collect::<Vec<_>>();
-        regions.sort_by(|left, right| right.1.len().cmp(&left.1.len()));
+        regions.sort_by_key(|(_, members)| std::cmp::Reverse(members.len()));
         if regions.len() > CAP {
             let rest = regions
                 .split_off(CAP - 1)

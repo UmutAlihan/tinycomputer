@@ -116,12 +116,12 @@ impl DesktopService {
 
     /// Checks a flow without touching the desktop or Jev.
     async fn validate_flow(&self, request: ValidateFlowRequest) -> TinyBusResult<DesktopResponse> {
-        Ok(agentic::validate_flow(&request))
+        self.run(move |_| agentic::validate_flow(&request)).await
     }
 
     /// Returns the flow authoring guide as prompt text.
     async fn flow_guide(&self) -> TinyBusResult<DesktopResponse> {
-        Ok(agentic::flow_guide())
+        self.run(|_| agentic::flow_guide()).await
     }
 
     /// Walks an accessibility tree and allocates a ref per element.

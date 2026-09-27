@@ -4,7 +4,7 @@
 //! most [`CAP`] options. Independent questions about the same screen share one
 //! request, because they share one `state`.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Write as _};
 
 use serde_json::{Value, json};
 use tinyjevclient::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
@@ -54,10 +54,10 @@ fn element_line(node: &Candidate, include_values: bool) -> String {
         && !value.is_empty()
     {
         let shown: String = value.chars().take(80).collect();
-        line.push_str(&format!(" = {shown:?}"));
+        let _ = write!(line, " = {shown:?}");
     }
     if !node.states.is_empty() {
-        line.push_str(&format!(" [{}]", node.states.join(", ")));
+        let _ = write!(line, " [{}]", node.states.join(", "));
     }
     line
 }

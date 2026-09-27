@@ -8,7 +8,7 @@
 
 use std::collections::BTreeSet;
 
-use serde_json::json;
+use serde_json::Value;
 use tinydesktop_bus::{FlowLoop, Slot, StepOutcome};
 
 use super::{
@@ -232,7 +232,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .as_ref()
             .and_then(|data| data.get("path"))
             .cloned()
-            .unwrap_or_else(|| json!(null));
+            .unwrap_or(Value::Null);
         self.history.push(format!(
             "entered the {} into {} ok={} via {path}",
             slot.slot,

@@ -230,21 +230,21 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 let ended = Ended::new(StepOutcome::Failed, note.clone());
                 (ended, Some(Halt::Failed(note)))
             }
-            Err(Halt::Stop(stop)) => {
-                let outcome = if stop == FlowStopReason::StoppedBeforeDestructive {
+            Err(Halt::Stop(reason)) => {
+                let outcome = if reason == FlowStopReason::StoppedBeforeDestructive {
                     StepOutcome::Gated
                 } else {
                     StepOutcome::Failed
                 };
-                let note = match stop {
+                let note = match reason {
                     FlowStopReason::StoppedBeforeDestructive => {
                         "stopped in front of the irreversible action".to_owned()
                     }
                     FlowStopReason::ActionBudget => "the action budget ran out".to_owned(),
                     FlowStopReason::ModelBudget => "the Jev call budget ran out".to_owned(),
-                    _ => format!("stopped: {stop:?}"),
+                    _ => format!("stopped: {reason:?}"),
                 };
-                (Ended::new(outcome, note), Some(Halt::Stop(stop)))
+                (Ended::new(outcome, note), Some(Halt::Stop(reason)))
             }
             Err(error @ Halt::Error(_)) => return Err(error),
         };
