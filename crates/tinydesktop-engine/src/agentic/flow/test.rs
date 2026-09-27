@@ -142,6 +142,18 @@ fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec
     }
     candidates.push(node("Departure", "button", &["Click"], &widget, 120.0));
     if let Some(month) = booking.calendar {
+        // The date field's own label lists the whole open calendar.
+        let listing = (1..=28)
+            .map(|day| format!("{day} {} 2026", MONTH_NAMES[month]))
+            .collect::<Vec<_>>()
+            .join(" ");
+        candidates.push(node(
+            &format!("departureDate Previous Month Next Month {listing}"),
+            "button",
+            &["Click"],
+            &widget,
+            125.0,
+        ));
         candidates.push(node("Next Month", "button", &["Click"], &widget, 130.0));
         for day in 1..=28 {
             let name = format!("{day} {} 2026", MONTH_NAMES[month]);
@@ -374,6 +386,13 @@ impl AgentBackend for App {
                     _ if sim.booking.is_some() => press_booking(&mut sim, &name),
                     _ => {}
                 }
+            }
+            JevOperation::TypeText if name == "Mumbai, BOM" => {}
+            // Text with no target goes to the focused field: the booking
+            // form's search box once it is open.
+            JevOperation::TypeText if target.is_none() => {
+                sim.fields
+                    .insert("Search city".to_owned(), text.unwrap_or_default());
             }
             JevOperation::TypeText if !(name == "Body" && sim.has(Quirk::BodyIgnoresSetValue)) => {
                 sim.fields.insert(name, text.unwrap_or_default());
@@ -1473,7 +1492,7 @@ async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
             )),
             _ if !matches!(question, Question::Choice(_)) => None,
             _ if purpose_of(question).contains("search box") => {
-                Some(pick(question, "Search city", 0.9))
+                Some(pick(question, "Mumbai", 0.9))
             }
             _ if purpose_of(question).contains("open the destination") => {
                 Some(pick(question, "Going to?", 0.9))
@@ -1489,7 +1508,11 @@ async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
         run.result.steps
     );
     let sim = run.app.sim();
-    assert_eq!(sim.fields["Search city"], "Srinagar");
+    assert_eq!(
+        sim.fields["Search city"], "Srinagar",
+        "a row that takes no text leaves the typing to the focused box"
+    );
+    assert!(!sim.clicks.contains(&"Mumbai, BOM".to_owned()));
     assert_eq!(
         sim.clicks.last().map(String::as_str),
         Some("Srinagar, SXR"),
