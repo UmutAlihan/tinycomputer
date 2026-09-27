@@ -505,6 +505,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 fn describe_step(action: &FlowAction, vars: &BTreeMap<String, String>) -> (&'static str, String) {
     let (kind, text) = match action {
         FlowAction::Open(app) => ("open", app.clone()),
+        FlowAction::Browse(url) => ("browse", url.clone()),
         FlowAction::Do(intent) => ("do", intent.clone()),
         FlowAction::Enter(slots) => (
             "enter",

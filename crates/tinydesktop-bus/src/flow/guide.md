@@ -24,7 +24,8 @@ do.
 }
 ```
 
-- `app` is the application's name as the operating system shows it.
+- `app` is the application's name as the operating system shows it, or
+  `browser` for a flow that starts on the web.
 - `vars` are optional named values; any step text may use `${name}`.
 - `steps` run in order. A step is a plain string or an object with one key.
 
@@ -109,6 +110,30 @@ do.
         "message body": "Hi Sam,\n\nCould we move Thursday's sync to Friday at 3pm?\n\nThanks,\nAlex"
     } },
     { "verify": "the draft shows the recipient, the subject, and the message body" },
+    { "stop_before": "sending the email" }
+  ]
+}
+```
+
+## Across the web and an application
+
+A flow may move between surfaces: `browse` switches to the browser, `open`
+switches back to an application. Values captured with `read` on one surface
+can be typed on the other.
+
+```json
+{
+  "app": "browser",
+  "vars": { "from": "Delhi", "to": "Srinagar", "date": "14 October" },
+  "steps": [
+    { "browse": "https://www.google.com/travel/flights" },
+    { "enter": { "where from": "${from}", "where to": "${to}", "departure date": "${date}" } },
+    "search for flights",
+    { "wait_for": "flight results are listed" },
+    { "read": { "what": "the cheapest flight's airline, times, and price", "into": "cheapest" } },
+    { "open": "Mail" },
+    "start a new email message",
+    { "enter": { "subject": "Flight to ${to}", "message body": "Cheapest option: ${cheapest}" } },
     { "stop_before": "sending the email" }
   ]
 }

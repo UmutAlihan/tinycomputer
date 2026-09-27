@@ -1,5 +1,8 @@
 //! One function per step kind; `run` dispatches between them.
 
+/// The surface name that routes a flow to the browser.
+pub(in crate::agentic) const BROWSER: &str = "browser";
+
 use serde_json::{Value, json};
 use tinydesktop_bus::{
     ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, ReadStep, RepeatStep,
@@ -36,6 +39,7 @@ pub(super) async fn run<B: AgentBackend + Sync>(
 ) -> Result<Ended, Halt> {
     match action {
         FlowAction::Open(app) => run.open(log, app).await,
+        FlowAction::Browse(url) => run.browse(log, url).await,
         FlowAction::Do(_) => run.accomplish(log, text, DO_TURNS).await,
         FlowAction::Enter(slots) => run.enter(log, &slots.0).await,
         FlowAction::Choose(choose) => run.choose(log, choose).await,
@@ -77,6 +81,48 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .map_or("unknown error", |error| error.code.as_str())
             )))
         }
+    }
+
+    /// Opens `url` in the browser and moves the flow onto the page.
+    async fn browse(&mut self, log: &mut StepLog, url: &str) -> Result<Ended, Halt> {
+        let url = substitute(url, &self.vars);
+        BROWSER.clone_into(&mut self.app);
+        let address = url.clone();
+        let reply = self
+            .act(log, &format!("browse {url}"), None, move |backend| {
+                let launched = backend.launch(BROWSER);
+                if launched.ok {
+                    backend.navigate(&address)
+                } else {
+                    launched
+                }
+            })
+            .await?;
+        if !reply.ok {
+            return Err(Halt::Failed(format!(
+                "{url} could not be opened: {}",
+                reply
+                    .error
+                    .as_ref()
+                    .map_or("unknown error", |error| error.code.as_str())
+            )));
+        }
+        let title = reply
+            .data
+            .as_ref()
+            .and_then(|data| data.get("title"))
+            .and_then(serde_json::Value::as_str)
+            .filter(|title| !title.is_empty())
+            .map_or_else(String::new, |title| format!(" ({title})"));
+        let ready = self.await_window().await;
+        Ok(Ended::new(
+            StepOutcome::Done,
+            if ready {
+                format!("{url} is open{title}")
+            } else {
+                format!("{url} is open but shows no readable page yet")
+            },
+        ))
     }
 
     /// Waits for the application to show a readable window, as a freshly

@@ -89,6 +89,7 @@ fn walk(
         };
         match step.action() {
             FlowAction::Open(value) => text(errors, "the application", &value),
+            FlowAction::Browse(value) => text(errors, "the address", &value),
             FlowAction::Do(value) => text(errors, "the intent", &value),
             FlowAction::Verify(value) | FlowAction::WaitFor(value) => {
                 text(errors, "the condition", &value);
