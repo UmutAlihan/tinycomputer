@@ -29,6 +29,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let browser = Arc::new(Browser::new(Arc::new(AgentBrowser)));
     let mut surface: Option<BrowserSurface> = None;
     for argument in &urls {
+        if let Some(point) = argument.strip_prefix("mouse=") {
+            if let (Some(session), Some((x, y))) = (
+                surface.as_ref().and_then(BrowserSurface::session),
+                point.split_once(','),
+            ) {
+                for event in ["mouseMoved", "mousePressed", "mouseReleased"] {
+                    let pressed = event != "mouseMoved";
+                    let _clicked = runtime.block_on(browser.command(
+                        &session,
+                        serde_json::json!({"action": "mouse", "eventType": event,
+                            "x": x.parse::<f64>().unwrap_or_default(), "y": y.parse::<f64>().unwrap_or_default(),
+                            "button": if pressed { "left" } else { "none" }, "clickCount": i32::from(pressed)}),
+                    ));
+                }
+                println!("=== mouse {point}");
+                std::thread::sleep(std::time::Duration::from_secs(1));
+            }
+            continue;
+        }
         if let Some(text) = argument.strip_prefix("type=") {
             if let Some(session) = surface.as_ref().and_then(BrowserSurface::session) {
                 let typed = runtime.block_on(browser.command(
