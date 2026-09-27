@@ -1046,6 +1046,14 @@ fn text_backend(reads: &[&str]) -> FakeBackend {
 }
 
 #[test]
+fn a_field_that_commits_late_is_verified_on_the_settled_re_read() {
+    let backend = text_backend(&["sam@exa", "sam@example.com"]);
+    let reply = deliver_text(&backend, "Mail", &field(), "sam@example.com");
+    assert_eq!(reply.data.expect("data")["path"], json!("set_value"));
+    assert!(backend.pastes.lock().expect("paste lock").is_empty());
+}
+
+#[test]
 fn text_verified_by_read_back_is_not_pasted() {
     let backend = text_backend(&["Hello   there"]);
     let reply = deliver_text(&backend, "Mail", &field(), "Hello there");
@@ -1056,7 +1064,8 @@ fn text_verified_by_read_back_is_not_pasted() {
 
 #[test]
 fn a_silently_ignored_set_value_falls_back_to_paste() {
-    let backend = text_backend(&["", "Dear Sam, see you Friday"]);
+    // The first read and the settled re-read both miss, so it pastes.
+    let backend = text_backend(&["", "", "Dear Sam, see you Friday"]);
     let reply = deliver_text(&backend, "Mail", &field(), "Dear Sam, see you Friday");
     assert!(reply.ok);
     let data = reply.data.expect("data");
@@ -1069,7 +1078,7 @@ fn a_silently_ignored_set_value_falls_back_to_paste() {
 
 #[test]
 fn text_that_never_arrives_is_reported_as_not_delivered() {
-    let backend = text_backend(&["", "still empty"]);
+    let backend = text_backend(&["", "", "still empty", "still empty"]);
     let reply = deliver_text(&backend, "Mail", &field(), "Body");
     assert_eq!(reply.error.expect("error").code, "TEXT_NOT_DELIVERED");
 
