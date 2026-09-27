@@ -155,8 +155,9 @@ spent waiting for the caller does not count.
 - `origins`: the sites a browser session may load, such as
   `https://.goindigo.in` for a site and its subdomains. agent-browser's domain
   filter enforces it. It is a guard rail, not a sandbox.
-- `allow_destructive`: press irreversible controls without pausing. Payment is
-  still a checkpoint.
+- `allow_destructive`: press irreversible controls including payments without
+  pausing or asking for approval. Use with caution; payment controls are never
+  gated when this is enabled.
 - `browser_endpoint`: attach to a running Chrome at this DevTools address
   instead of launching one. Booking sites often turn away a fresh headless
   browser but serve a person's own. Closing an attached session only
