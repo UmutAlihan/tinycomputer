@@ -162,7 +162,8 @@ scripts/lab run mail-compose --mode authored  # an LLM writes the flow
 scripts/lab eval all --modes flow,goal --trials 3
 ```
 
-See [`docs/lab.md`](docs/lab.md).
+See [`docs/lab.md`](docs/lab.md). Anything that launches Chromium runs in the Linux
+Docker lab instead of on the host; see [`docs/docker-lab.md`](docs/docker-lab.md).
 
 The opt-in Spotify verifier reads an exported `OPENROUTER_API_KEY`, passes it
 through private initialization, and never writes or prints it:
