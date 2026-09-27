@@ -4,6 +4,7 @@
 //! scripts/lab list
 //! scripts/lab run mail-compose [--mode flow|goal|authored] [--headed] [--send]
 //!                              [--disable moves,undo] [--no-memory] [--flow file.json]
+//!                              [--strategy narrow|wide]
 //! scripts/lab eval all [--modes flow,goal] [--trials 3] [--disable ...]
 //! scripts/lab report target/lab-runs/<scenario>/<run>
 //! scripts/lab call ListWindows '{"app": "TextEdit"}'   # probe any member
@@ -45,6 +46,7 @@ struct Options {
     memory: bool,
     disabled: Vec<FlowLoop>,
     flow_file: Option<PathBuf>,
+    strategy: FlowStrategy,
 }
 
 #[tokio::main]
@@ -141,7 +143,7 @@ async fn main() -> Result<(), LabError> {
         _ => {
             println!(
                 "usage: lab list | guide | validate <flow.json> | run <scenario> [--mode flow|goal|authored] \
-[--headed] [--send] [--disable a,b] [--no-memory] [--flow file] | eval <names|all> [--modes flow,goal] \
+[--headed] [--send] [--disable a,b] [--no-memory] [--flow file] [--strategy narrow|wide] | eval <names|all> [--modes flow,goal] \
 [--trials N] | report <run-dir>"
             );
             Ok(())
@@ -268,6 +270,7 @@ async fn run_flow(
         flow: serde_json::from_value(flow)?,
         include_values: true,
         disabled_loops: options.disabled.clone(),
+        strategy: options.strategy,
         trace: true,
         ..RunFlowRequest::default()
     };
@@ -455,6 +458,9 @@ fn parse(args: &[String]) -> Result<Options, LabError> {
             "--send" => options.send = true,
             "--no-memory" => options.memory = false,
             "--flow" => options.flow_file = Some(PathBuf::from(value()?)),
+            "--strategy" => {
+                options.strategy = serde_json::from_value(serde_json::Value::String(value()?))?;
+            }
             "--disable" => {
                 options.disabled = value()?
                     .split(',')

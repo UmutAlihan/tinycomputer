@@ -121,6 +121,10 @@ fn request(base: &str) -> Result<StartTaskRequest, serde_json::Error> {
             .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
             .collect(),
         trace: true,
+        budget: tinycomputer_bus::agent::TaskBudget {
+            strategy: tinycomputer_examples::flow_strategy_from_env(),
+            ..tinycomputer_bus::agent::TaskBudget::default()
+        },
         ..StartTaskRequest::default()
     })
 }

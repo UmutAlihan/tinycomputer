@@ -14,6 +14,7 @@
 //! - `FLOW_FILE` — optional: run this flow instead of planning one.
 //! - `TASK_OUT` — optional: where the plan, report, and final screenshot go
 //!   (default `target/task-live`).
+//! - `TINYCOMPUTER_FLOW_STRATEGY` — optional: `narrow` (default) or `wide`.
 //! - `TASK_MAX_MINUTES` — optional: cancel the task after this long (20).
 //! - `TINYCOMPUTER_BROWSER_EXECUTABLE`, `TINYCOMPUTER_BROWSER_USER_AGENT`, and
 //!   `TINYCOMPUTER_BROWSER_ARGS` (space-separated) — how the browser launches.
@@ -137,7 +138,7 @@ async fn main() -> Result<(), Failure> {
             max_model_calls: Some(5000),
             max_elapsed_ms: None,
             votes: None,
-            strategy: None,
+            strategy: tinycomputer_examples::flow_strategy_from_env(),
         },
         trace: true,
         ..StartTaskRequest::default()

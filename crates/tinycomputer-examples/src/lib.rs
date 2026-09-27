@@ -17,3 +17,19 @@
 
 pub mod journal;
 pub mod lab;
+
+use tinycomputer_bus::FlowStrategy;
+
+/// The flow strategy named by `TINYCOMPUTER_FLOW_STRATEGY` (`narrow` or
+/// `wide`), for the live examples that compare the two; `None` when it is
+/// unset or names neither.
+#[must_use]
+pub fn flow_strategy_from_env() -> Option<FlowStrategy> {
+    parse_strategy(&std::env::var("TINYCOMPUTER_FLOW_STRATEGY").ok()?)
+}
+
+/// `narrow` or `wide` as a [`FlowStrategy`].
+#[must_use]
+pub fn parse_strategy(name: &str) -> Option<FlowStrategy> {
+    serde_json::from_value(serde_json::Value::String(name.trim().to_owned())).ok()
+}
