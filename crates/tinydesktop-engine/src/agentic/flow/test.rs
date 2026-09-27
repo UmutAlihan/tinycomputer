@@ -1796,6 +1796,24 @@ fn text_helpers_substitute_reference_and_normalize() {
 }
 
 #[test]
+fn substitute_safe_never_expands_a_fact_even_if_asked_to() {
+    let vars = BTreeMap::from([
+        ("email".to_owned(), "sam@example.com".to_owned()),
+        ("topic".to_owned(), "budget".to_owned()),
+    ]);
+    let facts = BTreeSet::from(["email".to_owned()]);
+    assert_eq!(
+        validate::substitute_safe("send to ${email} about ${topic}", &vars, &facts),
+        "send to ${email} about budget"
+    );
+    assert_eq!(
+        validate::substitute_safe("${email}", &vars, &BTreeSet::new()),
+        "sam@example.com",
+        "a non-fact name still substitutes normally"
+    );
+}
+
+#[test]
 fn guide_and_answer_helpers_behave() {
     let guide = flow_guide();
     assert!(
