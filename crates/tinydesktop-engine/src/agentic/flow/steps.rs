@@ -368,17 +368,28 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .collect(),
             })
             .collect::<Vec<_>>();
-        let (best, how) = match Criterion::parse(&by).and_then(|criterion| rank(&records, criterion)) {
-            Some(order) => (order[0], "ranked"),
-            None => (self.judge_pick(log, &screen, &from, &by, &groups).await?, "judged"),
-        };
+        let (best, how) =
+            match Criterion::parse(&by).and_then(|criterion| rank(&records, criterion)) {
+                Some(order) => (order[0], "ranked"),
+                None => (
+                    self.judge_pick(log, &screen, &from, &by, &groups).await?,
+                    "judged",
+                ),
+            };
         let group = &groups[best];
-        let summary: String = group.fields.join(" · ").chars().take(MAX_PICK_SUMMARY).collect();
+        let summary: String = group
+            .fields
+            .join(" · ")
+            .chars()
+            .take(MAX_PICK_SUMMARY)
+            .collect();
         if let Some(into) = &pick.into {
             self.vars.insert(into.clone(), summary.clone());
         }
         let Some(primary) = group.primary.clone() else {
-            return Err(Halt::Failed(format!("the picked item has nothing to open: {summary}")));
+            return Err(Halt::Failed(format!(
+                "the picked item has nothing to open: {summary}"
+            )));
         };
         if is_destructive(&primary, &screen, &self.stop_before) {
             return Err(Halt::Failed(format!(
@@ -393,9 +404,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             })
             .await?;
         if !reply.ok {
-            return Err(Halt::Failed(format!("could not open the picked item: {summary}")));
+            return Err(Halt::Failed(format!(
+                "could not open the picked item: {summary}"
+            )));
         }
-        self.history.push(format!("picked {summary} ({how} by {by})"));
+        self.history
+            .push(format!("picked {summary} ({how} by {by})"));
         Ok(Ended::new(
             StepOutcome::Done,
             format!("picked {summary} ({how} by {by}, out of {})", groups.len()),
@@ -440,7 +454,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let Some((choice, confidence)) =
             chosen(&answers, "record").filter(|(_, confidence)| *confidence >= LOCATE_FLOOR)
         else {
-            return Err(Halt::Failed(format!("no item in {from} clearly meets {by}")));
+            return Err(Halt::Failed(format!(
+                "no item in {from} clearly meets {by}"
+            )));
         };
         log.confidence = Some(confidence);
         keys.iter()

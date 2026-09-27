@@ -65,6 +65,10 @@ struct Sim {
     clicks: Vec<String>,
     launched: Vec<String>,
     navigated: Vec<String>,
+    /// Result cards: (airline, price, departure), shown as a list.
+    results: Vec<(&'static str, &'static str, &'static str)>,
+    /// Refs of the result cards' "Select" buttons clicked, in order.
+    picked: Vec<String>,
     extra_buttons: usize,
     quirks: BTreeSet<Quirk>,
 }
@@ -171,6 +175,30 @@ impl App {
                 ));
             }
         }
+        let mut text_nodes = Vec::new();
+        for (index, (airline, price, departure)) in sim.results.iter().enumerate() {
+            let card = format!("listitem #{}", index + 1);
+            let path = vec![root.clone(), "list \"Results\"".to_owned(), card];
+            let order = 1_000 + index * 10;
+            for (offset, text) in [airline, price, departure].into_iter().enumerate() {
+                text_nodes.push(Candidate {
+                    role: "text".to_owned(),
+                    value: Some(json!(text)),
+                    path: path.clone(),
+                    order: order + offset,
+                    ..Candidate::default()
+                });
+            }
+            candidates.push(Candidate {
+                ref_id: format!("@s:select-{}", index + 1),
+                role: "button".to_owned(),
+                name: Some("Select".to_owned()),
+                available_actions: vec!["Click".to_owned()],
+                path,
+                order: order + 5,
+                ..Candidate::default()
+            });
+        }
         let mut surface = "window".to_owned();
         if sim.obstacle {
             surface = "sheet".to_owned();
@@ -196,7 +224,7 @@ impl App {
             candidates,
             context: vec![format!("{window} heading")],
             unexplored: Vec::new(),
-            text_nodes: Vec::new(),
+            text_nodes,
         }
     }
 }
@@ -249,6 +277,13 @@ impl AgentBackend for App {
             .unwrap_or_default();
         match operation {
             JevOperation::Click => {
+                if let Some(reference) = target
+                    .as_ref()
+                    .map(|target| target.ref_id.clone())
+                    .filter(|reference| reference.starts_with("@s:select-"))
+                {
+                    sim.picked.push(reference);
+                }
                 sim.clicks.push(name.clone());
                 match name.as_str() {
                     "New Message" => sim.compose_open = true,
@@ -1924,4 +1959,111 @@ async fn browse_fails_the_flow_where_there_is_no_browser_or_no_page() {
             .note
             .contains("no readable page yet")
     );
+}
+
+fn flights() -> App {
+    App::with(|sim| {
+        sim.results = vec![
+            ("IndiGo 6E-2135", "₹6,840", "6:45 PM"),
+            ("Vistara UK-707", "₹7,210", "09:10"),
+            ("Air India AI-825", "₹8,050", "05:30"),
+        ];
+    })
+}
+
+#[tokio::test]
+async fn pick_ranks_a_measurable_criterion_exactly_and_opens_the_winner() {
+    for (by, winner, airline) in [
+        ("lowest price", "@s:select-1", "IndiGo"),
+        ("earliest departure", "@s:select-3", "Air India"),
+    ] {
+        let run = run(
+            flights(),
+            json!({"app": "Mail", "steps": [
+                {"pick": {"from": "the flight results", "by": by, "into": "flight"}},
+                {"verify": "the page for ${flight} is open"}
+            ]}),
+        )
+        .await;
+        assert_eq!(run.app.sim().picked, [winner], "{by}");
+        assert!(run.result.vars["flight"].starts_with(airline), "{by}");
+        assert!(
+            run.result.steps[0].note.contains("ranked"),
+            "{}",
+            run.result.steps[0].note
+        );
+        assert!(
+            !run.requests
+                .iter()
+                .any(|request| request.questions.contains_key("record")),
+            "a measurable criterion needs no judgement"
+        );
+    }
+}
+
+#[tokio::test]
+async fn pick_asks_jev_when_the_criterion_needs_judgement() {
+    let run = run_with(
+        flights(),
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "the most comfortable airline"}}
+        ]}),
+        |_| {},
+        |id, question, _| (id == "record").then(|| pick(question, "Vistara", 0.9)),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.app.sim().picked, ["@s:select-2"]);
+    assert!(run.result.steps[0].note.contains("judged"));
+    assert!(
+        !run.result.vars.contains_key("flight"),
+        "no into, no variable"
+    );
+
+    let undecided = run_with(
+        flights(),
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "the nicest"}}
+        ]}),
+        |_| {},
+        |id, question, _| (id == "record").then(|| pick(question, "no such airline", 0.9)),
+    )
+    .await;
+    assert_eq!(undecided.result.stop, FlowStopReason::StepFailed);
+    assert!(undecided.result.steps[0].note.contains("clearly meets"));
+}
+
+#[tokio::test]
+async fn pick_fails_where_no_list_is_showing() {
+    let run = run(
+        App::default(),
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "lowest price"}}
+        ]}),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        run.result.steps[0]
+            .note
+            .contains("no list of the flight results")
+    );
+}
+
+#[test]
+fn pick_validates_its_fields_and_defines_its_variable() {
+    let check = |flow: serde_json::Value| {
+        super::validate::check(&serde_json::from_value(flow).unwrap(), &BTreeSet::new()).errors
+    };
+    assert!(
+        check(json!({"app": "Mail", "steps": [
+            {"pick": {"from": "results", "by": "cheapest", "into": "flight"}},
+            {"verify": "${flight} is shown"}
+        ]}))
+        .is_empty()
+    );
+    let errors = check(json!({"app": "Mail", "steps": [
+        {"pick": {"from": "", "by": " ", "into": "not a name"}}
+    ]}));
+    assert_eq!(errors.len(), 3, "{errors:?}");
 }
