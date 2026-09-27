@@ -580,7 +580,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         branch: &IfStep,
         path: &str,
     ) -> Result<Ended, Halt> {
-        let condition_text = substitute(&branch.condition, &self.vars);
+        let condition_text = substitute_safe(&branch.condition, &self.vars, &self.facts);
         let held = self.holds(log, &condition_text).await?;
         let (steps, taken) = if held >= DONE {
             (&branch.then, "then")
