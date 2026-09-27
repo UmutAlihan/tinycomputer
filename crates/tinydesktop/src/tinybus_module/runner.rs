@@ -79,7 +79,7 @@ impl FlowRunner for WorkspaceRunner {
             return Box::pin(async { jev_not_configured("run-flow") });
         };
         Box::pin(tinydesktop_engine::run_flow(
-            self.workspace(task),
+            self.workspace(task, constraints),
             runtime,
             request,
         ))
