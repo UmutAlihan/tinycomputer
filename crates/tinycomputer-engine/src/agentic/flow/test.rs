@@ -4381,11 +4381,31 @@ async fn a_gated_stop_before_asks_to_find_the_control_not_to_press_it() {
             == "find, without pressing it, the control that would perform: sending the email"),
         "{purposes:?}"
     );
+
+    let remembered = run_with(
+        App::default(),
+        mail_flow(),
+        |request| {
+            request.memory = vec![GroundingHint {
+                app: "Mail".to_owned(),
+                key: "perform: sending the email".to_owned(),
+                role: "button".to_owned(),
+                name: Some("Send".to_owned()),
+                path: vec!["window \"New Message\"".to_owned(), "toolbar".to_owned()],
+            }];
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(
+        remembered.result.stop,
+        FlowStopReason::StoppedBeforeDestructive
+    );
     assert!(
-        run.result
-            .learned
+        remembered
+            .requests
             .iter()
-            .any(|hint| hint.key == "perform sending the email"),
-        "memory keeps its key, so hints from earlier runs still match"
+            .any(|request| request.questions.keys().collect::<Vec<_>>() == ["confirm"]),
+        "a hint stored under the step's own words is still recalled"
     );
 }
