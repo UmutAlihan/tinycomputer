@@ -206,6 +206,7 @@ fn clickable_screen() -> Screen {
         root: None,
         context: Vec::new(),
         truncated: None,
+        unexplored: Vec::new(),
         candidates: vec![Candidate {
             ref_id: "@s1:e1".to_owned(),
             role: "button".to_owned(),
@@ -544,6 +545,7 @@ fn action_space_and_requests_cover_every_supported_capability() {
         root: None,
         context: vec!["Label".to_owned()],
         truncated: Some((1, 300)),
+        unexplored: Vec::new(),
         candidates: vec![Candidate {
             ref_id: "@s:e1".to_owned(),
             role: "control".to_owned(),

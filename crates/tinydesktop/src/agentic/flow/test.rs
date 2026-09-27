@@ -192,6 +192,7 @@ impl App {
             candidates,
             context: vec![format!("{window} heading")],
             truncated: None,
+            unexplored: Vec::new(),
         }
     }
 }

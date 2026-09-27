@@ -373,6 +373,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                         "No window of the application can be read right now ({reason}). A keyboard shortcut may still work."
                     )],
                     truncated: None,
+                    unexplored: Vec::new(),
                 })
             }
         }
