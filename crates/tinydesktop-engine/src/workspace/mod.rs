@@ -241,9 +241,10 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
     }
 
     fn settle(&self) {
-        match self.active_browser() {
-            Some(browser) => browser.settle(),
-            None => self.desktop.settle(),
+        match (self.active_browser(), &self.desktop) {
+            (Some(browser), _) => browser.settle(),
+            (None, Some(desktop)) => desktop.settle(),
+            (None, None) => {}
         }
     }
 
