@@ -16,7 +16,7 @@ use tinydesktop_core::surface::{Depth, Surface, result_groups};
 use tinydesktop_core::{human_needed, screen_payment_evidence};
 
 /// How many controls to print per page.
-const SHOWN: usize = 40;
+const SHOWN: usize = 400;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let urls: Vec<String> = std::env::args().skip(1).collect();
