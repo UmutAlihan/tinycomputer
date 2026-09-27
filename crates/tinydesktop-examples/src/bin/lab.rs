@@ -6,6 +6,7 @@
 //!                              [--disable moves,undo] [--no-memory] [--flow file.json]
 //! scripts/lab eval all [--modes flow,goal] [--trials 3] [--disable ...]
 //! scripts/lab report target/lab-runs/<scenario>/<run>
+//! scripts/lab call ListWindows '{"app": "TextEdit"}'   # probe any member
 //! scripts/lab guide
 //! ```
 //!
@@ -63,6 +64,19 @@ async fn main() -> Result<(), LabError> {
         }
         "report" => {
             println!("{}", report(Path::new(&target))?);
+            Ok(())
+        }
+        "call" => {
+            // `lab call <Member> '<json argument>'`: probe any member directly.
+            let host = load(&options).await?;
+            let argument = args
+                .get(2)
+                .map(|text| serde_json::from_str(text))
+                .transpose()?
+                .unwrap_or(serde_json::Value::Null);
+            let reply = host.call(&target, argument).await?;
+            println!("{}", serde_json::to_string_pretty(&reply)?);
+            host.shutdown();
             Ok(())
         }
         "validate" => {
@@ -305,7 +319,8 @@ fn parse(args: &[String]) -> Result<Options, LabError> {
         memory: true,
         ..Options::default()
     };
-    let mut rest = args.iter().skip(2);
+    let skip = if args.first().map(String::as_str) == Some("call") { 3 } else { 2 };
+    let mut rest = args.iter().skip(skip);
     while let Some(flag) = rest.next() {
         let mut value = || {
             rest.next()
