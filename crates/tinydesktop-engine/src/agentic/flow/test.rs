@@ -31,7 +31,7 @@ use super::{
     ask,
     backend::AgentBackend,
     enter, fit, flow_guide, ground, memory, run_flow_with,
-    steps::{already_chosen, lists_more_than},
+    steps::{self, already_chosen, lists_more_than},
     validate, validate_flow,
     view::{Candidate, Depth, Screen},
     vote,
@@ -1639,52 +1639,57 @@ async fn choose_reveals_the_list_first_when_the_option_is_not_visible() {
 
 #[tokio::test]
 async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
-    let run = run_with(
-        App::with(|sim| sim.booking = Some(Booking::default())),
-        json!({"app": "Mail", "steps": [
-            {"choose": {"what": "the destination box", "option": "Srinagar"}}
-        ]}),
-        |_| {},
-        |id, question, sim| match id {
-            "move" => Some(pick(question, "activate", 0.9)),
-            "done" => Some(noul(
-                if sim
-                    .booking
-                    .as_ref()
-                    .is_some_and(|booking| booking.searching)
-                {
-                    0.9
-                } else {
-                    0.05
-                },
-            )),
-            _ if !matches!(question, Question::Choice(_)) => None,
-            _ if purpose_of(question).contains("search box") => Some(pick(question, "Mumbai", 0.9)),
-            _ if purpose_of(question).contains("open the destination") => {
-                Some(pick(question, "Going to?", 0.9))
-            }
-            _ => Some(pick(question, "Srinagar", 0.9)),
-        },
-    )
-    .await;
-    assert_eq!(
-        run.result.stop,
-        FlowStopReason::Completed,
-        "{:?}",
-        run.result.steps
-    );
-    let sim = run.app.sim();
-    assert_eq!(
-        sim.fields["Search city"], "Srinagar",
-        "a row that takes no text leaves the typing to the focused box"
-    );
-    assert!(!sim.clicks.contains(&"Mumbai, BOM".to_owned()));
-    assert_eq!(
-        sim.clicks.last().map(String::as_str),
-        Some("Srinagar, SXR"),
-        "the box itself is never taken for the option: {:?}",
-        sim.clicks
-    );
+    // A planner may qualify the option; the box is searched by its name.
+    for option in ["Srinagar", "Srinagar (SXR)"] {
+        let run = run_with(
+            App::with(|sim| sim.booking = Some(Booking::default())),
+            json!({"app": "Mail", "steps": [
+                {"choose": {"what": "the destination box", "option": option}}
+            ]}),
+            |_| {},
+            |id, question, sim| match id {
+                "move" => Some(pick(question, "activate", 0.9)),
+                "done" => Some(noul(
+                    if sim
+                        .booking
+                        .as_ref()
+                        .is_some_and(|booking| booking.searching)
+                    {
+                        0.9
+                    } else {
+                        0.05
+                    },
+                )),
+                _ if !matches!(question, Question::Choice(_)) => None,
+                _ if purpose_of(question).contains("search box") => {
+                    Some(pick(question, "Mumbai", 0.9))
+                }
+                _ if purpose_of(question).contains("open the destination") => {
+                    Some(pick(question, "Going to?", 0.9))
+                }
+                _ => Some(pick(question, "Srinagar", 0.9)),
+            },
+        )
+        .await;
+        assert_eq!(
+            run.result.stop,
+            FlowStopReason::Completed,
+            "{:?}",
+            run.result.steps
+        );
+        let sim = run.app.sim();
+        assert_eq!(
+            sim.fields["Search city"], "Srinagar",
+            "a row that takes no text leaves the typing to the focused box"
+        );
+        assert!(!sim.clicks.contains(&"Mumbai, BOM".to_owned()));
+        assert_eq!(
+            sim.clicks.last().map(String::as_str),
+            Some("Srinagar, SXR"),
+            "the box itself is never taken for the option: {:?}",
+            sim.clicks
+        );
+    }
 }
 
 fn purpose_of(question: &Question) -> String {
@@ -3630,6 +3635,14 @@ async fn a_reveal_that_fails_leaves_the_other_ways_to_try() {
         "every way was tried before giving up: {}",
         run.result.steps[0].note
     );
+}
+
+#[test]
+fn a_search_box_is_searched_by_the_options_name() {
+    assert_eq!(steps::search_text("Srinagar (SXR)"), "Srinagar");
+    assert_eq!(steps::search_text("Mumbai, BOM"), "Mumbai");
+    assert_eq!(steps::search_text("18 October 2026"), "18 October 2026");
+    assert_eq!(steps::search_text("(SXR)"), "(SXR)");
 }
 
 #[tokio::test]
