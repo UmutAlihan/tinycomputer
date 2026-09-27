@@ -19,7 +19,9 @@ use crate::geometry::Point;
 pub const SIZE: u32 = 64;
 
 /// How many pulse frames follow the resting frame.
-pub const PULSE_FRAMES: usize = 12;
+pub const PULSE_FRAMES: usize = PULSE_STEPS as usize;
+
+const PULSE_STEPS: u32 = 12;
 
 /// Subsamples per pixel side, for anti-aliasing.
 const SUPERSAMPLE: u32 = 4;
@@ -62,10 +64,10 @@ impl Sprite {
     #[must_use]
     pub fn render(scale: u32) -> Self {
         let scale = scale.clamp(1, 4);
-        let frames = (0..=PULSE_FRAMES)
+        let frames = (0..=PULSE_STEPS)
             .map(|frame| {
-                #[allow(clippy::cast_precision_loss)] // at most PULSE_FRAMES
-                let pulse = (frame > 0).then(|| frame as f64 / (PULSE_FRAMES + 1) as f64);
+                let pulse =
+                    (frame > 0).then(|| f64::from(frame) / f64::from(PULSE_STEPS + 1));
                 draw(scale, pulse)
             })
             .collect();
@@ -89,9 +91,11 @@ impl Sprite {
     #[must_use]
     pub fn frame_for(pulse: Option<f64>) -> usize {
         pulse.map_or(0, |progress| {
-            let steps = f64::from(u32::try_from(PULSE_FRAMES).unwrap_or(1));
-            let index = (progress.clamp(0.0, 1.0) * steps).floor() + 1.0;
-            usize::try_from(index.clamp(1.0, steps) as u32).unwrap_or(1)
+            let reached = progress.clamp(0.0, 1.0) * f64::from(PULSE_STEPS);
+            (1..PULSE_FRAMES)
+                .zip(1..PULSE_STEPS)
+                .find(|&(_, step)| reached < f64::from(step))
+                .map_or(PULSE_FRAMES, |(frame, _)| frame)
         })
     }
 
@@ -198,7 +202,7 @@ fn draw(scale: u32, pulse: Option<f64>) -> Vec<u8> {
     let hotspot = Sprite::hotspot();
     let per_point = f64::from(scale);
     let steps = f64::from(SUPERSAMPLE);
-    let mut pixels = Vec::with_capacity((side * side * 4) as usize);
+    let mut pixels = Vec::with_capacity(usize::try_from(side * side * 4).unwrap_or(0));
     for row in 0..side {
         for column in 0..side {
             let mut sum = [0.0; 4];
@@ -228,11 +232,19 @@ fn draw(scale: u32, pulse: Option<f64>) -> Vec<u8> {
     pixels
 }
 
+/// The nearest byte to `value`, clamped to 0–255.
 fn byte(value: f64) -> u8 {
-    // `as` saturates a finite, clamped float into range.
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let byte = value.round().clamp(0.0, 255.0) as u8;
-    byte
+    let target = value.round().clamp(0.0, 255.0);
+    let (mut low, mut high) = (0_u8, u8::MAX);
+    while low < high {
+        let middle = low + (high - low) / 2;
+        if f64::from(middle) < target {
+            low = middle + 1;
+        } else {
+            high = middle;
+        }
+    }
+    low
 }
 
 #[cfg(test)]
