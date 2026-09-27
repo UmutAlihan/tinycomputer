@@ -630,11 +630,19 @@ async fn plan_then_drive(
 }
 
 /// Runs a task's flows in order until one stops it or all finish.
+///
+/// A task's [`TaskBudget`] bounds the whole task, not one run of it: an
+/// approval or a human intervention splits a task into several runs, and
+/// each is given only what the task has not already spent, so resuming can
+/// never reset the budget back to full. `max_elapsed_ms` has no equivalent in
+/// [`RunFlowRequest`] — a run cannot police its own wall-clock time from the
+/// inside — so it is enforced here instead, by timing out a run that would
+/// otherwise run past what remains of it.
 async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
     for run in runs {
-        let (request, constraints) = {
+        let Some((request, constraints, time_left)) = (|| {
             let Ok(state) = cell.state.lock() else {
-                return;
+                return None;
             };
             let mut vars = run.flow.vars.clone();
             for name in state.facts.names() {
@@ -642,29 +650,66 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
                     vars.insert(name.to_owned(), value.to_owned());
                 }
             }
-            (
+            let max_actions = state
+                .budget
+                .max_actions
+                .unwrap_or(120)
+                .saturating_sub(state.spent.actions);
+            let max_model_calls = state
+                .budget
+                .max_model_calls
+                .unwrap_or(300)
+                .saturating_sub(state.spent.model_calls);
+            let time_left = state
+                .budget
+                .max_elapsed_ms
+                .map(|max| max.saturating_sub(state.spent.elapsed_ms));
+            Some((
                 RunFlowRequest {
                     flow: run.flow.clone(),
                     vars,
                     allow_destructive: run.allow_destructive,
                     include_values: false,
-                    max_actions: state.budget.max_actions.unwrap_or(120),
-                    max_model_calls: state.budget.max_model_calls.unwrap_or(300),
+                    max_actions,
+                    max_model_calls,
                     memory: state.memory.clone(),
                     trace: state.trace,
                     ..RunFlowRequest::default()
                 },
                 state.constraints.clone(),
-            )
+                time_left,
+            ))
+        })() else {
+            return;
         };
+        if time_left == Some(0) {
+            stop_task(&cell, runner.as_ref(), elapsed_budget_failed()).await;
+            return;
+        }
         let id = cell.view.borrow().id.clone();
-        let reply = runner.run(&id, &constraints, request).await;
+        let started = Instant::now();
+        let run_call = runner.run(&id, &constraints, request);
+        let reply = match time_left {
+            Some(ms) => match tokio::time::timeout(Duration::from_millis(ms), run_call).await {
+                Ok(reply) => reply,
+                Err(_) => {
+                    stop_task(&cell, runner.as_ref(), elapsed_budget_failed()).await;
+                    return;
+                }
+            },
+            None => run_call.await,
+        };
+        let spent_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
         let (next, result) = run_outcome(&run.flow, &reply);
         let redacted = {
             let Ok(mut state) = cell.state.lock() else {
                 return;
             };
+            state.spent.elapsed_ms = state.spent.elapsed_ms.saturating_add(spent_ms);
             if let Some(result) = result {
+                state.spent.actions = state.spent.actions.saturating_add(result.actions);
+                state.spent.model_calls =
+                    state.spent.model_calls.saturating_add(result.metrics.calls);
                 state.finished += finished(&result.steps);
                 state.steps.extend(result.steps);
                 state.exchanges.extend(result.trace);
