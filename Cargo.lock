@@ -1351,14 +1351,13 @@ dependencies = [
 name = "tinydesktop"
 version = "0.5.1"
 dependencies = [
- "getrandom 0.4.3",
  "serde",
  "serde_json",
  "tinybus",
  "tinybus-module",
  "tinydesktop-bus",
  "tinydesktop-desktop",
- "tinyinference_decisions",
+ "tinydesktop-engine",
  "tokio",
 ]
 
@@ -1381,6 +1380,19 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tinydesktop-bus",
+]
+
+[[package]]
+name = "tinydesktop-engine"
+version = "0.5.1"
+dependencies = [
+ "getrandom 0.4.3",
+ "serde",
+ "serde_json",
+ "tinydesktop-bus",
+ "tinydesktop-desktop",
+ "tinyinference_decisions",
+ "tokio",
 ]
 
 [[package]]

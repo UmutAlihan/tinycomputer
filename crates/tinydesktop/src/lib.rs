@@ -91,7 +91,6 @@
 //! `PLATFORM_NOT_SUPPORTED` and lists the surfaces it does support, which is
 //! none. That is inherited from the vendored engine and will follow it.
 
-mod agentic;
 mod tinybus_module;
 
 pub use tinydesktop_desktop::{Desktop, Error, Result};

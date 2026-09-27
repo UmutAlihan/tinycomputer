@@ -25,7 +25,8 @@ use tinydesktop_bus::{
     WindowRequest,
 };
 
-use crate::{Desktop, Result, agentic};
+use crate::{Desktop, Result};
+use tinydesktop_engine as agentic;
 
 /// The object served at [`tinydesktop_bus::names::OBJECT_PATH`].
 ///
