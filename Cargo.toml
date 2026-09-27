@@ -132,6 +132,6 @@ codegen-units = 1
 strip = "debuginfo"
 
 # The cursor sprite is rasterized with supersampling when the overlay helper
-# starts; unoptimized, that takes over a second and the first glide is missed.
+# (`tinydesktop-cursor`'s binary) starts; unoptimized, that takes over a second and the first glide is missed.
 [profile.dev.package.tinydesktop-cursor]
 opt-level = 3

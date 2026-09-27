@@ -21,8 +21,9 @@
 //! the desktop and browser surfaces, which hand it targets in global screen
 //! points, so the cursor glides from an application to a web page and back
 //! without jumping. It draws through an [`OverlaySink`]: by default the
-//! `tinydesktop-cursor-overlay` helper process, a click-through window above
-//! everything, spoken to in [`OverlayCommand`]s. The helper only puts pixels
+//! `tinydesktop-cursor-overlay` helper process (this crate's binary, built
+//! with the `overlay` feature), a click-through window above everything,
+//! spoken to in [`OverlayCommand`]s. The helper only puts pixels
 //! on screen; how the cursor looks ([`sprite`]) and moves ([`animate`]) is
 //! decided here, the same on every platform.
 //!
@@ -38,6 +39,8 @@
 //! assert!(button.contains(glide.to));
 //! assert_eq!(glide.samples.last().map(|sample| sample.point), Some(glide.to));
 //! ```
+
+#![forbid(unsafe_code)]
 
 pub mod animate;
 mod error;

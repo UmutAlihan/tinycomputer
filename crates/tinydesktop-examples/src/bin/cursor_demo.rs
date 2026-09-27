@@ -6,7 +6,7 @@
 //! how many laps to make:
 //!
 //! ```sh
-//! cargo build -p tinydesktop-cursor-overlay
+//! cargo build -p tinydesktop-cursor --features overlay
 //! cargo run -p tinydesktop-examples --bin cursor_demo -- calm 3
 //! ```
 //!
@@ -56,7 +56,7 @@ fn main() {
     let Some(helper) = ProcessOverlay::locate() else {
         return eprintln!(
             "the overlay helper was not found; build it first with\n  \
-             cargo build -p tinydesktop-cursor-overlay"
+             cargo build -p tinydesktop-cursor --features overlay"
         );
     };
     println!(
