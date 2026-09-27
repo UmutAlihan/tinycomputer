@@ -753,7 +753,17 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         "move" => pick(question, "shortcut", 0.9),
         "shortcut" => pick(question, "new_item", 0.9),
         // Every action helps and no field shows an error, unless a test says.
-        "confirm" | "helped" => noul(0.9),
+        "confirm" | "helped" | "dismiss_known" => noul(0.9),
+        _ if id.starts_with("known_") => noul(0.9),
+        // A survey finds the step in "Region 1" and nothing distracting.
+        _ if id.starts_with("relevance_") => {
+            level(if text_of(question, "region").contains("region 1") {
+                4
+            } else {
+                1
+            })
+        }
+        _ if id.starts_with("distraction_") => noul(0.05),
         _ if id.starts_with("error_") => noul(0.05),
         _ if id.starts_with("asks_") => noul(0.9),
         "dismiss" => pick(question, "Keep Editing", 0.9),
