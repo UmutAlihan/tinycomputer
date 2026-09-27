@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokio::runtime::Handle::current(),
     );
     let tasks = Tasks::new(Arc::new(Fixture {
-        workspace: Workspace::new(Desktop::new(), Some(browser.clone())),
+        workspace: Workspace::new(Some(Desktop::new()), Some(browser.clone())),
         jev,
     }));
     let started = tasks.start(&request(&base)?);
