@@ -2630,7 +2630,9 @@ dependencies = [
  "serde_json",
  "tinybus",
  "tinydesktop",
+ "tinydesktop-browser",
  "tinydesktop-bus",
+ "tinydesktop-core",
  "tinyinference-llm",
  "tokio",
 ]

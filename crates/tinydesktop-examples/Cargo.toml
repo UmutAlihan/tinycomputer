@@ -11,6 +11,10 @@ publish = false
 [dependencies]
 tinydesktop = { path = "../tinydesktop" }
 tinydesktop-bus = { workspace = true }
+# `browser_fixture` drives a real browser through the linked agent-browser and
+# checks the shared domain logic against the travel fixture.
+tinydesktop-browser = { workspace = true, features = ["agent-browser"] }
+tinydesktop-core = { workspace = true }
 tinybus = { workspace = true, features = ["modules"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
