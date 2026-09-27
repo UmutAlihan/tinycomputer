@@ -215,6 +215,57 @@ pub fn payment_evidence(
     (!reasons.is_empty()).then_some(PaymentEvidence { reasons })
 }
 
+/// Whether the screen a flow is looking at is a payment step, from its
+/// candidates and text alone.
+///
+/// A generic [`Screen`](crate::surface::Screen) carries no URL and no HTML
+/// `autocomplete` attribute — those are web-specific, and this check must
+/// hold for the desktop too — so only the field-label signal applies here.
+/// That signal is enough on its own: [`payment_evidence`]'s URL-plus-control
+/// branch only ever strengthens a case the field labels already make, per its
+/// own doctest.
+///
+/// ```
+/// use tinydesktop_core::surface::{Candidate, Screen};
+/// use tinydesktop_core::screen_payment_evidence;
+///
+/// let mut screen = Screen {
+///     app: "browser".to_owned(),
+///     window: None,
+///     surface: "window".to_owned(),
+///     candidates: vec![Candidate {
+///         name: Some("Continue".to_owned()),
+///         ..Candidate::default()
+///     }],
+///     context: vec!["Card number".to_owned()],
+///     unexplored: Vec::new(),
+///     text_nodes: Vec::new(),
+/// };
+/// assert!(screen_payment_evidence(&screen).is_some());
+/// screen.context = vec!["Traveller name".to_owned()];
+/// assert!(screen_payment_evidence(&screen).is_none());
+/// ```
+#[must_use]
+pub fn screen_payment_evidence(screen: &Screen) -> Option<PaymentEvidence> {
+    let fields = screen
+        .candidates
+        .iter()
+        .chain(screen.text_nodes.iter())
+        .filter_map(|candidate| candidate.name.as_deref().or(candidate.description.as_deref()))
+        .chain(screen.context.iter().map(String::as_str))
+        .map(|label| FieldHint {
+            label: label.to_owned(),
+            ..FieldHint::default()
+        })
+        .collect::<Vec<_>>();
+    let controls = screen
+        .candidates
+        .iter()
+        .filter_map(|candidate| candidate.name.as_deref())
+        .collect::<Vec<_>>();
+    payment_evidence("", &fields, &controls)
+}
+
 /// What only a person can get past, by the words a page shows for it.
 const HUMAN_GATES: &[(&str, &str)] = &[
     ("captcha", "solve the captcha"),
