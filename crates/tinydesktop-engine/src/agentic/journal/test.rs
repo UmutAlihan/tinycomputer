@@ -52,7 +52,10 @@ fn request() -> EvaluationRequest {
         json!({"app": "Mail"}),
         [(
             "done".to_owned(),
-            Question::Noul(Noul::new("Is the step done?")),
+            Question::Noul(Noul {
+                instructions: json!("Is the step done?"),
+                criteria: None,
+            }),
         )]
         .into_iter()
         .collect(),
@@ -101,7 +104,7 @@ fn a_begun_run_writes_a_run_event_then_each_exchange() {
             model: "jev-1".to_owned(),
             answers: [(
                 "done".to_owned(),
-                Answer::Noul(NoulAnswer { probability: 0.9 }),
+                Answer::Noul(NoulAnswer { noul: 0.9 }),
             )]
             .into_iter()
             .collect(),
@@ -141,7 +144,7 @@ fn a_begun_run_writes_a_run_event_then_each_exchange() {
     assert_eq!(ok["input_tokens"], 120);
     assert_eq!(ok["questions"], json!(["done"]));
     assert_eq!(ok["request"]["state"]["app"], "Mail");
-    assert_eq!(ok["answers"]["done"]["probability"], 0.9);
+    assert_eq!(ok["answers"]["done"]["noul"], 0.9);
     assert!(ok["request_bytes"].as_u64().unwrap() > 0);
     assert!(ok["at"].as_str().unwrap().ends_with('Z'));
 
