@@ -29,6 +29,22 @@ const SKELETON_DEPTH: u32 = 6;
 /// How long the page is given to react before a value is read back again.
 const SETTLE_MS: u64 = 200;
 
+/// Whether what covers a point belongs to the same result card as the
+/// element that was meant: the card around the covering element names it.
+/// Many result lists lay a transparent click layer over each card, so the
+/// card's own controls are always "covered" — by the card itself.
+const SAME_CARD_JS: &str = r#"((x, y, name) => {
+  const top = document.elementFromPoint(x, y);
+  const card = top && top.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
+  if (!card || !name) return false;
+  const named = (element) => (element.getAttribute('aria-label') || '').includes(name);
+  return named(card) || (card.innerText || '').includes(name)
+    || Array.from(card.querySelectorAll('[aria-label]')).some(named);
+})"#;
+
+/// How much of a target's name identifies it inside its card.
+const CARD_NAME_CHARS: usize = 80;
+
 /// One browser session, lazily opened, as a [`Surface`].
 #[derive(Clone)]
 pub struct BrowserSurface {
@@ -107,6 +123,57 @@ impl BrowserSurface {
         Ok(info.id)
     }
 
+    /// Clicks the middle of `reference` even though something covers it,
+    /// but only when the cover is part of the same result card, so a banner
+    /// or dialog in front still blocks the click. `None` when it is not.
+    fn click_through_own_card(&self, reference: &str, name: &str) -> Option<DesktopResponse> {
+        let id = self.ensure_session().ok()?;
+        let selector = format!("@{}", reference.trim_start_matches('@'));
+        let bounds = self
+            .block(
+                self.browser
+                    .command(&id, json!({"action": "boundingbox", "selector": selector})),
+            )
+            .ok()?;
+        let middle = |start: &str, size: &str| {
+            Some(bounds.get(start)?.as_f64()? + bounds.get(size)?.as_f64()? / 2.0)
+        };
+        let (x, y) = (middle("x", "width")?, middle("y", "height")?);
+        let name: String = name.trim().chars().take(CARD_NAME_CHARS).collect();
+        let script = format!(
+            "{SAME_CARD_JS}({x}, {y}, {})",
+            serde_json::to_string(&name).ok()?
+        );
+        let same_card = self
+            .block(
+                self.browser
+                    .command(&id, json!({"action": "evaluate", "script": script})),
+            )
+            .ok()?;
+        if same_card.get("result") != Some(&Value::Bool(true)) {
+            return None;
+        }
+        for event in ["mouseMoved", "mousePressed", "mouseReleased"] {
+            let pressed = event != "mouseMoved";
+            self.block(self.browser.command(
+                &id,
+                json!({
+                    "action": "mouse",
+                    "eventType": event,
+                    "x": x,
+                    "y": y,
+                    "button": if pressed { "left" } else { "none" },
+                    "clickCount": i32::from(pressed),
+                }),
+            ))
+            .ok()?;
+        }
+        Some(DesktopResponse::ok(
+            "click",
+            json!({"clicked": selector, "through": "its own card's click layer"}),
+        ))
+    }
+
     fn perform(&self, command: &str, action: Action) -> DesktopResponse {
         let outcome = self.ensure_session().and_then(|id| {
             self.block(self.browser.perform(&id, action))
@@ -164,10 +231,17 @@ impl Surface for BrowserSurface {
         };
         match operation {
             JevOperation::Click | JevOperation::Expand | JevOperation::Collapse => {
-                targeted("click", |target, _| Action::Click {
+                let reply = targeted("click", |target, _| Action::Click {
                     target,
                     new_tab: false,
-                })
+                });
+                let name = target.as_ref().and_then(|node| node.name.as_deref());
+                match (&reference, name) {
+                    (Some(reference), Some(name)) if covered(&reply) => self
+                        .click_through_own_card(reference, name)
+                        .unwrap_or(reply),
+                    _ => reply,
+                }
             }
             JevOperation::TypeText => targeted("type-text", |target, text| Action::Fill {
                 target,
@@ -353,6 +427,14 @@ fn reply(command: &str, result: Result<Value>) -> DesktopResponse {
 
 /// A browser error as an envelope failure whose code is the error's wire
 /// name in `SCREAMING_SNAKE_CASE`, such as `STALE_REF`.
+/// Whether a click was refused because another element covers its target.
+fn covered(reply: &DesktopResponse) -> bool {
+    reply
+        .error
+        .as_ref()
+        .is_some_and(|error| error.message.contains("is covered by"))
+}
+
 fn failure(command: &str, error: &Error) -> DesktopResponse {
     let name = error
         .wire_name()
