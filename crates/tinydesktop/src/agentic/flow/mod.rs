@@ -38,8 +38,8 @@ use std::{
 use serde_json::json;
 use tinydesktop_bus::{
     DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowLoop,
-    FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevMetrics, JevTarget, RunFlowRequest,
-    StepOutcome, StepReport, ValidateFlowRequest,
+    FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevExchange, JevMetrics, JevTarget,
+    RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
 use tinyjevclient::{Answer, EvaluationRequest};
 
@@ -169,6 +169,9 @@ pub(super) struct FlowRun<'r, B> {
     reports: Vec<StepReport>,
     pub(super) pending: Option<JevTarget>,
     blind_looks: u32,
+    tracing: bool,
+    trace: Vec<JevExchange>,
+    step: String,
 }
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
@@ -198,6 +201,9 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             reports: Vec::new(),
             pending: None,
             blind_looks: 0,
+            tracing: request.trace,
+            trace: Vec::new(),
+            step: String::new(),
         }
     }
 
@@ -225,6 +231,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let action = step.action();
         let (kind, text) = describe_step(&action, &self.vars);
         let mut log = StepLog::default();
+        self.step.clone_from(&path);
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let (ended, halt) = match result {
             Ok(ended) => (ended, None),
@@ -321,6 +328,14 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             .map_err(|error| Halt::Error(provider_error(&error)))?;
         merge_metrics(&mut self.metrics, &evaluation);
         log.calls = log.calls.saturating_add(1);
+        if self.tracing {
+            self.trace.push(JevExchange {
+                step: self.step.clone(),
+                state: request.state.clone(),
+                questions: serde_json::to_value(&request.questions).unwrap_or_default(),
+                answers: serde_json::to_value(&evaluation.response.answers).unwrap_or_default(),
+            });
+        }
         Ok(evaluation.response.answers)
     }
 
@@ -421,6 +436,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 learned: self.learned,
                 actions: self.actions,
                 metrics: self.metrics,
+                trace: self.trace,
             },
         )
     }

@@ -521,6 +521,7 @@ async fn run_with(
     let mut request = RunFlowRequest {
         flow: serde_json::from_value(flow).unwrap(),
         include_values: true,
+        trace: true,
         ..RunFlowRequest::default()
     };
     configure(&mut request);
@@ -629,6 +630,11 @@ async fn a_mail_compose_flow_fills_every_field_and_stops_in_front_of_send() {
             .any(|hint| hint.key == "recipient" && hint.name.as_deref() == Some("To"))
     );
     assert!(run.result.metrics.calls > 0 && run.result.actions >= 5);
+    assert_eq!(
+        run.result.trace.len(),
+        usize::try_from(run.result.metrics.calls).unwrap()
+    );
+    assert_eq!(run.result.trace[0].step, "2");
     assert!(
         choice_sizes(&run.requests)
             .iter()

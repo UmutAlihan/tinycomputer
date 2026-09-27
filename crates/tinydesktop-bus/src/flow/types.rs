@@ -334,6 +334,9 @@ pub struct RunFlowRequest {
     pub disabled_loops: Vec<FlowLoop>,
     /// Grounding hints from earlier runs.
     pub memory: Vec<GroundingHint>,
+    /// Whether to return every Jev exchange in [`FlowRunResult::trace`]. For
+    /// development: the trace carries the screen state each question saw.
+    pub trace: bool,
 }
 
 impl Default for RunFlowRequest {
@@ -347,6 +350,7 @@ impl Default for RunFlowRequest {
             max_model_calls: 150,
             disabled_loops: Vec::new(),
             memory: Vec::new(),
+            trace: false,
         }
     }
 }
@@ -467,4 +471,20 @@ pub struct FlowRunResult {
     pub actions: u32,
     /// Provider measurements.
     pub metrics: JevMetrics,
+    /// Every Jev exchange, when [`RunFlowRequest::trace`] asked for them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub trace: Vec<JevExchange>,
+}
+
+/// One Jev request and its answers, as recorded by a traced run.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct JevExchange {
+    /// The step that asked, as in [`StepReport::path`].
+    pub step: String,
+    /// The shared state the questions were asked against.
+    pub state: Value,
+    /// The questions, keyed by id.
+    pub questions: Value,
+    /// The answers, keyed by id.
+    pub answers: Value,
 }

@@ -102,7 +102,7 @@ fn run_requests_default_to_safe_bounded_runs() {
         serde_json::from_value(json!({"flow": {"app": "Mail", "steps": ["x"]}})).unwrap();
     assert!(!request.allow_destructive && !request.include_values);
     assert_eq!((request.max_actions, request.max_model_calls), (60, 150));
-    assert!(request.disabled_loops.is_empty() && request.memory.is_empty());
+    assert!(request.disabled_loops.is_empty() && request.memory.is_empty() && !request.trace);
     assert_eq!(
         request,
         RunFlowRequest {

@@ -241,6 +241,7 @@ async fn run_flow(
         flow: serde_json::from_value(flow)?,
         include_values: true,
         disabled_loops: options.disabled.clone(),
+        trace: true,
         ..RunFlowRequest::default()
     };
     if options.memory {
@@ -261,6 +262,14 @@ async fn run_flow(
     }
     write_json(dir, &format!("request{suffix}.json"), &request)?;
     let result = host.run_flow(&request).await?;
+    let exchanges = result
+        .trace
+        .iter()
+        .map(serde_json::to_string)
+        .collect::<Result<Vec<_>, _>>()?;
+    std::fs::write(dir.join(format!("jev{suffix}.jsonl")), exchanges.join("\n"))?;
+    let mut result = result;
+    result.trace.clear();
     write_json(dir, &format!("result{suffix}.json"), &result)?;
     if suffix.is_empty() {
         write_json(dir, "result.json", &result)?;
