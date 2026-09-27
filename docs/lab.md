@@ -59,6 +59,8 @@ your own flow against a scenario's checker), `--send` (mail only; addresses
   loops that contributed, and every action with its target and delivery path.
 - `jev.jsonl` — every Jev exchange: the state it saw, the questions, the
   answers. This is how a wrong judgement is diagnosed: read what Jev was shown.
+- With `TINYDESKTOP_JEV_JOURNAL=1`, the module also journals every raw Jev
+  call and every timing under `.jev-journal/`; see [`jev-journal.md`](jev-journal.md).
 - `verdict.json` — the checker's verdict, which reads the application's real
   state rather than trusting the run's report.
 - `authored-N.json` — in `authored` mode, each flow the LLM wrote.

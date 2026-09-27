@@ -11,7 +11,7 @@ changes what a run does.
 
 ```sh
 # any run in this process: the lab, an example, a host embedding the module
-TINYDESKTOP_JEV_JOURNAL=1 scripts/lab run mail-compose --mode flow
+TINYDESKTOP_JEV_JOURNAL=1 scripts/lab run <scenario> --mode flow
 ```
 
 | Value | Effect |
@@ -104,7 +104,8 @@ For anything the summary does not cover, the file is plain JSON Lines:
 
 ```sh
 # the ten slowest calls, with their step and size
-jq -c 'select(.event=="exchange") | [.latency_ms, .step, .request_bytes, .questions]' \
+jq -r 'select(.event=="exchange")
+  | "\(.latency_ms)\t\(.step)\t\(.request_bytes)\t\(.questions | join(","))"' \
   .jev-journal/<run>/journal.jsonl | sort -rn | head
 # what Jev saw on step 3
 jq 'select(.event=="exchange" and .step=="3") | .request.state' .jev-journal/<run>/journal.jsonl

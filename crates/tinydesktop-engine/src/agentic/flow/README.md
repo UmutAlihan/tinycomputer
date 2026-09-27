@@ -31,5 +31,6 @@ its rationale are in `docs/specs/jev-intent-flows.md`, and
   step takes at most 8 turns.
 - Irreversible controls are pressed only by `stop_before` with
   `allow_destructive`.
-- The runtime holds no files and no state between runs; grounding hints travel
-  in the request and the result.
+- The runtime holds no state between runs; grounding hints travel in the
+  request and the result. The only files it writes are the opt-in debug
+  journal's (`../journal/`), best effort, never read back.
