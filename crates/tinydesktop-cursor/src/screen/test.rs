@@ -197,9 +197,17 @@ fn a_missing_helper_leaves_the_cursor_off() {
 fn the_helper_process_receives_one_line_per_command() {
     use super::ProcessOverlay;
     let mut overlay = ProcessOverlay::spawn(Some(std::path::Path::new("/bin/cat"))).unwrap();
-    for _ in 0..100 {
-        overlay.send(&OverlayCommand::Hide).unwrap();
-    }
+    // A burst faster than the helper reads is delivered in part and dropped
+    // in part — never blocked on.
+    let delivered = (0..100)
+        .map(|_| overlay.send(&OverlayCommand::Hide))
+        .filter(|sent| match sent {
+            Ok(()) => true,
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => false,
+            Err(error) => panic!("the helper is alive: {error}"),
+        })
+        .count();
+    assert!(delivered > 0);
     drop(overlay);
 
     // A helper that exits at once is noticed, and the cursor stops sending.
