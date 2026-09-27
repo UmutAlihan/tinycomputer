@@ -29,8 +29,13 @@ tinyinference-llm = { workspace = true, optional = true }
 
 [features]
 default = ["inference"]
-# `lab --mode authored`: an LLM writes the flow from the scenario brief.
-inference = ["dep:tinyinference-llm"]
+# `lab --mode authored`: an LLM writes the flow from the scenario brief, and
+# `task_live` asks the engine's planner for one.
+inference = ["dep:tinyinference-llm", "tinydesktop-engine/planner"]
+
+[[bin]]
+name = "task_live"
+required-features = ["inference"]
 
 [lints]
 workspace = true
