@@ -84,6 +84,30 @@ fn static_text_is_kept_as_context_and_large_screens_are_not_cut() {
 }
 
 #[test]
+fn a_rich_text_body_never_reaches_context_but_stays_in_text_nodes() {
+    // A mail body or a web view holds its text over ref-less static text
+    // descendants. That text is field content, so it must never surface in
+    // `context` — sent to Jev on every request regardless of
+    // `include_values` — even though it carries no ref and would otherwise
+    // be treated like ordinary screen chrome.
+    let screen = parsed(&json!({"role": "window", "children": [
+        {"role": "statictext", "name": "New Message"},
+        {"role": "webarea", "name": "message body", "children": [
+            {"role": "statictext", "value": "Hi Sam, this is private."}
+        ]}
+    ]}));
+    assert_eq!(screen.context, vec!["New Message"]);
+    assert!(
+        screen
+            .text_nodes
+            .iter()
+            .any(|node| node.value.as_ref().and_then(serde_json::Value::as_str)
+                == Some("Hi Sam, this is private.")),
+        "the body text must still be reachable for gated field-content extraction"
+    );
+}
+
+#[test]
 fn a_truncated_subtree_is_recorded_for_exploration() {
     let screen = parsed(&json!({"role": "window", "children": [
         {"ref_id": "@s:list", "role": "scrollarea", "subtree_truncated": true, "available_actions": ["Scroll"]},
