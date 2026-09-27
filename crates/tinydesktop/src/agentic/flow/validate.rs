@@ -45,9 +45,8 @@ pub(super) fn check(flow: &Flow, known: &BTreeSet<String>) -> FlowValidation {
     }
     let mut defined = known.clone();
     defined.extend(flow.vars.keys().cloned());
-    collect_reads(&flow.steps, &mut defined);
     let mut count = 0;
-    walk(&flow.steps, "", 0, &defined, &mut count, &mut errors);
+    walk(&flow.steps, "", 0, &mut defined, &mut count, &mut errors);
     if count > MAX_STEPS {
         errors.push(format!(
             "the flow has {count} steps; at most {MAX_STEPS} are allowed"
