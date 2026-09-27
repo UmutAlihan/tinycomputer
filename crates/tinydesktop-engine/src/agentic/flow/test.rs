@@ -2982,7 +2982,7 @@ fn first_biased(question: &Question, needle: &str) -> Answer {
             }
             (key.clone(), probability)
         })
-        .collect::<BTreeMap<_, _>>();
+        .collect::<BTreeMap<String, f64>>();
     let choice = probabilities
         .iter()
         .max_by(|left, right| left.1.total_cmp(right.1))
@@ -3227,7 +3227,7 @@ fn merged_answers_average_under_the_original_keys() {
 
 #[tokio::test]
 async fn a_web_page_is_named_and_the_name_briefs_the_next_question() {
-    let run = run_with(
+    let web = run_with(
         App::default(),
         json!({"app": "browser", "steps": [
             {"browse": "https://flights.test"},
@@ -3237,19 +3237,19 @@ async fn a_web_page_is_named_and_the_name_briefs_the_next_question() {
         |id, question, _| (id == "page_kind").then(|| pick(question, "results", 0.9)),
     )
     .await;
-    let named = run
+    let named = web
         .requests
         .iter()
         .filter(|request| request.questions.contains_key("page_kind"))
         .count();
     assert!(named > 0, "a web page's questions carry the page kind");
     assert!(
-        run.requests
+        web.requests
             .iter()
             .any(|request| brief_of(request)["page"] == "results"),
         "a later question is told the page is a results page"
     );
-    assert!(run.result.steps[1].loops.contains(&FlowLoop::PageKind));
+    assert!(web.result.steps[1].loops.contains(&FlowLoop::PageKind));
     let desktop = run(App::default(), mail_flow()).await;
     assert!(
         desktop
