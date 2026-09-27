@@ -330,8 +330,9 @@ impl Scenario {
 /// `auto`: a read that mentions every mode, or one `osascript` could not
 /// answer, must not report a false pass.
 fn appearance_read_verdict(flow: Option<&FlowRunResult>) -> Verdict {
-    let dark =
-        osascript(r#"tell application "System Events" to tell appearance preferences to get dark mode"#);
+    let dark = osascript(
+        r#"tell application "System Events" to tell appearance preferences to get dark mode"#,
+    );
     let expected = match dark.trim() {
         "true" => "dark",
         "false" => "light",
