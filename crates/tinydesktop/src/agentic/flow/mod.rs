@@ -172,6 +172,33 @@ pub(super) struct FlowRun<'r, B> {
     tracing: bool,
     trace: Vec<JevExchange>,
     step: String,
+    /// Every `stop_before` phrase the flow declares, gathered once up front
+    /// so an ordinary step's destructive gate can recognize a control the
+    /// flow has already named as irreversible, in its own words.
+    pub(super) stop_before: Vec<String>,
+}
+
+/// Every `stop_before` phrase in `steps`, gathered from every branch of
+/// `if` and every round of `repeat_until`: a control the flow names there is
+/// irreversible regardless of which branch a run actually takes.
+fn stop_before_phrases(steps: &[FlowStep]) -> Vec<String> {
+    let mut phrases = Vec::new();
+    collect_stop_before(steps, &mut phrases);
+    phrases
+}
+
+fn collect_stop_before(steps: &[FlowStep], phrases: &mut Vec<String>) {
+    for step in steps {
+        match step.action() {
+            FlowAction::StopBefore(phrase) => phrases.push(phrase),
+            FlowAction::RepeatUntil(repeat) => collect_stop_before(&repeat.steps, phrases),
+            FlowAction::If(branch) => {
+                collect_stop_before(&branch.then, phrases);
+                collect_stop_before(&branch.otherwise, phrases);
+            }
+            _ => {}
+        }
+    }
 }
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
