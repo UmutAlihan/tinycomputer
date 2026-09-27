@@ -3972,12 +3972,12 @@ async fn a_wide_turn_judges_and_chooses_its_target_in_one_request() {
     assert_eq!(outcomes(&narrow.result), outcomes(&broad.result));
     assert_eq!(broad.app.sim().clicks, ["New Message"]);
     assert_eq!(
-        narrow.result.steps[1].jev_calls, 2,
-        "narrow: judge, then choose"
+        narrow.result.steps[1].jev_calls, 3,
+        "narrow: judge, choose, then judge the result"
     );
     assert_eq!(
-        broad.result.steps[1].jev_calls, 1,
-        "wide: one request judges the screen and chooses the control"
+        broad.result.steps[1].jev_calls, 2,
+        "wide: one request judges the screen and chooses the control, one judges the result"
     );
     let first = &broad.requests[0];
     for id in ["done", "not_done", "progress", "move", "target_activate", "again_activate"] {
