@@ -55,8 +55,9 @@ fn the_pulse_ring_grows_and_fades() {
     let early = ring_at(1).unwrap();
     let late = ring_at(PULSE_FRAMES - 2).unwrap();
     assert!(late > early, "{early} -> {late}");
+    // Past five points left of the tip only the ring is drawn.
     let peak = |frame: usize| {
-        (0..32)
+        (5..32)
             .map(|r| alpha(&sprite, frame, x - r, y))
             .max()
             .unwrap()

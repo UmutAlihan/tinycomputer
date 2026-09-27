@@ -53,8 +53,8 @@ fn one_cursor_glides_from_target_to_target_across_surfaces() {
     let (second, appears) = path(&sent[1]);
     assert!(!appears);
     assert_eq!(
-        second[0],
-        [0.0, landed[1], landed[2]],
+        second[0].map(f64::to_bits),
+        [0.0, landed[1], landed[2]].map(f64::to_bits),
         "no jump between surfaces"
     );
 }

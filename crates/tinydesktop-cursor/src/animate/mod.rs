@@ -111,7 +111,7 @@ impl Animator {
             1.0
         };
         let fade_out = (1.0 - fading / FADE_MS).clamp(0.0, 1.0);
-        let pulse = (landed >= 0.0 && landed < PULSE_MS).then(|| landed / PULSE_MS);
+        let pulse = (0.0..PULSE_MS).contains(&landed).then(|| landed / PULSE_MS);
         Some(Frame {
             position,
             opacity: fade_in.min(fade_out),

@@ -1,0 +1,84 @@
+[package]
+name = "tinydesktop-cursor-overlay"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The window that draws the agent's cursor above everything on screen: click-through, never focused, fed glides on standard input."
+readme = "README.md"
+keywords = ["automation", "cursor", "overlay"]
+categories = ["os"]
+publish = false
+
+[dependencies]
+# The protocol it reads, the animator that decides each frame, and the
+# sprite it shows.
+tinydesktop-cursor = { workspace = true }
+
+# AppKit: a borderless, transparent, click-through window showing the sprite.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+    "std",
+    "block2",
+    "NSData",
+    "NSDate",
+    "NSGeometry",
+    "NSTimer",
+    "NSArray",
+] }
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSApplication",
+    "NSResponder",
+    "NSRunningApplication",
+    "NSWindow",
+    "NSView",
+    "NSControl",
+    "NSImageView",
+    "NSImage",
+    "NSImageCell",
+    "NSColor",
+    "NSScreen",
+    "NSGraphics",
+] }
+# The timer that drives the animation takes an Objective-C block.
+block2 = "0.6"
+
+# Win32: a layered, topmost, click-through, non-activating window.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# The workspace lint set, except that `unsafe_code` is `deny` rather than
+# `forbid`: drawing a window is foreign-function work on every platform, so
+# the platform modules — and only they — allow it, each `unsafe` block with a
+# `// SAFETY:` comment. Keep the rest identical to the root `Cargo.toml`.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+doc_markdown = "warn"
+must_use_candidate = "warn"
+
+[lints.rustdoc]
+broken_intra_doc_links = "warn"
+private_intra_doc_links = "warn"
