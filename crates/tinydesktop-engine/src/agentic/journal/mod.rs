@@ -108,11 +108,6 @@ impl Journal {
         }
     }
 
-    /// Whether a run is being written, so events are worth building.
-    pub(crate) fn is_recording(&self) -> bool {
-        self.run.is_some()
-    }
-
     /// The directory of the run being written, if any.
     pub(crate) fn run_dir(&self) -> Option<PathBuf> {
         Some(self.root.as_ref()?.join(&self.run.as_ref()?.id))
