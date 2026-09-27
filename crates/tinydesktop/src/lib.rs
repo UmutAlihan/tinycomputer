@@ -11,23 +11,20 @@
 //!
 //! # Layout
 //!
-//! This is the implementation crate in a three-crate workspace:
+//! This is the module crate of the workspace. It holds no behavior of its own:
 //!
 //! - [`tinydesktop_bus`] — the wire contract. Member names, request payloads,
 //!   the response envelope, and the contract version, with no transport, no
 //!   engine, and no behavior. A host that only makes calls depends on that
 //!   crate alone.
-//! - `tinydesktop` — this crate. The engine wrapper, the crate-wide error type,
-//!   and the `TinyBus` adapter that serves them, built as both an `rlib` and
-//!   the `cdylib` the loader consumes.
-//!
-//! Within this crate:
-//!
-//! - `src/error/` holds the crate-wide [`Error`] enum and the [`Result`] alias.
-//! - `src/desktop/` holds [`Desktop`], with one method per member, split by
-//!   family across sibling files.
-//! - `src/tinybus_module/` adapts those methods to the bus and exports the
-//!   module descriptor, embedded manifest, and initialization entrypoint.
+//! - `tinydesktop-desktop` — [`Desktop`], the agent-desktop adapter, with one
+//!   method per member, and the crate-wide [`Error`].
+//! - `tinydesktop-engine` — the Jev runtime behind `ResolveIntent`, `RunGoal`,
+//!   and `RunFlow`.
+//! - `tinydesktop` — this crate. `src/tinybus_module/` adapts the adapter and
+//!   the engine to the bus and exports the module descriptor, embedded
+//!   manifest, and initialization entrypoint, built as both an `rlib` and the
+//!   `cdylib` the loader consumes.
 //!
 //! Every public item is re-exported from here — including all of
 //! [`tinydesktop_bus`] — so downstream users have one predictable surface and
