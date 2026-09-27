@@ -286,8 +286,6 @@ fn every_operation_becomes_its_engine_command() {
         fake.last("inserttext"),
         json!({"action": "inserttext", "text": "Srinagar"})
     );
-        "{typed}"
-    );
     assert!(surface.execute(JevOperation::Scroll, None, None).ok);
 }
 
