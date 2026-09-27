@@ -488,16 +488,12 @@ Then reproduce it in the simulator in
 `crates/tinycomputer-engine/src/agentic/flow/test.rs` (a scripted mail app,
 booking widgets, and an oracle Jev that answers from their state) and fix it.
 
-## The wide strategy
+## The wide strategy, and the thresholds
 
 `strategy: "wide"` keeps every loop and threshold above and changes how they
 are asked: one request per `do` turn over a digest of the screen, carrying
 the judgement, `dismiss` for whatever is in front, and a target for every
 move; a crowded screen is surveyed first for which regions matter; and every
-question sees the run's working memory in place of the flat history. See
-[`specs/jev-wide-turns.md`](specs/jev-wide-turns.md).
-
-## Thresholds
-
-Every constant a decision is thresholded on is listed, with its value and
-file, in [`decision-thresholds.md`](decision-thresholds.md).
+question sees the run's working memory in place of the flat history
+([`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)). Every constant a
+decision is thresholded on is in [`decision-thresholds.md`](decision-thresholds.md).
