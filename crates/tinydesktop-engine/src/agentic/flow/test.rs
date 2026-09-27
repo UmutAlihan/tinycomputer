@@ -1790,19 +1790,48 @@ fn validation_rejects_a_fact_referenced_in_every_model_facing_position() {
 }
 
 #[test]
-fn validation_allows_a_fact_typed_locally_or_reached_by_open_or_browse() {
+fn validation_allows_a_fact_only_as_an_enter_steps_typed_value() {
     let flow: Flow = serde_json::from_value(json!({
         "app": "Mail",
         "steps": [
-            {"open": "${app_name}"},
-            {"browse": "${site}"},
             {"enter": {"email address": "${email}"}}
         ]
     }))
     .unwrap();
-    let facts = BTreeSet::from(["app_name".to_owned(), "site".to_owned(), "email".to_owned()]);
+    let facts = BTreeSet::from(["email".to_owned()]);
     let validation = validate::check(&flow, &facts, &facts);
     assert!(validation.valid, "{:?}", validation.errors);
+}
+
+#[test]
+fn validation_rejects_a_fact_reached_by_open_or_browse() {
+    // The launched application or address becomes `screen.app` and a step
+    // note in `history`, both of which reach Jev on a later step, so these
+    // are rejected the same as any other model-facing position.
+    let open = validate::check(
+        &serde_json::from_value(json!({"app": "Mail", "steps": [{"open": "${app_name}"}]}))
+            .unwrap(),
+        &BTreeSet::from(["app_name".to_owned()]),
+        &BTreeSet::from(["app_name".to_owned()]),
+    );
+    assert!(
+        open.errors
+            .iter()
+            .any(|error| error.contains("`${app_name}` is a fact"))
+    );
+
+    let browse = validate::check(
+        &serde_json::from_value(json!({"app": "browser", "steps": [{"browse": "${site}"}]}))
+            .unwrap(),
+        &BTreeSet::from(["site".to_owned()]),
+        &BTreeSet::from(["site".to_owned()]),
+    );
+    assert!(
+        browse
+            .errors
+            .iter()
+            .any(|error| error.contains("`${site}` is a fact"))
+    );
 }
 
 #[test]
