@@ -293,7 +293,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .and_then(|last| last.target.as_ref())
                 .map(label);
             let mut judged = if self.wide() {
-                self.judge_wide(log, &screen, intent, last.as_deref(), &state.banned)
+                let pressed = state.last.as_ref().and_then(|last| last.target.clone());
+                self.judge_wide(log, &screen, intent, pressed.as_ref(), &state.banned)
                     .await?
             } else {
                 self.judge(log, &screen, intent, last.as_deref()).await?

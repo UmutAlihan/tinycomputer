@@ -4471,3 +4471,35 @@ async fn a_picked_card_that_cannot_be_opened_says_why() {
         "only a covered click is retried"
     );
 }
+
+#[test]
+fn the_control_pressed_last_turn_is_offered_last_even_with_new_states() {
+    let toggle = node(
+        "Destination",
+        "button",
+        &["Click"],
+        &["window \"Book\"", "form"],
+        10.0,
+    );
+    let other = node(
+        "Srinagar",
+        "option",
+        &["Click"],
+        &["window \"Book\"", "listbox"],
+        20.0,
+    );
+    let mut pool = vec![
+        Candidate {
+            states: vec!["expanded".to_owned()],
+            ..toggle.clone()
+        },
+        other.clone(),
+    ];
+    super::wide::pressed_last(&mut pool, Some(&toggle));
+    assert_eq!(pool[0].name.as_deref(), Some("Srinagar"));
+    assert_eq!(pool[1].name.as_deref(), Some("Destination"));
+
+    let mut untouched = vec![toggle.clone(), other];
+    super::wide::pressed_last(&mut untouched, None);
+    assert_eq!(untouched[0].name.as_deref(), Some("Destination"));
+}

@@ -174,13 +174,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         log: &mut StepLog,
         screen: &Screen,
         intent: &str,
-        last: Option<&str>,
+        pressed: Option<&Candidate>,
         banned: &BTreeSet<String>,
     ) -> Result<Judgement, Halt> {
         let digest = digest(screen);
         self.survey(log, screen, &digest, intent).await?;
         let ranked = digest.ranked(&self.rendering(&digest));
-        let mut questions = self.judge_questions(log, intent, last);
+        let last = pressed.map(label);
+        let mut questions = self.judge_questions(log, intent, last.as_deref());
 
         let front = digest
             .front()
@@ -214,7 +215,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     continue;
                 }
                 let purpose = format!("{verb} to accomplish: {intent}");
-                let (plan, asked) = self.plan_target(log, operation, purpose, intent, pool);
+                let (plan, asked) =
+                    self.plan_target(log, operation, purpose, intent, pool, pressed);
                 for (id, question) in asked.0 {
                     questions = questions.with(&id, question);
                 }
@@ -303,8 +305,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         purpose: String,
         intent: &str,
         mut pool: Vec<Candidate>,
+        pressed: Option<&Candidate>,
     ) -> (TargetPlan, Questions) {
         named_first(&purpose, &mut pool);
+        pressed_last(&mut pool, pressed);
         let mut questions = Questions::default();
         let known = if self.enabled(FlowLoop::Memory) {
             recall(&self.memory, &self.app, intent, &pool).cloned()
@@ -532,6 +536,30 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 /// The grounding-memory key an obstacle's dismissal is remembered under.
 fn obstacle_key(front: &str) -> String {
     format!("obstacle: {front}")
+}
+
+/// Moves the element pressed last turn to the end of `pool`: pressing a
+/// toggle again closes what it just opened (measured on a booking widget,
+/// where the destination button, named by the step, led the options and was
+/// pressed twice). An element that changed nothing is banned instead.
+pub(super) fn pressed_last(pool: &mut Vec<Candidate>, pressed: Option<&Candidate>) {
+    if let Some(pressed) = pressed
+        && let Some(at) = pool
+            .iter()
+            .position(|candidate| same_element(candidate, pressed))
+    {
+        let again = pool.remove(at);
+        pool.push(again);
+    }
+}
+
+/// Whether two snapshots' candidates are the same element: role, label, and
+/// place, ignoring the value and states pressing it changes.
+fn same_element(left: &Candidate, right: &Candidate) -> bool {
+    left.role == right.role
+        && left.name.as_ref().or(left.description.as_ref())
+            == right.name.as_ref().or(right.description.as_ref())
+        && left.path == right.path
 }
 
 /// Whether `candidate` supports the engine action `capability`.
