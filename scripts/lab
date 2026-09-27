@@ -33,6 +33,12 @@ case "${1:-help}" in
     cargo build --release -p tinydesktop --lib >&2
     mkdir -p target/lab
     cp "target/release/${library}" "target/lab/${library}"
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+      # The engine's clipboard (and so the paste fallback for rich-text
+      # fields) runs through a helper it only trusts beside the module.
+      cargo build --release -p agent-desktop-macos --bin agent-desktop-macos-helper >&2
+      install -m 755 target/release/agent-desktop-macos-helper target/lab/agent-desktop-macos-helper
+    fi
     hash="$(shasum -a 256 "target/lab/${library}" | awk '{print $1}')"
     printf '"%s" = "%s"\n' "$library" "$hash" > target/lab/modules.toml
     ;;
