@@ -16,7 +16,7 @@ use super::{
     ask::{self, CAP, Questions, chosen, elements, numbered},
     backend::deliver_text,
     memory::{learn, recall, remember},
-    validate::substitute,
+    validate::{substitute, substitute_safe},
     view::{Candidate, Screen, label, signature},
 };
 
