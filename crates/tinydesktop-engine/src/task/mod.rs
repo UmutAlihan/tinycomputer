@@ -629,6 +629,52 @@ async fn plan_then_drive(
     }
 }
 
+/// Builds the next `RunFlowRequest` for `run`, capped at what the task's
+/// budget has not already spent, along with the constraints to run it under
+/// and how much of `max_elapsed_ms` remains (`None` when it is unbounded).
+/// `None` overall only when the task's state was poisoned by a panic.
+fn run_request(
+    cell: &Cell,
+    run: &Run,
+) -> Option<(RunFlowRequest, TaskConstraints, Option<u64>)> {
+    let state = cell.state.lock().ok()?;
+    let mut vars = run.flow.vars.clone();
+    for name in state.facts.names() {
+        if let Some(value) = state.facts.get(name) {
+            vars.insert(name.to_owned(), value.to_owned());
+        }
+    }
+    let max_actions = state
+        .budget
+        .max_actions
+        .unwrap_or(120)
+        .saturating_sub(state.spent.actions);
+    let max_model_calls = state
+        .budget
+        .max_model_calls
+        .unwrap_or(300)
+        .saturating_sub(state.spent.model_calls);
+    let time_left = state
+        .budget
+        .max_elapsed_ms
+        .map(|max| max.saturating_sub(state.spent.elapsed_ms));
+    Some((
+        RunFlowRequest {
+            flow: run.flow.clone(),
+            vars,
+            allow_destructive: run.allow_destructive,
+            include_values: false,
+            max_actions,
+            max_model_calls,
+            memory: state.memory.clone(),
+            trace: state.trace,
+            ..RunFlowRequest::default()
+        },
+        state.constraints.clone(),
+        time_left,
+    ))
+}
+
 /// Runs a task's flows in order until one stops it or all finish.
 ///
 /// A task's [`TaskBudget`] bounds the whole task, not one run of it: an
