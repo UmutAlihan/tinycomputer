@@ -119,8 +119,9 @@ impl Host {
     ///
     /// Fails on a transport error or an error envelope.
     pub async fn run_flow(&self, request: &RunFlowRequest) -> Result<FlowRunResult, LabError> {
-        let reply = self
-            .call(names::methods::RUN_FLOW, serde_json::to_value(request)?)
+        let reply: DesktopResponse = self
+            .proxy
+            .call_confidential(names::methods::RUN_FLOW, (request,))
             .await?;
         data(reply)
     }
@@ -131,8 +132,9 @@ impl Host {
     ///
     /// Fails on a transport error or an error envelope.
     pub async fn run_goal(&self, request: &RunGoalRequest) -> Result<JevRunResult, LabError> {
-        let reply = self
-            .call(names::methods::RUN_GOAL, serde_json::to_value(request)?)
+        let reply: DesktopResponse = self
+            .proxy
+            .call_confidential(names::methods::RUN_GOAL, (request,))
             .await?;
         data(reply)
     }
