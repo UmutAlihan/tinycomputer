@@ -375,8 +375,8 @@ impl Tasks {
             }
         }
         let known = known_names(&state.flow, &state.facts);
-        let missing =
-            crate::agentic::missing_inputs(&state.flow, &known, &fact_names(&state.facts));
+        let facts = fact_names(&state.facts);
+        let missing = crate::agentic::missing_inputs(&state.flow, &known, &facts);
         if !missing.is_empty() {
             drop(state);
             publish(
@@ -385,6 +385,25 @@ impl Tasks {
                 "The task still needs values before it can start.",
             );
             return AgentResponse::ok(cell.view.borrow().clone());
+        }
+        // A newly supplied value can turn a reference that only looked
+        // undefined at `StartTask` into a fact used somewhere Jev must never
+        // see it, so the flow is checked again in full now that every name
+        // it uses is finally known, rather than trusting the check `start`
+        // already ran against an incomplete `facts` set.
+        let problems = crate::agentic::check_flow(&state.flow, &known, &facts)
+            .errors
+            .into_iter()
+            .filter(|error| !is_undefined(error))
+            .collect::<Vec<_>>();
+        if !problems.is_empty() {
+            drop(state);
+            return AgentResponse::err(AgentError::new(
+                "INVALID_FLOW",
+                problems.join("; "),
+                "fix the flow; Describe returns the guide",
+                true,
+            ));
         }
         let run = Run {
             flow: state.flow.clone(),
