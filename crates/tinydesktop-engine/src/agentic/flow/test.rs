@@ -3455,3 +3455,95 @@ fn a_variable_named_without_its_braces_is_rejected() {
         "only the bare identifier is an error; a plain word naming a variable is not"
     );
 }
+
+#[test]
+fn an_oversized_request_is_fitted_under_the_limit() {
+    let brief = json!({"goal": "g".repeat(500)});
+    let mut questions = ask::Questions::default();
+    for group in 0..10 {
+        questions = questions.with(
+            &format!("group_{group}"),
+            ask::options(
+                json!({"task": "t", "brief": brief}),
+                [("1".to_owned(), json!("a")), ("2".to_owned(), json!("b"))],
+            ),
+        );
+    }
+    let state = json!({
+        "visible_text": {"untrusted_accessibility_data": (0..400).map(|line| format!("line {line} {}", "x".repeat(40))).collect::<Vec<_>>()},
+        "elements": {"untrusted_accessibility_data": (0..50).map(|line| format!("button {line}")).collect::<Vec<_>>()},
+    });
+    let mut request = ask::request("jev-latest", state, questions);
+    let before = serde_json::to_vec(&request).unwrap().len();
+    fit(&mut request, 12_000);
+    let after = serde_json::to_vec(&request).unwrap().len();
+    assert!(before > 12_000 && after <= 12_000, "{before} -> {after}");
+    let briefed = request
+        .questions
+        .values()
+        .filter(|question| matches!(question, Question::Choice(choice) if choice.instructions.get("brief").is_some()))
+        .count();
+    assert_eq!(briefed, 1, "the brief stays on one question");
+    let text = request.state["visible_text"]["untrusted_accessibility_data"]
+        .as_array()
+        .unwrap();
+    assert_eq!(
+        text[0].as_str().unwrap(),
+        format!("line 0 {}", "x".repeat(40)),
+        "the top of the screen is kept"
+    );
+    assert_eq!(
+        request.state["elements"]["untrusted_accessibility_data"]
+            .as_array()
+            .unwrap()
+            .len(),
+        50
+    );
+
+    let mut small = ask::request(
+        "jev-latest",
+        json!({"a": [1, 2]}),
+        ask::Questions::default().with("done", ask::completion("x")),
+    );
+    let untouched = serde_json::to_value(&small).unwrap();
+    fit(&mut small, 12_000);
+    assert_eq!(serde_json::to_value(&small).unwrap(), untouched);
+    let mut unshrinkable = ask::request(
+        "jev-latest",
+        json!({"a": "y".repeat(500)}),
+        ask::Questions::default().with("done", ask::completion("x")),
+    );
+    fit(&mut unshrinkable, 100);
+    assert_eq!(
+        unshrinkable.state["a"].as_str().unwrap().len(),
+        500,
+        "nothing to cut is left as is"
+    );
+}
+
+#[tokio::test]
+async fn a_long_goal_is_clipped_in_the_brief() {
+    let run = run_with(
+        App::default(),
+        mail_flow(),
+        |request| {
+            request.brief = tinydesktop_bus::FlowBrief {
+                goal: "g".repeat(2000),
+                ..tinydesktop_bus::FlowBrief::default()
+            };
+        },
+        |_, _, _| None,
+    )
+    .await;
+    let goal = run
+        .requests
+        .iter()
+        .map(brief_of)
+        .find(|brief| !brief.is_null())
+        .unwrap()["goal"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_eq!(goal.chars().count(), 601);
+    assert!(goal.ends_with('…'));
+}
