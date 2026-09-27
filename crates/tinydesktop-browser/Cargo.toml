@@ -28,6 +28,9 @@ sha2 = { workspace = true }
 # The surface trait and screen model `BrowserSurface` implements, and the
 # platform keymap.
 tinydesktop-core = { workspace = true }
+# The virtual mouse and keyboard: clicks glide onto their target and text is
+# typed key by key, as real pointer and key events on the page.
+tinydesktop-input = { workspace = true }
 # Per-session locks held across engine calls; `rt` for the runtime handle a
 # blocking surface call runs the async browser on.
 tokio = { workspace = true, features = ["sync", "rt"] }
