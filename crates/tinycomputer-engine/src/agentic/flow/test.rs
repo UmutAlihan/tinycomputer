@@ -4388,7 +4388,7 @@ async fn a_gated_stop_before_asks_to_find_the_control_not_to_press_it() {
         |request| {
             request.memory = vec![GroundingHint {
                 app: "Mail".to_owned(),
-                key: "perform: sending the email".to_owned(),
+                key: "perform sending the email".to_owned(),
                 role: "button".to_owned(),
                 name: Some("Send".to_owned()),
                 path: vec!["window \"New Message\"".to_owned(), "toolbar".to_owned()],
@@ -4407,6 +4407,10 @@ async fn a_gated_stop_before_asks_to_find_the_control_not_to_press_it() {
             .iter()
             .any(|request| request.questions.keys().collect::<Vec<_>>() == ["confirm"]),
         "a hint stored under the step's own words is still recalled: {:?}",
-        remembered.requests.iter().map(|r| r.questions.keys().cloned().collect::<Vec<_>>()).collect::<Vec<_>>()
+        remembered
+            .requests
+            .iter()
+            .map(|r| r.questions.keys().cloned().collect::<Vec<_>>())
+            .collect::<Vec<_>>()
     );
 }
