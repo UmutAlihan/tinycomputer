@@ -16,16 +16,17 @@ fn the_contract_binds_to_itself() {
 
 #[test]
 fn a_newer_minor_on_the_module_side_binds() {
-    assert!(is_compatible((1, 7)));
+    assert!(is_compatible((1, 8)));
     assert!(is_compatible((1, 97)));
 }
 
 #[test]
 fn an_older_minor_on_the_module_side_is_rejected() {
-    // A host built against 1.7 cannot call a 1.6 module: the task members it
-    // names are not served there.
-    assert!(!binds((1, 7), (1, 6)));
-    assert!(binds((1, 7), (1, 7)));
+    // A host built against 1.8 cannot call a 1.7 module: the brief and vote
+    // fields it sends are not understood there.
+    assert!(!binds((1, 8), (1, 7)));
+    assert!(binds((1, 8), (1, 8)));
+    assert!(!is_compatible((1, 7)));
 }
 
 #[test]
