@@ -181,7 +181,7 @@ impl Facts {
     }
 
     /// `text` with every secret value replaced by `${name}` — the template a
-    /// model knows it by. A secret of [`MIN_MASKED_DIGITS`] digits or more is
+    /// model knows it by. A secret of six digits or more is
     /// also found by its digits alone, so a card number the page shows in
     /// groups (`4111 1111 1111 1111`) is masked even when it was given as
     /// one run of digits.
