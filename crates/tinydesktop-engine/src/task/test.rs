@@ -16,7 +16,7 @@ use tinydesktop_bus::agent::{
 };
 use tinydesktop_bus::{
     DesktopError, DesktopResponse, Flow, FlowAction, FlowRunResult, FlowStep, FlowStopReason,
-    JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport,
+    IfStep, JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport,
 };
 
 use super::interpret::app_at;
