@@ -85,10 +85,8 @@ pub(crate) fn glide_onto(desktop: &Desktop, target: &Candidate) {
         return;
     };
     let mut pacer = Pacer::new(std::thread::sleep);
-    if play(&plan, &mut RealPointer(desktop), &mut |pause| {
-        pacer.wait(pause)
-    })
-    .is_err()
+    let mut wait = |pause| pacer.wait(pause);
+    if play(&plan, &mut RealPointer(desktop), &mut wait).is_err()
         && let Ok(mut mouse) = desktop.pointer().0.lock()
     {
         // Where the pointer stopped is unknown; the next glide enters afresh.
