@@ -769,10 +769,27 @@ fn plain(text: &str) -> String {
         .join(" ")
 }
 
-/// Whether an element shows `option` in its name, value, or description.
+/// The day, month, and year (when given) a date option names, as words.
+fn date_words(option: &str) -> Vec<String> {
+    plain(option)
+        .split(' ')
+        .filter(|word| {
+            MONTHS.contains(word)
+                || word.parse::<u16>().is_ok_and(|number| {
+                    (1..=31).contains(&number) || (1900..=2100).contains(&number)
+                })
+        })
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Whether an element shows `option` in its name, value, or description. A
+/// date matches by its day, month, and year, whatever the weekday or order
+/// (`Sunday, 18 October 2026` shows `18 October 2026`).
 fn mentions(candidate: &Candidate, option: &str) -> bool {
-    let option = plain(option);
-    !option.is_empty()
+    let wanted = plain(option);
+    let date = looks_like_date(option).then(|| date_words(option));
+    !wanted.is_empty()
         && [
             candidate.name.clone(),
             candidate.description.clone(),
@@ -780,7 +797,13 @@ fn mentions(candidate: &Candidate, option: &str) -> bool {
         ]
         .into_iter()
         .flatten()
-        .any(|text| format!(" {} ", plain(&text)).contains(&format!(" {option} ")))
+        .any(|text| {
+            let shown = format!(" {} ", plain(&text));
+            match &date {
+                Some(words) => words.iter().all(|word| shown.contains(&format!(" {word} "))),
+                None => shown.contains(&format!(" {wanted} ")),
+            }
+        })
 }
 
 /// Elements that can be pressed.
