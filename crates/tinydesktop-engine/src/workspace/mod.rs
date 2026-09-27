@@ -130,7 +130,7 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
     }
 
     /// Runs `call` on the side named by `side`, or refuses when that side is
-    /// the browser and there is none.
+    /// not available to this task.
     fn on(
         &self,
         side: Side,
@@ -138,10 +138,11 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
         desktop: impl FnOnce(&D) -> DesktopResponse,
         browser: impl FnOnce(&W) -> DesktopResponse,
     ) -> DesktopResponse {
-        match (side, &self.browser) {
-            (Side::Desktop, _) => desktop(&self.desktop),
-            (Side::Browser, Some(surface)) => browser(surface),
-            (Side::Browser, None) => no_browser(command),
+        match (side, &self.desktop, &self.browser) {
+            (Side::Desktop, Some(surface), _) => desktop(surface),
+            (Side::Desktop, None, _) => no_desktop(command),
+            (Side::Browser, _, Some(surface)) => browser(surface),
+            (Side::Browser, _, None) => no_browser(command),
         }
     }
 }
@@ -152,6 +153,16 @@ fn no_browser(command: &str) -> DesktopResponse {
         DesktopError::new(
             "BROWSER_NOT_AVAILABLE",
             "this task has no browser; allow the browser surface to use web pages",
+        ),
+    )
+}
+
+fn no_desktop(command: &str) -> DesktopResponse {
+    DesktopResponse::err(
+        command,
+        DesktopError::new(
+            "DESKTOP_NOT_AVAILABLE",
+            "this task has no desktop; allow the desktop surface to use applications",
         ),
     )
 }
