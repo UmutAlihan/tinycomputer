@@ -696,11 +696,15 @@ async fn a_plan_that_needs_values_asks_and_a_failed_plan_says_so() {
     assert!(
         matches!(waiting.status, TaskStatus::NeedsInput { ref fields } if fields[0].name == "phone")
     );
-    tasks.continue_task(ContinueTaskRequest {
-        id: started.id.clone(),
-        inputs: BTreeMap::from([("phone".to_owned(), "+91 98765 43210".to_owned())]),
-        ..ContinueTaskRequest::default()
-    });
+    assert!(
+        tasks
+            .continue_task(ContinueTaskRequest {
+                id: started.id.clone(),
+                inputs: BTreeMap::from([("phone".to_owned(), "+91 98765 43210".to_owned())]),
+                ..ContinueTaskRequest::default()
+            })
+            .ok
+    );
     assert!(matches!(
         settle(&tasks, &started.id).await.status,
         TaskStatus::Done { .. }

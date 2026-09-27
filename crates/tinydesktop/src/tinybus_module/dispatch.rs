@@ -28,9 +28,8 @@ use tinydesktop_bus::{
 use std::sync::Arc;
 
 use tinydesktop_bus::agent::{
-    AgentError, AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest,
-    PlanTaskRequest, StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef,
-    TaskReport, TaskView,
+    AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, PlanTaskRequest,
+    StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport, TaskView,
 };
 
 use super::runner::{WorkspaceRunner, jev_not_configured};
@@ -73,10 +72,29 @@ impl DesktopService {
                 })
             })
             .transpose()?;
-        let tasks = Arc::new(agentic::Tasks::new(Arc::new(WorkspaceRunner {
+        let planner = config
+            .as_object()
+            .and_then(|object| object.get("planner"))
+            .map(|value| {
+                let config: agentic::PlannerConfig = serde_json::from_value(value.clone())
+                    .map_err(|_| crate::Error::ConfigFieldType {
+                        field: "planner",
+                        expected: "a planner configuration object with an api_key",
+                    })?;
+                agentic::open_router(&config).map_err(|_| crate::Error::ConfigFieldType {
+                    field: "planner",
+                    expected: "a planner configuration object with an api_key",
+                })
+            })
+            .transpose()?;
+        let mut tasks = agentic::Tasks::new(Arc::new(WorkspaceRunner {
             desktop: desktop.clone(),
             jev: jev.clone(),
-        })));
+        }));
+        if let Some(planner) = planner {
+            tasks = tasks.with_planner(planner);
+        }
+        let tasks = Arc::new(tasks);
         Ok(Self {
             desktop,
             jev,
@@ -158,21 +176,13 @@ impl DesktopService {
                 },
             ],
             self.jev.is_some(),
+            self.tasks.planner_configured(),
         ))
     }
 
     /// Drafts a flow for a plain-language task; needs a planner.
-    #[expect(
-        clippy::unused_async,
-        reason = "tinybus interface members must be `async fn`; this one answers from memory"
-    )]
-    async fn plan_task(&self, _request: PlanTaskRequest) -> TinyBusResult<AgentResponse<TaskPlan>> {
-        Ok(AgentResponse::err(AgentError::new(
-            "PLANNER_NOT_CONFIGURED",
-            "no planner is configured in this module",
-            "write a flow with Describe's guide and pass it as StartTask.flow",
-            false,
-        )))
+    async fn plan_task(&self, request: PlanTaskRequest) -> TinyBusResult<AgentResponse<TaskPlan>> {
+        Ok(self.tasks.plan(&request).await)
     }
 
     /// Starts a task and returns at once with its first view.

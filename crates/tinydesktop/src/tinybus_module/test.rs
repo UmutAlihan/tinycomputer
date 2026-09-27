@@ -490,3 +490,10 @@ fn the_desktop_is_available_only_with_accessibility() {
     ));
     assert_eq!(failed.reason.as_deref(), Some("no surfaces here"));
 }
+
+#[test]
+fn a_planner_is_configured_from_private_configuration_only_with_a_key() {
+    assert!(DesktopService::from_config(&json!({"planner": {"api_key": "k"}})).is_ok());
+    assert!(DesktopService::from_config(&json!({"planner": {"api_key": " "}})).is_err());
+    assert!(DesktopService::from_config(&json!({"planner": {"model": "m"}})).is_err());
+}

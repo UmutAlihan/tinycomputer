@@ -27,7 +27,9 @@ tinydesktop-bus = { workspace = true }
 tinydesktop-desktop = { workspace = true }
 # The agent runtime behind the agentic and task members: Jev loops, goals,
 # flows, the workspace, and the task controller.
-tinydesktop-engine = { workspace = true }
+# `planner` compiles the LLM planner in; it stays inert until the private
+# `planner` configuration supplies a key.
+tinydesktop-engine = { workspace = true, features = ["planner"] }
 # The browser surface type a task's workspace is built with.
 tinydesktop-browser = { workspace = true }
 tinybus = { workspace = true }
