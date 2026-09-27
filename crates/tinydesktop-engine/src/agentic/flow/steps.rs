@@ -358,28 +358,25 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .collect::<Vec<_>>();
         let purpose = format!("the search box that filters the options of {what}");
         let text = option.to_owned();
-        match self.ground(log, screen, &purpose, &purpose, fields).await? {
-            Some(grounded) => {
-                let app = self.app.clone();
-                let target = grounded.candidate;
-                let field = target.clone();
-                self.act(log, "type to filter", Some(&target), move |backend| {
-                    deliver_text(&backend, &app, &field, &text)
-                })
-                .await?;
-                self.history
-                    .push(format!("typed into {} to filter it", label(&target)));
-            }
+        if let Some(grounded) = self.ground(log, screen, &purpose, &purpose, fields).await? {
+            let app = self.app.clone();
+            let target = grounded.candidate;
+            let field = target.clone();
+            self.act(log, "type to filter", Some(&target), move |backend| {
+                deliver_text(&backend, &app, &field, &text)
+            })
+            .await?;
+            self.history
+                .push(format!("typed into {} to filter it", label(&target)));
+        } else {
             // An opened autocomplete often keeps its input unnamed but
             // focused; typing goes where the focus is.
-            None => {
-                self.act(log, "type to filter", None, move |backend| {
-                    backend.execute(JevOperation::TypeText, None, Some(text))
-                })
-                .await?;
-                self.history
-                    .push("typed into the focused field to filter it".to_owned());
-            }
+            self.act(log, "type to filter", None, move |backend| {
+                backend.execute(JevOperation::TypeText, None, Some(text))
+            })
+            .await?;
+            self.history
+                .push("typed into the focused field to filter it".to_owned());
         }
         Ok(())
     }
