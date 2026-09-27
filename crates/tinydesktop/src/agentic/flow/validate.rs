@@ -59,27 +59,19 @@ pub(super) fn check(flow: &Flow, known: &BTreeSet<String>) -> FlowValidation {
     }
 }
 
-fn collect_reads(steps: &[FlowStep], defined: &mut BTreeSet<String>) {
-    for step in steps {
-        match step.action() {
-            FlowAction::Read(read) => {
-                defined.insert(read.into);
-            }
-            FlowAction::RepeatUntil(repeat) => collect_reads(&repeat.steps, defined),
-            FlowAction::If(branch) => {
-                collect_reads(&branch.then, defined);
-                collect_reads(&branch.otherwise, defined);
-            }
-            _ => {}
-        }
-    }
-}
-
+/// Walks `steps` in the order they run, checking every text against the
+/// variables defined so far and growing that set as `read` steps are seen.
+///
+/// A variable a `read` step defines only inside an `if` branch or a
+/// `repeat_until` body is not carried past it: neither branch of an `if` is
+/// guaranteed to run, and `repeat_until` can end after zero rounds when its
+/// condition already holds, so a step after either one cannot rely on what
+/// only they define.
 fn walk(
     steps: &[FlowStep],
     prefix: &str,
     depth: usize,
-    defined: &BTreeSet<String>,
+    defined: &mut BTreeSet<String>,
     count: &mut usize,
     errors: &mut Vec<String>,
 ) {
