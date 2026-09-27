@@ -168,6 +168,9 @@ pub(in crate::agentic) enum Restore {
 /// of being cleared on a guess.
 pub(in crate::agentic) fn restore_plan(previous: &DesktopResponse) -> Option<Restore> {
     let data = previous.data.as_ref().filter(|_| previous.ok)?;
+    if data.get("found").and_then(Value::as_bool) == Some(false) {
+        return Some(Restore::Clear);
+    }
     match data.get("type").and_then(Value::as_str) {
         Some("text") => data
             .get("text")
