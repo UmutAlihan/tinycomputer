@@ -10,6 +10,9 @@ where it cannot drift.
 ```text
 docs/
 ├── README.md      # this index
+├── architecture.md, decision-loops.md, tasks.md   # how the system works
+├── lab.md, docker-lab.md                          # live runs
+├── evals/         # recorded live results
 ├── specs/         # behavior and architecture specifications
 ├── plans/         # implementation plans derived from approved specs
 └── adr/           # architecture decision records, numbered and immutable
@@ -28,6 +31,18 @@ docs/
 Complex modules also carry a module-level `README.md` inside `src/<module>/`
 covering their design, public surface, and important constraints.
 
+Start with these, in order:
+
+- [`architecture.md`](architecture.md): the crates, how a call travels from
+  the bus to a click, threading, configuration, and the safety checks.
+- [`decision-loops.md`](decision-loops.md): how the flow runtime grounds each
+  step on a live screen, every question it asks Jev, and every threshold.
+- [`tasks.md`](tasks.md): the task API for outside agents, pausing and
+  resuming, private values, budgets, and the planner.
+- [`lab.md`](lab.md) and [`docker-lab.md`](docker-lab.md): running flows on a
+  real desktop, and anything that launches Chromium in a container.
+- [`evals/`](evals/): recorded results of live runs.
+
 The contract for what this module serves, and why it is shaped that way, is in
 [`specs/desktop-module-contract.md`](specs/desktop-module-contract.md), with its
 implementation sequence in
@@ -35,7 +50,10 @@ implementation sequence in
 packaging and release contract is in
 [`specs/tinybus-module-release.md`](specs/tinybus-module-release.md), with its
 sequence in
-[`plans/tinybus-module-release.md`](plans/tinybus-module-release.md).
+[`plans/tinybus-module-release.md`](plans/tinybus-module-release.md). Intent
+flows are specified in [`specs/jev-intent-flows.md`](specs/jev-intent-flows.md),
+and the browser, the task API, and the planner in
+[`specs/unified-agent.md`](specs/unified-agent.md).
 
 ## Conventions
 

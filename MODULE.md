@@ -5,19 +5,37 @@ v1. Install only the archive matching the host operating system and
 architecture.
 
 The module claims `ai.tinyhumans.tinydesktop.Desktop`, serves the object at
-`/ai/tinyhumans/tinydesktop/Desktop`, and provides fifty-six members covering
-accessibility-tree observation, ref-addressed interaction, synthesized keyboard
-and mouse input, application and window management, the pasteboard,
-notifications, waits, and status. Every member takes one request payload — or
-none — and returns a `DesktopResponse` envelope carrying either the command's
-data or a structured error with its code, suggestion, and recovery hint. All
-payload types, the interface name, the object path, and the member names are
-published as the `tinydesktop-bus` crate, so a host names them from a library
-rather than by string literal.
+`/ai/tinyhumans/tinydesktop/Desktop`, and provides sixty-seven members:
 
-The module reads its configuration from the loader as a JSON object:
-`session_id` and `trace_path` (strings), `trace_strict` and `headed`
-(booleans). All are optional.
+- 54 desktop primitives: accessibility-tree observation, ref-addressed
+  interaction, synthesized keyboard and mouse input, application and window
+  management, the clipboard, notifications, waits, and status;
+- 5 Jev-driven members: `ResolveIntent`, `RunGoal`, `RunFlow`, `ValidateFlow`,
+  and `FlowGuide`;
+- 8 task members for outside agents: `Describe`, `PlanTask`, `StartTask`,
+  `AwaitTask`, `ContinueTask`, `CancelTask`, `TaskReport`, and `ListTasks`.
+  Tasks run across desktop applications and a Chrome browser, pause for
+  missing details and approvals, and always stop at payment.
+
+Every member takes one request payload, or none, and returns a structured
+reply carrying either the data or an error with its code, suggestion, and
+recovery hint. All payload types, the interface name, the object path, and the
+member names are published as the `tinydesktop-bus` crate, so a host names
+them from a library rather than by string literal.
+
+The module reads its configuration from the loader as a JSON object. Every key
+is optional:
+
+- `session_id` and `trace_path` (strings), `trace_strict` and `headed`
+  (booleans) for the desktop engine;
+- `jev`: the Jev provider and API key, needed by the Jev-driven and task
+  members;
+- `planner`: an OpenRouter `api_key` and optional `model`, which lets
+  `StartTask` accept a plain-language task;
+- `browser.executable`: the Chrome or Chromium binary to launch.
+
+Configuration is delivered as sensitive host-control traffic and is never
+shown to monitors.
 
 ## Permissions
 
@@ -29,8 +47,9 @@ like an application with no buttons. Call `Permissions` to read the current
 state; it prompts only when explicitly asked to.
 
 macOS and Windows have full accessibility backends. Linux loads and answers but
-implements no surfaces yet: observation there fails with
-`PLATFORM_NOT_SUPPORTED`.
+implements no desktop surfaces yet: observation there fails with
+`PLATFORM_NOT_SUPPORTED`. Browser tasks need Chrome or Chromium on the machine,
+or a running Chrome to attach to.
 
 ## Installing
 
