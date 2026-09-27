@@ -596,9 +596,13 @@ pub(in crate::agentic) fn is_destructive(
     screen: &Screen,
     stop_before: &[String],
 ) -> bool {
-    let label = label(candidate);
-    destructive_label(&label.to_ascii_lowercase())
-        || named_in_stop_before(&label, stop_before)
+    let name = candidate
+        .name
+        .as_deref()
+        .or(candidate.description.as_deref())
+        .unwrap_or_default();
+    destructive_label(&label(candidate).to_ascii_lowercase())
+        || named_in_stop_before(name, stop_before)
         || (screen.surface == "sheet" && candidate.name.is_none())
 }
 
