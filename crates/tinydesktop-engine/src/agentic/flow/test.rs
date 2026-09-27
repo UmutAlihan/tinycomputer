@@ -74,6 +74,11 @@ struct Sim {
     destination: bool,
     /// Whether the destination's search field is open.
     searching: bool,
+    /// A departure date shown only through a calendar: `Some(month)` while
+    /// the calendar is open on that month (0 = January).
+    calendar: Option<usize>,
+    /// Whether the departure date control is on screen at all.
+    departure: bool,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -82,6 +87,11 @@ impl Sim {
         self.quirks.contains(&quirk)
     }
 }
+
+const MONTH_NAMES: [&str; 12] = [
+    "January", "February", "March", "April", "May", "June", "July", "August", "September",
+    "October", "November", "December",
+];
 
 #[derive(Clone, Default)]
 struct App(Arc<Mutex<Sim>>);
@@ -220,6 +230,17 @@ impl App {
                 }
             }
         }
+        if sim.departure {
+            let widget = [root.as_str(), "group \"Booking\""];
+            candidates.push(node("Departure", "button", &["Click"], &widget, 120.0));
+            if let Some(month) = sim.calendar {
+                candidates.push(node("Next Month", "button", &["Click"], &widget, 130.0));
+                for day in 1..=28 {
+                    let name = format!("{day} {} 2026", MONTH_NAMES[month]);
+                    candidates.push(node(&name, "button", &["Click"], &widget, 140.0));
+                }
+            }
+        }
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
         if sim.obstacle {
@@ -313,6 +334,12 @@ impl AgentBackend for App {
                     "Keep Editing" => sim.obstacle = false,
                     "Archive" => sim.compose_open = false,
                     "Going to?" => sim.searching = true,
+                    "Departure" => sim.calendar = Some(8),
+                    "Next Month" => sim.calendar = sim.calendar.map(|month| (month + 1) % 12),
+                    day if sim.calendar.is_some() && day.ends_with(" 2026") => {
+                        sim.fields.insert("Departure".to_owned(), day.to_owned());
+                        sim.calendar = None;
+                    }
                     _ => {}
                 }
             }
@@ -1426,6 +1453,53 @@ async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
 
 fn purpose_of(question: &Question) -> String {
     text_of(question, "purpose")
+}
+
+#[tokio::test]
+async fn enter_picks_a_date_from_a_calendar_without_telling_jev_the_date() {
+    let run = run_with(
+        App::with(|sim| sim.departure = true),
+        json!({"app": "Mail", "steps": [{"enter": {"departure date": "Sunday, 18 October 2026"}}]}),
+        |_| {},
+        |id, question, sim| match id {
+            "move" => Some(pick(question, "activate", 0.9)),
+            "done" => Some(noul(if sim.calendar.is_some() { 0.9 } else { 0.05 })),
+            _ if !matches!(question, Question::Choice(_)) => None,
+            _ if id.starts_with("slot_") => Some(pick(question, "none", 0.9)),
+            _ if purpose_of(question).contains("value being entered") => {
+                Some(pick(question, "18 October", 0.9))
+            }
+            _ => Some(pick(question, "Departure", 0.9)),
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed, "{:?}", run.result.steps);
+    let sim = run.app.sim();
+    assert_eq!(sim.fields["Departure"], "18 October 2026");
+    assert_eq!(
+        sim.clicks.iter().filter(|click| *click == "Next Month").count(),
+        1,
+        "paged from September to October: {:?}",
+        sim.clicks
+    );
+    for request in &run.requests {
+        for question in request.questions.values() {
+            for field in ["purpose", "step", "task"] {
+                assert!(
+                    !text_of(question, field).contains("18 october"),
+                    "the value reached a question: {}",
+                    text_of(question, field)
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_date_is_told_from_other_options_and_containers_give_way() {
+    assert!(super::steps::looks_like_date("Sunday 18 October 2026"));
+    assert!(super::steps::looks_like_date("18 oct") == false);
+    assert!(!super::steps::looks_like_date("Srinagar"));
 }
 
 #[tokio::test]
