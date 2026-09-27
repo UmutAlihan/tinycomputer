@@ -1616,36 +1616,45 @@ fn editable_fields_are_found_by_action_or_role_in_reading_order() {
 
 #[test]
 fn a_rich_text_area_reports_the_text_inside_it_as_its_contents() {
+    // The token label and the rich-text body lines are ref-less, as they are
+    // in a real snapshot, so they live in `text_nodes` rather than
+    // `candidates`; `order` places them in the document position they would
+    // really occupy.
     let mut screen = App::with(|sim| {
         sim.compose_open = true;
         sim.fields.insert("Subject".to_owned(), "Hello".to_owned());
     })
     .screen();
+    for (index, candidate) in screen.candidates.iter_mut().enumerate() {
+        candidate.order = index * 10;
+    }
     let body = Candidate {
         role: "webarea".to_owned(),
         name: Some("message body".to_owned()),
         available_actions: vec!["SetFocus".to_owned()],
+        order: screen.candidates.len() * 10,
         ..Candidate::default()
     };
     let area = super::view::label(&body);
     screen.candidates.push(body);
-    for line in ["Hi Sam,", "See you Friday."] {
-        screen.candidates.push(Candidate {
+    for (offset, line) in ["Hi Sam,", "See you Friday."].iter().enumerate() {
+        screen.text_nodes.push(Candidate {
             role: "statictext".to_owned(),
             value: Some(json!(line)),
             path: vec![area.clone()],
+            order: screen.candidates.len() * 10 + offset + 1,
             ..Candidate::default()
         });
     }
+    // The "To" field turned into a token; its accessible name sits in a
+    // ref-less static text node immediately after it, as it does for real.
     screen.candidates[0].value = Some(json!("\u{fffc}"));
-    screen.candidates.insert(
-        1,
-        Candidate {
-            role: "statictext".to_owned(),
-            name: Some("sam@example.com".to_owned()),
-            ..Candidate::default()
-        },
-    );
+    screen.text_nodes.push(Candidate {
+        role: "statictext".to_owned(),
+        name: Some("sam@example.com".to_owned()),
+        order: 1,
+        ..Candidate::default()
+    });
     let state = ask::state(&screen, "check the draft", &[], true);
     let fields = state["field_contents"]["untrusted_accessibility_data"]
         .as_array()
