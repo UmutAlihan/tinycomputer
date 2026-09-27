@@ -3,8 +3,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{
-    FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowLoop, FlowStep, FlowStopReason, FlowStrategy, GroundingHint,
-    RunFlowRequest, Slot, Slots, StepOutcome,
+    FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowLoop, FlowStep, FlowStopReason, FlowStrategy,
+    GroundingHint, RunFlowRequest, Slot, Slots, StepOutcome,
 };
 use serde_json::json;
 
@@ -206,7 +206,10 @@ fn a_strategy_pins_its_wire_spelling_and_round_trips() {
     }))
     .unwrap();
     assert_eq!(request.strategy, FlowStrategy::Wide);
-    assert_eq!(serde_json::to_value(&request).unwrap()["strategy"], json!("wide"));
+    assert_eq!(
+        serde_json::to_value(&request).unwrap()["strategy"],
+        json!("wide")
+    );
     assert!(
         serde_json::from_value::<RunFlowRequest>(json!({
             "flow": {"app": "Mail", "steps": ["x"]},
