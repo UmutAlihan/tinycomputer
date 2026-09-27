@@ -2,9 +2,11 @@
 
 use serde_json::{Value, json};
 use tinydesktop_bus::{
-    ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, ReadStep, RepeatStep,
-    StepOutcome,
+    ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
+    RepeatStep, StepOutcome,
 };
+use tinydesktop_core::surface::{Group, result_groups};
+use tinydesktop_core::{Criterion, Record, rank};
 
 use crate::workspace::BROWSER;
 
@@ -25,6 +27,8 @@ const REVEAL_TURNS: u32 = 3;
 const WINDOW_CHECKS: u32 = 10;
 /// Times a `wait_for` checks its condition, waiting between checks.
 const WAIT_CHECKS: u32 = 10;
+/// Most characters of a picked item's text kept in its variable.
+const MAX_PICK_SUMMARY: usize = 400;
 /// Least probability a `read` or `stop_before` target needs.
 const LOCATE_FLOOR: f64 = 0.5;
 
@@ -43,6 +47,7 @@ pub(super) async fn run<B: AgentBackend + Sync>(
         FlowAction::Enter(slots) => run.enter(log, &slots.0).await,
         FlowAction::Choose(choose) => run.choose(log, choose).await,
         FlowAction::Read(read) => run.read(log, read).await,
+        FlowAction::Pick(pick) => run.pick(log, pick).await,
         FlowAction::Verify(_) => run.verify(log, text).await,
         FlowAction::WaitFor(_) => run.wait_for(log, text).await,
         FlowAction::StopBefore(_) => run.stop_before(log, text).await,
@@ -338,6 +343,109 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Err(Halt::Failed(format!(
             "no text on screen clearly shows {what}"
         )))
+    }
+
+    /// Picks the best of a list of results by `pick.by`, stores its text,
+    /// and opens it. A criterion over prices, times, durations, or stops is
+    /// ranked exactly; anything else is judged by Jev among the records.
+    async fn pick(&mut self, log: &mut StepLog, pick: &PickStep) -> Result<Ended, Halt> {
+        let from = substitute(&pick.from, &self.vars);
+        let by = substitute(&pick.by, &self.vars);
+        let mut screen = self.look().await?;
+        self.explore(&mut screen).await;
+        let groups = result_groups(&screen);
+        if groups.is_empty() {
+            return Err(Halt::Failed(format!("no list of {from} is showing")));
+        }
+        let records = groups
+            .iter()
+            .map(|group| Record {
+                fields: group
+                    .fields
+                    .iter()
+                    .enumerate()
+                    .map(|(index, text)| (format!("field {index}"), text.clone()))
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
+        let (best, how) = match Criterion::parse(&by).and_then(|criterion| rank(&records, criterion)) {
+            Some(order) => (order[0], "ranked"),
+            None => (self.judge_pick(log, &screen, &from, &by, &groups).await?, "judged"),
+        };
+        let group = &groups[best];
+        let summary: String = group.fields.join(" · ").chars().take(MAX_PICK_SUMMARY).collect();
+        if let Some(into) = &pick.into {
+            self.vars.insert(into.clone(), summary.clone());
+        }
+        let Some(primary) = group.primary.clone() else {
+            return Err(Halt::Failed(format!("the picked item has nothing to open: {summary}")));
+        };
+        if is_destructive(&primary, &screen, &self.stop_before) {
+            return Err(Halt::Failed(format!(
+                "refused to press {} to pick an item",
+                label(&primary)
+            )));
+        }
+        let clicked = primary.clone();
+        let reply = self
+            .act(log, "click", Some(&primary), move |backend| {
+                backend.execute(JevOperation::Click, Some(clicked), None)
+            })
+            .await?;
+        if !reply.ok {
+            return Err(Halt::Failed(format!("could not open the picked item: {summary}")));
+        }
+        self.history.push(format!("picked {summary} ({how} by {by})"));
+        Ok(Ended::new(
+            StepOutcome::Done,
+            format!("picked {summary} ({how} by {by}, out of {})", groups.len()),
+        ))
+    }
+
+    /// Asks Jev which record best meets `by`, among the first
+    /// [`ask::MAX_READ_SOURCES`]-sized page of them.
+    async fn judge_pick(
+        &mut self,
+        log: &mut StepLog,
+        screen: &super::view::Screen,
+        from: &str,
+        by: &str,
+        groups: &[Group],
+    ) -> Result<usize, Halt> {
+        let shown = &groups[..groups.len().min(ask::MAX_READ_SOURCES)];
+        let keys = numbered(shown.len());
+        log.used(FlowLoop::Narrowing);
+        let answers = self
+            .ask(
+                log,
+                ask::request(
+                    self.model(),
+                    self.state(screen, &format!("pick from {from} by {by}")),
+                    Questions::default().with(
+                        "record",
+                        ask::options(
+                            json!({
+                                "task": "Choose the item in this list that best meets the criterion.",
+                                "list": from,
+                                "criterion": by,
+                            }),
+                            keys.iter().cloned().zip(shown.iter().map(|group| {
+                                json!({"untrusted_accessibility_data": {"item": group.fields}})
+                            })),
+                        ),
+                    ),
+                ),
+            )
+            .await?;
+        let Some((choice, confidence)) =
+            chosen(&answers, "record").filter(|(_, confidence)| *confidence >= LOCATE_FLOOR)
+        else {
+            return Err(Halt::Failed(format!("no item in {from} clearly meets {by}")));
+        };
+        log.confidence = Some(confidence);
+        keys.iter()
+            .position(|key| *key == choice)
+            .ok_or_else(|| Halt::Failed(format!("no item in {from} clearly meets {by}")))
     }
 
     async fn stop_before(&mut self, log: &mut StepLog, action: &str) -> Result<Ended, Halt> {

@@ -123,6 +123,23 @@ fn walk(
                     defined.insert(read.into);
                 }
             }
+            FlowAction::Pick(pick) => {
+                text(errors, "`from`", &pick.from);
+                text(errors, "`by`", &pick.by);
+                if let Some(into) = pick.into {
+                    if into.is_empty()
+                        || !into
+                            .chars()
+                            .all(|character| character.is_ascii_alphanumeric() || character == '_')
+                    {
+                        errors.push(format!(
+                            "step {path}: `into` must be a variable name of letters, digits, and `_`"
+                        ));
+                    } else {
+                        defined.insert(into);
+                    }
+                }
+            }
             FlowAction::RepeatUntil(repeat) => {
                 text(errors, "the condition", &repeat.condition);
                 if !(1..=MAX_REPEAT).contains(&repeat.max) {
