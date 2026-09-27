@@ -155,7 +155,7 @@ fn stopped_before(flow: &Flow, result: &FlowRunResult) -> Next {
         };
     }
     let path = gated.map(|step| step.path.as_str());
-    let index = path.and_then(top_index);
+    let index = path.and_then(containing_top_index);
     // A top-level `stop_before` has fully finished once it is approved, so
     // the rest resumes right after it. One nested in an `if` or
     // `repeat_until` (path `4.2` or `4.r1.2`) has not: that whole top-level
