@@ -43,7 +43,11 @@ fn a_written_out_currency_reads_the_amount_before_it() {
     assert_eq!(price("about 300 US dollars"), (300.0, Some("USD")));
     let unpriced = "Total price is unavailable. Nonstop flight. Leaves at 9:55 AM";
     assert_eq!(price(unpriced), (9.0, None), "no currency, so never ranked");
-    assert_eq!(price("rupees 5 later"), (5.0, None), "the amount must come first");
+    assert_eq!(
+        price("rupees 5 later"),
+        (5.0, None),
+        "the amount must come first"
+    );
 }
 
 #[test]

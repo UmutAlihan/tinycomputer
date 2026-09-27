@@ -28,8 +28,8 @@ use serde_json::json;
 use tinydesktop::Desktop;
 use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_bus::agent::{
-    AwaitTaskRequest, PlanTaskRequest, StartTaskRequest, SurfaceKind, TaskBudget,
-    TaskConstraints, TaskId, TaskStatus, TaskView,
+    AwaitTaskRequest, PlanTaskRequest, StartTaskRequest, SurfaceKind, TaskBudget, TaskConstraints,
+    TaskId, TaskStatus, TaskView,
 };
 use tinydesktop_bus::{Flow, JevConfig, RunFlowRequest};
 use tinydesktop_engine::{
@@ -74,7 +74,8 @@ async fn main() -> Result<(), Failure> {
     let task = std::fs::read_to_string(env("TASK_FILE")?)?;
     let facts: BTreeMap<String, String> =
         serde_json::from_str(&std::fs::read_to_string(env("FACTS_FILE")?)?)?;
-    let out = PathBuf::from(std::env::var("TASK_OUT").unwrap_or_else(|_| "target/task-live".into()));
+    let out =
+        PathBuf::from(std::env::var("TASK_OUT").unwrap_or_else(|_| "target/task-live".into()));
     std::fs::create_dir_all(&out)?;
 
     let jev: JevConfig =
@@ -135,7 +136,10 @@ async fn main() -> Result<(), Failure> {
                 step.path, step.kind, step.outcome, step.note
             );
         }
-        std::fs::write(out.join("report.json"), serde_json::to_string_pretty(&report)?)?;
+        std::fs::write(
+            out.join("report.json"),
+            serde_json::to_string_pretty(&report)?,
+        )?;
     }
     if let Some(session) = surface.session() {
         let path = out.join("final.png");

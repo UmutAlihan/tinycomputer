@@ -12,8 +12,8 @@ use std::sync::Arc;
 
 use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, SessionOptions};
 use tinydesktop_bus::JevOperation;
-use tinydesktop_core::{human_needed, screen_payment_evidence};
 use tinydesktop_core::surface::{Depth, Surface, result_groups};
+use tinydesktop_core::{human_needed, screen_payment_evidence};
 
 /// How many controls to print per page.
 const SHOWN: usize = 40;
@@ -80,7 +80,12 @@ fn click(surface: &BrowserSurface, name: &str) {
         return;
     };
     let reply = surface.execute(JevOperation::Click, Some(target.clone()), None);
-    println!("click {} -> ok {} {:?}", target.ref_id, reply.ok, reply.error.map(|error| error.message));
+    println!(
+        "click {} -> ok {} {:?}",
+        target.ref_id,
+        reply.ok,
+        reply.error.map(|error| error.message)
+    );
 }
 
 fn show(surface: &BrowserSurface) {
@@ -107,7 +112,12 @@ fn show(surface: &BrowserSurface) {
         .context
         .iter()
         .cloned()
-        .chain(screen.candidates.iter().filter_map(|node| node.name.clone()))
+        .chain(
+            screen
+                .candidates
+                .iter()
+                .filter_map(|node| node.name.clone()),
+        )
         .collect();
     println!("human needed: {:?}", human_needed(&texts));
     println!("payment page: {:?}", screen_payment_evidence(&screen));
@@ -117,7 +127,10 @@ fn show(surface: &BrowserSurface) {
             node.ref_id,
             node.role,
             node.name.as_deref().unwrap_or(""),
-            node.value.as_ref().map(ToString::to_string).unwrap_or_default()
+            node.value
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_default()
         );
     }
     for line in screen.context.iter().take(15) {
@@ -128,7 +141,10 @@ fn show(surface: &BrowserSurface) {
             "  [{}] {} -> {:?}",
             group.label,
             group.fields.join(" · "),
-            group.primary.as_ref().map(|node| (&node.ref_id, &node.name))
+            group
+                .primary
+                .as_ref()
+                .map(|node| (&node.ref_id, &node.name))
         );
     }
 }

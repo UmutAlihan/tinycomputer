@@ -287,7 +287,9 @@ fn covered_fake(same_card: bool) -> Fake {
         "click" => Some(failure(
             "Element '@e5' is covered by <div.layer> at its click point, so the input would land on that element instead.",
         )),
-        "boundingbox" => Some(ok(&json!({"x": 10.0, "y": 20.0, "width": 100.0, "height": 40.0}))),
+        "boundingbox" => Some(ok(
+            &json!({"x": 10.0, "y": 20.0, "width": 100.0, "height": 40.0}),
+        )),
         "evaluate" => Some(ok(&json!({"result": same_card}))),
         _ => None,
     })
@@ -312,7 +314,11 @@ fn a_click_covered_by_its_own_card_lands_on_the_card() {
     assert_eq!(mouse, 3, "move, press, release");
     let released = fake.last("mouse");
     assert_eq!(
-        (released["eventType"].as_str(), released["x"].as_f64(), released["y"].as_f64()),
+        (
+            released["eventType"].as_str(),
+            released["x"].as_f64(),
+            released["y"].as_f64()
+        ),
         (Some("mouseReleased"), Some(60.0), Some(40.0))
     );
 }
@@ -330,7 +336,11 @@ fn a_click_covered_by_anything_else_stays_refused() {
     assert!(!fake.actions().iter().any(|action| action == "mouse"));
 
     let Harness { fake, surface, .. } = harness("covered-unnamed", covered_fake(true));
-    assert!(!surface.execute(JevOperation::Click, Some(node("e5", &["Click"])), None).ok);
+    assert!(
+        !surface
+            .execute(JevOperation::Click, Some(node("e5", &["Click"])), None)
+            .ok
+    );
     assert!(!fake.actions().iter().any(|action| action == "evaluate"));
 }
 
@@ -415,7 +425,12 @@ fn pressing_launching_settling_and_navigating() {
     let launched = surface.launch("browser");
     assert_eq!(launched.data.unwrap()["running"], true);
     surface.settle();
-    assert_eq!(fake.last("wait")["timeout"], 200);
+    let idle = fake.last("waitforloadstate");
+    assert_eq!(
+        (idle["state"].as_str(), idle["timeout"].as_u64()),
+        (Some("networkidle"), Some(2_000))
+    );
+    assert_eq!(fake.last("wait")["timeout"], 400);
     let loaded = surface.navigate("https://flights.test/search");
     assert_eq!(loaded.data.unwrap()["url"], "https://flights.test/search");
     let refused = Fake::scripted(|command| {

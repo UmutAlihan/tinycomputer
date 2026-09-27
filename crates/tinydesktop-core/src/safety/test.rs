@@ -164,7 +164,10 @@ fn a_card_input_on_either_surface_marks_a_payment_screen() {
         role: "textbox".to_owned(),
         ..Candidate::default()
     };
-    let beside = screen_of(vec![unlabelled], &["Enter the CVV on the back of your card"]);
+    let beside = screen_of(
+        vec![unlabelled],
+        &["Enter the CVV on the back of your card"],
+    );
     let evidence = screen_payment_evidence(&beside).unwrap();
     assert!(evidence.reasons[0].contains("cvv"), "{evidence:?}");
 }
