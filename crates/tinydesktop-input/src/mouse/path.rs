@@ -106,8 +106,9 @@ pub fn human_path(
     let wobble_phase = rng.range(0.0, TAU);
 
     let tremor = 0.6 * rng.range(0.7, 1.3);
-    let (tremor_x_hz, tremor_y_hz) = (rng.range(8.0, 12.0), rng.range(8.0, 12.0));
-    let (tremor_x_phase, tremor_y_phase) = (rng.range(0.0, TAU), rng.range(0.0, TAU));
+    // Physiological tremor sits around 8–12 Hz, independently per axis.
+    let across = (rng.range(8.0, 12.0), rng.range(0.0, TAU));
+    let down = (rng.range(8.0, 12.0), rng.range(0.0, TAU));
 
     let at = |t: f64| -> Point {
         let base = if t <= primary {
@@ -120,8 +121,8 @@ pub fn human_path(
         let fade = tremor * (PI * t / total).sin();
         let seconds = t / 1_000.0;
         base.plus(
-            fade * (TAU * tremor_x_hz * seconds + tremor_x_phase).sin(),
-            fade * (TAU * tremor_y_hz * seconds + tremor_y_phase).sin(),
+            fade * (TAU * across.0 * seconds + across.1).sin(),
+            fade * (TAU * down.0 * seconds + down.1).sin(),
         )
     };
 
