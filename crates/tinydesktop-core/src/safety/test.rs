@@ -223,6 +223,23 @@ fn card_wording_counts_only_beside_a_field() {
 }
 
 #[test]
+fn a_separately_labelled_upi_field_is_still_payment_evidence() {
+    // A UPI collect form: an unnamed input with its label as a nearby text
+    // node, exactly the shape `CARD_FIELDS` already recognizes when the
+    // label sits on the input itself — this proves the same wording is not
+    // lost when the label is a separate node beside an unnamed field.
+    let mut screen = screen_of(vec![unlabelled_input(4)], &[]);
+    screen.text_nodes = vec![text("UPI ID", 3)];
+    assert!(
+        screen_payment_evidence(&screen).is_some(),
+        "a UPI ID label beside a field is not a promotional phrase"
+    );
+    let mut vpa = screen_of(vec![unlabelled_input(4)], &[]);
+    vpa.text_nodes = vec![text("VPA", 3)];
+    assert!(screen_payment_evidence(&vpa).is_some());
+}
+
+#[test]
 fn card_promotions_on_a_home_page_are_not_a_payment_screen() {
     let links = screen_of(
         vec![
