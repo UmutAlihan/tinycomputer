@@ -207,7 +207,16 @@ fn collect_stop_before(steps: &[FlowStep], phrases: &mut Vec<String>) {
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     fn new(backend: B, runtime: &'r JevRuntime, request: &RunFlowRequest) -> Self {
-        let mut vars = request.flow.vars.clone();
+        // A flow's own definitions may name the caller's values
+        // (`"first_name": "${first name}"`), so they are expanded once
+        // against them. The caller's values are never rescanned: one that
+        // happens to contain `${…}` stays as written.
+        let mut vars = request
+            .flow
+            .vars
+            .iter()
+            .map(|(name, value)| (name.clone(), validate::substitute(value, &request.vars)))
+            .collect::<BTreeMap<_, _>>();
         vars.extend(request.vars.clone());
         Self {
             backend,
