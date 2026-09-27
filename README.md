@@ -101,6 +101,7 @@ question, and threshold in detail.
  vendor/agent-desktop   vendor/agent-browser      the engines, pinned by gitlink
 
  tinydesktop-core            Surface trait, screen model, keymap, safety, facts
+ tinydesktop-input           virtual mouse and keyboard both adapters play through
  tinydesktop-bus             the wire contract, with no runtime at all
 ```
 
@@ -114,6 +115,7 @@ flights on the web and then write an email in Mail.
 |---|---|
 | `tinydesktop-bus` | every type that crosses the bus: member names, payloads, the `DesktopResponse` envelope, the Agent and browser types, the flow grammar and guide, the contract version |
 | `tinydesktop-core` | the `Surface` trait and `Screen`; verified text delivery; result cards; the per-OS keymap; the safety classifier and payment detector; facts; price, time, duration, and stop parsers |
+| `tinydesktop-input` | the virtual mouse and keyboard: aim points, human pointer paths (overshoot, correction, wobble, tremor, Fitts timing), typing cadence, and `MotionProfile`; plans played against any engine |
 | `tinydesktop-desktop` | `Desktop`, one typed method per desktop member, with a permission preflight; `Desktop` as a `Surface` |
 | `tinydesktop-browser` | `Browser` sessions over agent-browser linked in-process; `BrowserSurface` |
 | `tinydesktop-engine` | Jev, `RunGoal`, `ResolveIntent`, the flow runtime, the workspace, the task controller, the optional planner |
@@ -334,6 +336,7 @@ crates/
 │       ├── browser/       # the browser contract
 │       └── observation/ interaction/ input/ apps/ clipboard/ …
 ├── tinydesktop-core/      # surface/ keymap/ safety/ records/ facts/
+├── tinydesktop-input/     # mouse/ keyboard/ plan/ profile/: virtual input
 ├── tinydesktop-desktop/   # desktop/ (the 54 members) and surface/
 ├── tinydesktop-browser/   # sessions/ convert/ reply/ linked/ outputs/ surface/
 ├── tinydesktop-engine/
