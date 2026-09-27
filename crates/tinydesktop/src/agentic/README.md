@@ -41,3 +41,7 @@ predicate evidence. The only value echoed for a value predicate is its
 caller-supplied expected string or fragment after a match; other field content
 is not returned. An absence predicate is deliberately unavailable because a
 bounded accessibility snapshot cannot prove an element is absent.
+
+Intent flows (`RunFlow`, `ValidateFlow`, `FlowGuide`) live in `flow/`; see
+`flow/README.md`. They share only the Jev runtime and its error mapping with
+the task loop above.

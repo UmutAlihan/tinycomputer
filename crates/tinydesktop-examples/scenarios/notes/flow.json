@@ -1,0 +1,13 @@
+{
+  "app": "Notes",
+  "vars": {
+    "title": "tinydesktop lab note",
+    "body": "Written by a Jev intent flow.\nSecond line: each step was grounded on the live screen."
+  },
+  "steps": [
+    { "open": "Notes" },
+    "start a new note",
+    { "enter": { "note text": "${title} ${run}\n${body}" } },
+    { "verify": "a note titled ${title} ${run} is showing" }
+  ]
+}

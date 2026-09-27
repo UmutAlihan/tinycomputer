@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::json;
 use tinydesktop_bus::{JevDecisionKind, JevOperation};
-use tinyjevclient::{Answer, Choice, EvaluationRequest, Noul, Question};
+use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question};
 
 use super::screen::{Candidate, Screen, describe};
 

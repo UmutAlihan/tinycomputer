@@ -20,4 +20,4 @@ code snippets when they remove ambiguity, but do not paste entire future files
 into the plan.
 
 See [`desktop-module-contract.md`](desktop-module-contract.md) for a worked
-example.
+example, and [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime.

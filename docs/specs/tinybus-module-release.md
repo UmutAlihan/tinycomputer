@@ -10,11 +10,13 @@ distributable without also shipping the TinyBus host runtime.
 - The library builds as both an `rlib` and a native `cdylib`.
 - The `cdylib` exports TinyBus module ABI v1, an embedded manifest, and the
   initialization entrypoint.
-- The module provides the fifty-six members of
+- The module provides the fifty-nine members of
   `ai.tinyhumans.tinydesktop.Desktop` at `/ai/tinyhumans/tinydesktop/Desktop`.
 - Each release archive is named
   `tinydesktop-<version>-<platform>.<extension>` and contains only this
-  module, its SHA-256 `modules.toml`, license, and installation documentation.
+  module, its SHA-256 `modules.toml`, license, and installation documentation
+  — plus, on macOS, the engine's `agent-desktop-macos-helper`, which the
+  engine's clipboard only trusts beside the loaded module.
 - Each GitHub release publishes a separate `checksum.toml` mapping every
   archive filename to its SHA-256 digest for TinyBus's release loader.
 - Release builds cover the stable native Ubuntu, macOS, and Windows runners,

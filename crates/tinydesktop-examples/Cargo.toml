@@ -12,8 +12,19 @@ publish = false
 tinydesktop = { path = "../tinydesktop" }
 tinydesktop-bus = { workspace = true }
 tinybus = { workspace = true, features = ["modules"] }
+serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
+# The optional multimodal author the lab puts in front of Jev: an LLM that
+# writes flows from a brief and checks screenshots. Lab-only on purpose — the
+# shipped module stays Jev-only and never links it. Vendored as the
+# `vendor/tinyinference` submodule and pinned by its gitlink.
+tinyinference-llm = { path = "../../vendor/tinyinference/crates/tinyinference-llm", optional = true }
+
+[features]
+default = ["inference"]
+# `lab --mode authored`: an LLM writes the flow from the scenario brief.
+inference = ["dep:tinyinference-llm"]
 
 [lints]
 workspace = true

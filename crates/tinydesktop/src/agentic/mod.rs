@@ -1,5 +1,10 @@
 //! Native Jev-backed observation, intent resolution, and goal execution.
+//!
+//! `RunGoal` and `ResolveIntent` live here (see `README.md`); intent flows,
+//! `RunFlow`, live in `flow/` and share only the Jev runtime and its error
+//! mapping.
 
+mod flow;
 mod policy;
 mod screen;
 mod task;
@@ -24,7 +29,7 @@ use tinydesktop_bus::{
     JevProvider, JevRunResult, JevStopReason, JevTarget, JevTurn, RefRequest, ResolveIntentRequest,
     RunGoalRequest, ScrollRequest, SetValueRequest, WaitRequest,
 };
-use tinyjevclient::{
+use tinyinference_decisions::{
     Client, ClientConfig, Error as JevError, EvaluationFailure, EvaluationRequest, EvaluationResult,
 };
 
@@ -36,6 +41,8 @@ use policy::{
 use screen::{Candidate, Screen, fingerprint, observe};
 use task::run_goal_fresh;
 use verify::{exact_label, satisfied, verify};
+
+pub(crate) use flow::{flow_guide, run_flow, validate_flow};
 
 /// Configured Jev transport and non-secret policy metadata.
 #[derive(Clone)]
@@ -139,7 +146,20 @@ impl Evaluator for Client {
                 + 'a,
         >,
     > {
-        Box::pin(Client::evaluate(self, request))
+        // The decisions client reports failures as its crate error; the loops
+        // want the failure record with its attempts and latency.
+        Box::pin(async move {
+            Client::evaluate(self, request)
+                .await
+                .map_err(|error| match error {
+                    JevError::EvaluationFailure(failure) => failure,
+                    other => EvaluationFailure {
+                        error: Box::new(other),
+                        attempts: 0,
+                        latency: Duration::ZERO,
+                    },
+                })
+        })
     }
 }
 
@@ -1283,8 +1303,8 @@ fn config_error(error: &JevError) -> Box<DesktopError> {
     Box::new(DesktopError::new("JEV_INVALID_CONFIG", error.to_string()))
 }
 
-fn provider_error(error: &tinyjevclient::EvaluationFailure) -> Box<DesktopResponse> {
-    let code = match &error.error {
+fn provider_error(error: &tinyinference_decisions::EvaluationFailure) -> Box<DesktopResponse> {
+    let code = match error.error.as_ref() {
         JevError::Authentication => "JEV_AUTHENTICATION",
         JevError::RateLimited => "JEV_RATE_LIMITED",
         JevError::Timeout => "JEV_TIMEOUT",

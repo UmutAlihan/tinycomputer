@@ -1,0 +1,15 @@
+{
+  "app": "Mail",
+  "vars": { "to": "sam@example.com" },
+  "steps": [
+    { "open": "Mail" },
+    "start a new email message",
+    { "enter": {
+        "recipient": "${to}",
+        "subject": "Moving Thursday's sync to Friday",
+        "message body": "Hi Sam,\n\nSomething came up on Thursday afternoon. Could we move our weekly sync to Friday at 3pm instead? Same agenda: the launch checklist and the open hiring loops.\n\nIf Friday doesn't work, Monday morning is also free on my side.\n\nThanks,\nAlex"
+    } },
+    { "verify": "the draft shows the recipient, the subject, and the message body" },
+    { "stop_before": "sending the email" }
+  ]
+}

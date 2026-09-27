@@ -1,0 +1,8 @@
+{
+  "app": "System Settings",
+  "steps": [
+    { "open": "System Settings" },
+    "show the Appearance settings",
+    { "read": { "what": "the appearance mode that is currently selected: Light, Dark, or Auto", "into": "mode" } }
+  ]
+}

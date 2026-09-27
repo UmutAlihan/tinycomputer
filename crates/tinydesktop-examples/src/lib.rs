@@ -14,3 +14,5 @@
 //! assert_eq!(request.app, "Spotify");
 //! assert_eq!(JevProvider::OpenRouter, JevProvider::OpenRouter);
 //! ```
+
+pub mod lab;

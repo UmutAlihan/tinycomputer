@@ -21,4 +21,4 @@ After the specification is accepted, create a linked implementation plan in
 the contract; production code still belongs under `src/`.
 
 See [`desktop-module-contract.md`](desktop-module-contract.md) for a complete
-example.
+example, and [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime.

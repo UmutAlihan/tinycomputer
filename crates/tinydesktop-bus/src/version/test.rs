@@ -6,7 +6,7 @@ use super::{CONTRACT_VERSION, binds, is_compatible};
 
 #[test]
 fn the_shipped_contract_version_is_pinned() {
-    assert_eq!(CONTRACT_VERSION, (1, 5));
+    assert_eq!(CONTRACT_VERSION, (1, 6));
 }
 
 #[test]
@@ -16,7 +16,7 @@ fn the_contract_binds_to_itself() {
 
 #[test]
 fn a_newer_minor_on_the_module_side_binds() {
-    assert!(is_compatible((1, 5)));
+    assert!(is_compatible((1, 6)));
     assert!(is_compatible((1, 97)));
 }
 
@@ -24,8 +24,8 @@ fn a_newer_minor_on_the_module_side_binds() {
 fn an_older_minor_on_the_module_side_is_rejected() {
     // A host built against 1.5 cannot call a 1.4 module: the predicates it names
     // may not be served.
-    assert!(!binds((1, 5), (1, 4)));
-    assert!(binds((1, 5), (1, 5)));
+    assert!(!binds((1, 6), (1, 4)));
+    assert!(binds((1, 6), (1, 6)));
 }
 
 #[test]
