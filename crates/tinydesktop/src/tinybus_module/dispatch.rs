@@ -34,6 +34,7 @@ use tinydesktop_bus::agent::{
 
 use super::runner::{WorkspaceRunner, jev_not_configured};
 use crate::{Desktop, Result};
+use tinydesktop_browser::CursorPace;
 use tinydesktop_engine as agentic;
 
 /// The object served at [`tinydesktop_bus::names::OBJECT_PATH`].
@@ -575,16 +576,16 @@ pub(super) fn desktop_availability(permissions: &DesktopResponse) -> SurfaceAvai
 
 /// The `browser` configuration.
 #[derive(Debug, Default, PartialEq, Eq)]
-struct BrowserConfig {
+pub(super) struct BrowserConfig {
     /// `browser.executable`: the Chrome or Chromium binary to launch where
     /// the platform's own discovery would not find one.
-    executable: Option<String>,
+    pub(super) executable: Option<String>,
     /// `browser.cursor`: the pace the agent's cursor is drawn at in a
     /// visible session, or `off`.
-    cursor: CursorPace,
+    pub(super) cursor: CursorPace,
 }
 
-fn browser_config(config: &serde_json::Value) -> Result<BrowserConfig> {
+pub(super) fn browser_config(config: &serde_json::Value) -> Result<BrowserConfig> {
     let Some(browser) = config.as_object().and_then(|object| object.get("browser")) else {
         return Ok(BrowserConfig::default());
     };
