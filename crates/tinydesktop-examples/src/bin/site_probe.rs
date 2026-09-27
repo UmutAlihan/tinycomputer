@@ -28,55 +28,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("usage: site_probe <url>...".into());
     }
     let runtime = tokio::runtime::Runtime::new()?;
-    let browser = Arc::new(Browser::new(Arc::new(AgentBrowser)));
+    let probe = Probe {
+        browser: Arc::new(Browser::new(Arc::new(AgentBrowser))),
+        runtime: &runtime,
+    };
     let mut surface: Option<BrowserSurface> = None;
     for argument in &urls {
-        if let Some(point) = argument.strip_prefix("mouse=") {
-            if let (Some(session), Some((x, y))) = (
-                surface.as_ref().and_then(BrowserSurface::session),
-                point.split_once(','),
-            ) {
-                for event in ["mouseMoved", "mousePressed", "mouseReleased"] {
-                    let pressed = event != "mouseMoved";
-                    let _clicked = runtime.block_on(browser.command(
-                        &session,
-                        serde_json::json!({"action": "mouse", "eventType": event,
-                            "x": x.parse::<f64>().unwrap_or_default(), "y": y.parse::<f64>().unwrap_or_default(),
-                            "button": if pressed { "left" } else { "none" }, "clickCount": i32::from(pressed)}),
-                    ));
-                }
-                println!("=== mouse {point}");
-                std::thread::sleep(std::time::Duration::from_secs(1));
+        if let Some(open) = &surface {
+            if let Some(point) = argument.strip_prefix("mouse=") {
+                probe.mouse(open, point);
+                continue;
             }
-            continue;
-        }
-        if let Some(text) = argument.strip_prefix("type=") {
-            if let Some(session) = surface.as_ref().and_then(BrowserSurface::session) {
-                let typed = runtime.block_on(browser.command(
-                    &session,
-                    serde_json::json!({"action": "keyboard", "subaction": "type", "text": text}),
-                ));
-                println!("=== type {text:?} -> {:?}", typed.is_ok());
-                std::thread::sleep(std::time::Duration::from_secs(2));
-                if let Some(surface) = &surface {
-                    show(surface);
-                }
+            if let Some(text) = argument.strip_prefix("type=") {
+                probe.type_keys(open, text);
+                continue;
             }
-            continue;
-        }
-        if let Some(name) = argument.strip_prefix("click=") {
-            if let Some(surface) = &surface {
+            if let Some(name) = argument.strip_prefix("click=") {
                 println!("=== click {name:?}");
-                click(surface, name);
-                show(surface);
+                click(open, name);
+                show(open);
+                continue;
             }
-            continue;
         }
         if let Some(previous) = surface.take() {
             previous.close();
         }
-        let fresh = BrowserSurface::new(
-            browser.clone(),
+        surface = Some(probe.open(argument));
+    }
+    if let Some(surface) = surface {
+        probe.finish(&surface);
+        surface.close();
+    }
+    drop(runtime);
+    Ok(())
+}
+
+/// The browser and runtime every probe step shares.
+struct Probe<'a> {
+    browser: Arc<Browser>,
+    runtime: &'a tokio::runtime::Runtime,
+}
+
+impl Probe<'_> {
+    /// A fresh session showing `url`, or the page an attached browser
+    /// already shows for `current`.
+    fn open(&self, url: &str) -> BrowserSurface {
+        let surface = BrowserSurface::new(
+            self.browser.clone(),
             SessionOptions {
                 executable: std::env::var("TINYDESKTOP_BROWSER_EXECUTABLE").ok(),
                 user_agent: std::env::var("PROBE_USER_AGENT").ok(),
@@ -86,46 +84,89 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap_or_default(),
                 ..SessionOptions::default()
             },
-            runtime.handle().clone(),
+            self.runtime.handle().clone(),
         );
-        println!("=== {argument}");
-        // `current` reads whatever page an attached browser already shows.
-        let reply = if argument == "current" {
+        println!("=== {url}");
+        let reply = if url == "current" {
             tinydesktop_bus::DesktopResponse::ok("navigate", serde_json::json!({}))
         } else {
-            fresh.navigate(argument)
+            surface.navigate(url)
         };
         if reply.ok {
-            show(&fresh);
+            show(&surface);
         } else {
             println!("navigate failed: {:?}", reply.error);
         }
-        surface = Some(fresh);
+        surface
     }
-    if let Some(surface) = surface {
-        if let (Ok(script), Some(session)) = (std::env::var("PROBE_JS"), surface.session()) {
-            let value = runtime.block_on(browser.command(
+
+    fn command(&self, surface: &BrowserSurface, command: serde_json::Value) -> bool {
+        surface.session().is_some_and(|session| {
+            self.runtime
+                .block_on(self.browser.command(&session, command))
+                .is_ok()
+        })
+    }
+
+    /// Clicks the page at `x,y` with real mouse events.
+    fn mouse(&self, surface: &BrowserSurface, point: &str) {
+        let Some((x, y)) = point.split_once(',') else {
+            return;
+        };
+        let (x, y) = (
+            x.parse::<f64>().unwrap_or_default(),
+            y.parse::<f64>().unwrap_or_default(),
+        );
+        for event in ["mouseMoved", "mousePressed", "mouseReleased"] {
+            let pressed = event != "mouseMoved";
+            self.command(
+                surface,
+                serde_json::json!({"action": "mouse", "eventType": event, "x": x, "y": y,
+                    "button": if pressed { "left" } else { "none" },
+                    "clickCount": i32::from(pressed)}),
+            );
+        }
+        println!("=== mouse {point}");
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+
+    /// Types `text` with key presses wherever the focus is.
+    fn type_keys(&self, surface: &BrowserSurface, text: &str) {
+        let typed = self.command(
+            surface,
+            serde_json::json!({"action": "keyboard", "subaction": "type", "text": text}),
+        );
+        println!("=== type {text:?} -> {typed}");
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        show(surface);
+    }
+
+    /// Runs `PROBE_JS` and prints the raw snapshot lines matching
+    /// `PROBE_GREP`, on the last page.
+    fn finish(&self, surface: &BrowserSurface) {
+        let Some(session) = surface.session() else {
+            return;
+        };
+        if let Ok(script) = std::env::var("PROBE_JS") {
+            let value = self.runtime.block_on(self.browser.command(
                 &session,
                 serde_json::json!({"action": "evaluate", "script": script}),
             ));
             println!("=== PROBE_JS -> {value:?}");
         }
-        if let (Ok(pattern), Some(session)) = (std::env::var("PROBE_GREP"), surface.session()) {
-            let snapshot = runtime.block_on(browser.snapshot(&session, SnapshotRequest::default()));
-            for line in snapshot
-                .map(|snapshot| snapshot.tree)
-                .unwrap_or_default()
+        if let Ok(pattern) = std::env::var("PROBE_GREP") {
+            let snapshot = self
+                .runtime
+                .block_on(self.browser.snapshot(&session, SnapshotRequest::default()));
+            let tree = snapshot.map(|snapshot| snapshot.tree).unwrap_or_default();
+            for line in tree
                 .lines()
+                .filter(|line| line.to_lowercase().contains(&pattern.to_lowercase()))
             {
-                if line.to_lowercase().contains(&pattern.to_lowercase()) {
-                    println!("  raw: {line}");
-                }
+                println!("  raw: {line}");
             }
         }
-        surface.close();
     }
-    drop(runtime);
-    Ok(())
 }
 
 /// Clicks the first control whose name contains `name`.
