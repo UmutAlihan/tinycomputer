@@ -3235,7 +3235,11 @@ async fn a_web_page_is_named_and_the_name_briefs_the_next_question() {
             {"verify": "prices are shown"}
         ]}),
         |_| {},
-        |id, question, _| (id == "page_kind").then(|| pick(question, "results", 0.9)),
+        |id, question, _| match id {
+            "page_kind" => Some(pick(question, "results", 0.9)),
+            "holds" => Some(noul(0.9)),
+            _ => None,
+        },
     )
     .await;
     let named = web
