@@ -286,8 +286,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .collect(),
             );
             // Matches that all name one option leave nothing to judge; a
-            // private option is never judged, since Jev is not told it.
-            let grounded = if private || one_option(&pool) {
+            // private option is never judged, since Jev is not told it. An
+            // option no control names is a description ("the lowest fare"),
+            // matched by Jev among the page's option controls.
+            let grounded = if pool.is_empty() && !private {
+                self.described(log, &screen, what, option).await?
+            } else if private || one_option(&pool) {
                 plainest(pool).map(|candidate| Grounded {
                     candidate,
                     confidence: 1.0,
@@ -295,6 +299,17 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             } else {
                 self.ground(log, &screen, &purpose, &purpose, pool).await?
             };
+            if let Some(grounded) = &grounded
+                && is_checked(&grounded.candidate)
+            {
+                self.history
+                    .push(format!("{} is already chosen", label(&grounded.candidate)));
+                self.remember_choice(&format!("chose {option:?} in {what}"));
+                return Ok(Ended::new(
+                    StepOutcome::AlreadyDone,
+                    format!("{option:?} was already chosen"),
+                ));
+            }
             if let Some(grounded) = grounded {
                 log.confidence = Some(grounded.confidence);
                 let target = grounded.candidate;
@@ -358,6 +373,31 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         } else {
             format!("{option:?} was not found in {what}")
         }))
+    }
+
+    /// The option control on `screen` that fits `option` read as a
+    /// description, by Jev; `None` when no control fits well enough.
+    async fn described(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        what: &str,
+        option: &str,
+    ) -> Result<Option<Grounded>, Halt> {
+        let options = clickable(&screen.candidates)
+            .into_iter()
+            .filter(|candidate| {
+                is_one_option(candidate) && !is_destructive(candidate, screen, &self.stop_before)
+            })
+            .collect::<Vec<_>>();
+        if options.is_empty() {
+            return Ok(None);
+        }
+        let purpose = format!("pick the option in {what} that fits: {option}");
+        Ok(self
+            .ground(log, screen, &purpose, &purpose, options)
+            .await?
+            .filter(|grounded| grounded.confidence >= LOCATE_FLOOR))
     }
 
     /// Pages a calendar forward, one month at a time, until a control shows
@@ -886,6 +926,14 @@ const ONE_OPTION_ROLES: &[&str] = &[
     "checkbox",
 ];
 
+/// Whether a control is checked or selected already.
+fn is_checked(candidate: &Candidate) -> bool {
+    candidate
+        .states
+        .iter()
+        .any(|state| state == "checked" || state == "selected")
+}
+
 fn is_one_option(candidate: &Candidate) -> bool {
     ONE_OPTION_ROLES
         .iter()
@@ -904,10 +952,7 @@ pub(super) fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate>
         .iter()
         .find(|candidate| {
             is_one_option(candidate)
-                && candidate
-                    .states
-                    .iter()
-                    .any(|state| state == "checked" || state == "selected")
+                && is_checked(candidate)
                 && candidate
                     .name
                     .as_deref()

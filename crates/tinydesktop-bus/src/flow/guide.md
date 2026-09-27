@@ -110,7 +110,9 @@ do.
    that reads a variable writes `${cheapest_flight}`, never `cheapest_flight`,
    so its value is shown; a bare identifier fails validation. A `verify` or
    `wait_for` must be checkable on the current screen alone — never "matches
-   what the other site showed": `pick` already ranks.
+   what the other site showed": `pick` already ranks. A `choose` option is
+   the label the page shows ("Saver"), not a description ("the cheapest
+   fare"); choosing by a criterion is what `pick` is for.
 
 ## A full example
 
