@@ -12,4 +12,5 @@ everything over TinyBus.
 | Path | Holds |
 |---|---|
 | `src/desktop/` | `Desktop`, split by family; `convert.rs` maps contract types to engine arguments, `permission.rs` runs the preflight, `reply.rs` builds the envelope |
+| `src/surface/` | `Desktop` as a `tinydesktop_core::surface::Surface`: snapshot parsing for decision loops, window choice, clipboard-backed paste |
 | `src/error/` | the crate-wide `Error` and `Result`, for construction failures only |

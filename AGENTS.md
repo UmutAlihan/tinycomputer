@@ -40,6 +40,8 @@ crates/
 │       ├── vocabulary/ # enumerations shared across payload families
 │       ├── version/    # contract version and the host bind rule
 │       └── <family>/   # one directory per payload family
+├── tinydesktop-core/   # shared domain: Surface trait, keys, safety, records
+├── tinydesktop-browser/ # the agent-browser adapter: sessions, outputs
 ├── tinydesktop-desktop/ # the agent-desktop adapter: no bus, no agent loop
 │   └── src/
 │       ├── lib.rs      # crate docs + public surface, re-exporting the contract
@@ -50,6 +52,7 @@ crates/
 │           ├── permission.rs # what each member needs, and the preflight
 │           ├── reply.rs      # engine result -> response envelope
 │           └── test.rs       # module-local unit tests
+│       └── surface/          # `Desktop` as a core `Surface`
 ├── tinydesktop-engine/ # the agent runtime: Jev, RunGoal, intent flows
 │   └── src/agentic/    # goal and intent loops; `flow/` runs intent flows
 ├── tinydesktop/        # the module: TinyBus glue and the cdylib, no behavior

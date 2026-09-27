@@ -12,21 +12,28 @@ contract commands and the per-file coverage gate green.
 
 ## Phase 1 — crate split, no behavior change
 
-- [ ] `tinydesktop-desktop`: move `src/desktop/` and `src/error/`; the
+- [x] `tinydesktop-desktop`: move `src/desktop/` and `src/error/`; the
       `tinydesktop` crate re-exports `Desktop`, `Error` and `Result`.
-- [ ] `tinydesktop-engine`: move `src/agentic/`; expose `JevRuntime`,
+- [x] `tinydesktop-engine`: move `src/agentic/`; expose `JevRuntime`,
       `run_goal`, `resolve_intent`, `run_flow`, `validate_flow` and
       `flow_guide`.
-- [ ] `tinydesktop-core`: move the flow's `Screen`, `Candidate`, `Depth`,
-      fingerprinting and labels. Introduce `Surface` in place of the flow's
-      `AgentBackend`, and the logical `Key` and `Keymap` in place of the
-      hard-coded `cmd+…`. `DesktopSurface` lives in `tinydesktop-desktop`.
+- [x] `tinydesktop-core::surface`: the flow's `Screen`, `Candidate`, `Depth`,
+      fingerprints, change notes and verified text delivery, behind the
+      `Surface` trait (the flow's former `AgentBackend`). `Desktop` implements
+      it in `tinydesktop-desktop/src/surface/`; the engine's `view` and
+      `backend` keep only flow policy and the async wrappers.
+- [ ] Replace the flow's `cmd+…` strings with `core::Key` (PR #21's
+      `platform_combo` covers Windows and Linux meanwhile).
 - [ ] `RunGoal`'s private backend is ported onto `core::Surface`, and the
       duplicate `agentic/screen.rs` pair is collapsed.
 - [ ] `tinydesktop` keeps only `tinybus_module/`.
 
 ## Phase 2 — link agent-browser
 
+- [x] `tinydesktop-bus::browser` ported from `tinybrowser-bus`; the Agent
+      interface contract in `tinydesktop-bus::agent`.
+- [x] `tinydesktop-browser`: sessions, conversion, error mapping, and held
+      outputs over an `Engine` seam, tested with a scripted engine.
 - [ ] Upstream: `lib.rs`, `StateOptions` and `DaemonState::with_options` in
       `vercel-labs/agent-browser`. The `tinyhumansai/agent-browser` fork is
       pinned meanwhile.
@@ -39,8 +46,10 @@ contract commands and the per-file coverage gate green.
 
 ## Phase 3 — deterministic components
 
-- [ ] Workspace, extraction and parsers, ranking, form model, facts, payment
-      detector, obstacle heuristics, settle.
+- [x] `tinydesktop-core`: platform keymap, action consequences and payment
+      detection, record parsers and ranking, facts with card-data refusal.
+- [ ] Workspace, record extraction from screens, form model, obstacle
+      heuristics, settle.
 
 ## Phase 4 — new Jev loops
 
