@@ -30,7 +30,7 @@ use super::{
     super::{Evaluator, JevRuntime},
     ask,
     backend::AgentBackend,
-    enter, flow_guide, ground, memory, run_flow_with, validate, validate_flow,
+    enter, fit, flow_guide, ground, memory, run_flow_with, validate, validate_flow,
     view::{Candidate, Depth, Screen},
     vote,
 };
