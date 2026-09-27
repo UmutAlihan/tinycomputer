@@ -92,6 +92,12 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
         self.browser.is_some()
     }
 
+    /// Whether this workspace can reach the desktop.
+    #[must_use]
+    pub fn has_desktop(&self) -> bool {
+        self.desktop.is_some()
+    }
+
     fn side_for(app: &str) -> Side {
         let app = app.trim().to_ascii_lowercase();
         if app == BROWSER
