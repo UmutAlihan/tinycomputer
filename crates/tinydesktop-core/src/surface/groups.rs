@@ -113,7 +113,7 @@ fn list_levels(nodes: &[(&Candidate, bool)]) -> Vec<(usize, Vec<String>)> {
         .filter(|(_, labels)| labels.len() >= 2)
         .map(|((depth, parent, _), labels)| (labels.len(), depth, parent))
         .collect::<Vec<_>>();
-    levels.sort_by(|left, right| (right.0, right.1).cmp(&(left.0, left.1)));
+    levels.sort_by_key(|(count, depth, _)| std::cmp::Reverse((*count, *depth)));
     levels
         .into_iter()
         .map(|(_, depth, parent)| (depth, parent))
