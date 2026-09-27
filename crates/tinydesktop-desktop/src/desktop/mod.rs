@@ -52,10 +52,12 @@ mod system;
 mod waiting;
 
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 use agent_desktop_core::{AppError, PermissionReport, PlatformAdapter, context::CommandContext};
 use serde_json::Value;
 use tinydesktop_bus::DesktopResponse;
+use tinydesktop_input::{MotionProfile, VirtualMouse};
 
 use crate::{Error, Result};
 use permission::Need;
