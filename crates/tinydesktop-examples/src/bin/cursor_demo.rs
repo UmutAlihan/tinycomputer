@@ -48,7 +48,10 @@ fn main() {
         Ok(_) => return eprintln!("`off` draws nothing; pick brisk, natural, or calm"),
         Err(error) => return eprintln!("{error}"),
     };
-    let laps: u32 = arguments.next().and_then(|laps| laps.parse().ok()).unwrap_or(3);
+    let laps: u32 = arguments
+        .next()
+        .and_then(|laps| laps.parse().ok())
+        .unwrap_or(3);
 
     let Some(helper) = ProcessOverlay::locate() else {
         return eprintln!(
@@ -56,7 +59,10 @@ fn main() {
              cargo build -p tinydesktop-cursor-overlay"
         );
     };
-    println!("drawing with {} at the {pace} pace, {laps} laps", helper.display());
+    println!(
+        "drawing with {} at the {pace} pace, {laps} laps",
+        helper.display()
+    );
 
     let cursor = ScreenCursor::new(pace, Some(helper));
     for lap in 1..=laps {

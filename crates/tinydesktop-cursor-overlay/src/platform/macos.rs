@@ -14,8 +14,8 @@ use std::cell::RefCell;
 use std::ptr::NonNull;
 
 use block2::RcBlock;
-use objc2::{AnyThread, MainThreadMarker, MainThreadOnly};
 use objc2::rc::Retained;
+use objc2::{AnyThread, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSApplication, NSApplicationActivationPolicy, NSBackingStoreType, NSColor, NSImage,
     NSImageScaling, NSImageView, NSScreen, NSScreenSaverWindowLevel, NSWindow,
@@ -160,7 +160,8 @@ pub(crate) fn run(driver: Driver) {
     // was created and where the window it drives lives — and the timer
     // retains it for as long as the timer is scheduled, which is the life of
     // the process.
-    let _timer =
-        unsafe { NSTimer::scheduledTimerWithTimeInterval_repeats_block(FRAME_SECONDS, true, &block) };
+    let _timer = unsafe {
+        NSTimer::scheduledTimerWithTimeInterval_repeats_block(FRAME_SECONDS, true, &block)
+    };
     app.run();
 }

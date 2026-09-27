@@ -25,7 +25,14 @@ const VIEWPORT_JS: &str = "[window.screenX, window.screenY, window.outerWidth, \
 /// Where the viewport's top-left corner is on screen, from the window's
 /// position and outer and inner sizes.
 pub(super) fn viewport_origin(window: &[f64]) -> Option<(f64, f64)> {
-    let [screen_x, screen_y, outer_width, outer_height, inner_width, inner_height] = *window
+    let [
+        screen_x,
+        screen_y,
+        outer_width,
+        outer_height,
+        inner_width,
+        inner_height,
+    ] = *window
     else {
         return None;
     };

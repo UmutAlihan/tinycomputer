@@ -19,10 +19,10 @@ use windows_sys::Win32::Graphics::Gdi::{
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, MSG, RegisterClassW,
-    SW_HIDE, SW_SHOWNOACTIVATE, SetTimer, ShowWindow, TranslateMessage, ULW_ALPHA,
-    UpdateLayeredWindow, WM_TIMER, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
-    WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
+    CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, MSG, RegisterClassW, SW_HIDE,
+    SW_SHOWNOACTIVATE, SetTimer, ShowWindow, TranslateMessage, ULW_ALPHA, UpdateLayeredWindow,
+    WM_TIMER, WNDCLASSW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    WS_EX_TRANSPARENT, WS_POPUP,
 };
 
 use crate::driver::{Driver, Picture, Tick};
@@ -82,7 +82,10 @@ impl Overlay {
         // either valid for the call or null where Win32 allows it.
         let window = unsafe {
             CreateWindowExW(
-                WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW
+                WS_EX_LAYERED
+                    | WS_EX_TRANSPARENT
+                    | WS_EX_TOPMOST
+                    | WS_EX_TOOLWINDOW
                     | WS_EX_NOACTIVATE,
                 class.as_ptr(),
                 class.as_ptr(),
@@ -218,14 +221,18 @@ fn bitmap(screen: HDC, side: i32, bgra: &[u8]) -> Option<Bitmap> {
 }
 
 fn round(value: f64) -> i32 {
-    let value = value.round().clamp(f64::from(i32::MIN), f64::from(i32::MAX));
+    let value = value
+        .round()
+        .clamp(f64::from(i32::MIN), f64::from(i32::MAX));
     // A clamped, rounded float converts exactly; parse it rather than cast.
     format!("{value:.0}").parse().unwrap_or(0)
 }
 
 fn opacity(value: f64) -> u8 {
     let scaled = (value.clamp(0.0, 1.0) * 255.0).round();
-    (0..=u8::MAX).find(|&alpha| f64::from(alpha) >= scaled).unwrap_or(u8::MAX)
+    (0..=u8::MAX)
+        .find(|&alpha| f64::from(alpha) >= scaled)
+        .unwrap_or(u8::MAX)
 }
 
 pub(crate) fn run(mut driver: Driver) {
