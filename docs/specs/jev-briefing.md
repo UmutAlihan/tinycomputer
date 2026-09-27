@@ -20,10 +20,27 @@ and tell each call as much as a person doing the task would know.
 
 ## Behavior
 
-### Every request is briefed
+### Every choice is briefed
 
-The flow runtime adds a `brief` object to the shared `state` of every Jev
-request. `RunFlowRequest.brief` and the run's own progress supply its fields:
+The flow runtime adds a `brief` object to the instructions of every question
+that chooses. That covers which element, option, move, field, record, or
+overlay control to use, and the yes/no check of whether an element is the
+right one (`confirm`). `RunFlowRequest.brief` and the run's own progress
+supply its fields.
+
+The brief is kept out of judgements about the screen: whether a step is
+done, how far along it is, whether a condition holds, whether something is in
+the way, whether the last action helped, whether a field shows an error.
+
+On a live results page, the same "has *search for flights* been
+accomplished?" question scored:
+
+- 0.39 with the brief in the shared state: Jev judged the step against the
+  whole booking;
+- 0.72 without it;
+- 0.76 with the brief moved onto the move Choice alone.
+
+The brief holds:
 
 | Field | What it holds |
 |---|---|
@@ -79,6 +96,10 @@ framings at once, then averages the answers:
   showing: search form, results, fare options, traveller form, extras, seats,
   review, payment, confirmation, error, captcha or login. The answer briefs
   the next request.
+- **Settled pages:** a `wait` that changes nothing is not a stall. Jev is
+  told the page has finished loading. After two such waits in a row it is not
+  let wait again, which leaves it to judge the page or act on it. Any other
+  action that changes nothing still counts toward the three-turn stall.
 - **Did that help:** after an action, the judge also asks whether it moved
   toward the step. A confident no undoes it and bans the element, the same as
   a drop in progress.

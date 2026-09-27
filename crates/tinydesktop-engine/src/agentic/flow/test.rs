@@ -2822,11 +2822,14 @@ fn brief_of(request: &EvaluationRequest) -> Value {
 
 /// Whether any yes/no or scale question about the screen carries a brief.
 fn judgements_are_briefed(request: &EvaluationRequest) -> bool {
-    request.questions.iter().any(|(id, question)| match question {
-        Question::Noul(noul) => id != "confirm" && noul.instructions.get("brief").is_some(),
-        Question::Score(score) => score.instructions.get("brief").is_some(),
-        Question::Choice(_) => false,
-    })
+    request
+        .questions
+        .iter()
+        .any(|(id, question)| match question {
+            Question::Noul(noul) => id != "confirm" && noul.instructions.get("brief").is_some(),
+            Question::Score(score) => score.instructions.get("brief").is_some(),
+            Question::Choice(_) => false,
+        })
 }
 
 #[tokio::test]
