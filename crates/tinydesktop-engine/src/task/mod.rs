@@ -663,6 +663,7 @@ fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraint
         RunFlowRequest {
             flow: run.flow.clone(),
             vars,
+            facts,
             allow_destructive: run.allow_destructive,
             include_values: false,
             max_actions,
