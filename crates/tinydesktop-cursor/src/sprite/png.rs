@@ -61,7 +61,7 @@ fn zlib(data: &[u8]) -> Vec<u8> {
     out
 }
 
-fn crc32(data: &[u8]) -> u32 {
+pub(super) fn crc32(data: &[u8]) -> u32 {
     let mut crc = u32::MAX;
     for &byte in data {
         crc ^= u32::from(byte);
@@ -76,16 +76,11 @@ fn crc32(data: &[u8]) -> u32 {
     !crc
 }
 
-fn adler32(data: &[u8]) -> u32 {
+pub(super) fn adler32(data: &[u8]) -> u32 {
     let (mut a, mut b) = (1_u32, 0_u32);
     for &byte in data {
         a = (a + u32::from(byte)) % 65_521;
         b = (b + a) % 65_521;
     }
     (b << 16) | a
-}
-
-#[cfg(test)]
-pub(super) mod checks {
-    pub(in crate::sprite) use super::{adler32, crc32};
 }

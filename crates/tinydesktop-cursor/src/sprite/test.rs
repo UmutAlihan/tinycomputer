@@ -2,7 +2,7 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::png::checks::{adler32, crc32};
+use super::png::{adler32, crc32};
 use super::{PULSE_FRAMES, SIZE, Sprite, png};
 
 fn alpha(sprite: &Sprite, frame: usize, x: u32, y: u32) -> u8 {
