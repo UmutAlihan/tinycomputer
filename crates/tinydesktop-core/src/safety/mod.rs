@@ -251,7 +251,12 @@ pub fn screen_payment_evidence(screen: &Screen) -> Option<PaymentEvidence> {
         .candidates
         .iter()
         .chain(screen.text_nodes.iter())
-        .filter_map(|candidate| candidate.name.as_deref().or(candidate.description.as_deref()))
+        .filter_map(|candidate| {
+            candidate
+                .name
+                .as_deref()
+                .or(candidate.description.as_deref())
+        })
         .chain(screen.context.iter().map(String::as_str))
         .map(|label| FieldHint {
             label: label.to_owned(),

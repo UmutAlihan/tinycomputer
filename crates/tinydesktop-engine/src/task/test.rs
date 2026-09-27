@@ -492,7 +492,10 @@ async fn an_approval_resume_spends_from_the_tasks_remaining_budget_not_a_fresh_o
     ));
     let requests = script.requests.lock().unwrap();
     assert_eq!(requests.len(), 3);
-    assert_eq!(requests[0].max_actions, 10, "the first run gets the full budget");
+    assert_eq!(
+        requests[0].max_actions, 10,
+        "the first run gets the full budget"
+    );
     assert_eq!(
         requests[1].max_actions, 7,
         "the approval's own run only gets what the first run did not spend"
@@ -525,7 +528,10 @@ async fn an_exhausted_time_budget_fails_the_task_before_a_run_starts() {
         panic!("{status:?}");
     };
     assert!(reason.contains("time budget"));
-    assert!(script.requests.lock().unwrap().is_empty(), "no run was ever started");
+    assert!(
+        script.requests.lock().unwrap().is_empty(),
+        "no run was ever started"
+    );
     assert_eq!(*script.released.lock().unwrap(), [view.id]);
 }
 
@@ -574,8 +580,7 @@ async fn a_declined_action_cancels_and_a_payment_is_always_a_checkpoint() {
     assert_eq!(code(&again), "NOT_WAITING");
     let cancelled = tasks.cancel(&view.id).data.unwrap();
     assert_eq!(
-        cancelled.status,
-        stopped.status,
+        cancelled.status, stopped.status,
         "cancelling a final checkpoint releases its workspace without changing its status"
     );
     assert_eq!(*script.released.lock().unwrap(), [view.id]);

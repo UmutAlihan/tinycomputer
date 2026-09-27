@@ -206,7 +206,11 @@ pub(super) fn top_index(path: &str) -> Option<usize> {
 /// top-level step directly (`3`) or one nested inside it, such as `4.2` (an
 /// `if` branch) or `4.r1.2` (a `repeat_until` round).
 pub(super) fn containing_top_index(path: &str) -> Option<usize> {
-    path.split('.').next()?.parse::<usize>().ok()?.checked_sub(1)
+    path.split('.')
+        .next()?
+        .parse::<usize>()
+        .ok()?
+        .checked_sub(1)
 }
 
 /// What the finished steps did, in one line.

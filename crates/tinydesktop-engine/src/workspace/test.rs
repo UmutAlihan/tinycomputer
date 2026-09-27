@@ -212,10 +212,7 @@ fn without_a_desktop_application_calls_are_refused_and_the_browser_stays_active(
         Workspace::new(None, Some(Recorder::new("browser", &calls)));
     assert!(!workspace.has_desktop());
     let code = |reply: DesktopResponse| reply.error.unwrap().code;
-    assert_eq!(
-        code(workspace.launch("Mail")),
-        "DESKTOP_NOT_AVAILABLE"
-    );
+    assert_eq!(code(workspace.launch("Mail")), "DESKTOP_NOT_AVAILABLE");
     assert_eq!(
         code(workspace.press("Mail", "cmd+n")),
         "DESKTOP_NOT_AVAILABLE"
@@ -248,7 +245,10 @@ fn visible_text_rereads_whatever_was_last_looked_at() {
 
     let calls = Arc::new(Mutex::new(Vec::new()));
     let mut browser = Recorder::new("browser", &calls);
-    let broken = Workspace::new(Some(Recorder::new("desktop", &calls)), Some(browser.clone()));
+    let broken = Workspace::new(
+        Some(Recorder::new("desktop", &calls)),
+        Some(browser.clone()),
+    );
     broken.navigate("https://flights.test");
     browser.failing = true;
     let broken = Workspace {
