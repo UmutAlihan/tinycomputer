@@ -1,0 +1,495 @@
+//! Tests for sessions over a scripted engine.
+//!
+//! The fake answers each command the way agent-browser does, records what it
+//! was sent, and writes screenshot and download files where asked, so the
+//! whole session layer runs without a browser.
+
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+
+use serde_json::{Value, json};
+use tinydesktop_bus::browser::{
+    Action, DownloadWaitRequest, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat,
+    ReadRequest, ScreenshotRequest, SessionId, SessionOptions, SnapshotRequest, Target,
+};
+
+use super::{Browser, MAX_SESSIONS};
+use crate::engine::{Engine, Launcher, Reply};
+use crate::error::Error;
+
+type Script = dyn Fn(&Value) -> Option<Value> + Send + Sync;
+
+/// Records every command; answers from an optional override, else like the
+/// engine would.
+#[derive(Clone)]
+struct Fake {
+    sent: Arc<Mutex<Vec<Value>>>,
+    script: Arc<Script>,
+}
+
+impl std::fmt::Debug for Fake {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Fake")
+    }
+}
+
+impl Fake {
+    fn new() -> Self {
+        Self::scripted(|_| None)
+    }
+
+    fn scripted(script: impl Fn(&Value) -> Option<Value> + Send + Sync + 'static) -> Self {
+        Self {
+            sent: Arc::new(Mutex::new(Vec::new())),
+            script: Arc::new(script),
+        }
+    }
+
+    fn actions(&self) -> Vec<String> {
+        self.sent
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|command| command["action"].as_str().unwrap().to_owned())
+            .collect()
+    }
+
+    fn last(&self, action: &str) -> Value {
+        self.sent
+            .lock()
+            .unwrap()
+            .iter()
+            .rev()
+            .find(|command| command["action"] == action)
+            .cloned()
+            .unwrap_or_else(|| panic!("{action} was never sent"))
+    }
+}
+
+fn ok(data: Value) -> Value {
+    json!({"id": "", "success": true, "data": data})
+}
+
+fn failure(message: &str) -> Value {
+    json!({"id": "", "success": false, "error": message})
+}
+
+fn png(width: u32, height: u32) -> Vec<u8> {
+    let mut bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR".to_vec();
+    bytes.extend(width.to_be_bytes());
+    bytes.extend(height.to_be_bytes());
+    bytes
+}
+
+fn default_reply(command: &Value) -> Value {
+    let path = command["path"].as_str().map(str::to_owned);
+    match command["action"].as_str().unwrap() {
+        "url" => ok(json!({"url": "https://flights.test/"})),
+        "title" => ok(json!({"title": "Flights"})),
+        "navigate" => ok(json!({"url": command["url"], "title": "Loaded"})),
+        "snapshot" => ok(json!({
+            "snapshot": "- button \"Search\" [ref=e1]",
+            "refs": {"e1": {"role": "button", "name": "Search"}}
+        })),
+        "gettext" => ok(json!({"text": "IndiGo ₹6,840"})),
+        "getattribute" => ok(json!({"value": "/book"})),
+        "isvisible" => ok(json!({"visible": true})),
+        "read" => ok(json!({"content": "# Flights\nIndiGo", "truncated": false})),
+        "content" => ok(json!({"html": "<h1>Flights</h1>"})),
+        "evaluate" => ok(json!({"result": 42})),
+        "screenshot" => {
+            std::fs::write(path.as_ref().unwrap(), png(1280, 800)).unwrap();
+            ok(json!({"path": path}))
+        }
+        "waitfordownload" => {
+            std::fs::write(path.as_ref().unwrap(), b"itinerary").unwrap();
+            ok(json!({"path": path}))
+        }
+        _ => ok(json!({})),
+    }
+}
+
+impl Engine for Fake {
+    fn execute(&mut self, command: Value) -> Reply<'_> {
+        self.sent.lock().unwrap().push(command.clone());
+        let reply = (self.script)(&command).unwrap_or_else(|| default_reply(&command));
+        Box::pin(async move { reply })
+    }
+}
+
+impl Launcher for Fake {
+    fn open(&self, _session: &str) -> Box<dyn Engine> {
+        Box::new(self.clone())
+    }
+}
+
+fn scratch(name: &str) -> PathBuf {
+    std::env::temp_dir().join(format!(
+        "tinydesktop-browser-test-{}-{name}",
+        std::process::id()
+    ))
+}
+
+async fn open(fake: &Fake, name: &str) -> (Browser, SessionId) {
+    let browser = Browser::with_scratch(Arc::new(fake.clone()), scratch(name));
+    let info = browser
+        .open_session(SessionOptions::default())
+        .await
+        .unwrap();
+    (browser, info.id)
+}
+
+#[tokio::test]
+async fn opening_launches_explicitly_then_sets_the_viewport() {
+    let fake = Fake::new();
+    let (browser, id) = open(&fake, "open").await;
+    assert_eq!(fake.actions(), ["launch", "viewport", "url", "title"]);
+    let listed = browser.list_sessions().await.unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id, id);
+    assert_eq!(listed[0].url, "https://flights.test/");
+    assert!(listed[0].launched);
+
+    browser.close_session(&id).await.unwrap();
+    assert_eq!(fake.last("close")["action"], "close");
+    assert!(browser.list_sessions().await.unwrap().is_empty());
+    browser
+        .close_session(&id)
+        .await
+        .expect("closing twice succeeds");
+}
+
+#[tokio::test]
+async fn a_failed_launch_opens_nothing() {
+    let fake = Fake::scripted(|command| {
+        (command["action"] == "launch").then(|| failure("Auto-launch failed: no chrome"))
+    });
+    let browser = Browser::with_scratch(Arc::new(fake), scratch("failed"));
+    let error = browser
+        .open_session(SessionOptions::default())
+        .await
+        .unwrap_err();
+    assert!(matches!(error, Error::BrowserUnavailable { .. }), "{error:?}");
+    assert!(browser.list_sessions().await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn sessions_are_capped_and_unknown_ones_are_named() {
+    let fake = Fake::new();
+    let browser = Browser::with_scratch(Arc::new(fake), scratch("cap"));
+    for _ in 0..MAX_SESSIONS {
+        browser
+            .open_session(SessionOptions {
+                endpoint: Some("ws://127.0.0.1:9222".to_owned()),
+                ..SessionOptions::default()
+            })
+            .await
+            .unwrap();
+    }
+    assert!(matches!(
+        browser.open_session(SessionOptions::default()).await,
+        Err(Error::LimitExceeded { .. })
+    ));
+    let missing = SessionId::new("s-missing");
+    assert!(matches!(
+        browser.navigate(&missing, NavigateRequest::new("https://x.test")).await,
+        Err(Error::NoSuchSession { .. })
+    ));
+    assert!(matches!(
+        browser.list_downloads(&missing).await,
+        Err(Error::NoSuchSession { .. })
+    ));
+}
+
+#[tokio::test]
+async fn navigation_reports_the_page_and_refusals_are_typed() {
+    let fake = Fake::scripted(|command| {
+        (command["url"] == "https://evil.test/")
+            .then(|| failure("Domain 'evil.test' is not in the allowed domains list"))
+    });
+    let (browser, id) = open(&fake, "navigate").await;
+    let page = browser
+        .navigate(&id, NavigateRequest::new("https://flights.test/search"))
+        .await
+        .unwrap();
+    assert_eq!(page.url, "https://flights.test/search");
+    assert_eq!(page.title, "Loaded");
+    assert_eq!(
+        browser.list_sessions().await.unwrap()[0].url,
+        "https://flights.test/search"
+    );
+    assert!(matches!(
+        browser.navigate(&id, NavigateRequest::new("https://evil.test/")).await,
+        Err(Error::BlockedByPolicy { url }) if url == "evil.test"
+    ));
+    assert!(matches!(
+        browser.navigate(&id, NavigateRequest::new("")).await,
+        Err(Error::InvalidInput { .. })
+    ));
+}
+
+#[tokio::test]
+async fn snapshots_count_up_and_carry_the_page() {
+    let fake = Fake::new();
+    let (browser, id) = open(&fake, "snapshot").await;
+    let first = browser
+        .snapshot(&id, SnapshotRequest::interactive())
+        .await
+        .unwrap();
+    let second = browser
+        .snapshot(&id, SnapshotRequest::default())
+        .await
+        .unwrap();
+    assert_eq!((first.sequence, second.sequence), (1, 2));
+    assert_eq!(first.refs[0].id, "e1");
+    assert_eq!(first.title, "Flights");
+    assert_eq!(fake.last("snapshot")["interactive"], false);
+}
+
+#[tokio::test]
+async fn actions_return_read_values_and_the_page_they_left() {
+    let fake = Fake::new();
+    let (browser, id) = open(&fake, "perform").await;
+    let text = browser
+        .perform(
+            &id,
+            Action::GetText {
+                target: Target::reference("e1"),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(text.value, json!("IndiGo ₹6,840"));
+    assert_eq!(text.page.url, "https://flights.test/");
+    let attribute = browser
+        .perform(
+            &id,
+            Action::GetAttribute {
+                target: Target::reference("e1"),
+                attribute: "href".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(attribute.value, json!("/book"));
+    let visible = browser
+        .perform(
+            &id,
+            Action::IsVisible {
+                target: Target::reference("e1"),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(visible.value, json!(true));
+    let clicked = browser
+        .perform(
+            &id,
+            Action::Click {
+                target: Target::locator(Locator::new(LocateBy::Role, "button")),
+                new_tab: false,
+            },
+        )
+        .await
+        .unwrap();
+    assert!(clicked.value.is_null());
+    assert_eq!(clicked.matched.as_deref(), Some("Role \"button\""));
+    let filled = browser
+        .perform(
+            &id,
+            Action::Fill {
+                target: Target::locator(Locator::new(LocateBy::Label, "From")),
+                value: "DEL".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
+    assert!(filled.matched.is_some());
+    let pressed = browser
+        .perform(
+            &id,
+            Action::Press {
+                key: "Enter".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
+    assert!(pressed.matched.is_none());
+    assert_eq!(
+        browser
+            .perform(
+                &id,
+                Action::WaitFor {
+                    target: None,
+                    text: Some("Results".to_owned()),
+                    state: tinydesktop_bus::browser::WaitState::Visible,
+                    ms: None,
+                    timeout_ms: None,
+                },
+            )
+            .await
+            .unwrap()
+            .value,
+        Value::Null
+    );
+    assert_eq!(fake.last("wait")["timeout"], 30_000);
+}
+
+#[tokio::test]
+async fn a_stale_ref_and_an_inexpressible_action_are_typed_failures() {
+    let fake = Fake::scripted(|command| {
+        (command["action"] == "click").then(|| failure("Unknown ref: e7"))
+    });
+    let (browser, id) = open(&fake, "stale").await;
+    assert!(matches!(
+        browser
+            .perform(
+                &id,
+                Action::Click {
+                    target: Target::reference("e7"),
+                    new_tab: false,
+                },
+            )
+            .await,
+        Err(Error::StaleRef { reference }) if reference == "e7"
+    ));
+    assert!(matches!(
+        browser
+            .perform(
+                &id,
+                Action::Focus {
+                    target: Target::locator(Locator::new(LocateBy::Text, "Book")),
+                },
+            )
+            .await,
+        Err(Error::InvalidInput { .. })
+    ));
+}
+
+#[tokio::test]
+async fn reading_a_page_truncates_and_reports_its_format() {
+    let fake = Fake::new();
+    let (browser, id) = open(&fake, "read").await;
+    let markdown = browser
+        .read_page(
+            &id,
+            ReadRequest {
+                max_chars: 5,
+                ..ReadRequest::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(markdown.content, "# Fli");
+    assert!(markdown.truncated);
+    assert_eq!(markdown.format, ReadFormat::Markdown);
+    let html = browser
+        .read_page(
+            &id,
+            ReadRequest {
+                format: ReadFormat::Html,
+                ..ReadRequest::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(html.content, "<h1>Flights</h1>");
+    assert!(!html.truncated);
+    let scoped = browser
+        .read_page(
+            &id,
+            ReadRequest {
+                selector: Some("main".to_owned()),
+                ..ReadRequest::default()
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(scoped.format, ReadFormat::Text);
+    assert_eq!(scoped.content, "IndiGo ₹6,840");
+}
+
+#[tokio::test]
+async fn evaluation_returns_the_scripts_value() {
+    let fake = Fake::new();
+    let (browser, id) = open(&fake, "evaluate").await;
+    assert_eq!(
+        browser
+            .evaluate(&id, EvaluateRequest::new("6 * 7"))
+            .await
+            .unwrap(),
+        json!(42)
+    );
+    assert!(matches!(
+        browser.evaluate(&id, EvaluateRequest::new(" ")).await,
+        Err(Error::InvalidInput { .. })
+    ));
+}
+
+#[tokio::test]
+async fn a_screenshot_is_collected_into_a_held_output_and_its_file_removed() {
+    let fake = Fake::new();
+    let (browser, id) = open(&fake, "screenshot").await;
+    let held = browser
+        .screenshot(&id, ScreenshotRequest::default())
+        .await
+        .unwrap();
+    assert_eq!((held.width, held.height), (1280, 800));
+    assert_eq!(held.media_type, "image/png");
+    let written = fake.last("screenshot")["path"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(
+        !std::path::Path::new(&written).exists(),
+        "the staged file is removed"
+    );
+    let chunk = browser.read_output(&held.id, 0, 1_024).unwrap();
+    assert!(chunk.eof);
+    browser.release_output(&held.id).unwrap();
+    assert!(matches!(
+        browser.read_output(&held.id, 0, 1),
+        Err(Error::NoSuchOutput { .. })
+    ));
+}
+
+#[tokio::test]
+async fn a_screenshot_the_engine_never_wrote_is_a_failure() {
+    let fake = Fake::scripted(|command| {
+        (command["action"] == "screenshot").then(|| ok(json!({"path": "/nonexistent/shot.png"})))
+    });
+    let (browser, id) = open(&fake, "unwritten").await;
+    assert!(matches!(
+        browser.screenshot(&id, ScreenshotRequest::default()).await,
+        Err(Error::ModuleFailed { .. })
+    ));
+}
+
+#[tokio::test]
+async fn downloads_are_recorded_as_they_finish() {
+    let fake = Fake::new();
+    let (browser, id) = open(&fake, "download").await;
+    assert!(browser.list_downloads(&id).await.unwrap().is_empty());
+    let finished = browser
+        .wait_download(
+            &id,
+            DownloadWaitRequest {
+                timeout_ms: Some(1_000),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(finished.received_bytes, 9);
+    assert!(finished.suggested_filename.starts_with("download-"));
+    assert_eq!(fake.last("waitfordownload")["timeout"], 1_000);
+    assert_eq!(browser.list_downloads(&id).await.unwrap(), [finished]);
+    browser.close_session(&id).await.unwrap();
+}
+
+#[test]
+fn the_default_scratch_space_is_private_to_the_process() {
+    let browser = Browser::new(Arc::new(Fake::new()));
+    assert!(format!("{browser:?}").contains(&std::process::id().to_string()));
+}
