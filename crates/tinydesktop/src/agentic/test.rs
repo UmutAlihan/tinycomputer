@@ -410,7 +410,11 @@ async fn goal_loop_reports_terminal_policy_outcomes() {
     assert_eq!(confirmation.stop, JevStopReason::ConfirmationRequired);
 
     let no_target = run_case(
-        vec![response("CLICK", 0.9, "none")],
+        vec![
+            response("CLICK", 0.9, "none"),
+            response("CLICK", 0.9, "none"),
+            response("CLICK", 0.9, "none"),
+        ],
         1,
         3,
         3,
