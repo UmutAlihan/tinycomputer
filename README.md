@@ -162,6 +162,26 @@ scripts/lab run mail-compose --mode authored  # an LLM writes the flow
 scripts/lab eval all --modes flow,goal --trials 3
 ```
 
+### Hand it a task
+
+The task members take a goal and run it end to end, pausing only for what the
+caller must decide. A model calls `Describe` once, then:
+
+```json
+{"member": "StartTask", "args": [{
+  "task": "Find the cheapest flight from Delhi to Srinagar on 14 October and fill in my details up to payment",
+  "facts": {"first name": "Asha", "last name": "Raina", "email": "asha@example.com"}
+}]}
+```
+
+With a planner configured, the task is planned into a flow; without one, the
+caller passes `flow` (Describe returns the guide and a worked example). Then
+`AwaitTask` until the status asks for something: `needs_input` (answer with
+`ContinueTask.inputs`), `needs_approval` (`ContinueTask.approve`), or a final
+`checkpoint` at the payment page, which the person completes. Facts are typed
+locally and never reach a model. See
+[`docs/specs/unified-agent.md`](docs/specs/unified-agent.md).
+
 See [`docs/lab.md`](docs/lab.md). Anything that launches Chromium runs in the Linux
 Docker lab instead of on the host; see [`docs/docker-lab.md`](docs/docker-lab.md).
 

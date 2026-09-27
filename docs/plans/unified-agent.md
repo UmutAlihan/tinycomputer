@@ -58,13 +58,21 @@ contract commands and the per-file coverage gate green.
 
 ## Phase 5 — task controller and Agent interface
 
-- [ ] Task store, long-poll, continuation, cancel; grammar additions;
-      `Describe` with schemas; `tinydesktop-skills`.
+- [x] `browse` step; `Workspace` routing a flow between the desktop and the
+      browser; `run_flow` generic over surfaces.
+- [x] `tinydesktop-engine::Tasks`: start, long-poll, continue (inputs and
+      approvals), cancel, report, list; `needs_input` for missing facts,
+      `needs_approval` for irreversible actions, a final checkpoint at payment.
+- [x] Agent members served by the module (contract 1.7, 67 members), with
+      `Describe` returning schemas, the guide, and working examples.
+- [ ] `extract`, `pick`, and `in` steps; `needs_human` detection;
+      `tinydesktop-skills`.
 
 ## Phase 6 — planner
 
-- [ ] `planner` feature and confidential config; plan, repair, replan and
-      summarize against `MockModel`.
+- [x] `planner` feature and private `planner` config (OpenRouter); plan with
+      validation repairs; plain-language `StartTask` and `PlanTask`.
+- [ ] Replan after a failed step; summarize the answer from records.
 
 ## Phase 7 — lab
 
