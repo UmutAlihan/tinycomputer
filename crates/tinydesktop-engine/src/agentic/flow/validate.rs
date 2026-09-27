@@ -15,8 +15,15 @@ pub(super) const MAX_REPEAT: u32 = 20;
 /// Parses and checks a candidate flow.
 ///
 /// `known` are variable names the caller will supply at run time on top of the
-/// flow's own `vars`.
-pub(super) fn validate(flow: &Value, known: &BTreeSet<String>) -> (Option<Flow>, FlowValidation) {
+/// flow's own `vars`. `facts` are the names among them that are the task's
+/// facts: a `${name}` for one of those is rejected everywhere except an
+/// `enter` step's typed value, a `browse` address, or an `open` application
+/// name, so a decision model never sees a fact's value.
+pub(super) fn validate(
+    flow: &Value,
+    known: &BTreeSet<String>,
+    facts: &BTreeSet<String>,
+) -> (Option<Flow>, FlowValidation) {
     let parsed: Flow = match serde_json::from_value(flow.clone()) {
         Ok(parsed) => parsed,
         Err(error) => {
@@ -30,12 +37,12 @@ pub(super) fn validate(flow: &Value, known: &BTreeSet<String>) -> (Option<Flow>,
             );
         }
     };
-    let validation = check(&parsed, known);
+    let validation = check(&parsed, known, facts);
     (validation.valid.then_some(parsed), validation)
 }
 
 /// Checks an already-parsed flow.
-pub(crate) fn check(flow: &Flow, known: &BTreeSet<String>) -> FlowValidation {
+pub(crate) fn check(flow: &Flow, known: &BTreeSet<String>, facts: &BTreeSet<String>) -> FlowValidation {
     let mut errors = Vec::new();
     if flow.app.trim().is_empty() {
         errors.push("`app` must name the application the flow drives".to_owned());
@@ -46,7 +53,7 @@ pub(crate) fn check(flow: &Flow, known: &BTreeSet<String>) -> FlowValidation {
     let mut defined = known.clone();
     defined.extend(flow.vars.keys().cloned());
     let mut count = 0;
-    walk(&flow.steps, "", 0, &mut defined, &mut count, &mut errors);
+    walk(&flow.steps, "", 0, &mut defined, facts, &mut count, &mut errors);
     if count > MAX_STEPS {
         errors.push(format!(
             "the flow has {count} steps; at most {MAX_STEPS} are allowed"
