@@ -220,12 +220,22 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let what = substitute(&choose.what, &self.vars);
         let option = substitute(&choose.option, &self.vars);
         let purpose = format!("pick the option {option:?} in {what}");
-        for attempt in 0..2 {
+        // As a person works a list or an autocomplete box: take the option
+        // if it shows, else open the control, else type the option to filter
+        // it, and only then fall back to judging every control.
+        for attempt in 0..4 {
             let screen = self.look().await?;
             let pool = clickable(&screen.candidates)
                 .into_iter()
                 .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
                 .collect::<Vec<_>>();
+            let pool = if attempt == 3 {
+                pool
+            } else {
+                pool.into_iter()
+                    .filter(|candidate| mentions(candidate, &option))
+                    .collect()
+            };
             if let Some(grounded) = self.ground(log, &screen, &purpose, &purpose, pool).await? {
                 log.confidence = Some(grounded.confidence);
                 let target = grounded.candidate;
@@ -242,16 +252,57 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     return Ok(Ended::new(StepOutcome::Done, format!("chose {option:?}")));
                 }
             }
-            if attempt == 0 {
-                self.accomplish(
-                    log,
-                    &format!("open {what} so its options show"),
-                    REVEAL_TURNS,
-                )
-                .await?;
+            match attempt {
+                0 => {
+                    self.accomplish(
+                        log,
+                        &format!("open {what} so its options show"),
+                        REVEAL_TURNS,
+                    )
+                    .await?;
+                }
+                1 => self.type_to_filter(log, &screen, &what, &option).await?,
+                _ => {}
             }
         }
         Err(Halt::Failed(format!("{option:?} was not found in {what}")))
+    }
+
+    /// Types `option` into the search box of `what`, so an autocomplete
+    /// lists it; nothing happens when no field takes text.
+    async fn type_to_filter(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        what: &str,
+        option: &str,
+    ) -> Result<(), Halt> {
+        let fields = screen
+            .candidates
+            .iter()
+            .filter(|candidate| {
+                candidate
+                    .available_actions
+                    .iter()
+                    .any(|action| action == "SetValue")
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let purpose = format!("the search box to type {option:?} into, for {what}");
+        let Some(grounded) = self.ground(log, screen, &purpose, &purpose, fields).await? else {
+            return Ok(());
+        };
+        let app = self.app.clone();
+        let target = grounded.candidate;
+        let field = target.clone();
+        let text = option.to_owned();
+        self.act(log, "type to filter", Some(&target), move |backend| {
+            deliver_text(&backend, &app, &field, &text)
+        })
+        .await?;
+        self.history
+            .push(format!("typed {option:?} into {} to filter it", label(&target)));
+        Ok(())
     }
 
     async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
@@ -593,6 +644,20 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             format!("took the {taken} branch (confidence {held:.2})"),
         ))
     }
+}
+
+/// Whether an element shows `option` in its name, value, or description.
+fn mentions(candidate: &Candidate, option: &str) -> bool {
+    let option = option.trim().to_lowercase();
+    !option.is_empty()
+        && [
+            candidate.name.clone(),
+            candidate.description.clone(),
+            candidate.value.as_ref().map(ToString::to_string),
+        ]
+        .into_iter()
+        .flatten()
+        .any(|text| text.to_lowercase().contains(&option))
 }
 
 /// Elements that can be pressed.
