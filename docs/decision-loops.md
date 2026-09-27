@@ -59,7 +59,7 @@ Every question about a screen shares one `state` object, built by
   ]},
   "recent_actions": [
     "step 1 (open \"Mail\"): Done, Mail is open",
-    "after the last action: a window appeared: textfield \"To:\", textfield \"Subject:\""
+    "after the last action: window is now \"New Message\"; appeared: textfield \"To:\", textfield \"Subject:\""
   ]
 }
 ```
@@ -73,7 +73,8 @@ A few details are deliberate:
   need a specific element get their own, smaller option list.
 - `recent_actions` carries the last eight history lines (`MAX_HISTORY`). This
   is how Jev learns what the last click changed: after every action the runtime
-  writes a change note ("a window appeared: …", "nothing changed").
+  writes a change note ("window is now \"New Message\"; appeared: …", or
+  "nothing on screen changed").
 - Field values are left out unless the request sets `include_values`. When it
   is set, a `field_contents` block shows what each text field holds (up to 12
   fields, 400 characters each), so a question like "does the draft show the
