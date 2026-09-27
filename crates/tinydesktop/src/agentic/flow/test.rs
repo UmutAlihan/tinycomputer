@@ -1458,5 +1458,9 @@ fn a_rich_text_area_reports_the_text_inside_it_as_its_contents() {
         .unwrap();
     assert!(fields.contains(&json!({"field": "textfield \"Subject\"", "holds": "Hello"})));
     assert!(fields.contains(&json!({"field": area, "holds": "Hi Sam,\nSee you Friday."})));
-    assert!(ask::state(&screen, "x", &[], false).get("field_contents").is_none());
+    assert!(
+        ask::state(&screen, "x", &[], false)
+            .get("field_contents")
+            .is_none()
+    );
 }

@@ -115,6 +115,21 @@ fn rich_text(screen: &Screen, area: &Candidate) -> Option<String> {
     (!text.is_empty()).then_some(text)
 }
 
+fn element_line(node: &Candidate, include_values: bool) -> String {
+    let mut line = label(node);
+    if include_values
+        && let Some(value) = node.value.as_ref().and_then(Value::as_str)
+        && !value.is_empty()
+    {
+        let shown: String = value.chars().take(80).collect();
+        let _ = write!(line, " = {shown:?}");
+    }
+    if !node.states.is_empty() {
+        let _ = write!(line, " [{}]", node.states.join(", "));
+    }
+    line
+}
+
 pub(super) fn request(model: &str, state: Value, questions: Questions) -> EvaluationRequest {
     EvaluationRequest {
         state,
