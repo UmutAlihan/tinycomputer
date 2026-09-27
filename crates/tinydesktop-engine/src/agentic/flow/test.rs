@@ -1402,6 +1402,7 @@ async fn choose_types_into_an_autocomplete_and_picks_the_suggestion() {
         |id, question, sim| match id {
             "move" => Some(pick(question, "activate", 0.9)),
             "done" => Some(noul(if sim.searching { 0.9 } else { 0.05 })),
+            _ if !matches!(question, Question::Choice(_)) => None,
             _ if purpose_of(question).contains("search box") => {
                 Some(pick(question, "Search city", 0.9))
             }
