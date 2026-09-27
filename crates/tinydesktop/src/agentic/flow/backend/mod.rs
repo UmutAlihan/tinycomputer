@@ -122,13 +122,14 @@ impl AgentBackend for Desktop {
         };
         let pasted = self.press(press_at(app, "cmd+v"));
         let _settled = self.wait(WaitRequest::sleep(150));
-        if let Some(restore) = restore_plan(&previous) {
-            let _restored = match restore {
+        let restored = restore_plan(&previous).is_none_or(|restore| {
+            match restore {
                 Restore::Set(request) => self.clipboard_set(request),
                 Restore::Clear => self.clipboard_clear(),
-            };
-        }
-        if selected.ok { pasted } else { selected }
+            }
+            .ok
+        });
+        with_restoration(if selected.ok { pasted } else { selected }, restored)
     }
 
     fn press(&self, app: &str, combo: &str) -> DesktopResponse {
