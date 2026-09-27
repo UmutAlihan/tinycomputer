@@ -5,7 +5,7 @@ use tinydesktop_bus::{
     ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
     RepeatStep, StepOutcome,
 };
-use tinydesktop_core::surface::{Group, result_groups};
+use tinydesktop_core::surface::{Group, result_families, result_groups};
 use tinydesktop_core::{Criterion, Record, rank};
 
 use crate::workspace::BROWSER;
@@ -499,29 +499,26 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let by = substitute(&pick.by, &self.vars);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
-        let groups = result_groups(&screen);
-        if groups.is_empty() {
+        let families = result_families(&screen);
+        if families.is_empty() {
             return Err(Halt::Failed(format!("no list of {from} is showing")));
         }
-        let records = groups
-            .iter()
-            .map(|group| Record {
-                fields: group
-                    .fields
-                    .iter()
-                    .enumerate()
-                    .map(|(index, text)| (format!("field {index}"), text.clone()))
-                    .collect(),
+        // A page can repeat several things (a strip of dates above the
+        // flights); a measurable criterion ranks the first list that has
+        // the measure, and judgement falls to the longest.
+        let ranked = Criterion::parse(&by).and_then(|criterion| {
+            families.iter().find_map(|groups| {
+                rank(&records_of(groups), criterion).map(|order| (groups, order[0]))
             })
-            .collect::<Vec<_>>();
-        let (best, how) =
-            match Criterion::parse(&by).and_then(|criterion| rank(&records, criterion)) {
-                Some(order) => (order[0], "ranked"),
-                None => (
-                    self.judge_pick(log, &screen, &from, &by, &groups).await?,
-                    "judged",
-                ),
-            };
+        });
+        let (groups, best, how) = match ranked {
+            Some((groups, best)) => (groups, best, "ranked"),
+            None => {
+                let groups = &families[0];
+                let best = self.judge_pick(log, &screen, &from, &by, groups).await?;
+                (groups, best, "judged")
+            }
+        };
         let group = &groups[best];
         let summary: String = group
             .fields
@@ -813,6 +810,21 @@ fn date_words(option: &str) -> Vec<String> {
                 })
         })
         .map(str::to_owned)
+        .collect()
+}
+
+/// Each card's text as a record, its fields numbered in reading order.
+fn records_of(groups: &[Group]) -> Vec<Record> {
+    groups
+        .iter()
+        .map(|group| Record {
+            fields: group
+                .fields
+                .iter()
+                .enumerate()
+                .map(|(index, text)| (format!("field {index}"), text.clone()))
+                .collect(),
+        })
         .collect()
 }
 
