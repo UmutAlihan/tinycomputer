@@ -37,7 +37,7 @@ pub use agentic::{JevRuntime, flow_guide, resolve_intent, run_flow, run_goal, va
 pub use planner::{Completion, LanguageModel, Planner, REPAIRS, Role, Turn};
 #[cfg(feature = "planner")]
 pub use planner::{PLANNER_MODEL, PlannerConfig, open_router};
-pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks, capabilities};
+pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks, TextFuture, capabilities};
 pub use tinydesktop_bus::DesktopResponse;
 use tinydesktop_desktop::Desktop;
 pub use workspace::{BROWSER, Workspace};
