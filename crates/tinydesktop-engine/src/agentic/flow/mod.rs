@@ -54,7 +54,7 @@ use tinydesktop_bus::{
     JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
 use tinydesktop_core::Facts;
-use tinyinference_decisions::{Answer, EvaluationRequest};
+use tinyinference_decisions::{Answer, EvaluationRequest, Question};
 
 use super::{JevRuntime, merge_metrics, provider_error, response};
 use backend::{AgentBackend, blocking, observe_async};
@@ -434,7 +434,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 .questions
                 .insert(PAGE_KIND.to_owned(), ask::page_kind());
         }
-        self.brief_into(&mut request.state);
+        self.brief_into(&mut request);
         self.mask(&mut request);
         let room = self.max_calls - self.metrics.calls;
         let votes = if self.enabled(FlowLoop::Vote) {
@@ -490,13 +490,35 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         Ok(answers)
     }
 
-    /// Adds the run's brief to a request's shared state: the goal, whom it is
-    /// for, the plan with this step marked, what has been chosen so far, and
-    /// the kind of page showing.
-    fn brief_into(&self, state: &mut Value) {
-        let Value::Object(fields) = state else {
+    /// Adds the run's brief — the goal, whom it is for, the plan with this
+    /// step marked, what has been chosen so far, and the kind of page showing
+    /// — to the questions that choose: which element, option, move, field,
+    /// or record, and whether an element is the right one.
+    ///
+    /// A yes/no judgement of the screen (is the step done, does a condition
+    /// hold, is something in the way) is left without it. Measured on a live
+    /// results page, the brief pulled Jev's "is the search done?" from 0.75
+    /// down to 0.39: it judged the step against the whole task.
+    fn brief_into(&self, request: &mut EvaluationRequest) {
+        let Some(brief) = self.brief() else {
             return;
         };
+        for (id, question) in &mut request.questions {
+            let instructions = match question {
+                Question::Choice(choice) if id != PAGE_KIND => &mut choice.instructions,
+                Question::Noul(noul) if BRIEFED_NOULS.contains(&id.as_str()) => {
+                    &mut noul.instructions
+                }
+                _ => continue,
+            };
+            if let Value::Object(fields) = instructions {
+                fields.insert("brief".to_owned(), brief.clone());
+            }
+        }
+    }
+
+    /// The brief as Jev reads it, or `None` when there is nothing to say.
+    fn brief(&self) -> Option<Value> {
         let current = self
             .step
             .split('.')
@@ -544,9 +566,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         if let Some(page) = &self.page {
             brief.insert("page".to_owned(), json!(page));
         }
-        if !brief.is_empty() {
-            fields.insert("brief".to_owned(), Value::Object(brief));
-        }
+        (!brief.is_empty()).then_some(Value::Object(brief))
     }
 
     /// Masks every secret out of a request, wherever it appears.
@@ -711,6 +731,10 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 
 /// The id of the page-kind question a request on a web page carries.
 const PAGE_KIND: &str = "page_kind";
+
+/// The yes/no questions that are about choosing, not judging the screen:
+/// whether an element is the right one for a purpose.
+const BRIEFED_NOULS: &[&str] = &["confirm"];
 
 /// Every string inside `value` with the secrets masked.
 fn mask_value(value: &mut Value, secrets: &Facts) {
