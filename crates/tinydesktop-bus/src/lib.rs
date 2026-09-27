@@ -105,6 +105,7 @@ pub mod agentic;
 pub mod apps;
 pub mod clipboard;
 pub mod envelope;
+pub mod flow;
 pub mod input;
 pub mod interaction;
 pub mod names;
@@ -128,6 +129,11 @@ pub use clipboard::{ClipboardGetRequest, ClipboardSetRequest};
 pub use envelope::{
     Delivery, DeliveryDisposition, DesktopError, DesktopResponse, ENVELOPE_VERSION, RecoveryHint,
     RetryDisposition,
+};
+pub use flow::{
+    ChooseStep, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowLoop, FlowRunResult, FlowStep,
+    FlowStopReason, FlowValidation, GroundingHint, IfStep, ReadStep, RepeatStep, RunFlowRequest,
+    STEP_KINDS, Slot, Slots, StepOutcome, StepReport, ValidateFlowRequest,
 };
 pub use input::{
     DragEndpoint, DragRequest, HoldKeyRequest, HoldMouseRequest, HoverRequest, MouseClickRequest,
