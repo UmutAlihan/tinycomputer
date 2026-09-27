@@ -48,7 +48,7 @@ fn list(root: &std::path::Path) -> std::io::Result<()> {
         println!(
             "{:<40} {:>7.1}s {:>4} calls  {}",
             run.file_name().unwrap_or_default().to_string_lossy(),
-            summary.wall_ms as f64 / 1000.0,
+            std::time::Duration::from_millis(summary.wall_ms).as_secs_f64(),
             summary.calls,
             summary.runs.join(" | ")
         );
