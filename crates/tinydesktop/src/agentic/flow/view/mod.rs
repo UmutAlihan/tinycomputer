@@ -44,6 +44,11 @@ pub(in crate::agentic) struct Candidate {
     pub(in crate::agentic) subtree_truncated: bool,
     #[serde(skip)]
     pub(in crate::agentic) path: Vec<String>,
+    /// This node's position in the tree's document order, so a ref-bearing
+    /// and a ref-less node can be merged back into reading order even though
+    /// they are collected into separate lists.
+    #[serde(skip)]
+    pub(in crate::agentic) order: usize,
 }
 
 /// Parsed current surface.
