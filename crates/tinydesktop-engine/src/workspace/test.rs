@@ -175,7 +175,7 @@ fn a_failed_open_leaves_the_active_side_alone() {
     let calls = Arc::new(Mutex::new(Vec::new()));
     let mut browser = Recorder::new("browser", &calls);
     browser.failing = true;
-    let workspace = Workspace::new(Recorder::new("desktop", &calls), Some(browser));
+    let workspace = Workspace::new(Some(Recorder::new("desktop", &calls)), Some(browser));
     assert!(!workspace.launch("browser").ok);
     assert!(!workspace.navigate("https://flights.test").ok);
     assert!(workspace.observe("browser", None, Depth::Full).is_err());
