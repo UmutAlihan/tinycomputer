@@ -12,9 +12,11 @@ use tinydesktop_bus::{
     ElementProperty, GetRequest, JevOperation, LaunchRequest, ListWindowsRequest, PressRequest,
     RefRequest, ScrollRequest, SetValueRequest, SnapshotRequest, Surface as Overlay, WaitRequest,
 };
-use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface};
+use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
 
 use crate::Desktop;
+
+mod pointer;
 
 const MAX_TREE_DEPTH: usize = 64;
 
@@ -574,6 +576,9 @@ pub(crate) fn execute_desktop(
     target: Option<&Candidate>,
     text: Option<String>,
 ) -> DesktopResponse {
+    if let (Some(target), true) = (target, uses_pointer(operation)) {
+        pointer::glide_onto(desktop, target);
+    }
     let ref_id = target.map(|node| node.ref_id.clone());
     match operation {
         JevOperation::Click => desktop.click(RefRequest::new(ref_id.unwrap_or_default())),
