@@ -28,7 +28,7 @@ mod steps;
 mod validate;
 mod view;
 
-pub(crate) use validate::missing_inputs;
+pub(crate) use validate::{check as check_flow, missing_inputs};
 
 #[cfg(test)]
 mod test;

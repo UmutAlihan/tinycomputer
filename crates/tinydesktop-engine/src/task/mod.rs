@@ -108,6 +108,10 @@ impl Tasks {
     }
 
     /// Starts a task and returns at once with its first view.
+    ///
+    /// # Panics
+    ///
+    /// When called outside a Tokio runtime: the task runs on a spawned worker.
     #[must_use]
     pub fn start(&self, request: StartTaskRequest) -> AgentResponse<TaskView> {
         let facts = match Facts::new(request.facts.clone()) {
@@ -133,26 +137,17 @@ impl Tasks {
             ));
         };
         let known = known_names(&flow, &facts);
-        let validation = crate::agentic::validate_flow(&tinydesktop_bus::ValidateFlowRequest {
-            flow: serde_json::to_value(&flow).unwrap_or_default(),
-            vars: known.iter().map(|name| (name.clone(), String::new())).collect(),
-        });
-        if let Some(errors) = validation
-            .data
-            .as_ref()
-            .filter(|data| data.get("valid") == Some(&serde_json::Value::Bool(false)))
-            .and_then(|data| data.get("errors"))
-            .and_then(serde_json::Value::as_array)
-            .filter(|errors| !errors.iter().any(|error| error.as_str().is_some_and(is_undefined)))
-        {
-            let errors = errors
-                .iter()
-                .filter_map(serde_json::Value::as_str)
-                .collect::<Vec<_>>()
-                .join("; ");
+        let validation = crate::agentic::check_flow(&flow, &known);
+        let problems = validation
+            .errors
+            .iter()
+            .filter(|error| !is_undefined(error))
+            .cloned()
+            .collect::<Vec<_>>();
+        if !problems.is_empty() {
             return AgentResponse::err(AgentError::new(
                 "INVALID_FLOW",
-                errors,
+                problems.join("; "),
                 "fix the flow; Describe returns the guide",
                 true,
             ));
@@ -521,11 +516,8 @@ fn stopped_summary(status: &TaskStatus) -> String {
 fn publish(cell: &Cell, status: TaskStatus, summary: &str) {
     let (progress, step) = cell.state.lock().map_or((0.0, None), |state| {
         let total = state.flow.steps.len().max(1);
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "step counts are tiny; progress is approximate by nature"
-        )]
-        let progress = (state.finished.min(total) as f32) / (total as f32);
+        let fraction = |count: usize| f32::from(u16::try_from(count).unwrap_or(u16::MAX));
+        let progress = fraction(state.finished.min(total)) / fraction(total);
         let step = state.steps.last().map(|report| StepView {
             index: interpret::top_index(report.path.split('.').next().unwrap_or("1")).unwrap_or(0),
             total: state.flow.steps.len(),

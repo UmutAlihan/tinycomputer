@@ -35,7 +35,7 @@ pub(super) fn validate(flow: &Value, known: &BTreeSet<String>) -> (Option<Flow>,
 }
 
 /// Checks an already-parsed flow.
-pub(super) fn check(flow: &Flow, known: &BTreeSet<String>) -> FlowValidation {
+pub(crate) fn check(flow: &Flow, known: &BTreeSet<String>) -> FlowValidation {
     let mut errors = Vec::new();
     if flow.app.trim().is_empty() {
         errors.push("`app` must name the application the flow drives".to_owned());

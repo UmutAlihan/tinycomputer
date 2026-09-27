@@ -16,6 +16,10 @@
 //! for the reasons `tinydesktop-desktop` documents. A [`JevRuntime`] is built
 //! once from the module's private configuration and cloned per call.
 //!
+//! [`Tasks`] is the controller behind the Agent interface: it runs a task's
+//! flow in the background and reports it as a status a model can act on,
+//! pausing for missing values, irreversible actions, and always at payment.
+//!
 //! A [`Workspace`] joins the desktop and the browser into one surface, so a
 //! flow's `browse` and `open` steps move it between a web page and an
 //! application.
@@ -25,9 +29,11 @@
 //! (`docs/specs/unified-agent.md`).
 
 mod agentic;
+mod task;
 mod workspace;
 
 pub use agentic::{JevRuntime, flow_guide, resolve_intent, run_flow, run_goal, validate_flow};
 pub use tinydesktop_bus::DesktopResponse;
 use tinydesktop_desktop::Desktop;
+pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks};
 pub use workspace::{BROWSER, Workspace};
