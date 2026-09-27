@@ -63,8 +63,8 @@ impl Ledger {
     }
 
     /// Records a finished step, already masked.
-    pub(super) fn finish(&mut self, line: String) {
-        self.finished.push(clip(&line));
+    pub(super) fn finish(&mut self, line: &str) {
+        self.finished.push(clip(line));
         if self.finished.len() > MAX_FINISHED {
             self.finished.remove(0);
         }

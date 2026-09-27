@@ -237,11 +237,11 @@ pub(super) struct FlowRun<'r, B> {
     /// How decisions are asked.
     strategy: FlowStrategy,
     /// The run's working memory, for the wide strategy's questions.
-    pub(super) ledger: ledger::Ledger,
+    ledger: ledger::Ledger,
     /// The current step's survey of a crowded screen, if one was asked.
     attention: Option<survey::Attention>,
     /// Decisions made so far: each one request, whatever its framings.
-    pub(super) decisions: u32,
+    decisions: u32,
     /// Variables read from the screen so far, by name.
     read: Vec<String>,
 }
@@ -426,7 +426,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             "step {path} ({kind} {text:?}): {:?}, {}",
             ended.outcome, ended.note
         );
-        self.ledger.finish(finished.clone());
+        self.ledger.finish(&finished);
         self.history.push(finished);
         if !matches!(&action, FlowAction::If(_) | FlowAction::RepeatUntil(_)) || halt.is_some() {
             self.reports.push(StepReport {
