@@ -84,7 +84,10 @@ it is never shown to the model that runs the steps, so it may not appear in an `
 application name, a `browse` address, a `do`, `verify`, `wait_for`, `stop_before`, `choose`, \
 `read`, `extract`, `pick`, `repeat_until`, or `if` text, or as an `enter` slot's own name. \
 Enter payment details only from secret facts you are given, and end any purchase or \
-booking with a stop_before step for paying. Guard \
+booking with a stop_before step for paying. Write a variable a step reads as ${name}, \
+never bare, so its value is shown. A `verify` or `wait_for` must be checkable on the \
+current screen alone: never compare with another site or an earlier page, since `pick` \
+already ranks. Guard \
 sending, deleting, publishing, or submitting with a stop_before step.";
 
 /// Turns tasks into flows with a [`LanguageModel`].
