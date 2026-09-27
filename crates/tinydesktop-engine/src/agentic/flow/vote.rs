@@ -133,7 +133,7 @@ fn reorder(
 /// `count` keys that sort in order: zero-padded numbers on even framings,
 /// fixed-width capital letters on odd ones.
 fn keys_for(count: usize, index: usize) -> Vec<String> {
-    if index % 2 == 0 {
+    if index.is_multiple_of(2) {
         let width = count.to_string().len();
         return (1..=count).map(|key| format!("{key:0width$}")).collect();
     }
@@ -224,8 +224,7 @@ fn average(answers: &[Answer]) -> Option<Answer> {
             let winner = probabilities
                 .iter()
                 .max_by(|left, right| left.1.total_cmp(right.1))
-                .map(|(key, _)| key.clone())
-                .unwrap_or_else(|| "none".to_owned());
+                .map_or_else(|| "none".to_owned(), |(key, _)| key.clone());
             let agreeing = choices
                 .iter()
                 .filter(|choice| choice.choice == winner)

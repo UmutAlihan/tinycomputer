@@ -716,9 +716,8 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         "blocked" => noul(if sim.obstacle { 0.9 } else { 0.05 }),
         "move" => pick(question, "shortcut", 0.9),
         "shortcut" => pick(question, "new_item", 0.9),
-        "confirm" => noul(0.9),
         // Every action helps and no field shows an error, unless a test says.
-        "helped" => noul(0.9),
+        "confirm" | "helped" => noul(0.9),
         _ if id.starts_with("error_") => noul(0.05),
         "dismiss" => pick(question, "Keep Editing", 0.9),
         "region" => pick(question, "Region 1", 0.9),
@@ -3120,12 +3119,11 @@ fn framings_relabel_label_keys_and_keep_word_keys() {
         target.criteria.keys().collect::<Vec<_>>(),
         ["A", "B", "C", "none"]
     );
-    assert_eq!(
-        target.instructions["perspective"]
+    assert!(
+        !target.instructions["perspective"]
             .as_str()
             .unwrap()
-            .is_empty(),
-        false
+            .is_empty()
     );
     let Question::Choice(moves) = &framings[1].request.questions["move"] else {
         panic!()
