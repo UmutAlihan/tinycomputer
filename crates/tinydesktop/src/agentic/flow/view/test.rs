@@ -17,6 +17,7 @@ fn clickable_screen() -> Screen {
         surface: "window".to_owned(),
         context: Vec::new(),
         unexplored: Vec::new(),
+        text_nodes: Vec::new(),
         candidates: vec![Candidate {
             ref_id: "@s1:e1".to_owned(),
             role: "button".to_owned(),
