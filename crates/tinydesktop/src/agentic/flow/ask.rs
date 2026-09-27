@@ -95,28 +95,32 @@ fn field_contents(screen: &Screen) -> Vec<Value> {
 }
 
 /// The nodes in `ordered` (candidates and text nodes merged and sorted by
-/// [`Candidate::order`]) that follow the node at `order` in document order.
-fn following<'a>(ordered: &[&'a Candidate], order: usize) -> &'a [Candidate] {
-    // SAFETY-free: a plain binary search on the sort key `ordered` is built
-    // with; `partition_point` is the number of elements at or before `order`.
+/// [`Candidate::order`]) that follow the node at `order`, in document order.
+fn following<'a>(ordered: &'a [&'a Candidate], order: usize) -> &'a [&'a Candidate] {
     let start = ordered.partition_point(|node| node.order <= order);
-    // The borrow only needs to outlive `ordered`'s own borrow of the merged
-    // vector's elements, which `following`'s signature already expresses.
-    let tail = &ordered[start..];
-    // Reslicing `&[&Candidate]` into `&[Candidate]` needs contiguous storage,
-    // which a freshly sorted `Vec<&Candidate>` does not have, so the callers
-    // that need a `&[Candidate]` (`detokenize`) instead take an iterator.
-    // This helper is kept for its search logic; see `detokenize` below.
-    let _ = tail;
-    &[]
+    &ordered[start..]
 }
 
 /// A token field's value with each U+FFFC attachment replaced by the static
-/// text that follows the field in document order, which is how tokens are
-/// exposed.
-fn detokenize(value: &str, following: impl Iterator<Item = &'static Candidate>) -> String {
-    let _ = following;
-    value.to_owned()
+/// text that follows the field in document order, which is how the tokens
+/// are exposed.
+fn detokenize(value: &str, following: &[&Candidate]) -> String {
+    if !value.contains('\u{fffc}') {
+        return value.to_owned();
+    }
+    let tokens = following
+        .iter()
+        .take_while(|node| node.role.eq_ignore_ascii_case("statictext"))
+        .filter_map(|node| {
+            node.name
+                .as_deref()
+                .or(node.value.as_ref().and_then(Value::as_str))
+        })
+        .collect::<Vec<_>>();
+    if tokens.is_empty() {
+        return value.replace('\u{fffc}', "[token]");
+    }
+    tokens.join(", ")
 }
 
 /// The text inside a rich-text area, joined in reading order.
