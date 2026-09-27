@@ -476,6 +476,15 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             ok: reply.ok,
             note,
         });
+        if reply.ok {
+            // Let the surface finish reacting, so the next look sees what the
+            // action did rather than the moment before it took effect.
+            self.backend_call(|backend| {
+                backend.settle();
+                DesktopResponse::ok("settle", serde_json::json!({}))
+            })
+            .await;
+        }
         Ok(reply)
     }
 

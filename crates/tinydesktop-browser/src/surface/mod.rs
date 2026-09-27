@@ -26,8 +26,13 @@ use crate::sessions::Browser;
 /// How deep a skeleton observation reads before a flow drills in.
 const SKELETON_DEPTH: u32 = 6;
 
-/// How long the page is given to react before a value is read back again.
-const SETTLE_MS: u64 = 200;
+/// How long the page is given to react once its network is quiet: long
+/// enough for a banner or menu to finish closing.
+const SETTLE_MS: u64 = 400;
+
+/// The longest a settle waits for the page's network to go quiet; a page
+/// that polls forever is never idle, so this is a cap, not an expectation.
+const NETWORK_IDLE_MS: u64 = 2_000;
 
 /// Whether what covers a point belongs to the same result card as the
 /// element that was meant: the card around the covering element names it.
@@ -352,6 +357,12 @@ impl Surface for BrowserSurface {
     }
 
     fn settle(&self) {
+        if let Ok(id) = self.ensure_session() {
+            let _idle = self.block(self.browser.command(
+                &id,
+                json!({"action": "waitforloadstate", "state": "networkidle", "timeout": NETWORK_IDLE_MS}),
+            ));
+        }
         let _settled = self.perform("wait", pause(SETTLE_MS));
     }
 

@@ -66,8 +66,10 @@ pub trait Surface: Clone + Send + 'static {
     /// Launches `app`, or brings it forward when it is already running.
     fn launch(&self, app: &str) -> DesktopResponse;
 
-    /// Gives the application a moment to commit what it was just given, as a
-    /// token field does when it turns an address into a token.
+    /// Gives the application a moment to finish reacting: after every action,
+    /// before the next look, and before a value is read back — a page that
+    /// closes a banner a beat after the click, or a token field turning an
+    /// address into a token.
     fn settle(&self) {}
 
     /// Loads `url`, for a surface that has addresses.
