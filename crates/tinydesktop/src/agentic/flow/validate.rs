@@ -211,11 +211,29 @@ pub(super) fn references(text: &str) -> Vec<String> {
 }
 
 /// Replaces every defined `${name}` in `text`; undefined ones are left as-is.
+///
+/// Scans `text` once, left to right, and never rescans a value it just
+/// substituted in. `read` steps store untrusted screen text in `vars`, so a
+/// value that itself looks like `${other}` must stand as literal text rather
+/// than expand into `other`'s value.
 pub(super) fn substitute(text: &str, vars: &BTreeMap<String, String>) -> String {
-    let mut out = text.to_owned();
-    for (name, value) in vars {
-        out = out.replace(&format!("${{{name}}}"), value);
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find("${") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        let Some(end) = after.find('}') else {
+            out.push_str(&rest[start..]);
+            return out;
+        };
+        let name = &after[..end];
+        match vars.get(name) {
+            Some(value) => out.push_str(value),
+            None => out.push_str(&rest[start..start + 2 + end + 1]),
+        }
+        rest = &after[end + 1..];
     }
+    out.push_str(rest);
     out
 }
 
