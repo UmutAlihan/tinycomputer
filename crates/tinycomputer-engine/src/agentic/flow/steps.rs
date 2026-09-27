@@ -697,6 +697,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             read.into.clone(),
             serde_json::to_string(&rows).unwrap_or_default(),
         );
+        self.read_into(&read.into);
         self.history.push(format!(
             "extracted {} items of {what} into {}",
             rows.len(),
