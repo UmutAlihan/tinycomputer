@@ -173,7 +173,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let screen = self.look().await?;
             let pool = clickable(&screen.candidates)
                 .into_iter()
-                .filter(|candidate| !destructive_label(&label(candidate).to_ascii_lowercase()))
+                .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
                 .collect::<Vec<_>>();
             if let Some(grounded) = self.ground(log, &screen, &purpose, &purpose, pool).await? {
                 log.confidence = Some(grounded.confidence);
