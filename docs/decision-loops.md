@@ -130,7 +130,9 @@ A step ends one of four ways:
 - A budget ran out: `ActionBudget` or `ModelBudget`.
 
 Two budgets bound every run. `max_actions` is capped at 120 and
-`max_model_calls` at 300, whatever the request asks for. Every action goes
+`max_model_calls` at 5000, whatever the request asks for (the defaults are 60
+and 1500). Every framing of a voted decision counts as one call; see
+[`jev-harness.md`](jev-harness.md) for voting. Every action goes
 through `FlowRun::act` and every Jev request through `FlowRun::ask`, and both
 check the budget before doing anything, so no loop can overspend.
 
@@ -170,7 +172,7 @@ screen".
 
 ### 2. Judge
 
-One Jev request asks up to six questions about the same screen:
+One Jev request asks up to seven questions about the same screen:
 
 | Id | Kind | Question |
 |---|---|---|
@@ -180,6 +182,7 @@ One Jev request asks up to six questions about the same screen:
 | `blocked` | Noul | Is a dialog, alert, sheet, popup, or prompt that is not part of this step in the way? |
 | `move` | Choice | Which kind of move advances the step? |
 | `shortcut` | Choice | If a standard shortcut would advance it, which one? |
+| `helped` | Noul | Did the last action move toward the step? (asked only after an action) |
 
 Asking a question and its negation and averaging them is a cheap calibration
 trick. A model that says yes to everything says yes to both, and the average
@@ -198,6 +201,9 @@ lands near 0.5 instead of near 1. The completion estimate is
   treating it as the new one is how a flow ends up typing into a person's own
   unsent draft. If Jev answers `finished` on such a step, the runtime turns the
   answer into a `shortcut` or `activate` move instead.
+- The `finished` move is one vote, not the verdict. On turn 0 it needs the
+  completion estimate at 0.85; after acting it stands unless the estimate is
+  under 0.5 (`LEANS_DONE`). When it is overruled, the move becomes `activate`.
 
 ### 4. Recover
 
@@ -210,7 +216,10 @@ Before making a move, `recover` checks two things:
 - **Regressions.** If progress dropped by a quarter of the scale or more since
   the last action (`REGRESSION`), the runtime presses Escape, bans the element
   that caused it, and writes "that made things worse; undid it" into the
-  history. At most two undos per step (`MAX_UNDOS`).
+  history. An answer to `helped` under 0.2 (`UNHELPFUL`) is treated the same
+  way. At most two undos per step (`MAX_UNDOS`), shared by both.
+- **Idle waits.** After two `wait` moves in a row that changed nothing
+  (`MAX_IDLE_WAITS`), Jev is not let wait again that step.
 
 ### 5. Make the move
 
@@ -438,7 +447,8 @@ is why a second run of a scenario usually makes fewer Jev calls than the first.
 
 Every loop can be switched off per run with `disabled_loops`: `completion`,
 `progress`, `moves`, `narrowing`, `corroboration`, `consistency`, `obstacles`,
-`undo`, and `memory`. (`slots` cannot be; `enter` needs it.) The lab's
+`undo`, `memory`, `vote`, `page_kind`, and `validation`. (`slots` cannot be;
+`enter` needs it.) The lab's
 `--disable` flag uses this to measure what each loop is worth. With every
 judging loop off, the `do` loop just grounds and presses something each turn.
 
@@ -452,7 +462,9 @@ wrong:
 1. Find the failed step in `timeline.txt` and read its note.
 2. Find that step's exchanges in `jev.jsonl` and read what Jev was shown.
 3. Decide where the fault is: observation, question, flow, or engine.
-4. Reproduce it in the simulator in `crates/tinydesktop-engine/src/agentic/flow/test.rs`,
+4. For latency, or when the run did not come from the lab, turn on the debug
+   journal (`TINYDESKTOP_JEV_JOURNAL=1`); see [`jev-journal.md`](jev-journal.md).
+5. Reproduce it in the simulator in `crates/tinydesktop-engine/src/agentic/flow/test.rs`,
    which has a scripted mail app and booking widgets and an oracle Jev that
    answers from their state, then fix it.
 
@@ -463,7 +475,9 @@ wrong:
 | `DONE` | 0.75 | `act.rs` | completion that ends a step after acting; also the bar for `verify`, `wait_for`, `if`, `repeat_until` |
 | `ALREADY_DONE` | 0.85 | `act.rs` | completion that skips a step before acting |
 | `BLOCKED` | 0.70 | `act.rs` | obstacle probability that triggers dismissal |
+| `LEANS_DONE` | 0.50 | `act.rs` | completion under which a `finished` move is overruled after acting |
 | `REGRESSION` | 0.25 | `act.rs` | progress drop that triggers undo |
+| `UNHELPFUL` | 0.20 | `act.rs` | `helped` probability that triggers undo |
 | `SHORTCUT_FLOOR` | 0.50 | `act.rs` | least probability for pressing a shortcut |
 | `STALL_TURNS` | 3 | `act.rs` | unchanged turns before a step fails |
 | `ACT` | 0.70 | `view/mod.rs` | element choice used without re-asking |
@@ -474,4 +488,5 @@ wrong:
 | `LOCATE_FLOOR` | 0.50 | `steps.rs` | least probability for a `read`, `pick`, or `stop_before` target |
 | `CAP` | 20 | `ask.rs` | most options in one Choice |
 | `DO_TURNS` | 8 | `steps.rs` | turns a `do` step may spend |
-| `MAX_ACTIONS` / `MAX_CALLS` | 120 / 300 | `mod.rs` | per-run caps on actions and Jev calls |
+| `MAX_ACTIONS` / `MAX_CALLS` | 120 / 5000 | `mod.rs` | per-run caps on actions and Jev calls |
+| `MAX_VOTES` | 9 | `vote.rs` | most framings one decision is asked in |
