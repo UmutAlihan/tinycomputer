@@ -303,6 +303,48 @@ fn remembers_as_field_content(node: &Candidate) -> bool {
     })
 }
 
+/// Builds `Screen::context` from the ref-less nodes `collect` set aside,
+/// leaving out whatever is field content rather than screen chrome.
+///
+/// This runs once the whole tree — and every node's [`Candidate::order`] — is
+/// known, because a token field's chip labels are its ordinary siblings, not
+/// its descendants: recognizing them needs the field that precedes them in
+/// document order, which [`remembers_as_field_content`]'s ancestor-only check
+/// cannot see during the traversal that builds `text_nodes` node by node.
+fn build_context(candidates: &[Candidate], text_nodes: &[Candidate]) -> Vec<String> {
+    let mut ordered = candidates.iter().chain(text_nodes.iter()).collect::<Vec<_>>();
+    ordered.sort_by_key(|node| node.order);
+    let mut context = Vec::new();
+    for node in text_nodes {
+        if !remembers_as_field_content(node) && !follows_a_settable_field(&ordered, node) {
+            remember_text(node, &mut context);
+        }
+    }
+    context
+}
+
+/// Whether `node` sits in the ref-less static-text run right after a field
+/// that can hold typed text: the shape a token field's chip labels take,
+/// mirroring [`crate::agentic::flow::ask::detokenize`]'s own selection of the
+/// nodes it reads as a field's tokens.
+fn follows_a_settable_field(ordered: &[&Candidate], node: &Candidate) -> bool {
+    let Some(position) = ordered.iter().position(|candidate| candidate.order == node.order) else {
+        return false;
+    };
+    let is_static_text = |candidate: &Candidate| {
+        candidate.ref_id.is_empty() && candidate.role.eq_ignore_ascii_case("statictext")
+    };
+    let mut start = position;
+    while start > 0 && is_static_text(ordered[start - 1]) {
+        start -= 1;
+    }
+    start > 0
+        && ordered[start - 1]
+            .available_actions
+            .iter()
+            .any(|action| action == "SetValue" || action == "TypeText")
+}
+
 /// Keeps a ref-less node's visible text as context for Jev.
 ///
 /// Labels, headings, and status text are what tell a decision model where it
