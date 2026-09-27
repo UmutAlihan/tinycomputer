@@ -127,6 +127,27 @@ fn run_requests_default_to_safe_bounded_runs() {
 }
 
 #[test]
+fn run_request_facts_default_empty_and_round_trip() {
+    let request: RunFlowRequest =
+        serde_json::from_value(json!({"flow": {"app": "Mail", "steps": ["x"]}})).unwrap();
+    assert!(request.facts.is_empty());
+
+    let with_facts: RunFlowRequest = serde_json::from_value(json!({
+        "flow": {"app": "Mail", "steps": ["x"]},
+        "vars": {"email": "sam@example.com"},
+        "facts": ["email"],
+    }))
+    .unwrap();
+    assert_eq!(
+        with_facts.facts,
+        std::collections::BTreeSet::from(["email".to_owned()])
+    );
+    let round_trip: RunFlowRequest =
+        serde_json::from_value(serde_json::to_value(&with_facts).unwrap()).unwrap();
+    assert_eq!(round_trip, with_facts);
+}
+
+#[test]
 fn flow_enums_and_hints_pin_their_wire_spelling() {
     assert_eq!(
         serde_json::to_value(FlowStopReason::StoppedBeforeDestructive).unwrap(),
