@@ -2863,7 +2863,7 @@ async fn every_question_is_briefed_on_the_goal_the_person_and_the_plan() {
         .unwrap();
     assert_eq!(
         brief_of(verifying)["so_far"],
-        json!(["entered: recipient, subject, message body"])
+        json!(["entered: message body, recipient, subject"])
     );
 }
 
@@ -3231,7 +3231,8 @@ async fn a_web_page_is_named_and_the_name_briefs_the_next_question() {
         App::default(),
         json!({"app": "browser", "steps": [
             {"browse": "https://flights.test"},
-            {"verify": "flights are listed"}
+            {"verify": "flights are listed"},
+            {"verify": "prices are shown"}
         ]}),
         |_| {},
         |id, question, _| (id == "page_kind").then(|| pick(question, "results", 0.9)),
