@@ -160,6 +160,9 @@ pub(super) struct FlowRun<'r, B> {
     runtime: &'r JevRuntime,
     pub(super) app: String,
     pub(super) vars: BTreeMap<String, String>,
+    /// Names among `vars` that are the task's facts: never expanded into any
+    /// text a Jev evaluation sees, as a runtime backstop behind validation.
+    pub(super) facts: BTreeSet<String>,
     pub(super) allow_destructive: bool,
     pub(super) include_values: bool,
     max_actions: u32,
