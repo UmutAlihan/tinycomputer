@@ -6,7 +6,7 @@ Playwright's Chromium (build 1243) and agent-browser linked in-process.
 
 ## Without Jev: `browser_fixture`
 
-`scripts/docker-lab -- crates/tinydesktop-examples/fixtures/run browser_fixture`
+`scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run browser_fixture`
 
 | Check | Result |
 |---|---|
@@ -19,7 +19,7 @@ Playwright's Chromium (build 1243) and agent-browser linked in-process.
 
 ## With live Jev: `task_fixture`
 
-`scripts/docker-lab -- crates/tinydesktop-examples/fixtures/run task_fixture`
+`scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture`
 
 A booking task through the task controller, given every fact but the phone
 number:
@@ -47,7 +47,7 @@ number:
 
 - Playwright's arm64 Chromium lives under `chrome-linux-arm64`, which
   agent-browser's discovery does not search; the runs pass the executable
-  explicitly (`TINYDESKTOP_BROWSER_EXECUTABLE`, or the module's
+  explicitly (`TINYCOMPUTER_BROWSER_EXECUTABLE`, or the module's
   `browser.executable` configuration).
 - agent-browser launches a browser before any command not on its skip list,
   so tests that must not launch one send an empty action.

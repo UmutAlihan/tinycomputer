@@ -4,10 +4,10 @@ Spec: [`../specs/virtual-cursor.md`](../specs/virtual-cursor.md).
 
 ## Tasks
 
-1. **`tinydesktop-cursor` crate.** Add `geometry/`, `rng/`, `pace/`,
+1. **`tinycomputer-cursor` crate.** Add `geometry/`, `rng/`, `pace/`,
    `glide/`, `protocol/`, `animate/`, `sprite/` (with `png`), and `screen/`
    (with `ProcessOverlay`). Write every module's tests first.
-2. **The `tinydesktop-cursor-overlay` binary** in the same crate, under
+2. **The `tinycomputer-cursor-overlay` binary** in the same crate, under
    `src/bin/` and behind the `overlay` feature:
    - `driver/`, testable without a display;
    - `platform/macos.rs` (AppKit);
@@ -31,10 +31,10 @@ Spec: [`../specs/virtual-cursor.md`](../specs/virtual-cursor.md).
 ## Verification
 
 ```sh
-cargo test -p tinydesktop-cursor --all-features
-cargo clippy -p tinydesktop-cursor --features overlay --target x86_64-pc-windows-msvc --all-targets -- -D warnings
-cargo build -p tinydesktop-cursor --features overlay
-cargo run -p tinydesktop-examples --bin cursor_demo -- calm 2
+cargo test -p tinycomputer-cursor --all-features
+cargo clippy -p tinycomputer-cursor --features overlay --target x86_64-pc-windows-msvc --all-targets -- -D warnings
+cargo build -p tinycomputer-cursor --features overlay
+cargo run -p tinycomputer-examples --bin cursor_demo -- calm 2
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo build --all-targets --all-features

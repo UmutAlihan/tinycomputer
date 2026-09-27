@@ -13,13 +13,13 @@ source_root="${workspace_root}crates/"
 # branch, so omit only that file from a local Darwin report.
 coverage_exclude=""
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  coverage_exclude="${source_root}tinydesktop-desktop/src/desktop/clipboard.rs"
+  coverage_exclude="${source_root}tinycomputer-desktop/src/desktop/clipboard.rs"
 fi
 
 cargo llvm-cov \
   --locked \
   --workspace \
-  --exclude tinydesktop-examples \
+  --exclude tinycomputer-examples \
   --all-targets \
   --all-features \
   --json \

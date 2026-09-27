@@ -1,0 +1,25 @@
+[package]
+name = "tinycomputer-bus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The TinyBus wire contract for the tinycomputer module: member names, request payloads, the response envelope, and the contract version."
+documentation = "https://docs.rs/tinycomputer-bus"
+readme = "README.md"
+keywords = ["tinybus", "module", "contract", "accessibility", "automation"]
+categories = ["development-tools", "api-bindings"]
+publish = false
+
+# Deliberately dependency-light: this is the crate a host links to talk to the
+# loadable module, so it must cost that host almost nothing. Nothing here may
+# pull in `tinybus`, `agent-desktop-core`, an async runtime, an HTTP client, or
+# a native library — see `src/lib.rs` for why the transport and the engine in
+# particular are absent. CI asserts it.
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

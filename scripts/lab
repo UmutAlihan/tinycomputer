@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the module, attest it, and run the tinydesktop lab against this desktop.
+# Build the module, attest it, and run the tinycomputer lab against this desktop.
 #
 #   scripts/lab list
 #   scripts/lab run mail-compose --headed
@@ -21,8 +21,8 @@ if [[ -f .env ]]; then
 fi
 
 case "$(uname -s)" in
-  Darwin) library="libtinydesktop.dylib" ;;
-  Linux) library="libtinydesktop.so" ;;
+  Darwin) library="libtinycomputer.dylib" ;;
+  Linux) library="libtinycomputer.so" ;;
   *) echo "the lab runs on macOS or Linux" >&2; exit 1 ;;
 esac
 
@@ -30,7 +30,7 @@ esac
 case "${1:-help}" in
   list|guide|report|help|-h|--help) ;;
   *)
-    cargo build --release -p tinydesktop --lib >&2
+    cargo build --release -p tinycomputer --lib >&2
     mkdir -p target/lab
     cp "target/release/${library}" "target/lab/${library}"
     if [[ "$(uname -s)" == "Darwin" ]]; then
@@ -44,5 +44,5 @@ case "${1:-help}" in
     ;;
 esac
 
-export TINYDESKTOP_MODULE="${TINYDESKTOP_MODULE:-$root/target/lab/${library}}"
-exec cargo run --quiet -p tinydesktop-examples --bin lab -- "$@"
+export TINYCOMPUTER_MODULE="${TINYCOMPUTER_MODULE:-$root/target/lab/${library}}"
+exec cargo run --quiet -p tinycomputer-examples --bin lab -- "$@"

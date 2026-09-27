@@ -10,12 +10,12 @@ Every behavior change lands behind a failing test first; the fakes are
 This branch first reworked the `RunGoal` loop (ref-free stall detection,
 context, read-back, retries). Upstream redesigned `RunGoal` in parallel as a
 scoped task with visible success predicates, exact window binding, and
-confirmation handles (tinydesktop #11–#17), which covers the same ground. The
+confirmation handles (tinycomputer #11–#17), which covers the same ground. The
 merge keeps upstream's `RunGoal` and `ResolveIntent` unchanged; the flow
 runtime keeps its own observation and delivery in `agentic/flow/view/` and
 `agentic/flow/backend/`, with their tests beside them.
 
-## Phase B — flows (`crates/tinydesktop-bus/src/flow/`, `agentic/flow/`)
+## Phase B — flows (`crates/tinycomputer-bus/src/flow/`, `agentic/flow/`)
 
 - [x] Contract types, order-preserving step parsing, `guide.md`; members
       `RunFlow`, `ValidateFlow`, `FlowGuide`; contract version 1.6.
@@ -26,7 +26,7 @@ runtime keeps its own observation and delivery in `agentic/flow/view/` and
 - [x] Creation intents cannot be complete before acting; Return refused under
       a sheet; blind looks; opt-in Jev trace.
 
-## Phase C — the lab (`crates/tinydesktop-examples`, `scripts/lab`)
+## Phase C — the lab (`crates/tinycomputer-examples`, `scripts/lab`)
 
 - [x] `lab::host` loads the attested module over a real bus.
 - [x] `lab::scenario`: eight scenarios with briefs, flows, goals, and checkers.

@@ -23,10 +23,10 @@ same state, independently, in one round trip.
 caller (agent, host, lab)
   │  TinyBus member: RunFlow / RunGoal / ResolveIntent / StartTask …
   ▼
-crates/tinydesktop/src/tinybus_module/     dispatch.rs, runner.rs
+crates/tinycomputer/src/tinybus_module/     dispatch.rs, runner.rs
   │  holds the configured JevRuntime; tasks get a per-task Workspace
   ▼
-crates/tinydesktop-engine/src/
+crates/tinycomputer-engine/src/
   task/                  the task controller: runs flows in the background,
   │                      pauses for input and approval, splits the budget
   ▼
@@ -146,7 +146,7 @@ the pending-confirmation table, and the journal are shared behind `Arc`s.
 | Flow simulator | `agentic/flow/test.rs` | a scripted mail app and booking widgets, plus an *oracle* Jev that answers from the simulator's true state; every loop behaviour and regression lands here first |
 | Mock evaluator | `agentic/test.rs` | queued, canned `EvaluationResult`s for the goal and intent loops; records every request for assertions |
 | Fake runners | `task/test.rs` | a `FlowRunner` that returns scripted replies, so the task controller is tested without a surface or Jev |
-| The lab | `crates/tinydesktop-examples`, `scripts/lab` | the built module, loaded like production, driving real applications with real Jev; see [`lab.md`](lab.md) |
+| The lab | `crates/tinycomputer-examples`, `scripts/lab` | the built module, loaded like production, driving real applications with real Jev; see [`lab.md`](lab.md) |
 
 The simulator and the mock both implement the private `Evaluator` trait that
 `JevRuntime` holds, so every test goes through the same `evaluate` door as
@@ -158,7 +158,7 @@ production, journal included.
 |---|---|---|---|
 | Step reports | always | per step: outcome, note, turns, calls, actions, loops, lowest confidence | the `RunFlow` result |
 | Trace | `trace: true` on the request | per decision: the state, the questions, the *merged* answers | the `RunFlow` result; the lab writes it to `jev.jsonl` |
-| Debug journal | `TINYDESKTOP_JEV_JOURNAL`, or `JevRuntime::with_journal` | per call: the exact request and raw answers, latency, attempts, tokens; per decision, observation, action, and step: wall time | `.jev-journal/<run id>/journal.jsonl`, git-ignored |
+| Debug journal | `TINYCOMPUTER_JEV_JOURNAL`, or `JevRuntime::with_journal` | per call: the exact request and raw answers, latency, attempts, tokens; per decision, observation, action, and step: wall time | `.jev-journal/<run id>/journal.jsonl`, git-ignored |
 
 The trace answers "what did the run decide?"; the journal answers "what
 exactly went over the wire, and how long did everything take?".

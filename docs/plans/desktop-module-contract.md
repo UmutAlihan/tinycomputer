@@ -3,8 +3,8 @@
 Linked specification: [`../specs/desktop-module-contract.md`](../specs/desktop-module-contract.md)
 
 1. Vendor `agent-desktop` as a pinned submodule and take `agent-desktop-core`
-   plus one platform adapter crate per target in `crates/tinydesktop`.
-2. Define the contract in `crates/tinydesktop-bus`: the member names, the
+   plus one platform adapter crate per target in `crates/tinycomputer`.
+2. Define the contract in `crates/tinycomputer-bus`: the member names, the
    response envelope, the shared enumerations, and one payload family per group
    of members. Pin each payload's serde representation in a test first.
 3. Convert the contract onto the engine's argument types in
@@ -18,6 +18,6 @@ Linked specification: [`../specs/desktop-module-contract.md`](../specs/desktop-m
    dispatch table and the embedded manifest against that list.
 6. Exercise the interface over the in-memory bus, then load the compiled
    `cdylib` through the real dynamic loader with
-   `cargo run -p tinydesktop-examples --bin verify_module`.
+   `cargo run -p tinycomputer-examples --bin verify_module`.
 7. Run the four validation commands and the coverage gate, and update
    `README.md`, `MODULE.md`, and `ROADMAP.md` in the same change.

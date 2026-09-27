@@ -10,7 +10,7 @@
 #
 # Build output goes to <workdir>/target/docker-lab, beside the host's own
 # target directory, so Linux and macOS artifacts never mix. The cargo registry
-# is cached in the docker volume tinydesktop-lab-cargo.
+# is cached in the docker volume tinycomputer-lab-cargo.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,10 +24,10 @@ if [[ -f "$root/.env" ]]; then
   set +a
 fi
 forward=()
-for name in OPENROUTER_API_KEY TINYDESKTOP_LAB_MODEL; do
+for name in OPENROUTER_API_KEY TINYCOMPUTER_LAB_MODEL; do
   [ -n "${!name:-}" ] && forward+=(-e "$name")
 done
-image="tinydesktop-lab:$(shasum -a 256 "$root/docker/lab/Dockerfile" | cut -c1-12)"
+image="tinycomputer-lab:$(shasum -a 256 "$root/docker/lab/Dockerfile" | cut -c1-12)"
 src="$root"
 workdir=""
 rebuild=0
@@ -55,7 +55,7 @@ color=never
 
 exec docker run --rm "${tty[@]+"${tty[@]}"}" --init --shm-size=2g \
   -v "$src:/src" \
-  -v tinydesktop-lab-cargo:/usr/local/cargo/registry \
+  -v tinycomputer-lab-cargo:/usr/local/cargo/registry \
   -w "$dir" \
   -e CARGO_TARGET_DIR="$dir/target/docker-lab" \
   -e CARGO_TERM_COLOR="$color" \

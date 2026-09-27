@@ -1,0 +1,112 @@
+[package]
+name = "tinycomputer-cursor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The agent's on-screen cursor, shared by the desktop and browser: where it aims, the human path it glides along, how it looks, and the overlay window that draws it."
+documentation = "https://docs.rs/tinycomputer-cursor"
+readme = "README.md"
+keywords = ["automation", "cursor", "overlay", "animation"]
+categories = ["os"]
+publish = false
+
+[[bin]]
+# The helper window that draws the cursor. Only built with `overlay`, so the
+# surfaces that use the library never compile a platform UI binding.
+name = "tinycomputer-cursor-overlay"
+path = "src/bin/tinycomputer-cursor-overlay/main.rs"
+required-features = ["overlay"]
+
+[features]
+default = []
+# Build the `tinycomputer-cursor-overlay` helper and its platform bindings.
+overlay = [
+    "dep:objc2",
+    "dep:objc2-foundation",
+    "dep:objc2-app-kit",
+    "dep:block2",
+    "dep:windows-sys",
+]
+
+[dependencies]
+# `CursorPace` is read from module configuration.
+serde = { workspace = true }
+# The overlay protocol: one JSON command per line.
+serde_json = { workspace = true }
+# Derive macros for the crate-wide error type in `src/error/`.
+thiserror = { workspace = true }
+# Seeds an unseeded cursor, so two runs never trace the same path.
+getrandom = { workspace = true }
+
+# AppKit, for the overlay: a borderless, transparent, click-through window
+# showing the sprite, and the timer (an Objective-C block) that animates it.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6", optional = true }
+objc2-foundation = { version = "0.3", optional = true, default-features = false, features = [
+    "std",
+    "block2",
+    "NSData",
+    "NSDate",
+    "NSGeometry",
+    "NSTimer",
+    "NSArray",
+] }
+objc2-app-kit = { version = "0.3", optional = true, default-features = false, features = [
+    "std",
+    "NSApplication",
+    "NSResponder",
+    "NSRunningApplication",
+    "NSWindow",
+    "NSView",
+    "NSControl",
+    "NSImageView",
+    "NSImage",
+    "NSImageCell",
+    "NSColor",
+    "NSScreen",
+    "NSGraphics",
+    "NSCell",
+    "objc2-core-foundation",
+] }
+block2 = { version = "0.6", optional = true }
+
+# Win32, for the overlay: a layered, topmost, click-through, non-activating
+# window.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61", optional = true, features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# The workspace lint set, except that `unsafe_code` is `deny` rather than
+# `forbid`: the overlay's window is foreign-function work on every platform,
+# so its platform modules — and only they — allow it, each `unsafe` block
+# with a `// SAFETY:` comment. The library itself has no `unsafe`. Keep the
+# rest identical to the root `Cargo.toml`.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+doc_markdown = "warn"
+must_use_candidate = "warn"
+
+[lints.rustdoc]
+broken_intra_doc_links = "warn"
+private_intra_doc_links = "warn"

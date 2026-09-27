@@ -1,13 +1,13 @@
 # How the loop works
 
-This is a walk through the flow runtime in `crates/tinydesktop-engine/src/agentic/flow/`,
+This is a walk through the flow runtime in `crates/tinycomputer-engine/src/agentic/flow/`,
 the code that turns a step like `"start a new email message"` into clicks and
 key presses on a screen it has never seen before. It covers every step kind,
 every question the runtime asks Jev, the thresholds it acts on, and the rules
 it applies without asking anyone.
 
 If you only want to write flows, read the authoring guide
-([`crates/tinydesktop-bus/src/flow/guide.md`](../crates/tinydesktop-bus/src/flow/guide.md))
+([`crates/tinycomputer-bus/src/flow/guide.md`](../crates/tinycomputer-bus/src/flow/guide.md))
 instead. This page is for people changing the runtime or trying to work out why
 a run did what it did.
 
@@ -82,7 +82,7 @@ A few details are deliberate:
 
 ## Reading the screen
 
-Every surface implements the `Surface` trait from `tinydesktop-core`. Its
+Every surface implements the `Surface` trait from `tinycomputer-core`. Its
 `observe` call returns a `Screen`:
 
 | Field | Holds |
@@ -98,9 +98,9 @@ Each candidate has a role, a name, a value, states, the actions it supports
 of ancestor labels. The path is what narrowing and grounding memory key on.
 
 The desktop builds a `Screen` from agent-desktop's accessibility snapshot
-(`tinydesktop-desktop/src/surface/`). The browser builds one from
+(`tinycomputer-desktop/src/surface/`). The browser builds one from
 agent-browser's snapshot text, where each line is
-`- role "name" [attr, ref=eN]: value` (`tinydesktop-browser/src/surface/tree.rs`).
+`- role "name" [attr, ref=eN]: value` (`tinycomputer-browser/src/surface/tree.rs`).
 The runtime never knows which one it is looking at.
 
 Two situations get special handling in `FlowRun::look`:
@@ -338,7 +338,7 @@ rounds:
    dropped.
 5. Deliver each text in screen order with `deliver_text`.
 
-`deliver_text` in `tinydesktop-core/src/surface/delivery.rs` is how text
+`deliver_text` in `tinycomputer-core/src/surface/delivery.rs` is how text
 reliably lands:
 
 1. Set the value through the accessibility API (or agent-browser's `fill`).
@@ -389,7 +389,7 @@ hedged yes/no but a crisp coverage answer.
 
 ### Result cards, `pick`, and `extract`
 
-`result_groups` in `tinydesktop-core/src/surface/groups.rs` finds lists
+`result_groups` in `tinycomputer-core/src/surface/groups.rs` finds lists
 without knowing the site. Both surfaces label repeated containers with an
 ordinal (`listitem #3`), so every node inside one card shares that label in its
 path. The list is the parent under which the most same-role ordinal containers
@@ -400,7 +400,7 @@ see).
 
 `pick` parses its `by` text into a `Criterion` when it can: lowest or highest
 price, earliest or latest time, fewest stops, shortest duration. The parsers in
-`tinydesktop-core/src/records/` read prices with currency symbols and codes,
+`tinycomputer-core/src/records/` read prices with currency symbols and codes,
 clock times, durations like `2h 35m`, and stop counts like `non-stop` or
 `1 stop`. When the criterion parses, the ranking is exact and costs no Jev
 call. When it does not ("a morning flight with at most one stop"), Jev gets one
@@ -463,8 +463,8 @@ wrong:
 2. Find that step's exchanges in `jev.jsonl` and read what Jev was shown.
 3. Decide where the fault is: observation, question, flow, or engine.
 4. For latency, or when the run did not come from the lab, turn on the debug
-   journal (`TINYDESKTOP_JEV_JOURNAL=1`); see [`jev-journal.md`](jev-journal.md).
-5. Reproduce it in the simulator in `crates/tinydesktop-engine/src/agentic/flow/test.rs`,
+   journal (`TINYCOMPUTER_JEV_JOURNAL=1`); see [`jev-journal.md`](jev-journal.md).
+5. Reproduce it in the simulator in `crates/tinycomputer-engine/src/agentic/flow/test.rs`,
    which has a scripted mail app and booking widgets and an oracle Jev that
    answers from their state, then fix it.
 

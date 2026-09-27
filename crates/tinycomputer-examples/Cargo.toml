@@ -1,0 +1,43 @@
+[package]
+name = "tinycomputer-examples"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Runnable examples and live verification harnesses for tinycomputer."
+publish = false
+
+[dependencies]
+tinycomputer = { path = "../tinycomputer" }
+tinycomputer-bus = { workspace = true }
+# `browser_fixture` drives a real browser through the linked agent-browser and
+# checks the shared domain logic against the travel fixture.
+tinycomputer-browser = { workspace = true, features = ["agent-browser"] }
+tinycomputer-core = { workspace = true }
+# `cursor_demo` tours the agent's drawn cursor around the screen.
+tinycomputer-cursor = { workspace = true }
+# `task_fixture` runs a whole task through the controller.
+tinycomputer-engine = { workspace = true }
+tinybus = { workspace = true, features = ["modules"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+# The optional multimodal author the lab puts in front of Jev: an LLM that
+# writes flows from a brief and checks screenshots. Lab-only on purpose — the
+# shipped module stays Jev-only and never links it. Vendored as the
+# `vendor/tinyinference` submodule and pinned by its gitlink.
+tinyinference-llm = { workspace = true, optional = true }
+
+[features]
+default = ["inference"]
+# `lab --mode authored`: an LLM writes the flow from the scenario brief, and
+# `task_live` asks the engine's planner for one.
+inference = ["dep:tinyinference-llm", "tinycomputer-engine/planner"]
+
+[[bin]]
+name = "task_live"
+required-features = ["inference"]
+
+[lints]
+workspace = true

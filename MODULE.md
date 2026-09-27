@@ -1,11 +1,11 @@
-# tinydesktop TinyBus Module
+# tinycomputer TinyBus Module
 
-This package contains the native `tinydesktop` module for TinyBus module ABI
+This package contains the native `tinycomputer` module for TinyBus module ABI
 v1. Install only the archive matching the host operating system and
 architecture.
 
-The module claims `ai.tinyhumans.tinydesktop.Desktop`, serves the object at
-`/ai/tinyhumans/tinydesktop/Desktop`, and provides sixty-seven members:
+The module claims `ai.tinyhumans.tinycomputer.Desktop`, serves the object at
+`/ai/tinyhumans/tinycomputer/Desktop`, and provides sixty-seven members:
 
 - 54 desktop primitives: accessibility-tree observation, ref-addressed
   interaction, synthesized keyboard and mouse input, application and window
@@ -20,7 +20,7 @@ The module claims `ai.tinyhumans.tinydesktop.Desktop`, serves the object at
 Every member takes one request payload, or none, and returns a structured
 reply carrying either the data or an error with its code, suggestion, and
 recovery hint. All payload types, the interface name, the object path, and the
-member names are published as the `tinydesktop-bus` crate, so a host names
+member names are published as the `tinycomputer-bus` crate, so a host names
 them from a library rather than by string literal.
 
 The module reads its configuration from the loader as a JSON object. Every key
@@ -33,7 +33,7 @@ is optional:
 - `cursor`: the agent's on-screen cursor, shared by the desktop and the
   browser — a pace (`off`, `brisk`, `natural` (the default), `calm`), or an
   object with an optional `pace` and an optional `overlay` path to the
-  `tinydesktop-cursor-overlay` helper shipped beside the module;
+  `tinycomputer-cursor-overlay` helper shipped beside the module;
 - `planner`: an OpenRouter `api_key` and optional `model`, which lets
   `StartTask` accept a plain-language task;
 - `browser.executable`: the Chrome or Chromium binary to launch.
@@ -68,8 +68,8 @@ archive. Install directly from a tagged release with:
 
 ```sh
 tinybus modules load-github \
-  https://github.com/tinyhumansai/tinydesktop/releases/tag/v0.2.1 \
-  tinydesktop-0.2.1-ubuntu-24.04-x86_64.tar.gz \
+  https://github.com/tinyhumansai/tinycomputer/releases/tag/v0.2.1 \
+  tinycomputer-0.2.1-ubuntu-24.04-x86_64.tar.gz \
   <archive-sha256>
 ```
 

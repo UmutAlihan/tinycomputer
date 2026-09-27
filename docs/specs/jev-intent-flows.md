@@ -1,6 +1,6 @@
 # Jev intent flows
 
-**Status:** Implemented. **Owner:** tinydesktop maintainers.
+**Status:** Implemented. **Owner:** tinycomputer maintainers.
 **Plan:** [`../plans/jev-intent-flows.md`](../plans/jev-intent-flows.md).
 
 ## Problem
@@ -62,7 +62,7 @@ is a `do` intent; an object has exactly one key naming its kind:
 | `repeat_until {condition, steps, max}`, `if {condition, then, else}` | control flow |
 
 `${name}` substitutes a variable. The authoring guide, with worked examples, is
-`crates/tinydesktop-bus/src/flow/guide.md`, served verbatim by `FlowGuide`.
+`crates/tinycomputer-bus/src/flow/guide.md`, served verbatim by `FlowGuide`.
 
 ### Members
 

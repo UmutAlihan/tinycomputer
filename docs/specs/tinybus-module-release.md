@@ -11,9 +11,9 @@ distributable without also shipping the TinyBus host runtime.
 - The `cdylib` exports TinyBus module ABI v1, an embedded manifest, and the
   initialization entrypoint.
 - The module provides the fifty-nine members of
-  `ai.tinyhumans.tinydesktop.Desktop` at `/ai/tinyhumans/tinydesktop/Desktop`.
+  `ai.tinyhumans.tinycomputer.Desktop` at `/ai/tinyhumans/tinycomputer/Desktop`.
 - Each release archive is named
-  `tinydesktop-<version>-<platform>.<extension>` and contains only this
+  `tinycomputer-<version>-<platform>.<extension>` and contains only this
   module, its SHA-256 `modules.toml`, license, and installation documentation
   — plus, on macOS, the engine's `agent-desktop-macos-helper`, which the
   engine's clipboard only trusts beside the loaded module.

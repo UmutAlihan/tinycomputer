@@ -1,0 +1,47 @@
+[package]
+name = "tinycomputer-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Native desktop automation over the agent-desktop engine: one typed method per tinycomputer member, with no bus and no agent loop."
+documentation = "https://docs.rs/tinycomputer-desktop"
+readme = "README.md"
+keywords = ["accessibility", "automation", "desktop"]
+categories = ["os"]
+publish = false
+
+[dependencies]
+# Request payloads and the response envelope every method takes and returns.
+# Re-exported, so `tinycomputer_desktop::SnapshotRequest` is the contract type.
+tinycomputer-bus = { workspace = true }
+# The surface trait and screen model `Desktop` implements for the engine.
+tinycomputer-core = { workspace = true }
+# The agent's on-screen cursor, glided onto each target before a pointer
+# action. Cosmetic; it sends no input.
+tinycomputer-cursor = { workspace = true }
+# Derive macros for the crate-wide error type in `src/error/`.
+thiserror = { workspace = true }
+# Command replies are `serde_json::Value` the whole way through: the engine
+# builds them and the envelope carries them without this crate reshaping them.
+serde_json = { workspace = true }
+# The desktop automation engine. Platform-neutral; the accessibility backend
+# arrives through the target-specific dependencies below.
+agent-desktop-core = { workspace = true }
+
+# One accessibility backend per platform, selected at compile time. `linux`
+# currently implements no surfaces and fails closed with
+# `PLATFORM_NOT_SUPPORTED`; it is taken anyway so the crate builds and answers
+# with a structured error there rather than failing to link.
+[target.'cfg(target_os = "macos")'.dependencies]
+agent-desktop-macos = { workspace = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+agent-desktop-windows = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+agent-desktop-linux = { workspace = true }
+
+[lints]
+workspace = true
