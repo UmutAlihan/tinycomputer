@@ -92,12 +92,9 @@
 //! none. That is inherited from the vendored engine and will follow it.
 
 mod agentic;
-mod desktop;
-mod error;
 mod tinybus_module;
 
-pub use desktop::Desktop;
-pub use error::{Error, Result};
+pub use tinydesktop_desktop::{Desktop, Error, Result};
 
 // The wire contract, re-exported by module rather than by item so every path
 // through this crate resolves to the same definitions the contract crate
