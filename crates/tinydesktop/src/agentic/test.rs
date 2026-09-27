@@ -1160,3 +1160,38 @@ async fn a_low_confidence_turn_is_retried_before_the_run_gives_up() {
     assert_eq!(result.stop, JevStopReason::Done);
     assert_eq!(result.turns.len(), 1);
 }
+
+#[tokio::test]
+async fn the_desktop_backend_fails_closed_on_empty_targets_without_touching_input() {
+    use super::backend::execute_operation;
+
+    // Every call below names nothing, so each fails before pressing, pasting,
+    // or launching anything on the machine running the tests.
+    let desktop = crate::Desktop::new();
+    let empty = Candidate::default();
+    assert!(AgentBackend::read_value(&desktop, &empty).is_none());
+    assert!(!AgentBackend::paste(&desktop, "", &empty, "text").ok);
+    assert!(!AgentBackend::press(&desktop, "", "").ok);
+    assert!(!AgentBackend::launch(&desktop, "").ok);
+    assert!(
+        AgentBackend::observe(&desktop, "__tinydesktop_missing__", None, Depth::Full).is_err()
+    );
+    let typed = execute_operation(
+        desktop.clone(),
+        String::new(),
+        JevOperation::TypeText,
+        Some(empty.clone()),
+        Some("text".to_owned()),
+    )
+    .await;
+    assert!(!typed.ok);
+    let clicked = execute_operation(
+        desktop,
+        String::new(),
+        JevOperation::Click,
+        Some(empty),
+        None,
+    )
+    .await;
+    assert!(!clicked.ok);
+}
