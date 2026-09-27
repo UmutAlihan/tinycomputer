@@ -285,12 +285,17 @@ step, when:
 - or the screen shows payment evidence (a card number, CVV, or expiry field),
   so a button that only says "Continue" on a card form is caught too.
 
-When a click is refused because it is covered — a result list's whole card
-often lies a transparent click layer (or its own text) over its own controls, so the card's own
-button is "covered" by the card itself — the runtime presses Escape once and
-retries the *same* already-vetted target. Escape never chooses a new element,
-so nothing exposed by dismissing whatever covered the click is ever pressed
-without going through grounding and `is_destructive` again on a later turn.
+When a click is refused because it is covered, two things happen. On the
+browser, a result card often lays a click layer — or its own text — over its
+own link, so the link is "covered" by the card itself; the browser surface
+then clicks through at the link's position, but only when the exact target
+(matched by name, and on the page, by the one element under that point with
+that label) sits in the same card as the cover and no dialog is involved.
+Anything else comes back covered, and the runtime presses Escape once and
+retries the *same* already-vetted target — in a `do` step's click and in
+`pick`'s alike. Escape never chooses a new element, so nothing exposed by
+dismissing whatever covered the click is ever pressed without going through
+grounding and `is_destructive` again on a later turn.
 
 A dismissal the completion judge would otherwise never see ends the step
 immediately: when the last action pressed a control whose own words the
