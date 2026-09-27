@@ -59,6 +59,8 @@ enum Quirk {
     /// A side drawer lies over the page: every click is refused as covered
     /// until Escape closes it.
     Drawer,
+    /// Every click is refused: the element is not visible.
+    Unclickable,
 }
 
 #[derive(Debug, Default)]
@@ -455,6 +457,15 @@ impl AgentBackend for App {
             .as_ref()
             .and_then(|target| target.name.clone())
             .unwrap_or_default();
+        if sim.has(Quirk::Unclickable) && operation == JevOperation::Click {
+            return DesktopResponse::err(
+                "click",
+                tinycomputer_bus::DesktopError::new(
+                    "NOT_ACTIONABLE",
+                    "Element exists but is not visible.",
+                ),
+            );
+        }
         if sim.has(Quirk::Drawer) && operation == JevOperation::Click {
             return DesktopResponse::err(
                 "click",
@@ -4438,15 +4449,25 @@ async fn a_picked_card_whose_control_is_covered_is_uncovered_and_opened() {
 #[tokio::test]
 async fn a_picked_card_that_cannot_be_opened_says_why() {
     let app = flights();
-    app.sim().quirks.insert(Quirk::Frozen);
-    let run = run_with(
+    app.sim().quirks.insert(Quirk::Unclickable);
+    let run = run(
         app,
         json!({"app": "Mail", "steps": [
             {"pick": {"from": "the flight results", "by": "lowest price"}}
         ]}),
-        |_| {},
-        |_, _, _| None,
     )
     .await;
-    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+    let step = &run.result.steps[0];
+    assert_eq!(step.outcome, StepOutcome::Failed);
+    assert!(
+        step.note.starts_with(
+            "could not open the picked item (Element exists but is not visible.): IndiGo"
+        ),
+        "{}",
+        step.note
+    );
+    assert!(
+        run.app.sim().presses.is_empty(),
+        "only a covered click is retried"
+    );
 }
