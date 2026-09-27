@@ -61,12 +61,7 @@ pub(super) fn state(
 /// reads the merged, document-ordered view over `candidates` and
 /// `text_nodes` instead.
 fn field_contents(screen: &Screen) -> Vec<Value> {
-    let mut ordered = screen
-        .candidates
-        .iter()
-        .chain(screen.text_nodes.iter())
-        .collect::<Vec<_>>();
-    ordered.sort_by_key(|node| node.order);
+    let ordered = ordered_nodes(screen);
     let mut fields = Vec::new();
     for node in &screen.candidates {
         let holds_text = node
