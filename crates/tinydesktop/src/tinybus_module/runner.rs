@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, CursorPace, SessionOptions};
+use tinydesktop_browser::{AgentBrowser, Browser, BrowserSurface, ScreenCursor, SessionOptions};
 use tinydesktop_bus::DesktopResponse;
 use tinydesktop_bus::agent::{SurfaceKind, TaskConstraints, TaskId};
 use tinydesktop_engine::{FlowFuture, FlowRunner, JevRuntime, TextFuture, Workspace};
@@ -23,8 +23,9 @@ pub(super) struct WorkspaceRunner {
     /// The Chrome or Chromium binary sessions launch, when the platform's
     /// own discovery would not find one.
     pub(super) executable: Option<String>,
-    /// The pace each task's browser draws the agent's cursor at.
-    pub(super) cursor: CursorPace,
+    /// The screen's one agent cursor, which each task's browser shares with
+    /// the desktop.
+    pub(super) cursor: Arc<ScreenCursor>,
     pub(super) workspaces: Mutex<HashMap<TaskId, (TaskWorkspace, Option<BrowserSurface>)>>,
 }
 
@@ -37,7 +38,7 @@ impl WorkspaceRunner {
             jev,
             browser: Arc::new(Browser::new(Arc::new(AgentBrowser))),
             executable: None,
-            cursor: CursorPace::default(),
+            cursor: Arc::new(ScreenCursor::off()),
             workspaces: Mutex::new(HashMap::new()),
         }
     }
@@ -64,7 +65,7 @@ impl WorkspaceRunner {
                     },
                     tokio::runtime::Handle::current(),
                 )
-                .with_cursor(self.cursor)
+                .with_cursor(self.cursor.clone())
             });
             (Workspace::new(desktop, browser.clone()), browser)
         };

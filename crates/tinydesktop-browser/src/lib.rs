@@ -47,4 +47,4 @@ pub use outputs::SWEEP_INTERVAL;
 pub use sessions::{Browser, MAX_SESSIONS};
 pub use surface::BrowserSurface;
 pub use tinydesktop_bus::browser::*;
-pub use tinydesktop_cursor::{CursorPace, ScreenCursor};
+pub use tinydesktop_cursor::{CursorPace, ProcessOverlay, ScreenCursor};

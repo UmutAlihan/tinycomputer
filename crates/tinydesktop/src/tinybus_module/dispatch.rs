@@ -34,7 +34,7 @@ use tinydesktop_bus::agent::{
 
 use super::runner::{WorkspaceRunner, jev_not_configured};
 use crate::{Desktop, Result};
-use tinydesktop_browser::CursorPace;
+use tinydesktop_browser::{CursorPace, ScreenCursor};
 use tinydesktop_engine as agentic;
 
 /// The object served at [`tinydesktop_bus::names::OBJECT_PATH`].
@@ -56,7 +56,8 @@ impl DesktopService {
     ///
     /// Propagates whatever [`Desktop::from_config`] rejects.
     pub(crate) fn from_config(config: &serde_json::Value) -> Result<Self> {
-        let desktop = Desktop::from_config(config)?;
+        let cursor = Arc::new(cursor_config(config)?);
+        let desktop = Desktop::from_config(config)?.with_cursor(cursor.clone());
         let jev = config
             .as_object()
             .and_then(|object| object.get("jev"))
@@ -89,9 +90,8 @@ impl DesktopService {
             })
             .transpose()?;
         let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone());
-        let browser = browser_config(config)?;
-        runner.executable = browser.executable;
-        runner.cursor = browser.cursor;
+        runner.executable = browser_executable(config)?;
+        runner.cursor = cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
         if let Some(planner) = planner {
             tasks = tasks.with_planner(planner);
@@ -574,36 +574,59 @@ pub(super) fn desktop_availability(permissions: &DesktopResponse) -> SurfaceAvai
     }
 }
 
-/// The `browser` configuration.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub(super) struct BrowserConfig {
-    /// `browser.executable`: the Chrome or Chromium binary to launch where
-    /// the platform's own discovery would not find one.
-    pub(super) executable: Option<String>,
-    /// `browser.cursor`: the pace the agent's cursor is drawn at in a
-    /// visible session, or `off`.
-    pub(super) cursor: CursorPace,
-}
-
-pub(super) fn browser_config(config: &serde_json::Value) -> Result<BrowserConfig> {
+/// The `browser.executable` configuration: the Chrome or Chromium binary to
+/// launch where the platform's own discovery would not find one.
+fn browser_executable(config: &serde_json::Value) -> Result<Option<String>> {
     let Some(browser) = config.as_object().and_then(|object| object.get("browser")) else {
-        return Ok(BrowserConfig::default());
+        return Ok(None);
     };
     let invalid = || crate::Error::ConfigFieldType {
         field: "browser",
-        expected: "an object whose optional `executable` is a string and optional `cursor` is \
-                   off, brisk, natural, or calm",
+        expected: "an object whose optional `executable` is a string",
     };
     let browser = browser.as_object().ok_or_else(invalid)?;
-    let executable = match browser.get("executable") {
-        None => None,
-        Some(serde_json::Value::String(path)) => Some(path.clone()),
+    match browser.get("executable") {
+        None => Ok(None),
+        Some(serde_json::Value::String(path)) => Ok(Some(path.clone())),
+        Some(_) => Err(invalid()),
+    }
+}
+
+/// The `cursor` configuration: the agent's one on-screen cursor, shared by
+/// the desktop and every task's browser. Either a pace name, or an object
+/// with an optional `pace` and an optional `overlay` path to the
+/// `tinydesktop-cursor-overlay` helper. Absent, the cursor glides at the
+/// natural pace with the helper found where [`ProcessOverlay::locate`]
+/// looks.
+///
+/// [`ProcessOverlay::locate`]: tinydesktop_browser::ProcessOverlay::locate
+pub(super) fn cursor_config(config: &serde_json::Value) -> Result<ScreenCursor> {
+    let invalid = || crate::Error::ConfigFieldType {
+        field: "cursor",
+        expected: "off, brisk, natural, or calm, or an object with an optional `pace` of those \
+                   and an optional `overlay` path",
+    };
+    let pace = |value: Option<&serde_json::Value>| match value {
+        None => Ok(CursorPace::default()),
+        Some(serde_json::Value::String(name)) => name.parse().map_err(|_| invalid()),
+        Some(_) => Err(invalid()),
+    };
+    let (pace, overlay) = match config.as_object().and_then(|object| object.get("cursor")) {
+        None => (CursorPace::default(), None),
+        Some(name @ serde_json::Value::String(_)) => (pace(Some(name))?, None),
+        Some(serde_json::Value::Object(cursor)) => {
+            let overlay = match cursor.get("overlay") {
+                None => None,
+                Some(serde_json::Value::String(path)) => Some(std::path::PathBuf::from(path)),
+                Some(_) => return Err(invalid()),
+            };
+            (pace(cursor.get("pace"))?, overlay)
+        }
         Some(_) => return Err(invalid()),
     };
-    let cursor = match browser.get("cursor") {
-        None => CursorPace::default(),
-        Some(serde_json::Value::String(pace)) => pace.parse().map_err(|_| invalid())?,
-        Some(_) => return Err(invalid()),
-    };
-    Ok(BrowserConfig { executable, cursor })
+    Ok(if pace.is_off() {
+        ScreenCursor::off()
+    } else {
+        ScreenCursor::new(pace, overlay)
+    })
 }
