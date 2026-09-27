@@ -15,6 +15,7 @@ use super::{
     act::DONE,
     ask::{self, Questions, chosen, condition, numbered},
     backend::deliver_text,
+    ground::Grounded,
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute},
     view::{Candidate, Screen, is_destructive, label, target_payload},
