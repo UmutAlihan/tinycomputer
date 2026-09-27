@@ -54,7 +54,7 @@ impl NavigateRequest {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser_bus::{NavigateRequest, WaitUntil};
+    /// # use tinydesktop_bus::browser::{NavigateRequest, WaitUntil};
     /// let request = NavigateRequest::new("https://example.com");
     /// assert_eq!(request.wait_until, WaitUntil::Load);
     /// ```

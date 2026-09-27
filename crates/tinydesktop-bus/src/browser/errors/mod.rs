@@ -15,62 +15,62 @@
 //! matches on a constant.
 
 /// The prefix every error name in this contract begins with.
-pub const PREFIX: &str = "ai.tinyhumans.tinybrowser.Error";
+pub const PREFIX: &str = "ai.tinyhumans.tinydesktop.Browser.Error";
 
 /// The request was malformed or self-contradictory: an unparseable URL, an
 /// empty expression, a quality outside 1–100.
 ///
 /// A model can act on this.
-pub const INVALID_INPUT: &str = "ai.tinyhumans.tinybrowser.Error.InvalidInput";
+pub const INVALID_INPUT: &str = "ai.tinyhumans.tinydesktop.Browser.Error.InvalidInput";
 
 /// The named session does not exist, or has been closed.
 ///
 /// A host should open a new one rather than retrying.
-pub const NO_SUCH_SESSION: &str = "ai.tinyhumans.tinybrowser.Error.NoSuchSession";
+pub const NO_SUCH_SESSION: &str = "ai.tinyhumans.tinydesktop.Browser.Error.NoSuchSession";
 
 /// No element matched the target.
 ///
 /// A model can act on this: take a fresh snapshot and choose again.
-pub const NO_SUCH_ELEMENT: &str = "ai.tinyhumans.tinybrowser.Error.NoSuchElement";
+pub const NO_SUCH_ELEMENT: &str = "ai.tinyhumans.tinydesktop.Browser.Error.NoSuchElement";
 
 /// The ref belongs to an earlier snapshot of this page.
 ///
 /// Distinct from [`NO_SUCH_ELEMENT`] because the remedy is exactly "snapshot
 /// again", and saying so is more useful than "not found".
-pub const STALE_REF: &str = "ai.tinyhumans.tinybrowser.Error.StaleRef";
+pub const STALE_REF: &str = "ai.tinyhumans.tinydesktop.Browser.Error.StaleRef";
 
 /// The element was found but could not be acted on: covered by an overlay,
 /// disabled, or outside the document.
 ///
 /// The message names the obstruction where the browser could identify it.
-pub const NOT_ACTIONABLE: &str = "ai.tinyhumans.tinybrowser.Error.NotActionable";
+pub const NOT_ACTIONABLE: &str = "ai.tinyhumans.tinydesktop.Browser.Error.NotActionable";
 
 /// The operation ran out of time.
-pub const TIMEOUT: &str = "ai.tinyhumans.tinybrowser.Error.Timeout";
+pub const TIMEOUT: &str = "ai.tinyhumans.tinydesktop.Browser.Error.Timeout";
 
 /// The session's `allowed_origins` does not admit the destination.
 ///
 /// Never retry this one: the answer will not change, and a host that retries
 /// turns a refused navigation into a loop.
-pub const BLOCKED_BY_POLICY: &str = "ai.tinyhumans.tinybrowser.Error.BlockedByPolicy";
+pub const BLOCKED_BY_POLICY: &str = "ai.tinyhumans.tinydesktop.Browser.Error.BlockedByPolicy";
 
 /// No browser could be launched or reached.
 ///
 /// A model cannot act on this — it is a host or deployment problem.
-pub const BROWSER_UNAVAILABLE: &str = "ai.tinyhumans.tinybrowser.Error.BrowserUnavailable";
+pub const BROWSER_UNAVAILABLE: &str = "ai.tinyhumans.tinydesktop.Browser.Error.BrowserUnavailable";
 
 /// The page reported a JavaScript exception, or the browser rejected a command.
-pub const PAGE_ERROR: &str = "ai.tinyhumans.tinybrowser.Error.PageError";
+pub const PAGE_ERROR: &str = "ai.tinyhumans.tinydesktop.Browser.Error.PageError";
 
 /// The named held output does not exist, or has expired.
-pub const NO_SUCH_OUTPUT: &str = "ai.tinyhumans.tinybrowser.Error.NoSuchOutput";
+pub const NO_SUCH_OUTPUT: &str = "ai.tinyhumans.tinydesktop.Browser.Error.NoSuchOutput";
 
 /// A limit was reached: too many sessions, too many held outputs, or an output
 /// larger than the module will hold.
-pub const LIMIT_EXCEEDED: &str = "ai.tinyhumans.tinybrowser.Error.LimitExceeded";
+pub const LIMIT_EXCEEDED: &str = "ai.tinyhumans.tinydesktop.Browser.Error.LimitExceeded";
 
 /// Everything else.
-pub const MODULE_FAILED: &str = "ai.tinyhumans.tinybrowser.Error.ModuleFailed";
+pub const MODULE_FAILED: &str = "ai.tinyhumans.tinydesktop.Browser.Error.ModuleFailed";
 
 /// Every error name this contract defines.
 pub const NAMES: &[&str] = &[
@@ -97,7 +97,7 @@ pub const NAMES: &[&str] = &[
 /// # Examples
 ///
 /// ```
-/// # use tinybrowser_bus::errors;
+/// # use tinydesktop_bus::browser::errors;
 /// assert!(errors::is_agent_recoverable(errors::NO_SUCH_ELEMENT));
 /// assert!(!errors::is_agent_recoverable(errors::BROWSER_UNAVAILABLE));
 /// ```

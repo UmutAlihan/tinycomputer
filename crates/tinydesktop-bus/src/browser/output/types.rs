@@ -2,11 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::Target;
+use crate::browser::Target;
 
 /// The identity of one held output.
 ///
-/// A newtype for the same reason [`crate::SessionId`] is one: both are opaque
+/// A newtype for the same reason [`crate::browser::SessionId`] is one: both are opaque
 /// strings, and swapping them is otherwise a runtime error rather than a
 /// compile-time one.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -19,7 +19,7 @@ impl OutputId {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser_bus::OutputId;
+    /// # use tinydesktop_bus::browser::OutputId;
     /// assert_eq!(OutputId::new("o-1").as_str(), "o-1");
     /// ```
     #[must_use]
@@ -73,7 +73,7 @@ impl ImageFormat {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser_bus::ImageFormat;
+    /// # use tinydesktop_bus::browser::ImageFormat;
     /// assert_eq!(ImageFormat::Png.media_type(), "image/png");
     /// ```
     #[must_use]

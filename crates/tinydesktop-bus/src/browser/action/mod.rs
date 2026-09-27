@@ -13,7 +13,7 @@
 //! # Refs, selectors, and locators
 //!
 //! [`Target`] is deliberately three things. A `@e12` ref comes from a
-//! [`crate::Snapshot`] and is what an agent should normally use: it names an
+//! [`crate::browser::Snapshot`] and is what an agent should normally use: it names an
 //! element the agent has actually seen, and it fails loudly when the page has
 //! moved on. A CSS selector is for a host that already knows the page. A
 //! [`Locator`] is for the case an agent is best at — "the button called Submit"

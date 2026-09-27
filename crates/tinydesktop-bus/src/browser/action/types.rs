@@ -40,7 +40,7 @@ impl Target {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser_bus::Target;
+    /// # use tinydesktop_bus::browser::Target;
     /// assert_eq!(Target::parse("@e12"), Target::reference("e12"));
     /// assert_eq!(Target::parse("#submit"), Target::selector("#submit"));
     /// ```
@@ -131,7 +131,7 @@ impl Locator {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser_bus::{LocateBy, Locator};
+    /// # use tinydesktop_bus::browser::{LocateBy, Locator};
     /// let locator = Locator::new(LocateBy::Role, "button").with_name("Submit");
     /// assert_eq!(locator.name.as_deref(), Some("Submit"));
     /// ```
@@ -335,7 +335,7 @@ pub struct ActionOutcome {
     /// action that only acts.
     pub value: Value,
     /// Where the page was when the action finished.
-    pub page: crate::PageState,
+    pub page: crate::browser::PageState,
     /// The element the action resolved to, when it resolved one. Reported so an
     /// agent that named a target loosely can see what it actually hit.
     pub matched: Option<String>,
@@ -344,7 +344,7 @@ pub struct ActionOutcome {
 impl ActionOutcome {
     /// An outcome with no value, for an action that only acts.
     #[must_use]
-    pub fn acted(page: crate::PageState) -> Self {
+    pub fn acted(page: crate::browser::PageState) -> Self {
         Self {
             value: Value::Null,
             page,
@@ -354,7 +354,7 @@ impl ActionOutcome {
 
     /// An outcome carrying `value`, for an action that reads.
     #[must_use]
-    pub fn read(page: crate::PageState, value: Value) -> Self {
+    pub fn read(page: crate::browser::PageState, value: Value) -> Self {
         Self {
             value,
             page,

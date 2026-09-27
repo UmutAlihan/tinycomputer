@@ -20,7 +20,7 @@ impl SessionId {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser_bus::SessionId;
+    /// # use tinydesktop_bus::browser::SessionId;
     /// assert_eq!(SessionId::new("s-1").as_str(), "s-1");
     /// ```
     #[must_use]
@@ -77,7 +77,7 @@ impl Viewport {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser_bus::Viewport;
+    /// # use tinydesktop_bus::browser::Viewport;
     /// let viewport = Viewport::desktop(1280, 800);
     /// assert_eq!((viewport.width, viewport.mobile), (1280, false));
     /// ```

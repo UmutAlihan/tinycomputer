@@ -103,7 +103,7 @@ fn output_ids_order_and_hash_so_a_host_can_key_by_them() {
 #[test]
 fn a_screenshot_request_round_trips_every_field() {
     let request = ScreenshotRequest {
-        target: Some(crate::Target::selector("#chart")),
+        target: Some(crate::browser::Target::selector("#chart")),
         full_page: true,
         format: ImageFormat::Webp,
         quality: Some(60),

@@ -10,12 +10,12 @@ use super::{INTERFACE, METHODS, OBJECT_PATH, methods};
 
 #[test]
 fn interface_is_the_published_name() {
-    assert_eq!(INTERFACE, "ai.tinyhumans.tinybrowser.Browser");
+    assert_eq!(INTERFACE, "ai.tinyhumans.tinydesktop.Browser");
 }
 
 #[test]
 fn object_path_is_the_interface_in_path_form() {
-    assert_eq!(OBJECT_PATH, "/ai/tinyhumans/tinybrowser/Browser");
+    assert_eq!(OBJECT_PATH, "/ai/tinyhumans/tinydesktop/Browser");
     assert_eq!(OBJECT_PATH, format!("/{}", INTERFACE.replace('.', "/")));
 }
 

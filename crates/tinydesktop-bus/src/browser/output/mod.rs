@@ -9,7 +9,7 @@
 //!
 //! What is left is the shape below: the module holds the image, hands back an
 //! [`OutputRef`] describing it, and the host pulls it with
-//! [`crate::names::methods::READ_OUTPUT`] in chunks it chooses. The `sha256` on
+//! [`crate::browser::names::methods::READ_OUTPUT`] in chunks it chooses. The `sha256` on
 //! the handle is what lets the host verify it reassembled the image the module
 //! actually produced rather than a partially-overwritten one.
 //!

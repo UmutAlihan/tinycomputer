@@ -66,6 +66,6 @@ fn an_unknown_name_is_not_recoverable() {
     // Treating it as recoverable would have an agent retry something it cannot
     // understand; treating it as an operator problem surfaces it instead.
     assert!(!is_agent_recoverable(
-        "ai.tinyhumans.tinybrowser.Error.Invented"
+        "ai.tinyhumans.tinydesktop.Browser.Error.Invented"
     ));
 }

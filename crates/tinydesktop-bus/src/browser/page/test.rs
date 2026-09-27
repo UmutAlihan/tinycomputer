@@ -3,7 +3,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{EvaluateRequest, NavigateRequest, PageState, PageText, ReadFormat, ReadRequest};
-use crate::WaitUntil;
+use crate::browser::WaitUntil;
 use serde_json::json;
 
 #[test]

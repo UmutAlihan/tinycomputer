@@ -43,7 +43,7 @@ impl SnapshotRequest {
     /// # Examples
     ///
     /// ```
-    /// # use tinybrowser_bus::SnapshotRequest;
+    /// # use tinydesktop_bus::browser::SnapshotRequest;
     /// assert!(SnapshotRequest::interactive().interactive_only);
     /// ```
     #[must_use]
@@ -58,7 +58,7 @@ impl SnapshotRequest {
 /// One addressable element in a snapshot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ElementRef {
-    /// The ref, without its `@`. Pass it to [`crate::Target::reference`].
+    /// The ref, without its `@`. Pass it to [`crate::browser::Target::reference`].
     pub id: String,
     /// The element's accessibility role.
     pub role: String,

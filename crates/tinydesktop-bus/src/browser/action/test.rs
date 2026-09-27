@@ -3,7 +3,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{Action, ActionOutcome, LocateBy, Locator, ScrollDirection, Target, WaitState};
-use crate::PageState;
+use crate::browser::PageState;
 use serde_json::json;
 
 #[test]

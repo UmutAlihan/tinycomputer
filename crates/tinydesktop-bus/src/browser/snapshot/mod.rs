@@ -4,7 +4,7 @@
 //! `@e12` ref on every element an agent could plausibly act on. It is what an
 //! agent should read instead of HTML: it is an order of magnitude smaller, it
 //! already excludes what a screen reader would not announce, and every line it
-//! contains is addressable by [`crate::Target::Ref`].
+//! contains is addressable by [`crate::browser::Target::Ref`].
 //!
 //! The refs belong to the snapshot that produced them. [`Snapshot::sequence`]
 //! records which one that was, so a host holding an old snapshot can tell that
