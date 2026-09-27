@@ -3,7 +3,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{
-    FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowLoop, FlowStep, FlowStopReason, GroundingHint,
+    FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowLoop, FlowStep, FlowStopReason, FlowStrategy, GroundingHint,
     RunFlowRequest, Slot, Slots, StepOutcome,
 };
 use serde_json::json;
@@ -121,6 +121,7 @@ fn run_requests_default_to_safe_bounded_runs() {
     );
     assert!(request.brief.is_empty());
     assert!(request.disabled_loops.is_empty() && request.memory.is_empty() && !request.trace);
+    assert_eq!(request.strategy, FlowStrategy::Narrow);
     assert_eq!(
         request,
         RunFlowRequest {
@@ -182,9 +183,38 @@ fn a_brief_pins_its_wire_form_and_defaults_empty() {
         (FlowLoop::Vote, "vote"),
         (FlowLoop::PageKind, "page_kind"),
         (FlowLoop::Validation, "validation"),
+        (FlowLoop::Survey, "survey"),
+        (FlowLoop::Digest, "digest"),
     ] {
         assert_eq!(serde_json::to_value(flow_loop).unwrap(), json!(wire));
     }
+}
+
+#[test]
+fn a_strategy_pins_its_wire_spelling_and_round_trips() {
+    assert_eq!(
+        serde_json::to_value(FlowStrategy::Wide).unwrap(),
+        json!("wide")
+    );
+    assert_eq!(
+        serde_json::to_value(FlowStrategy::Narrow).unwrap(),
+        json!("narrow")
+    );
+    let request: RunFlowRequest = serde_json::from_value(json!({
+        "flow": {"app": "Mail", "steps": ["x"]},
+        "strategy": "wide"
+    }))
+    .unwrap();
+    assert_eq!(request.strategy, FlowStrategy::Wide);
+    assert_eq!(serde_json::to_value(&request).unwrap()["strategy"], json!("wide"));
+    assert!(
+        serde_json::from_value::<RunFlowRequest>(json!({
+            "flow": {"app": "Mail", "steps": ["x"]},
+            "strategy": "fastest"
+        }))
+        .is_err(),
+        "an unknown strategy is refused, never read as a default"
+    );
 }
 
 #[test]
