@@ -187,6 +187,14 @@ fn closed_the_overlay(last: &LastAction, screen: &Screen, intent: &str) -> Optio
     })
 }
 
+/// Whether an action was refused because something covers its target.
+fn covered(reply: &DesktopResponse) -> bool {
+    reply
+        .error
+        .as_ref()
+        .is_some_and(|error| error.message.contains("is covered by"))
+}
+
 /// Ends the step when the completion judge is confident enough.
 fn finished(log: &mut StepLog, judged: &Judgement, turn: u32) -> Option<Ended> {
     let done = judged.done?;
@@ -460,11 +468,30 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             )));
         }
         let chosen_target = target.clone();
-        let reply = self
+        let mut reply = self
             .act(log, verb, Some(&target), move |backend| {
                 backend.execute(jev_operation, Some(chosen_target), None)
             })
             .await?;
+        if covered(&reply) {
+            // A drawer, menu, or popover lies over the target; Escape closes
+            // one without doing anything, so press it and try once more.
+            let app = self.app.clone();
+            self.act(log, "press escape (uncover)", None, move |backend| {
+                backend.press(&app, "escape")
+            })
+            .await?;
+            self.history.push(format!(
+                "{} was covered by something; pressed escape to close it",
+                label(&target)
+            ));
+            let retried = target.clone();
+            reply = self
+                .act(log, verb, Some(&target), move |backend| {
+                    backend.execute(jev_operation, Some(retried), None)
+                })
+                .await?;
+        }
         self.history
             .push(format!("{verb} {} ok={}", label(&target), reply.ok));
         if reply.ok {
