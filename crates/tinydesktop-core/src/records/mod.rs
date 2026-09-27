@@ -96,7 +96,10 @@ pub fn parse_price(text: &str) -> Option<Price> {
             number_after(&text[end..]).or_else(|| number_before(&text[..start]))?,
             Some(code),
         ),
-        None => (number_after(text)?, None),
+        None => (
+            digits(&text[text.find(|character: char| character.is_ascii_digit())?..]),
+            None,
+        ),
     };
     Some(Price {
         amount: decimal(&number)?,
@@ -114,7 +117,7 @@ fn standalone(text: &str, at: usize, marker: &str) -> bool {
     !before.is_some_and(char::is_alphabetic) && !after.is_some_and(char::is_alphabetic)
 }
 
-/// The first number in `text` that starts within a few characters.
+/// The number that starts `text`, after any spaces or punctuation.
 fn number_after(text: &str) -> Option<String> {
     let start = text.find(|character: char| character.is_ascii_digit())?;
     if text[..start].chars().any(char::is_alphanumeric) {
