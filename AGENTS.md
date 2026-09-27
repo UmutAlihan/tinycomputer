@@ -60,6 +60,7 @@ crates/
 │   │   ├── lib.rs      # crate docs + public surface, re-exporting the rest
 │   │   └── tinybus_module/   # TinyBus interface, ABI exports, integration tests
 │   └── tests/          # integration tests against the public API only
+├── tinydesktop-skills/ # agent-facing SKILL.md and schemas for the task API
 └── tinydesktop-examples/ # runnable examples and the lab (`scripts/lab`)
 vendor/
 ├── tinybus/            # pinned TinyBus host types and module SDK

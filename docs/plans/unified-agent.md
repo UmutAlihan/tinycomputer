@@ -76,7 +76,10 @@ contract commands and the per-file coverage gate green.
       for end-to-end runs in the Docker lab.
 - [x] `extract {what, into}`: every card of a list as JSON rows, surfaced as
       structured records in the task report.
-- [ ] `in` step; `tinydesktop-skills`.
+- [x] `tinydesktop-skills`: an agent-facing `SKILL.md` and `StartTask`
+      schema, tested against the contract.
+- [ ] `in` step (switching surfaces already works through `open` and
+      `browse`).
 
 ## Phase 6 — planner
 

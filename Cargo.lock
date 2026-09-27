@@ -1496,6 +1496,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinydesktop-skills"
+version = "0.5.1"
+dependencies = [
+ "serde_json",
+ "tinydesktop-bus",
+]
+
+[[package]]
 name = "tinyinference-core"
 version = "0.3.0"
 dependencies = [
