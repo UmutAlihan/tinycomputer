@@ -48,8 +48,8 @@ So the cursor is **purely cosmetic**.
 |---|---|
 | `CursorPace` | `off`, `brisk`, `natural` (default), `calm`. These scale the tempo by ×0.6, ×1, ×1.6 |
 | `VirtualCursor::glide(rect)` | aims inside the element's middle 60% × 50% and glides from where the cursor last landed. With no previous position it appears 240–420 px away and fades in |
-| `ScreenCursor` | the shared cursor. `show(rect)` plans a glide, sends it to an `OverlaySink`, and waits for the landing. `hide()` fades the cursor out. It is best effort: with no sink, or a failing one, it sends nothing and never waits |
-| `OverlaySink` / `ProcessOverlay` | the default sink starts the helper on first use and writes one `OverlayCommand` per line to its stdin. A host UI can supply its own sink and draw the cursor itself |
+| `ScreenCursor` | the shared cursor. `show(rect)` plans a glide, hands it to an `OverlaySink`, and returns at once with the glide's duration. It never waits and never delays an action. `hide()` fades the cursor out. It is best effort: with no sink, or a failing one, it sends nothing |
+| `OverlaySink` / `ProcessOverlay` | the default sink starts the helper on first use and writes one `OverlayCommand` per line to its stdin from a background thread, through an 8-deep queue that drops glides rather than block. A host UI can supply its own sink and draw the cursor itself |
 | `OverlayCommand` | `{"type":"glide","path":[[t_ms,x,y],…],"appears":bool}` or `{"type":"hide"}` |
 | `animate::Animator` | turns commands plus time into frames: path interpolation, a 150 ms fade in or out, a 450 ms pulse, and a fade-out after 6 s idle |
 | `sprite::Sprite` | a violet arrow with a white outline and a soft shadow, plus 12 pulse frames, on a 64-point canvas with the tip at the centre. Frames are straight RGBA, supersampled 4×4. It also provides premultiplied BGRA and a stored-deflate PNG encoder |
