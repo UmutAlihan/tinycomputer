@@ -511,13 +511,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 rank(&records_of(groups), criterion).map(|order| (groups, order[0]))
             })
         });
-        let (groups, best, how) = match ranked {
-            Some((groups, best)) => (groups, best, "ranked"),
-            None => {
-                let groups = &families[0];
-                let best = self.judge_pick(log, &screen, &from, &by, groups).await?;
-                (groups, best, "judged")
-            }
+        let (groups, best, how) = if let Some((groups, best)) = ranked {
+            (groups, best, "ranked")
+        } else {
+            let groups = &families[0];
+            let best = self.judge_pick(log, &screen, &from, &by, groups).await?;
+            (groups, best, "judged")
         };
         let group = &groups[best];
         let summary: String = group
