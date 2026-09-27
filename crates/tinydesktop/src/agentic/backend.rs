@@ -53,6 +53,10 @@ pub(super) trait AgentBackend: Clone + Send + 'static {
 
     /// Launches `app`, or brings it forward when it is already running.
     fn launch(&self, app: &str) -> DesktopResponse;
+
+    /// Gives the application a moment to commit what it was just given, as a
+    /// token field does when it turns an address into a token.
+    fn settle(&self) {}
 }
 
 impl AgentBackend for Desktop {
@@ -133,7 +137,14 @@ impl AgentBackend for Desktop {
         request.activate = true;
         Desktop::launch(self, request)
     }
+
+    fn settle(&self) {
+        let _settled = self.wait(WaitRequest::sleep(SETTLE_MS));
+    }
 }
+
+/// How long a field is given to commit text before it is read back again.
+const SETTLE_MS: u64 = 200;
 
 fn press_at(app: &str, combo: &str) -> PressRequest {
     let mut request = PressRequest::new(combo);
@@ -212,7 +223,7 @@ pub(super) fn deliver_text<B: AgentBackend>(
         Some(text.to_owned()),
     );
     if set.ok {
-        match backend.read_value(target) {
+        match read_settled(backend, target, text) {
             Some(held) if holds(&held, text) => return delivered("set_value", true),
             None => return delivered("set_value", false),
             Some(_) => {}
@@ -222,7 +233,7 @@ pub(super) fn deliver_text<B: AgentBackend>(
     if !pasted.ok {
         return if set.ok { pasted } else { set };
     }
-    match backend.read_value(target) {
+    match read_settled(backend, target, text) {
         Some(held) if holds(&held, text) => delivered("paste", true),
         None => delivered("paste", false),
         Some(_) => DesktopResponse::err(
@@ -233,6 +244,17 @@ pub(super) fn deliver_text<B: AgentBackend>(
             ),
         ),
     }
+}
+
+/// Reads `target` back, and once more after [`AgentBackend::settle`] when the
+/// first read does not yet hold `text`.
+fn read_settled<B: AgentBackend>(backend: &B, target: &Candidate, text: &str) -> Option<String> {
+    let first = backend.read_value(target);
+    if first.as_deref().is_none_or(|held| holds(held, text)) {
+        return first;
+    }
+    backend.settle();
+    backend.read_value(target).or(first)
 }
 
 fn delivered(path: &str, verified: bool) -> DesktopResponse {

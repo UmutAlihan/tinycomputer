@@ -128,6 +128,22 @@ enum Move {
     Skipped,
 }
 
+/// Whether `intent` asks for something new to be made ("start a new email",
+/// "create a folder").
+///
+/// Such a step can never be accomplished before acting: a draft or folder that
+/// is already on screen is someone else's, and treating it as the new one is
+/// how a flow ends up writing into a person's own unsent draft.
+pub(super) fn creates_new(intent: &str) -> bool {
+    let words = intent
+        .split(|character: char| !character.is_alphanumeric())
+        .map(str::to_ascii_lowercase)
+        .collect::<Vec<_>>();
+    words
+        .iter()
+        .any(|word| matches!(word.as_str(), "new" | "create" | "compose" | "draft"))
+}
+
 /// Ends the step when the completion judge is confident enough.
 fn finished(log: &mut StepLog, judged: &Judgement, turn: u32) -> Option<Ended> {
     let done = judged.done?;
@@ -154,8 +170,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let screen = self.look().await?;
             self.note_change(&mut state, &screen)?;
             let judged = self.judge(log, &screen, intent).await?;
-            if let Some(ended) = finished(log, &judged, turn) {
+            let creating = creates_new(intent) && log.actions.is_empty();
+            if !creating && let Some(ended) = finished(log, &judged, turn) {
                 return Ok(ended);
+            }
+            if creating && judged.next == "finished" {
+                self.history.push(
+                    "this step creates something new, so something already on screen cannot count; act first"
+                        .to_owned(),
+                );
             }
             if self
                 .recover(log, &mut state, &screen, intent, &judged)
@@ -272,6 +295,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         banned: &BTreeSet<String>,
     ) -> Result<Move, Halt> {
         match judged.next.as_str() {
+            "finished" if creates_new(intent) && log.actions.is_empty() => Ok(Move::Skipped),
             "finished" => Ok(Move::Ended(Ended::new(
                 StepOutcome::Done,
                 "Jev chose finished",
