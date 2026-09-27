@@ -735,6 +735,42 @@ async fn a_mail_compose_flow_fills_every_field_and_stops_in_front_of_send() {
 }
 
 #[tokio::test]
+async fn a_fact_is_typed_through_enter_but_never_reaches_a_jev_request() {
+    let app = App::quirky(Quirk::BodyIgnoresSetValue);
+    let run = run_with(
+        app,
+        mail_flow(),
+        |request| {
+            request.facts = BTreeSet::from(["to".to_owned()]);
+        },
+        |_, _, _| None,
+    )
+    .await;
+
+    assert_eq!(run.result.stop, FlowStopReason::StoppedBeforeDestructive);
+    let sim = run.app.sim();
+    assert_eq!(
+        sim.fields["To"], "sam@example.com",
+        "the fact is still typed into the field"
+    );
+
+    let leaked = run.requests.iter().any(|request| {
+        serde_json::to_string(request)
+            .unwrap()
+            .contains("sam@example.com")
+    });
+    assert!(!leaked, "a fact's value must never reach a Jev request");
+    assert!(
+        run.result
+            .steps
+            .iter()
+            .all(|step| !step.text.contains("sam@example.com")
+                && !step.note.contains("sam@example.com")),
+        "a fact's value must not appear in a step report either"
+    );
+}
+
+#[tokio::test]
 async fn an_allowed_destructive_step_is_performed_and_verified() {
     let run = run_with(
         App::default(),
