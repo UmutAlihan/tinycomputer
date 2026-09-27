@@ -173,9 +173,8 @@ clickable elements. `Send` is picked at 0.9, so no re-ask is needed. Without
 
 `if` asks one `holds` request and runs `then` at 0.75 or above, `else`
 otherwise. The children report as `3.1`, `3.2`; the parent's report comes
-first. "create a new folder" takes the `new_folder` shortcut; its `enter`
-finds the name field that just gained focus and types into it, and the
-`confirm` shortcut (Return) commits the name.
+first. "create a new folder" usually takes the `new_folder` shortcut, and the
+`enter` that follows finds the new folder's name field and types into it.
 
 ```json
 {"app": "Calculator", "steps": [
@@ -188,8 +187,9 @@ finds the name field that just gained focus and types into it, and the
 `repeat_until` checks the condition, runs the body, and checks again, up to
 `max` rounds. "calculate 128 times 37" is a `do` step that grounds and
 presses one key per turn, so it is also the clearest example of the
-eight-turn cap: a step needing more presses than turns fails with "not
-accomplished after 8 turns". Split long key sequences into several steps.
+eight-turn cap: a step that needs more presses than it has turns fails with
+"not accomplished after 8 turns". Split a long key sequence into several
+steps.
 
 ## 4. A web booking, up to the payment page
 
@@ -226,9 +226,10 @@ What is different on the web:
 - **`pick` usually costs nothing.** "lowest price" parses into a criterion,
   so the result cards (found by `result_groups`) are ranked exactly, and the
   winner's primary control is clicked after the destructive check.
-- **Autocomplete and calendars.** When `enter` or `choose` meets a date
-  picker or an autocomplete, the runtime pages the calendar to the day or
-  types into the field that just gained focus and picks the matching option.
+- **Autocomplete and calendars.** An `enter` slot with no field to type into
+  (a departure date, a destination city) is picked as an option instead,
+  the way `choose` works: the runtime pages a calendar to the day, or types
+  into the field that just gained focus and picks the matching suggestion.
 - **Payment is a wall.** A payment control, or any screen showing card
   fields, stops the run; the task controller makes it a final checkpoint.
 
@@ -241,7 +242,7 @@ What is different on the web:
 | `note: that made things worse; undid it` in history | progress fell a quarter, or `helped` came back under 0.2 | the turn after the action: its `progress` and `helped` |
 | a click on the wrong element | a low-confidence `target` that `again` + `confirm` let through, or a wrong memory hint | the grounding exchanges for that step: `target`, `again`, `confirm` |
 | `no field was found for: …` | a slot matched no field at 0.40, and `asks_…` said the form does ask | the `slot_*` answers and the element list in `request.state` |
-| `stopped: ModelBudget` | the call budget ran out | `jev_journal` summary: calls per step; voting multiplies them |
+| `the Jev call budget ran out` (stop `ModelBudget`) | the call budget ran out | `jev_journal` summary: calls per step; voting multiplies them |
 
 Start from the step report, find that step's events in the journal
 (`jq 'select(.step=="3")'`), and read what Jev was shown in `request.state`
