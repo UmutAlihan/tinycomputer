@@ -128,14 +128,26 @@ fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec
     let widget = [root, "group \"Booking\""];
     candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
     if booking.searching {
+        // A suggestion row that claims to take text but does not, as
+        // IndiGo's comboboxes do.
         candidates.push(node(
+            "Mumbai, BOM",
+            "combobox",
+            &["Click", "SetValue"],
+            &widget,
+            85.0,
+        ));
+        let typed = sim.fields.get("Search city").cloned().unwrap_or_default();
+        // The box shows what was typed, so it "mentions" the option too.
+        let mut search = node(
             "Search city",
             "textbox",
             &["Click", "SetValue"],
             &widget,
             90.0,
-        ));
-        let typed = sim.fields.get("Search city").cloned().unwrap_or_default();
+        );
+        search.value = Some(json!(typed));
+        candidates.push(search);
         if !typed.is_empty() && "srinagar".starts_with(&typed.to_lowercase()) {
             candidates.push(node("Srinagar, SXR", "option", &["Click"], &widget, 95.0));
         }
