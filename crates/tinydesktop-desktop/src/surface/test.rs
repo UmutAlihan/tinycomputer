@@ -9,7 +9,7 @@ use tinydesktop_core::surface::{
     Candidate, Depth, Screen, Surface, deliver_text, describe, fingerprint,
 };
 
-use super::pointer::{RealPointer, bounds, glide_onto, glide_plan};
+use super::pointer::{RealPointer, bounds, glide_onto, glide_plan, glide_with};
 use super::{
     Restore, execute_desktop, front_of, observe, parse_reply, platform_combo, restore_plan,
     running_is_launched, with_restoration,
@@ -432,4 +432,64 @@ fn the_real_pointer_only_glides() {
     for refusal in refusals {
         assert_eq!(refusal.error.unwrap().code, "ACTION_NOT_SUPPORTED");
     }
+}
+
+/// Records the glide's moves; refuses every move once `fail` is set.
+#[derive(Default)]
+struct Moves {
+    points: Vec<tinydesktop_input::Point>,
+    fail: bool,
+}
+
+impl tinydesktop_input::InputSink for Moves {
+    type Error = ();
+    fn move_to(&mut self, point: tinydesktop_input::Point) -> Result<(), ()> {
+        if self.fail {
+            return Err(());
+        }
+        self.points.push(point);
+        Ok(())
+    }
+    fn press(&mut self, _: tinydesktop_input::Button) -> Result<(), ()> {
+        Err(())
+    }
+    fn release(&mut self, _: tinydesktop_input::Button) -> Result<(), ()> {
+        Err(())
+    }
+    fn key_down(&mut self, _: tinydesktop_input::Key) -> Result<(), ()> {
+        Err(())
+    }
+    fn key_up(&mut self, _: tinydesktop_input::Key) -> Result<(), ()> {
+        Err(())
+    }
+    fn text(&mut self, _: &str) -> Result<(), ()> {
+        Err(())
+    }
+}
+
+#[test]
+fn a_glide_moves_only_and_a_failed_move_forgets_the_position() {
+    let target = boxed(json!({"x": 400.0, "y": 300.0, "width": 120.0, "height": 32.0}));
+    let desktop = crate::Desktop::new().with_headed(true);
+    let mut moves = Moves::default();
+    let mut waited = std::time::Duration::ZERO;
+    glide_with(&desktop, &target, &mut moves, &mut |pause| waited += pause);
+    assert!(moves.points.len() > 5);
+    assert!(waited > std::time::Duration::from_millis(100), "{waited:?}");
+    let landed = *moves.points.last().unwrap();
+    assert_eq!(desktop.pointer().0.lock().unwrap().position(), Some(landed));
+
+    // A clone shares the pointer: the next glide starts where this one ended.
+    let clone = desktop.clone();
+    let mut refused = Moves {
+        fail: true,
+        ..Moves::default()
+    };
+    glide_with(&clone, &target, &mut refused, &mut |_| {});
+    assert_eq!(desktop.pointer().0.lock().unwrap().position(), None);
+
+    // Headless plays nothing at all.
+    let mut untouched = Moves::default();
+    glide_with(&crate::Desktop::new(), &target, &mut untouched, &mut |_| {});
+    assert!(untouched.points.is_empty());
 }

@@ -81,15 +81,27 @@ pub(crate) fn glide_plan(desktop: &Desktop, target: &Candidate) -> Option<Plan> 
 
 /// Glides the real pointer onto `target`, when this desktop moves it.
 pub(crate) fn glide_onto(desktop: &Desktop, target: &Candidate) {
+    let mut pacer = Pacer::new(std::thread::sleep);
+    glide_with(desktop, target, &mut RealPointer(desktop), &mut |pause| {
+        pacer.wait(pause);
+    });
+}
+
+/// Plays the glide onto `target` against `sink`. A failed move forgets the
+/// pointer's position: where it stopped is unknown, so the next glide enters
+/// afresh rather than starting from a point the pointer never reached.
+pub(crate) fn glide_with<S: InputSink>(
+    desktop: &Desktop,
+    target: &Candidate,
+    sink: &mut S,
+    wait: &mut dyn FnMut(std::time::Duration),
+) {
     let Some(plan) = glide_plan(desktop, target) else {
         return;
     };
-    let mut pacer = Pacer::new(std::thread::sleep);
-    let mut wait = |pause| pacer.wait(pause);
-    if play(&plan, &mut RealPointer(desktop), &mut wait).is_err()
+    if play(&plan, sink, wait).is_err()
         && let Ok(mut mouse) = desktop.pointer().0.lock()
     {
-        // Where the pointer stopped is unknown; the next glide enters afresh.
         mouse.forget();
     }
 }
