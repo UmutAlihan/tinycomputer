@@ -2069,7 +2069,12 @@ async fn pick_fails_where_no_list_is_showing() {
 #[test]
 fn pick_validates_its_fields_and_defines_its_variable() {
     let check = |flow: serde_json::Value| {
-        super::validate::check(&serde_json::from_value(flow).unwrap(), &BTreeSet::new()).errors
+        super::validate::check(
+            &serde_json::from_value(flow).unwrap(),
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+        )
+        .errors
     };
     assert!(
         check(json!({"app": "Mail", "steps": [
