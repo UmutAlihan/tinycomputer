@@ -76,10 +76,10 @@ guide below. Reply with exactly one JSON object and nothing else: a flow \
 Use `browse` for anything on the web and `open` for a desktop application. \
 Refer to the person's details only as ${name} variables: use the fact names you are given, \
 and invent a clear name for any other detail the task needs, so the person can be asked for \
-it. Never invent personal details. A fact variable may appear only in an `enter` step's \
-value, or substituted into a `browse` address or an `open` application name: you never see \
-it, so it may not appear in a `do`, `verify`, `wait_for`, `stop_before`, `choose`, `read`, \
-`extract`, `pick`, `repeat_until`, or `if` text, or as an `enter` slot's own name. Never enter \
+it. Never invent personal details. A fact variable may appear only as an `enter` step's \
+value: you never see it, so it may not appear in an `open` application name, a `browse` \
+address, a `do`, `verify`, `wait_for`, `stop_before`, `choose`, `read`, `extract`, `pick`, \
+`repeat_until`, or `if` text, or as an `enter` slot's own name. Never enter \
 payment details: end any purchase or booking with a stop_before step for paying. Guard \
 sending, deleting, publishing, or submitting with a stop_before step.";
 
