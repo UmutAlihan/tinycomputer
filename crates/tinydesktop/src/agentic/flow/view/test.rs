@@ -7,7 +7,7 @@ use tinydesktop_bus::DesktopResponse;
 
 use super::{
     Candidate, Depth, Screen, change_note, describe, destructive_label, exact_named_match,
-    fingerprint, observe, parse_reply, target_payload,
+    fingerprint, is_destructive, named_in_stop_before, observe, parse_reply, target_payload,
 };
 
 fn clickable_screen() -> Screen {
