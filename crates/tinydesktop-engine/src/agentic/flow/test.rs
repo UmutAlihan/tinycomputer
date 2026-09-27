@@ -946,8 +946,7 @@ async fn an_obstacle_is_dismissed_with_a_safe_control_only() {
 /// the screen can end it.
 fn press_keep_editing(id: &str, question: &Question, _: &Sim) -> Option<Answer> {
     match id {
-        "done" => Some(noul(0.05)),
-        "blocked" => Some(noul(0.05)),
+        "done" | "blocked" => Some(noul(0.05)),
         "move" => Some(pick(question, "activate", 0.9)),
         _ if id == "target" || id == "region" || id.starts_with("group_") => {
             Some(pick(question, "Keep Editing", 0.9))
