@@ -212,6 +212,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         mut pool: Vec<Candidate>,
     ) -> Result<Option<Grounded>, Halt> {
         pool.truncate(super::super::screen::MAX_CANDIDATES);
+        if pool.is_empty() {
+            return Ok(None);
+        }
         let keys = numbered(pool.len());
         let answers = self
             .ask(

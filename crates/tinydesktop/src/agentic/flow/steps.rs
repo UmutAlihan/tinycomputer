@@ -217,6 +217,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     json!({"untrusted_accessibility_data": {
                         "element": label(candidate),
                         "shows": if self.include_values { json!(text) } else { json!(format!("{} characters", text.chars().count())) },
+                        "state": candidate.states.join(", "),
                     }}),
                     text,
                 ))

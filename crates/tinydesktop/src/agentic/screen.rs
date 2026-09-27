@@ -78,11 +78,16 @@ pub(super) fn observe(
     };
     let mut reply = desktop.snapshot(request.clone());
     if root.is_none()
-        && reply
+        && let Some(error) = reply
             .error
             .as_ref()
-            .is_some_and(|error| error.code == "AMBIGUOUS_TARGET")
-        && let Some(window_id) = front_window(desktop, app)
+            .filter(|error| error.code == "AMBIGUOUS_TARGET")
+        && let Some(window_id) = error
+            .details
+            .as_ref()
+            .and_then(|details| details.get("candidates"))
+            .and_then(|candidates| front_of(candidates.as_array()?))
+            .or_else(|| front_window(desktop, app))
     {
         reply = desktop.snapshot(SnapshotRequest {
             window_id: Some(window_id),
@@ -101,17 +106,34 @@ pub(super) fn observe(
     parse_reply(desktop, app, root, reply)
 }
 
-/// The window to observe when an application has several: its focused one,
-/// else its first visible one.
+/// The window to observe when an application has several, from its own
+/// window list.
 fn front_window(desktop: &Desktop, app: &str) -> Option<String> {
     let reply = desktop.list_windows(ListWindowsRequest {
         app: Some(app.to_owned()),
     });
-    let windows = reply.data?.as_array()?.clone();
+    front_of(reply.data?.as_array()?)
+}
+
+/// The focused window, else the first visible one with a title, else the
+/// first visible one.
+pub(super) fn front_of(windows: &[Value]) -> Option<String> {
     let flag = |window: &Value, key: &str| window.get(key).and_then(Value::as_bool) == Some(true);
+    let titled = |window: &&Value| {
+        window
+            .get("title")
+            .and_then(Value::as_str)
+            .is_some_and(|title| !title.trim().is_empty())
+    };
     windows
         .iter()
         .find(|window| flag(window, "is_focused"))
+        .or_else(|| {
+            windows
+                .iter()
+                .filter(|window| flag(window, "visible"))
+                .find(titled)
+        })
         .or_else(|| windows.iter().find(|window| flag(window, "visible")))
         .and_then(|window| window.get("id").and_then(Value::as_str))
         .map(str::to_owned)
