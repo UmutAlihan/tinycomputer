@@ -238,8 +238,16 @@ impl Scenario {
                     passed: window.contains(subject) && window.contains(body),
                     detail: format!(
                         "the front Mail window {} the subject and {} the body",
-                        if window.contains(subject) { "shows" } else { "lacks" },
-                        if window.contains(body) { "shows" } else { "lacks" },
+                        if window.contains(subject) {
+                            "shows"
+                        } else {
+                            "lacks"
+                        },
+                        if window.contains(body) {
+                            "shows"
+                        } else {
+                            "lacks"
+                        },
                     ),
                 })
             }
@@ -249,7 +257,11 @@ impl Scenario {
                     passed: window.contains("Re:") && window.contains("follow up"),
                     detail: format!(
                         "the front Mail window {} a reply draft",
-                        if window.contains("Re:") { "is" } else { "is not" }
+                        if window.contains("Re:") {
+                            "is"
+                        } else {
+                            "is not"
+                        }
                     ),
                 })
             }

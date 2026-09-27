@@ -75,19 +75,20 @@ impl AgentBackend for Desktop {
     }
 
     fn read_value(&self, target: &Candidate) -> Option<String> {
-        let reply = self.get(GetRequest::new(
-            target.ref_id.clone(),
-            ElementProperty::Value,
-        ));
-        if !reply.ok {
-            return None;
-        }
-        reply.data.as_ref().and_then(|data| {
-            data.get("value")
-                .or_else(|| data.get("text"))
-                .and_then(Value::as_str)
-                .map(str::to_owned)
-        })
+        // A plain field answers with its value; a rich-text area often has
+        // none and answers with its text instead.
+        [ElementProperty::Value, ElementProperty::Text]
+            .into_iter()
+            .find_map(|property| {
+                let reply = self.get(GetRequest::new(target.ref_id.clone(), property));
+                reply
+                    .data
+                    .as_ref()
+                    .filter(|_| reply.ok)
+                    .and_then(|data| data.get("value").and_then(Value::as_str))
+                    .filter(|value| !value.trim().is_empty())
+                    .map(str::to_owned)
+            })
     }
 
     fn paste(&self, app: &str, target: &Candidate, text: &str) -> DesktopResponse {
