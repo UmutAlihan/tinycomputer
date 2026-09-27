@@ -41,7 +41,9 @@ impl Engine for Linked {
     fn execute(&mut self, command: Value) -> Reply<'_> {
         Box::pin(async move {
             let _serialized = ENGINE.lock().await;
-            execute_command(&command, &mut self.state).await
+            // The dispatcher's future is large (it spans every action), so it
+            // is boxed rather than held inline in this one.
+            Box::pin(execute_command(&command, &mut self.state)).await
         })
     }
 }
