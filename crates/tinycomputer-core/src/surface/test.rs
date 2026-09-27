@@ -12,8 +12,8 @@ use serde_json::json;
 use tinycomputer_bus::{DesktopResponse, JevOperation};
 
 use super::{
-    Candidate, Depth, Screen, Surface, change_note, deliver_text, exact_named_match, fingerprint,
-    holds, result_groups, target_payload, tokenized, uses_pointer,
+    Candidate, Depth, Screen, Surface, change_note, deliver_text, describe, element_line,
+    exact_named_match, fingerprint, holds, result_groups, target_payload, tokenized, uses_pointer,
 };
 
 fn clickable_screen() -> Screen {
@@ -455,4 +455,54 @@ fn only_pointer_operations_use_the_pointer() {
     ] {
         assert!(!uses_pointer(operation), "{operation:?}");
     }
+}
+
+#[test]
+fn an_unnamed_element_is_told_apart_by_the_named_container_it_sits_in() {
+    let search = Candidate {
+        role: "combobox".to_owned(),
+        available_actions: vec!["SetValue".to_owned()],
+        path: vec![
+            "main \"Booking Widget\"".to_owned(),
+            "button \"destinationCity Empty POPULAR DESTINATIONS Mumbai Bengaluru Hyderabad Kolkata\"".to_owned(),
+            "generic".to_owned(),
+        ],
+        ..Candidate::default()
+    };
+    let line = element_line(&search, false);
+    assert!(
+        line.starts_with("combobox in button \"destinationCity Empty POPULAR DESTINATIONS"),
+        "{line}"
+    );
+    assert!(
+        line.ends_with('…'),
+        "a long container label is clipped: {line}"
+    );
+    let described = describe(&search, false);
+    assert!(
+        described["untrusted_accessibility_data"]["near"]
+            .as_str()
+            .unwrap()
+            .starts_with("button \"destinationCity")
+    );
+
+    let named = Candidate {
+        name: Some("To".to_owned()),
+        ..search.clone()
+    };
+    assert_eq!(element_line(&named, false), "combobox \"To\"");
+    assert!(
+        describe(&named, false)["untrusted_accessibility_data"]
+            .get("near")
+            .is_none()
+    );
+    let loose = Candidate {
+        path: vec!["generic".to_owned()],
+        ..search
+    };
+    assert_eq!(
+        element_line(&loose, false),
+        "combobox",
+        "nothing named to sit in"
+    );
 }

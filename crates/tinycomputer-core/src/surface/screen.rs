@@ -165,8 +165,7 @@ const NEAR_CHARS: usize = 60;
 /// sits in, clipped: an unnamed search box inside `button "destinationCity"`
 /// is told apart from the unnamed boxes of every other dropdown only by it.
 /// `None` for a named element, or one with no named container.
-#[must_use]
-pub fn near(node: &Candidate) -> Option<String> {
+fn near(node: &Candidate) -> Option<String> {
     if node.name.is_some() || node.description.is_some() {
         return None;
     }
