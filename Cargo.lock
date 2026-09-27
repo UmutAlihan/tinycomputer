@@ -1414,6 +1414,7 @@ dependencies = [
  "serde_json",
  "tinybus",
  "tinybus-module",
+ "tinydesktop-browser",
  "tinydesktop-bus",
  "tinydesktop-desktop",
  "tinydesktop-engine",

@@ -25,6 +25,15 @@ use tinydesktop_bus::{
     WindowRequest,
 };
 
+use std::sync::Arc;
+
+use tinydesktop_bus::agent::{
+    AgentError, AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest,
+    PlanTaskRequest, StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef,
+    TaskReport, TaskView,
+};
+
+use super::runner::{WorkspaceRunner, jev_not_configured};
 use crate::{Desktop, Result};
 use tinydesktop_engine as agentic;
 
@@ -37,6 +46,7 @@ use tinydesktop_engine as agentic;
 pub(crate) struct DesktopService {
     desktop: Desktop,
     jev: Option<agentic::JevRuntime>,
+    tasks: Arc<agentic::Tasks>,
 }
 
 impl DesktopService {
@@ -63,7 +73,15 @@ impl DesktopService {
                 })
             })
             .transpose()?;
-        Ok(Self { desktop, jev })
+        let tasks = Arc::new(agentic::Tasks::new(Arc::new(WorkspaceRunner {
+            desktop: desktop.clone(),
+            jev: jev.clone(),
+        })));
+        Ok(Self {
+            desktop,
+            jev,
+            tasks,
+        })
     }
 
     /// Runs one engine command on a blocking thread.
@@ -123,6 +141,77 @@ impl DesktopService {
     /// Returns the flow authoring guide as prompt text.
     async fn flow_guide(&self) -> TinyBusResult<DesktopResponse> {
         self.run(|_| agentic::flow_guide()).await
+    }
+
+    /// Everything a model needs to drive the task members, in one reply.
+    async fn describe(&self) -> TinyBusResult<Capabilities> {
+        Ok(agentic::capabilities(
+            vec![
+                SurfaceAvailability {
+                    kind: SurfaceKind::Desktop,
+                    available: true,
+                    reason: None,
+                },
+                SurfaceAvailability {
+                    kind: SurfaceKind::Browser,
+                    available: false,
+                    reason: Some("the browser engine is not linked into this build yet".to_owned()),
+                },
+            ],
+            self.jev.is_some(),
+        ))
+    }
+
+    /// Drafts a flow for a plain-language task; needs a planner.
+    async fn plan_task(&self, _request: PlanTaskRequest) -> TinyBusResult<AgentResponse<TaskPlan>> {
+        Ok(AgentResponse::err(AgentError::new(
+            "PLANNER_NOT_CONFIGURED",
+            "no planner is configured in this module",
+            "write a flow with Describe's guide and pass it as StartTask.flow",
+            false,
+        )))
+    }
+
+    /// Starts a task and returns at once with its first view.
+    #[tinybus(confidential)]
+    async fn start_task(
+        &self,
+        request: StartTaskRequest,
+    ) -> TinyBusResult<AgentResponse<TaskView>> {
+        Ok(self.tasks.start(&request))
+    }
+
+    /// Waits until a task needs something, finishes, or the timeout passes.
+    async fn await_task(
+        &self,
+        request: AwaitTaskRequest,
+    ) -> TinyBusResult<AgentResponse<TaskView>> {
+        Ok(self.tasks.await_task(request).await)
+    }
+
+    /// Answers what a paused task asked for, and resumes it.
+    #[tinybus(confidential)]
+    async fn continue_task(
+        &self,
+        request: ContinueTaskRequest,
+    ) -> TinyBusResult<AgentResponse<TaskView>> {
+        Ok(self.tasks.continue_task(request))
+    }
+
+    /// Stops a task.
+    async fn cancel_task(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskView>> {
+        Ok(self.tasks.cancel(&request.id))
+    }
+
+    /// Everything a task did.
+    #[tinybus(confidential)]
+    async fn task_report(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskReport>> {
+        Ok(self.tasks.report(&request.id))
+    }
+
+    /// The tasks this module holds, newest first.
+    async fn list_tasks(&self) -> TinyBusResult<AgentResponse<Vec<TaskView>>> {
+        Ok(self.tasks.list())
     }
 
     /// Walks an accessibility tree and allocates a ref per element.
@@ -421,14 +510,4 @@ impl DesktopService {
     fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
         self.jev.clone()
     }
-}
-
-fn jev_not_configured(command: &str) -> DesktopResponse {
-    DesktopResponse::err(
-        command,
-        tinydesktop_bus::DesktopError::new(
-            "JEV_NOT_CONFIGURED",
-            "Jev must be supplied through private module configuration",
-        ),
-    )
 }

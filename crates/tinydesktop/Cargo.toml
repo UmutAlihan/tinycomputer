@@ -25,8 +25,11 @@ crate-type = ["rlib", "cdylib"]
 tinydesktop-bus = { workspace = true }
 # The agent-desktop adapter. `Desktop`, `Error`, and `Result` are re-exported.
 tinydesktop-desktop = { workspace = true }
-# The agent runtime behind the agentic members: Jev loops, goals, and flows.
+# The agent runtime behind the agentic and task members: Jev loops, goals,
+# flows, the workspace, and the task controller.
 tinydesktop-engine = { workspace = true }
+# The browser surface type a task's workspace is built with.
+tinydesktop-browser = { workspace = true }
 tinybus = { workspace = true }
 tinybus-module = { workspace = true }
 # Command replies are `serde_json::Value` the whole way through.
