@@ -101,6 +101,7 @@ question, and threshold in detail.
  vendor/agent-desktop   vendor/agent-browser      the engines, pinned by gitlink
 
  tinydesktop-core            Surface trait, screen model, keymap, safety, facts
+ tinydesktop-cursor          the agent's drawn cursor: aim points, human glides
  tinydesktop-bus             the wire contract, with no runtime at all
 ```
 
@@ -114,6 +115,7 @@ flights on the web and then write an email in Mail.
 |---|---|
 | `tinydesktop-bus` | every type that crosses the bus: member names, payloads, the `DesktopResponse` envelope, the Agent and browser types, the flow grammar and guide, the contract version |
 | `tinydesktop-core` | the `Surface` trait and `Screen`; verified text delivery; result cards; the per-OS keymap; the safety classifier and payment detector; facts; price, time, duration, and stop parsers |
+| `tinydesktop-cursor` | the agent's one on-screen cursor, shared by desktop and browser: aim points, human glide paths (overshoot, correction, wobble, tremor, Fitts timing), its look, and — with the `overlay` feature — the `tinydesktop-cursor-overlay` helper that draws it in a click-through, never-focused window on macOS and Windows; cosmetic, it sends no input |
 | `tinydesktop-desktop` | `Desktop`, one typed method per desktop member, with a permission preflight; `Desktop` as a `Surface` |
 | `tinydesktop-browser` | `Browser` sessions over agent-browser linked in-process; `BrowserSurface` |
 | `tinydesktop-engine` | Jev, `RunGoal`, `ResolveIntent`, the flow runtime, the workspace, the task controller, the optional planner |
@@ -257,6 +259,7 @@ object only after the whole new configuration validates.
 | `jev` | Jev provider, API key, and optional model, endpoint, timeout, retries, and `sdk_name` |
 | `planner` | an OpenRouter `api_key` and optional `model`; absent means tasks need a flow |
 | `browser.executable` | the Chrome or Chromium binary to launch |
+| `cursor` | the agent's on-screen cursor for desktop and browser: a pace (`off`, `brisk`, `natural` (default), `calm`) or `{pace, overlay}`, where `overlay` is the path to the shipped `tinydesktop-cursor-overlay` helper |
 
 Without `jev`, the Jev-driven members answer `JEV_NOT_CONFIGURED` and the
 primitives keep working. For the TinyHumans proxy, the host supplies
@@ -333,6 +336,7 @@ crates/
 │       ├── browser/       # the browser contract
 │       └── observation/ interaction/ input/ apps/ clipboard/ …
 ├── tinydesktop-core/      # surface/ keymap/ safety/ records/ facts/
+├── tinydesktop-cursor/    # glide/ animate/ sprite/ screen/ + bin/: the agent's cursor
 ├── tinydesktop-desktop/   # desktop/ (the 54 members) and surface/
 ├── tinydesktop-browser/   # sessions/ convert/ reply/ linked/ outputs/ surface/
 ├── tinydesktop-engine/

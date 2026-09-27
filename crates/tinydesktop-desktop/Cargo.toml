@@ -18,6 +18,9 @@ publish = false
 tinydesktop-bus = { workspace = true }
 # The surface trait and screen model `Desktop` implements for the engine.
 tinydesktop-core = { workspace = true }
+# The agent's on-screen cursor, glided onto each target before a pointer
+# action. Cosmetic; it sends no input.
+tinydesktop-cursor = { workspace = true }
 # Derive macros for the crate-wide error type in `src/error/`.
 thiserror = { workspace = true }
 # Command replies are `serde_json::Value` the whole way through: the engine

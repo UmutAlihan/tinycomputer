@@ -12,7 +12,8 @@ use tinydesktop_bus::{
     ElementProperty, GetRequest, JevOperation, LaunchRequest, ListWindowsRequest, PressRequest,
     RefRequest, ScrollRequest, SetValueRequest, SnapshotRequest, Surface as Overlay, WaitRequest,
 };
-use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface};
+use tinydesktop_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
+use tinydesktop_cursor::Rect;
 
 use crate::Desktop;
 
@@ -568,12 +569,28 @@ fn press_at(app: &str, combo: &str) -> PressRequest {
     request
 }
 
+/// A candidate's bounds, which agent-desktop reports in global screen points.
+pub(crate) fn screen_bounds(target: &Candidate) -> Option<Rect> {
+    let bounds = target.bounds.as_ref()?;
+    let field = |name: &str| bounds.get(name).and_then(Value::as_f64);
+    let rect = Rect::new(field("x")?, field("y")?, field("width")?, field("height")?);
+    (rect.is_valid() && rect.width > 0.0 && rect.height > 0.0).then_some(rect)
+}
+
 pub(crate) fn execute_desktop(
     desktop: &Desktop,
     operation: JevOperation,
     target: Option<&Candidate>,
     text: Option<String>,
 ) -> DesktopResponse {
+    if let (Some(cursor), Some(bounds)) = (
+        desktop.cursor(),
+        target
+            .filter(|_| uses_pointer(operation))
+            .and_then(screen_bounds),
+    ) {
+        cursor.arrive(bounds);
+    }
     let ref_id = target.map(|node| node.ref_id.clone());
     match operation {
         JevOperation::Click => desktop.click(RefRequest::new(ref_id.unwrap_or_default())),

@@ -21,4 +21,5 @@ into the plan.
 
 See [`desktop-module-contract.md`](desktop-module-contract.md) for a worked
 example, [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime, and
-[`unified-agent.md`](unified-agent.md) for browser and desktop behind one task API.
+[`unified-agent.md`](unified-agent.md) for browser and desktop behind one task API,
+and [`virtual-cursor.md`](virtual-cursor.md) for the agent's drawn cursor.

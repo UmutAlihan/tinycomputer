@@ -524,3 +524,39 @@ fn the_browser_executable_is_configured_or_refused() {
     assert!(DesktopService::from_config(&json!({"browser": {"executable": 7}})).is_err());
     assert!(DesktopService::from_config(&json!({"browser": "chrome"})).is_err());
 }
+
+#[test]
+fn the_cursor_is_configured_or_refused() {
+    use super::dispatch::cursor_config;
+    use tinydesktop_browser::CursorPace;
+    assert_eq!(
+        cursor_config(&json!({})).unwrap().pace(),
+        CursorPace::Natural
+    );
+    assert_eq!(
+        cursor_config(&json!({"cursor": "calm"})).unwrap().pace(),
+        CursorPace::Calm
+    );
+    assert!(
+        cursor_config(&json!({"cursor": "off"}))
+            .unwrap()
+            .pace()
+            .is_off()
+    );
+    let configured =
+        cursor_config(&json!({"cursor": {"pace": "brisk", "overlay": "/opt/overlay"}}));
+    assert_eq!(configured.unwrap().pace(), CursorPace::Brisk);
+    assert_eq!(
+        cursor_config(&json!({"cursor": {}})).unwrap().pace(),
+        CursorPace::Natural
+    );
+    for wrong in [
+        json!({"cursor": "frantic"}),
+        json!({"cursor": true}),
+        json!({"cursor": {"pace": 3}}),
+        json!({"cursor": {"overlay": 3}}),
+    ] {
+        assert!(DesktopService::from_config(&wrong).is_err(), "{wrong}");
+    }
+    assert!(DesktopService::from_config(&json!({"cursor": "off"})).is_ok());
+}
