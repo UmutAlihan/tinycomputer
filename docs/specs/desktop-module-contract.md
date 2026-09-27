@@ -18,11 +18,11 @@ engine's argument types, the permission preflight, and the bus surface.
 ### Members
 
 - The interface `ai.tinyhumans.tinydesktop.Desktop` is served at
-  `/ai/tinyhumans/tinydesktop/Desktop` with exactly fifty-six members,
+  `/ai/tinyhumans/tinydesktop/Desktop` with exactly fifty-nine members,
   enumerated in dispatch order by `tinydesktop_bus::names::METHODS`.
 - Every member takes at most one request payload and returns a
   `DesktopResponse`. Members taking no argument: `ListDisplays`,
-  `ClipboardClear`, `Version`, `Status`.
+  `ClipboardClear`, `FlowGuide`, `Version`, `Status`.
 - Members are named in `PascalCase`, matching the engine's command names where
   Rust allows it. `Type` is renamed explicitly because `type` is a keyword.
 - `KeyDown`, `KeyUp`, `MouseDown`, and `MouseUp` are served, validate their
