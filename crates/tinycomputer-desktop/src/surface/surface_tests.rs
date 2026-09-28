@@ -9,10 +9,9 @@ use tinycomputer_core::surface::{
     Candidate, Depth, Screen, Surface, deliver_text, describe, fingerprint,
 };
 
-use super::{
-    Restore, execute_desktop, front_of, observe, parse_reply, platform_combo, restore_plan,
-    running_is_launched, screen_bounds, with_restoration,
-};
+use super::act::{execute_desktop, platform_combo, running_is_launched, screen_bounds};
+use super::observation::{front_of, observe, parse_reply};
+use super::paste::{Restore, restore_plan, with_restoration};
 
 fn parsed(tree: &serde_json::Value) -> Screen {
     parse_reply(

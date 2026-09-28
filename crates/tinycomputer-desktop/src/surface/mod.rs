@@ -15,11 +15,15 @@ use tinycomputer_bus::{
 use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
 use tinycomputer_cursor::Rect;
 
-use crate::Desktop;
-
-mod observe;
-mod paste;
 mod act;
+mod observation;
+mod paste;
+
+use act::{execute_desktop, press_at, running_is_launched};
+use observation::observe;
+use paste::{Restore, restore_plan, with_restoration};
+
+use crate::Desktop;
 
 impl Surface for Desktop {
     fn observe(

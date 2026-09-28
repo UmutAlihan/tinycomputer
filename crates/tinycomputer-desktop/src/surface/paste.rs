@@ -73,7 +73,7 @@ pub(crate) fn restore_plan(previous: &DesktopResponse) -> Option<Restore> {
 /// `clipboard_restored: false` so a caller that reads it can see the user's
 /// prior clipboard contents were not put back. An already-failed response has
 /// nothing to fold into and is returned unchanged.
-fn with_restoration(mut result: DesktopResponse, restored: bool) -> DesktopResponse {
+pub(super) fn with_restoration(mut result: DesktopResponse, restored: bool) -> DesktopResponse {
     if !restored && result.ok {
         let mut data = result.data.take().unwrap_or_else(|| json!({}));
         if let Value::Object(map) = &mut data {

@@ -50,7 +50,7 @@ pub(crate) fn platform_combo(combo: &str, is_macos: bool) -> String {
         .join("+")
 }
 
-fn press_at(app: &str, combo: &str) -> PressRequest {
+pub(super) fn press_at(app: &str, combo: &str) -> PressRequest {
     let mut request = PressRequest::new(platform_combo(combo, cfg!(target_os = "macos")));
     request.app = Some(app.to_owned());
     request
