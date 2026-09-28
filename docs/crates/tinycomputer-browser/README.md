@@ -31,7 +31,12 @@ This crate has no bus, no agent loop, and no model. It does not decide what
 to click; that is `tinycomputer-engine`'s job, driving this crate through the
 `Surface` trait it implements. It does not run a daemon or a sidecar either:
 agent-browser is linked in-process as a library, so there is one process,
-not two talking over a socket.
+not two talking over a socket. Putting `Browser` on the bus at all is
+`crates/tinycomputer`'s job: its `DesktopService` holds one `Browser`, shared
+with the task runner, and answers the 13 `Browser…` bus members by calling
+straight into it. See
+[docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md) for
+the wire shapes those members carry.
 
 ## The pieces, in one pass
 
