@@ -293,7 +293,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .collect::<Vec<_>>();
         let mut options = numbered(pool.len())
             .into_iter()
-            .zip(pool.iter().map(|node| super::view::describe(node, false)))
+            .zip(
+                pool.iter()
+                    .map(|node| super::view::describe(node, self.include_values)),
+            )
             .collect::<Vec<_>>();
         options.push(("escape".to_owned(), json!("Press Escape to close it.")));
         let mut questions = Questions::default().with(
