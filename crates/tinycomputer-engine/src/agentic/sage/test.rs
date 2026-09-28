@@ -27,9 +27,9 @@ fn request() -> EvaluationRequest {
     .unwrap()
 }
 
-fn reply(answers: serde_json::Value) -> BatchDecisionResponse {
+fn reply(answers: &serde_json::Value) -> BatchDecisionResponse {
     serde_json::from_value(json!({
-        "results": [{"answers": answers}],
+        "results": [{"answers": answers.clone()}],
         "meta": {"model": "levanto-sage-v1.1", "request_count": 1, "question_count": 3,
                  "usage": {"billed_input_tokens": 420, "image_count": 0, "image_tokens": 0}}
     }))
@@ -111,7 +111,7 @@ fn requests_sage_cannot_take_are_refused_before_sending() {
 
 #[test]
 fn sage_answers_come_back_as_jev_answers() {
-    let response = reply(json!([
+    let response = reply(&json!([
         {"ok": true, "result": {"id": "done", "kind": "yesno",
             "result": {"answer": null, "probability": 0.64}, "meta": meta()}},
         {"ok": true, "result": {"id": "progress", "kind": "scale",
@@ -151,13 +151,13 @@ fn sage_answers_come_back_as_jev_answers() {
 
 #[test]
 fn answers_that_do_not_fit_the_request_are_refused() {
-    let short = reply(json!([
+    let short = reply(&json!([
         {"ok": true, "result": {"id": "done", "kind": "yesno",
             "result": {"answer": "yes", "probability": 0.9}, "meta": meta()}}
     ]));
     assert!(answers(&request(), &short).unwrap_err().contains("1 of 3"));
 
-    let failed = reply(json!([
+    let failed = reply(&json!([
         {"ok": false, "error": "content too long"},
         {"ok": true, "result": {"id": "progress", "kind": "scale",
             "result": {"expectation": 1.0, "confidence": 0.5}, "meta": meta()}},
@@ -171,7 +171,7 @@ fn answers_that_do_not_fit_the_request_are_refused() {
             .contains("content too long")
     );
 
-    let wrong_kind = reply(json!([
+    let wrong_kind = reply(&json!([
         {"ok": true, "result": {"id": "done", "kind": "scale",
             "result": {"expectation": 1.0, "confidence": 0.5}, "meta": meta()}},
         {"ok": true, "result": {"id": "progress", "kind": "scale",
