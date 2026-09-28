@@ -6,8 +6,8 @@ checked in a Mail app, say. `Workspace<D, W>`, in
 `crates/tinycomputer-engine/src/workspace/mod.rs`, is what makes that
 possible without every caller of the flow runtime having to track which
 surface a given step belongs to. It joins a desktop surface and a browser
-surface into one thing that implements `tinycomputer_core::surface::Surface`
-— the same trait either side implements alone, so the flow runtime, and
+surface into one thing that implements `tinycomputer_core::surface::Surface`,
+the same trait either side implements alone, so the flow runtime, and
 everything above it, can just call one `Surface` and let the workspace route
 each call correctly.
 
@@ -45,7 +45,7 @@ open.
 `Workspace::new(desktop: Option<D>, browser: Option<W>)` takes each side as
 an `Option`, not a bare value, and that is deliberate: a task confined by
 its `TaskConstraints.surfaces` to just the browser must genuinely be unable
-to reach the desktop, and vice versa. There is no unconditional fallback —
+to reach the desktop, and vice versa. There is no unconditional fallback:
 a call that names the desktop on a browser-only workspace fails outright
 with `DESKTOP_NOT_AVAILABLE`, rather than silently trying the browser
 instead:
