@@ -2,8 +2,8 @@
 
 The lab is how you find out whether a change to tinycomputer made it better
 or worse at actually using an application, rather than just changing what a
-unit test asserts. It runs a short list of real, everyday tasks — write an
-email, do a sum, rename a folder — against the real applications on your
+unit test asserts. It runs a short list of real, everyday tasks (write an
+email, do a sum, rename a folder) against the real applications on your
 Mac, and then checks, by reading the application's actual state, whether the
 task really happened. Not whether the run reported success: whether the
 email really has the right subject, whether Calculator really shows the
@@ -21,12 +21,12 @@ page is the friendlier tour.
   through OpenRouter.
 - The scenarios drive Mail, Notes, TextEdit, Calculator, Finder, System
   Settings, and Spotify. Mail needs an account configured. Your screen has
-  to be unlocked — a locked screen has no window for accessibility to see.
+  to be unlocked: a locked screen has no window for accessibility to see.
 
 Always run the lab through `scripts/lab`, never `cargo run` directly on the
 `lab` binary. The script builds `tinycomputer` in release mode into
 `target/lab/`, writes a `modules.toml` beside it so TinyBus attests it the
-way a real host would, and — on macOS — builds and places the clipboard
+way a real host would, and, on macOS, builds and places the clipboard
 helper the engine needs for rich-text paste. Skipping the script means the
 module is not attested and some paths behave differently than they would in
 production.
@@ -55,7 +55,7 @@ Accessibility granted or an API key set.
 | `--disable moves,undo` | turn off named decision loops, to measure what they were doing |
 | `--no-memory` | ignore grounding hints saved from earlier runs |
 | `--flow <file.json>` | run your own flow file against a scenario's checker, instead of the scenario's own flow |
-| `--strategy narrow\|wide` | how a decision asks Jev: one focused question at a time (`narrow`, the default) or a single request over a digest of the whole screen (`wide`) — see [`specs/jev-wide-turns.md`](../../technical/specs/jev-wide-turns.md) |
+| `--strategy narrow\|wide` | how a decision asks Jev: one focused question at a time (`narrow`, the default) or a single request over a digest of the whole screen (`wide`); see [`specs/jev-wide-turns.md`](../../technical/specs/jev-wide-turns.md) |
 | `--deliberation off\|standard\|deep` | how much a decision double-checks itself before acting |
 | `--send` | for the mail scenarios only: actually sends the draft, but only ever to `TINYCOMPUTER_LAB_SELF_EMAIL`, never anywhere the flow itself names |
 
