@@ -32,7 +32,7 @@ Every region gets three properties:
 ### What counts as "in front"
 
 A region is `Front` when its elements sit inside a role that overlays the
-page, `sheet`, `dialog`, `alertdialog`, `alert`, `popover`, or under a
+page (`sheet`, `dialog`, `alertdialog`, `alert`, `popover`), or under a
 container whose own label contains a word like `cookie`, `consent`, `gdpr`,
 `newsletter`, `subscribe`, `popup`, `modal`, or `overlay`. The word check is
 skipped at the very root of the tree: a page whose window happens to be

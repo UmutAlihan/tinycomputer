@@ -308,7 +308,7 @@ alone will not fix.
 ## Cancelling
 
 `CancelTask` stops a task that is not already final and releases whatever
-surface (desktop window, browser session) it was holding, unconditionally —
+surface (desktop window, browser session) it was holding, unconditionally,
 even on a task that already finished. That unconditional release matters
 most for a payment `Checkpoint`: since it is never continuable, `CancelTask`
 is the *only* way its browser session is ever released, so a caller must
