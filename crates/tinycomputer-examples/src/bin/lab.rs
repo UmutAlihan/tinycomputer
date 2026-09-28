@@ -5,6 +5,7 @@
 //! scripts/lab run mail-compose [--mode flow|goal|authored] [--headed] [--send]
 //!                              [--disable moves,undo] [--no-memory] [--flow file.json]
 //!                              [--strategy narrow|wide]
+//!                              [--deliberation off|standard|deep]
 //! scripts/lab eval all [--modes flow,goal] [--trials 3] [--disable ...]
 //! scripts/lab report target/lab-runs/<scenario>/<run>
 //! scripts/lab call ListWindows '{"app": "TextEdit"}'   # probe any member
@@ -22,8 +23,8 @@ use std::{
 };
 
 use tinycomputer_bus::{
-    FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, FlowStrategy, RunFlowRequest,
-    RunGoalRequest,
+    Deliberation, FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, FlowStrategy,
+    RunFlowRequest, RunGoalRequest,
 };
 use tinycomputer_examples::lab::{
     host::{Host, HostOptions, LabError, module_path},
@@ -48,6 +49,7 @@ struct Options {
     disabled: Vec<FlowLoop>,
     flow_file: Option<PathBuf>,
     strategy: FlowStrategy,
+    deliberation: Deliberation,
 }
 
 #[tokio::main]
@@ -144,7 +146,7 @@ async fn main() -> Result<(), LabError> {
         _ => {
             println!(
                 "usage: lab list | guide | validate <flow.json> | run <scenario> [--mode flow|goal|authored] \
-[--headed] [--send] [--disable a,b] [--no-memory] [--flow file] [--strategy narrow|wide] | eval <names|all> [--modes flow,goal] \
+[--headed] [--send] [--disable a,b] [--no-memory] [--flow file] [--strategy narrow|wide] [--deliberation off|standard|deep] | eval <names|all> [--modes flow,goal] \
 [--trials N] | report <run-dir>"
             );
             Ok(())
@@ -272,6 +274,7 @@ async fn run_flow(
         include_values: true,
         disabled_loops: options.disabled.clone(),
         strategy: options.strategy,
+        deliberation: options.deliberation,
         trace: true,
         ..RunFlowRequest::default()
     };
@@ -461,6 +464,9 @@ fn parse(args: &[String]) -> Result<Options, LabError> {
             "--flow" => options.flow_file = Some(PathBuf::from(value()?)),
             "--strategy" => {
                 options.strategy = serde_json::from_value(serde_json::Value::String(value()?))?;
+            }
+            "--deliberation" => {
+                options.deliberation = serde_json::from_value(serde_json::Value::String(value()?))?;
             }
             "--disable" => {
                 options.disabled = value()?
