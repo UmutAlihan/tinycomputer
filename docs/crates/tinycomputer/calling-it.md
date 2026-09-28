@@ -245,11 +245,14 @@ the whole history once you are done:
 Rather than hard-coding this page's examples, call `Describe` first. It takes
 no argument and needs no permission, and returns `Capabilities`: whether Jev,
 the planner, and rescues are configured, which surfaces are usable right now,
-every task member's JSON Schema, and worked examples of its own. Building a
-host against `Describe`'s output rather than against fixed assumptions means
-your integration keeps working if a future contract version adds a member or
-a field, since `Capabilities.members` is generated from the same source this
-page's `members.md` was written from.
+every task member's JSON Schema, worked examples of its own, and a
+`catalogue` listing every one of the module's 80 members (task, flow,
+desktop, and browser alike) with its family and a one-sentence summary.
+Building a host against `Describe`'s output rather than against fixed
+assumptions means your integration keeps working if a future contract
+version adds a member or a field, since `Capabilities.members` and
+`Capabilities.catalogue` are generated from the same source this page's
+`members.md` was written from.
 
 ## Next
 
