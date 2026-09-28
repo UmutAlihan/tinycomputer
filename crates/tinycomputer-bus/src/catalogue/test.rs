@@ -66,6 +66,25 @@ fn an_unknown_member_has_no_entry() {
 }
 
 #[test]
+fn an_entry_carries_exactly_the_fields_it_was_built_from() {
+    // `MEMBERS` is built at compile time, so this is the only run of the
+    // constructor that coverage can see.
+    let catalogued = member("StartTask").expect("StartTask is catalogued");
+    let built = super::entry(
+        catalogued.name,
+        catalogued.family,
+        catalogued.summary,
+        catalogued.confidential,
+    );
+    assert_eq!(&built, catalogued);
+    assert_ne!(
+        super::entry("StartTask", Family::Task, catalogued.summary, false),
+        *catalogued,
+        "confidentiality is part of the entry"
+    );
+}
+
+#[test]
 fn a_summary_has_a_pinned_wire_form() {
     let summary = summaries()
         .into_iter()
