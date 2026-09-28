@@ -22,7 +22,7 @@ use std::{
 use serde_json::{Value, json};
 use tinycomputer_bus::{
     Deliberation, DesktopResponse, Flow, FlowLoop, FlowRunResult, FlowStopReason, GroundingHint,
-    JevOperation, RunFlowRequest, StepOutcome, ValidateFlowRequest,
+    JevExchange, JevOperation, RunFlowRequest, StepOutcome, ValidateFlowRequest,
 };
 use tinyinference_decisions::{
     Answer, ChoiceAnswer, EvaluationFailure, EvaluationRequest, EvaluationResponse,
