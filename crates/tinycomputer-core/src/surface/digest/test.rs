@@ -337,3 +337,66 @@ fn values_are_shown_only_when_allowed_and_long_cards_are_clipped() {
     assert_eq!(super::clip("abcdef", 3), "abc…");
     assert_eq!(super::clip("abc", 3), "abc");
 }
+
+#[test]
+fn sibling_containers_of_different_roles_never_share_one_card_list() {
+    let root = "webarea \"App\"";
+    let page = screen(
+        vec![
+            node("Row A", "statictext", &[root, "listitem #1"], 1),
+            node("Row B", "statictext", &[root, "tab #1"], 2),
+        ],
+        Vec::new(),
+    );
+    let digest = digest(&page);
+    assert!(
+        digest.regions.iter().all(|region| region.list.is_none()),
+        "a listitem and a tab, both #1, are not one repeated list: {:?}",
+        digest.regions
+    );
+}
+
+#[test]
+fn many_collapsed_regions_stop_growing_the_digest_past_its_budget() {
+    let mut candidates = Vec::new();
+    for group in 0..40 {
+        let container = format!("group \"G{group}\" #{group}");
+        for item in 0..2 {
+            candidates.push(node(
+                &format!("g{group}i{item}"),
+                "button",
+                &["main", container.as_str()],
+                group * 2 + item,
+            ));
+        }
+    }
+    let page = screen(candidates, Vec::new());
+    let digest = digest(&page);
+    assert!(
+        digest.regions.len() > 10,
+        "the page splits into many small regions to collapse"
+    );
+    let rendered = digest.render(
+        &page,
+        &Rendering {
+            budget: 100,
+            ..Rendering::default()
+        },
+    );
+    let collapsed = view(&rendered)["collapsed"].as_array().unwrap().clone();
+    let total: usize = collapsed.iter().map(|line| line.as_str().unwrap().len()).sum();
+    assert!(
+        total < super::COLLAPSED_SLACK + super::SUMMARY_CHARS * 4,
+        "collapsed summaries must stop growing well past the budget, got {total} bytes over {} lines",
+        collapsed.len()
+    );
+    assert!(
+        collapsed
+            .last()
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("more regions not shown"),
+        "the omitted tail is reported once instead of per region: {collapsed:?}"
+    );
+}
