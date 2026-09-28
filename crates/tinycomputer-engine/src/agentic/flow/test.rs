@@ -261,15 +261,19 @@ fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Cand
     }
 }
 
-/// A city list whose row takes no text, above the one real search field.
+/// A city list whose unnamed rows each hold their city as a value and take
+/// no text, above the one real search field.
 fn city_rows(root: &str, candidates: &mut Vec<Candidate>) {
-    candidates.push(node(
-        "Mumbai",
-        "combobox",
-        &["Click", "SetValue"],
-        &[root, "list \"Cities\""],
-        200.0,
-    ));
+    for (index, city) in ["Mumbai", "Pune", "Chennai"].into_iter().enumerate() {
+        candidates.push(Candidate {
+            ref_id: format!("@s:city-{index}"),
+            role: "combobox".to_owned(),
+            value: Some(json!(city)),
+            available_actions: vec!["Click".to_owned(), "SetValue".to_owned()],
+            path: vec![root.to_owned(), "list \"Cities\"".to_owned()],
+            ..Candidate::default()
+        });
+    }
     candidates.push(node(
         "Search",
         "textfield",
@@ -499,7 +503,7 @@ impl AgentBackend for App {
                 ),
             );
         }
-        if name == "Mumbai" && operation == JevOperation::TypeText {
+        if is_city_row(target.as_ref()) && operation == JevOperation::TypeText {
             return not_a_text_field();
         }
         match operation {
@@ -542,7 +546,7 @@ impl AgentBackend for App {
     }
 
     fn paste(&self, _app: &str, target: &Candidate, text: &str) -> DesktopResponse {
-        if target.name.as_deref() == Some("Mumbai") {
+        if is_city_row(Some(target)) {
             return not_a_text_field();
         }
         self.sim()
@@ -591,6 +595,10 @@ impl AgentBackend for App {
         sim.navigated.push(url.to_owned());
         DesktopResponse::ok("navigate", json!({"url": url, "title": "Flights"}))
     }
+}
+
+fn is_city_row(target: Option<&Candidate>) -> bool {
+    target.is_some_and(|target| target.ref_id.starts_with("@s:city-"))
 }
 
 fn not_a_text_field() -> DesktopResponse {
