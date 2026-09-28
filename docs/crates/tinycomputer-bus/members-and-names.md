@@ -187,6 +187,7 @@ Source: [`clipboard/`](../../../crates/tinycomputer-bus/src/clipboard/types.rs),
 - The higher-level `Flow`, `RunGoal`, and Agent task interfaces are built on
   top of exactly these members; see [Writing flows](flows.md),
   [The goal loop](goal-loop.md), and [The Agent and task types](agent-and-tasks.md).
+- The 13 browser members are documented separately, in [Browser types](browser.md).
 - For what actually happens on the desktop when one of these members runs,
   see [docs/technical](../../technical/architecture.md) and
   [crates/tinycomputer-desktop/README.md](../../../crates/tinycomputer-desktop/README.md).
