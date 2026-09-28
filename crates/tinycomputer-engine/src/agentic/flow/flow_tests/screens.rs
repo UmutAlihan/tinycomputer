@@ -213,7 +213,12 @@ pub(super) fn is_single_day_label(name: &str) -> bool {
 }
 
 /// The booking form's controls, as they stand.
-pub(super) fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec<Candidate>) {
+pub(super) fn booking_widget(
+    sim: &Sim,
+    booking: &Booking,
+    root: &str,
+    candidates: &mut Vec<Candidate>,
+) {
     let widget = [root, "group \"Booking\""];
     candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
     // The destination's own container names its recent searches, so it
@@ -321,7 +326,11 @@ pub(super) fn city_rows(root: &str, candidates: &mut Vec<Candidate>) {
 
 /// The simulator's result list: each card's text as ref-less nodes, and its
 /// "Select" button among `candidates`, under an ordinal-labelled list item.
-pub(super) fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<Candidate> {
+pub(super) fn result_cards(
+    sim: &Sim,
+    root: &str,
+    candidates: &mut Vec<Candidate>,
+) -> Vec<Candidate> {
     let mut text_nodes = Vec::new();
     for (index, (airline, price, departure)) in sim.results.iter().enumerate() {
         let card = format!("listitem #{}", index + 1);

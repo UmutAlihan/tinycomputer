@@ -71,9 +71,9 @@ use super::{
     steps::{
         self, already_chosen, already_holds, in_region, lists_more_than, looks_like_date, redacted,
     },
-    validate, validate_flow,
+    survey, validate, validate_flow,
     view::{self, Candidate, Depth, Screen},
-    survey, vote, wide,
+    vote, wide,
 };
 
 fn runtime(oracle: Oracle) -> JevRuntime {
