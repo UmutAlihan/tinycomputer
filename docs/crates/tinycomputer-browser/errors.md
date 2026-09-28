@@ -85,10 +85,11 @@ through one of the 13 `Browser…` members. `crates/tinycomputer`'s dispatch
 wraps each result with `Error::envelope` (`error/mod.rs`), which builds a
 `DesktopError` the same way: `code` is `errors::code` of the wire name (the
 desktop's own spelling wherever the meaning is shared), the full wire name
-rides in `details.name`, and `recovery` comes from `errors::recovery`. A
-failure the browser was never asked to attempt, a request `classify` rejects
-before it reaches agent-browser, is marked not delivered, so a caller knows
-retrying it cannot repeat an effect. This is a separate code path from
+rides in `details.name`, and `recovery` comes from `errors::recovery`. Only a
+failure decided before anything reaches the page is marked not delivered (see
+above for the four), so a caller knows retrying it cannot repeat an effect;
+`reply::classify` names failures from the engine's replies, and marks none of
+them delivered or not on its own. This is a separate code path from
 `BrowserSurface`'s (a flow or task drives the page through the engine's
 `Surface` trait; a direct `Browser…` call goes straight through the module's
 dispatch), but both end up at the same `DesktopResponse` shape and the same

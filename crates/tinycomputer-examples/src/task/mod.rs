@@ -100,8 +100,13 @@ pub fn loggable(url: &str) -> String {
     let url = url.split(['?', '#']).next().unwrap_or_default();
     match url.split_once("://") {
         Some((scheme, rest)) => {
-            let rest = rest.rsplit_once('@').map_or(rest, |(_, host)| host);
-            format!("{scheme}://{rest}")
+            // Credentials live only in the authority, before the first `/`;
+            // an `@` in the path is part of the path.
+            let (authority, path) = rest.find('/').map_or((rest, ""), |at| rest.split_at(at));
+            let host = authority
+                .rsplit_once('@')
+                .map_or(authority, |(_, host)| host);
+            format!("{scheme}://{host}{path}")
         }
         None => url.to_owned(),
     }

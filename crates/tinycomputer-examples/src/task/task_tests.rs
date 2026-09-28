@@ -90,4 +90,10 @@ fn a_logged_url_keeps_only_its_origin_and_path() {
         "https://pay.test/checkout"
     );
     assert_eq!(loggable("about:blank"), "about:blank");
+    // An `@` in the path is not a credential separator.
+    assert_eq!(
+        loggable("https://example.com/@alice?tab=1"),
+        "https://example.com/@alice"
+    );
+    assert_eq!(loggable("https://u:p@example.com"), "https://example.com");
 }
