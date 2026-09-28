@@ -114,8 +114,8 @@ fn members() -> Vec<MemberDoc> {
                         "max_actions": {"type": "integer"},
                         "max_model_calls": {"type": "integer"},
                         "votes": {"type": "integer"},
-                        "strategy": {"type": "string", "description": "how each decision is asked; narrow when unset"},
-                        "deliberation": {"type": "string", "description": "how much each run deliberates; deep when unset"},
+                        "strategy": {"enum": ["narrow", "wide"], "default": "narrow"},
+                        "deliberation": {"enum": ["off", "standard", "deep"], "default": "deep"},
                         "max_elapsed_ms": {"type": "integer"},
                         "max_rescues": {
                             "type": "integer",
