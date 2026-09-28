@@ -202,7 +202,7 @@ pub struct TaskConstraints {
 - `surfaces` restricts a task to `desktop`, `browser`, or both; see
   [workspace.md](workspace.md) for how a flow step then routes to the right
   one.
-- `origins` restricts which web origins a browser session may load, the
+- `origins` restricts which web origins a browser session may load: the
   sites card details may be typed on, for instance.
 - `allow_destructive` lets a task perform irreversible actions without
   pausing at all. Off by default: a fresh task always pauses at a
