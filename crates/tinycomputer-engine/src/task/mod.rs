@@ -1038,7 +1038,7 @@ async fn rescue(
         .unwrap_or_else(|_| Err("the rescuer took too long".to_owned()));
     let spent_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
     let (record, guided) = record(failed, briefing.failure.clone(), answer);
-    let guided = guided.map(|steps| resumed(&briefing, steps));
+    let guided = guided.map(|steps| resumed(&briefing, steps, record.covers));
     let reason = facts.redact(&record.reason);
     let index = {
         let Ok(mut state) = cell.state.lock() else {
@@ -1070,10 +1070,14 @@ fn record(
     failure: String,
     answer: Result<Guidance, String>,
 ) -> (Rescue, Option<Vec<FlowStep>>) {
-    let (reason, steps, outcome) = match answer {
-        Ok(Guidance::Retry { reason, steps }) => (reason, steps, RescueOutcome::Running),
+    let (reason, steps, covers, outcome) = match answer {
+        Ok(Guidance::Retry {
+            reason,
+            steps,
+            covers,
+        }) => (reason, steps, covers, RescueOutcome::Running),
         Ok(Guidance::GiveUp { reason }) | Err(reason) => {
-            (reason, Vec::new(), RescueOutcome::GaveUp)
+            (reason, Vec::new(), 0, RescueOutcome::GaveUp)
         }
     };
     let guided = (outcome == RescueOutcome::Running).then(|| steps.clone());
@@ -1083,6 +1087,7 @@ fn record(
             failure,
             reason,
             steps,
+            covers,
             outcome,
         },
         guided,
