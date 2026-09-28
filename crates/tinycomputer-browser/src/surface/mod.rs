@@ -228,9 +228,12 @@ impl BrowserSurface {
         ))
     }
 
-    /// Whether the page's currently focused element takes typed text: an
-    /// `<input>`, a `<textarea>`, a `contenteditable` region, or a control
-    /// whose ARIA role names a text box. Typing without a target sends keys
+    /// Whether the page's currently focused element takes typed text: a
+    /// text-like `<input>` that is neither read-only nor disabled, a
+    /// `<textarea>`, or a `contenteditable` region. An ARIA role alone does
+    /// not count: pages give `combobox` and `textbox` roles to list rows and
+    /// buttons that hold no text (measured on a booking widget, whose city
+    /// rows are `div role="combobox"`). Typing without a target sends keys
     /// wherever the browser's own focus happens to be, so this is checked
     /// first: a stale or unexpected focus — an unrelated field, or none at
     /// all — must never silently receive text, including a private value.
