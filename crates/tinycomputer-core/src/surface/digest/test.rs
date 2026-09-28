@@ -360,7 +360,7 @@ fn sibling_containers_of_different_roles_never_share_one_card_list() {
 fn many_collapsed_regions_stop_growing_the_digest_past_its_budget() {
     let mut candidates = Vec::new();
     for group in 0..40 {
-        let container = format!("group \"G{group}\" #{group}");
+        let container = format!("group \"G{group}\"");
         for item in 0..2 {
             candidates.push(node(
                 &format!("g{group}i{item}"),
