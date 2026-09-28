@@ -341,32 +341,27 @@ fn values_are_shown_only_when_allowed_and_long_cards_are_clipped() {
 #[test]
 fn a_card_s_rich_text_body_is_gated_on_include_values_but_its_name_is_not() {
     let root = "webarea \"Docs\"";
-    let card = |item: usize, order: usize| {
-        vec![
-            node(
-                &format!("Doc {item}"),
-                "text",
-                &[root, "list \"Docs\"", &format!("listitem #{item}")],
-                order,
-            ),
-            Candidate {
-                role: "text".to_owned(),
-                value: Some(json!(format!("body text of doc {item}"))),
-                path: vec![
-                    root.to_owned(),
-                    "list \"Docs\"".to_owned(),
-                    format!("listitem #{item}"),
-                    "textbox \"Body\"".to_owned(),
-                ],
-                order: order + 1,
-                ..Candidate::default()
-            },
-        ]
-    };
+    let mut candidates = Vec::new();
     let mut text_nodes = Vec::new();
-    text_nodes.extend(card(1, 0));
-    text_nodes.extend(card(2, 10));
-    let page = screen(Vec::new(), text_nodes);
+    for item in 1..=2 {
+        let order = item * 10;
+        let path = [root, "list \"Docs\"", &format!("listitem #{item}")];
+        text_nodes.push(node(&format!("Doc {item}"), "text", &path, order));
+        text_nodes.push(Candidate {
+            role: "text".to_owned(),
+            value: Some(json!(format!("body text of doc {item}"))),
+            path: vec![
+                root.to_owned(),
+                "list \"Docs\"".to_owned(),
+                format!("listitem #{item}"),
+                "textbox \"Body\"".to_owned(),
+            ],
+            order: order + 1,
+            ..Candidate::default()
+        });
+        candidates.push(node("Open", "button", &path, order + 2));
+    }
+    let page = screen(candidates, text_nodes);
     let digest = digest(&page);
     let list = digest
         .regions
