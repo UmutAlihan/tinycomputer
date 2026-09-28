@@ -1,5 +1,5 @@
 //! Tests for checkpoints and reversibility; the undo ladder runs in the flow
-//! simulator (`flow/test/deliberation.rs`).
+//! simulator (`flow/flow_tests/deliberation_tests.rs`).
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 

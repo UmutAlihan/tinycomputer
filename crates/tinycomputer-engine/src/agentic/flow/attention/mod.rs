@@ -12,7 +12,7 @@
 //! now, Reject all). A region the step itself names is the step's business,
 //! not a distraction, and a control that looks irreversible is never offered.
 //! Only when there is a candidate is Jev asked, with one Choice, and only a
-//! clearly agreed pick (`evidence.rs`) is cleared, with the region's
+//! clearly agreed pick (`evidence/`) is cleared, with the region's
 //! least-committal control: rejecting or essential-only first, closing next,
 //! accepting last.
 //!

@@ -13,7 +13,7 @@
 //!    request. It is used only if the evidence agrees.
 //!
 //! A deliberating run (`docs/technical/specs/jev-deliberation.md`) changes three
-//! things. The pool is denoised first (`denoise.rs`): what is in view ranks
+//! things. The pool is denoised first (`denoise/`): what is in view ranks
 //! ahead of what is not. Narrowing keeps the two best regions wherever the
 //! region answer is close — an early wrong branch is the one grounding can
 //! never recover from — and at the deep level, when the region answer left

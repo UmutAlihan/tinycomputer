@@ -1,12 +1,12 @@
 //! The escalation ladder: what a deliberating decision asks before it acts.
 //!
-//! When the evidence behind an answer is thin (`evidence.rs`), the decision
+//! When the evidence behind an answer is thin (`evidence/`), the decision
 //! climbs, one rung at a time, and stops at the first rung that settles it:
 //!
 //! 1. **More framings** (`widen`): the same request asked the ways it was
 //!    not yet asked, up to [`vote::MAX_VOTES`](super::vote::MAX_VOTES), every answer joining the
 //!    question's ballot.
-//! 2. **A duel** (`duel.rs`): the finalists of a target Choice compared two
+//! 2. **A duel** (`duel/`): the finalists of a target Choice compared two
 //!    at a time, in both orders.
 //! 3. **Contrast** (deep only, when the duel named no champion): the two
 //!    leaders each asked "is this the element?" beside "is this only

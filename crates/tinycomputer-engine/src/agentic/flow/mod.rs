@@ -281,21 +281,21 @@ pub(super) struct FlowRun<'r, B> {
     deliberation: Deliberation,
     /// Every framing's own answer to each question, under the original
     /// keys, from the latest decision that asked it: the evidence a
-    /// deliberating decision reads (`evidence.rs`) and widens (`escalate`).
+    /// deliberating decision reads (`evidence/`) and widens (`escalate`).
     ballots: BTreeMap<String, Vec<tinyinference_decisions::Answer>>,
     /// The address the surface last reported, on a surface that has them:
     /// a checkpoint's location, and how a navigation is noticed.
     pub(super) location: Option<String>,
     /// The runners-up of the step's latest grounding, best first: the
-    /// branches a backtrack tries next (`checkpoint.rs`).
+    /// branches a backtrack tries next (`checkpoint/`).
     pub(super) frontier: Vec<Candidate>,
     /// The last press and what it was meant to do, while the turn after it
-    /// is judged: the judge then asks whether it did (`expect.rs`).
+    /// is judged: the judge then asks whether it did (`expect/`).
     pub(super) expecting: Option<(String, String)>,
     /// The address the current step began at, to return to when the step
     /// is found to have gone wrong.
     pub(super) step_location: Option<String>,
-    /// What the current step cleared out of the way (`attention.rs`), by
+    /// What the current step cleared out of the way (`attention/`), by
     /// control signature, across every loop that attends within it: an
     /// Escape or a close that did not clear it once will not the next time.
     pub(super) step_cleared: BTreeSet<String>,

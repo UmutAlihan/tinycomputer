@@ -7,7 +7,7 @@
 //! and the element's role and state alone; after it, the screens before and
 //! after are compared. A clear contradiction is a [`Outcome::Missed`], a
 //! suspected mistake: the next judgement asks Jev whether the action did what
-//! it was meant to, and a mistake Jev confirms is undone (`checkpoint.rs`).
+//! it was meant to, and a mistake Jev confirms is undone (`checkpoint/`).
 //!
 //! Only contradictions count. An effect that cannot be confirmed either way
 //! is [`Outcome::Unclear`] and changes nothing, so a page that opens a menu

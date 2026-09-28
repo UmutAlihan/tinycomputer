@@ -262,7 +262,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     }
 
     /// Runs one step's action. A step that grounds an element first clears
-    /// what is in the way (`attention.rs`); a `do` step attends every turn.
+    /// what is in the way (`attention/`); a `do` step attends every turn.
     async fn run_action(
         &mut self,
         log: &mut StepLog,

@@ -87,7 +87,7 @@ async fn one_crowded_region_falls_back_to_a_knockout() {
 #[tokio::test]
 async fn a_low_confidence_choice_is_used_only_when_the_re_ask_agrees() {
     // The legacy re-ask and corroboration path: a deliberating run settles
-    // a low pick with its evidence ladder instead (`test/deliberation.rs`).
+    // a low pick with its evidence ladder instead (`deliberation_tests.rs`).
     let agreed = run_with(
         App::default(),
         json!({"app": "Mail", "steps": ["start a new email message"]}),

@@ -11,8 +11,8 @@
 //! a standard shortcut, scrolling, waiting.
 //!
 //! A deliberating run (`docs/technical/specs/jev-deliberation.md`) adds a loop around
-//! every press. Before it, the press's effect is predicted (`expect.rs`) and
-//! a checkpoint taken (`checkpoint.rs`); after it, the effect is checked, and
+//! every press. Before it, the press's effect is predicted (`expect/`) and
+//! a checkpoint taken (`checkpoint/`); after it, the effect is checked, and
 //! when the screen contradicts it the next judgement asks whether the press
 //! did what it was meant to. A mistake is undone back to the checkpoint —
 //! verified — and the next-best
@@ -184,7 +184,7 @@ struct DoState {
     branches: u32,
     /// The candidate a backtrack tries next.
     branch: Option<Candidate>,
-    /// Distractions cleared this step (`attention.rs`).
+    /// Distractions cleared this step (`attention/`).
     cleared: Cleared,
 }
 

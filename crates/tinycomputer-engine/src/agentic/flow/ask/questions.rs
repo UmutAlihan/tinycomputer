@@ -306,7 +306,7 @@ pub(in crate::agentic::flow) fn only_near(
 }
 
 /// "Did the last action do what it was meant to?" — asked on the turn
-/// after a press whose effect `expected` names (`expect.rs`), beside
+/// after a press whose effect `expected` names (`expect/`), beside
 /// [`unintended`].
 pub(in crate::agentic::flow) fn intended(intent: &str, action: &str, expected: &str) -> Question {
     Question::Noul(Noul {
