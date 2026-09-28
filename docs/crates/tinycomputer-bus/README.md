@@ -88,7 +88,7 @@ wire format, so what you see there is what actually goes over the wire).
 ## Pages
 
 - [The envelope and errors](envelope-and-errors.md): every desktop reply's shape, and how a failure is described.
-- [Members and names](members-and-names.md): the 56 desktop members, grouped by family, and why names are constants rather than strings.
+- [Members and names](members-and-names.md): all 80 members, grouped by family, and why names are constants rather than strings.
 - [The shared vocabulary](vocabulary.md): surfaces, buttons, modifiers, and the other small enums every payload reuses.
 - [Writing flows, the wire format](flows.md): the `Flow` grammar as JSON, `RunFlowRequest`, and how a run reports itself.
 - [The goal loop](goal-loop.md): `RunGoal` and `ResolveIntent`, the bounded loop underneath flows.
