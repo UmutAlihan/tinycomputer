@@ -35,8 +35,8 @@ and the flow runtime are what actually look at anything on screen.
    attempted inside `StartTask`) then surfaces `PLAN_FAILED`.
 
 A successful plan comes back as a `TaskPlan`: the `flow` itself, `questions`
-— an `InputField` per `${name}` the flow uses that the caller did not
-already name as a fact, so the caller can collect those before starting —
+(an `InputField` per `${name}` the flow uses that the caller did not
+already name as a fact, so the caller can collect those before starting),
 and `notes`, currently just one: whether the plan stops before something
 irreversible or paid (a `stop_before` step is present).
 
