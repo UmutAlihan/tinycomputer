@@ -177,7 +177,7 @@ an `outcome`:
 
 `rescue_outcome`, in `task/mod.rs`, decides `Recovered` vs `FailedAgain` by
 checking that steps numbered 1 through the guidance's own step count
-actually reached `Done`, `AlreadyDone`, or `Gated` in the run's reports —
+actually reached `Done`, `AlreadyDone`, or `Gated` in the run's reports,
 not just that the run as a whole kept going.
 
 ## Real examples
