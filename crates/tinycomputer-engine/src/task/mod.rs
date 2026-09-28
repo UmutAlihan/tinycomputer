@@ -1019,7 +1019,7 @@ async fn rescue(
         .await
         .unwrap_or_else(|_| Err("the rescuer took too long".to_owned()));
     let spent_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-    let (record, rescued) = match answer {
+    let (record, guided) = match answer {
         Ok(Guidance::Retry { reason, steps }) => {
             let flow = resumed(&briefing, steps.clone());
             (
@@ -1063,7 +1063,7 @@ async fn rescue(
         state.rescues.push(record);
         state.rescues.len() - 1
     };
-    let Some(flow) = rescued else {
+    let Some(flow) = guided else {
         return Rescued::GaveUp(reason);
     };
     publish(

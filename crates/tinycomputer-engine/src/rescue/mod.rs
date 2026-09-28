@@ -200,11 +200,11 @@ pub(crate) fn resumed(briefing: &Briefing, guidance: Vec<FlowStep>) -> Flow {
 
 /// The briefing as the model reads it.
 fn render(briefing: &Briefing) -> String {
-    let mut text = String::new();
+    let mut lines = Vec::new();
     if !briefing.goal.trim().is_empty() {
-        text.push_str(&format!("Goal: {}\n\n", briefing.goal.trim()));
+        lines.push(format!("Goal: {}\n", briefing.goal.trim()));
     }
-    text.push_str(&format!("The flow, on {}:\n", briefing.flow.app));
+    lines.push(format!("The flow, on {}:", briefing.flow.app));
     for (index, step) in briefing.flow.steps.iter().enumerate() {
         let json = serde_json::to_string(step).unwrap_or_default();
         let mark = if index == briefing.failed {
@@ -212,33 +212,33 @@ fn render(briefing: &Briefing) -> String {
         } else {
             ""
         };
-        text.push_str(&format!("{}. {json}{mark}\n", index + 1));
+        lines.push(format!("{}. {json}{mark}", index + 1));
     }
-    text.push_str(&format!(
-        "\nStep {} failed: {}\n",
+    lines.push(format!(
+        "\nStep {} failed: {}",
         briefing.failed + 1,
         briefing.failure
     ));
     if !briefing.steps.is_empty() {
-        text.push_str("\nWhat this run did:\n");
+        lines.push("\nWhat this run did:".to_owned());
         for step in &briefing.steps {
             let note = if step.note.is_empty() {
                 String::new()
             } else {
                 format!(" — {}", step.note)
             };
-            text.push_str(&format!(
-                "{} {} \"{}\": {:?}{note}\n",
+            lines.push(format!(
+                "{} {} \"{}\": {:?}{note}",
                 step.path, step.kind, step.text, step.outcome
             ));
         }
     }
     if !briefing.earlier.is_empty() {
-        text.push_str("\nEarlier rescues of this task:\n");
+        lines.push("\nEarlier rescues of this task:".to_owned());
         for rescue in &briefing.earlier {
             let steps = serde_json::to_string(&rescue.steps).unwrap_or_default();
-            text.push_str(&format!(
-                "step {} ({}): {} → {steps}, {}\n",
+            lines.push(format!(
+                "step {} ({}): {} → {steps}, {}",
                 rescue.step + 1,
                 rescue.failure,
                 rescue.reason,
@@ -257,8 +257,8 @@ fn render(briefing: &Briefing) -> String {
                 .join(", ")
         }
     };
-    text.push_str(&format!(
-        "\nVariables you may use: {}.\nSecret, only ever an `enter` value: {}.\n",
+    lines.push(format!(
+        "\nVariables you may use: {}.\nSecret, only ever an `enter` value: {}.",
         listed(
             briefing
                 .known
@@ -268,11 +268,11 @@ fn render(briefing: &Briefing) -> String {
         ),
         listed(briefing.secrets.iter().collect()),
     ));
-    text.push_str(&format!(
-        "\nThe screen now:\n<untrusted_accessibility_data>\n{}\n</untrusted_accessibility_data>\n",
+    lines.push(format!(
+        "\nThe screen now:\n<untrusted_accessibility_data>\n{}\n</untrusted_accessibility_data>",
         screen(&briefing.screen)
     ));
-    text
+    lines.join("\n")
 }
 
 /// The screen's lines, cut to [`SCREEN_CHARS`].
