@@ -833,3 +833,36 @@ fn a_ballot_is_settled_only_when_every_framing_agrees() {
         "the page kind rides along and never holds a decision back"
     );
 }
+
+#[tokio::test]
+async fn an_enter_with_no_form_on_screen_stops_after_the_first_missing_picker() {
+    // Nothing on screen takes text and nothing reveals a field: the step is
+    // on the wrong page, so one picker is tried, not one per detail.
+    let blind = |slots: Value| {
+        run_with(
+            App::default(),
+            json!({"app": "Mail", "steps": [{"enter": slots}]}),
+            |request| request.max_actions = 20,
+            |id, question, _| {
+                (id.starts_with("slot_") || id == "target" || id == "move" || id == "option")
+                    .then(|| pick(question, "none", 0.9))
+            },
+        )
+    };
+    let one = blind(json!({"shoe size": "11"})).await;
+    let three = blind(json!({"shoe size": "11", "hat size": "7", "glove size": "8"})).await;
+    assert_eq!(three.result.stop, FlowStopReason::StepFailed);
+    assert!(
+        three.result.steps[0]
+            .note
+            .contains("no field that takes text was found for: shoe size, hat size, glove size"),
+        "{}",
+        three.result.steps[0].note
+    );
+    let pickers = |run: &Run| asked(&run.requests, "target") + asked(&run.requests, "option");
+    assert_eq!(
+        pickers(&three),
+        pickers(&one),
+        "the second and third details are not looked for one by one"
+    );
+}
