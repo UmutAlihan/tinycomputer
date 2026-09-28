@@ -101,5 +101,5 @@ returns an empty list rather than failing.
   implement.
 - `crates/tinycomputer-engine/src/task/mod.rs`, `TaskConstraints.surfaces`,
   which decides which side (or sides) a task's workspace is built with.
-- [`docs/technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md)
- , the spec for joining the desktop and the browser.
+- [`docs/technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md),
+  the spec for joining the desktop and the browser.
