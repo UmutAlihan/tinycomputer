@@ -31,4 +31,13 @@ Change a constant and its row together.
 | `WIDE_POOL` | 40 | `wide.rs` | candidates one move is offered in a wide turn: two Choices of `CAP` |
 | `NEW_TENTHS` | 3 | `survey.rs` | tenths of a page's regions that must be new before a step surveys it again |
 | `REGION_SIZE` | 24 | `tinycomputer-core` `surface/digest/` | elements a region holds before it is split one level deeper |
-| `LIST_CARDS` | 12 | `tinycomputer-core` `surface/digest/` | cards of a list shown one line each |
+| `MAX_DEPTH` | 10 | `tinycomputer-core` `surface/digest/` | deepest ancestor level regions are split on |
+| `LIST_CARDS` | 12 | `tinycomputer-core` `surface/digest/` | cards of a list shown one line each before the rest are counted |
+| `CARD_CHARS` | 160 | `tinycomputer-core` `surface/digest/` | longest a card's line is let to run |
+| `EXAMPLES` | 5 | `tinycomputer-core` `surface/digest/` | example labels a collapsed region names |
+| `SUMMARY_CHARS` | 200 | `tinycomputer-core` `surface/digest/` | longest a collapsed region's one-line summary is let to run |
+| `COLLAPSED_SLACK` | 400 bytes | `tinycomputer-core` `surface/digest/` | how far collapsed summaries push `spent` past the render budget before the rest are reported as one count instead |
+| `MAX_FINISHED` | 40 | `ledger.rs` | finished steps the ledger keeps before the oldest is dropped |
+| `MAX_RECENT` | 24 | `ledger.rs` | history lines shown as `recent_actions` |
+| `MAX_TRIED` | 12 | `ledger.rs` | `tried_and_failed` notes kept before the oldest is dropped |
+| `MAX_LINE` | 240 | `ledger.rs` | longest a ledger line is let to run |
