@@ -12,7 +12,7 @@ use super::{
 };
 use crate::agentic::journal::millis;
 
-impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
+impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Runs one desktop action, charging it to the budget and the step log.
     pub(in crate::agentic::flow) async fn act<F>(
         &mut self,

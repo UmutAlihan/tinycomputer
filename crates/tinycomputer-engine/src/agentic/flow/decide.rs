@@ -13,7 +13,7 @@ use super::{
 };
 use crate::agentic::{journal::millis, merge_metrics, provider_error};
 
-impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
+impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Asks Jev one request, charging it to the run and the step.
     ///
     /// The request is briefed and masked first, then asked in as many

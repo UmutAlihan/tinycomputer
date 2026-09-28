@@ -9,7 +9,7 @@ use super::{
     decide::PAGE_KIND,
 };
 
-impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
+impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Adds the run's brief — the goal, whom it is for, the plan with this
     /// step marked, what has been chosen so far, and the kind of page showing
     /// — to the questions that choose: which element, option, move, field,

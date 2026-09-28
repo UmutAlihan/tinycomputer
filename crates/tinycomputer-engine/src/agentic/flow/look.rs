@@ -12,7 +12,7 @@ use super::{
 };
 use crate::agentic::journal::millis;
 
-impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
+impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Reads the application's current surface.
     ///
     /// An application can be running with nothing readable on screen — a
