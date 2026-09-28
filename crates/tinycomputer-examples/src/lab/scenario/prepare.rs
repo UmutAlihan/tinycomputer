@@ -7,7 +7,6 @@ use serde_json::Value;
 use tinycomputer_bus::{FlowRunResult, SnapshotRequest, names};
 
 use super::{Reset, Scenario};
-use super::{Reset, Scenario};
 use crate::lab::host::{Host, LabError};
 
 impl Scenario {

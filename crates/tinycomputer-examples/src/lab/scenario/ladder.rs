@@ -6,7 +6,6 @@ use serde_json::Value;
 use tinycomputer_bus::{FlowRunResult, SnapshotRequest, names};
 
 use super::{Check, Reset, Scenario};
-use super::{Check, Reset, Scenario};
 use crate::lab::host::{Host, LabError};
 
 /// Every scenario, easiest first.
@@ -14,8 +13,8 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "textedit",
         app: "TextEdit",
-        brief: include_str!("../../scenarios/textedit/brief.md"),
-        flow: include_str!("../../scenarios/textedit/flow.json"),
+        brief: include_str!("../../../scenarios/textedit/brief.md"),
+        flow: include_str!("../../../scenarios/textedit/flow.json"),
         goal: "Start a new blank TextEdit document and type the supplied paragraph into it.",
         texts: &[
             "Desktop flows describe what to do, not how. Jev grounds every step on the live screen. This paragraph was written by a tinycomputer flow.",
@@ -28,8 +27,8 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "calculator",
         app: "Calculator",
-        brief: include_str!("../../scenarios/calculator/brief.md"),
-        flow: include_str!("../../scenarios/calculator/flow.json"),
+        brief: include_str!("../../../scenarios/calculator/brief.md"),
+        flow: include_str!("../../../scenarios/calculator/flow.json"),
         goal: "Calculate 128 multiplied by 37 by pressing the Calculator buttons until the display shows 4736.",
         texts: &[],
         check: Check::CalculatorShows("4736"),
@@ -38,8 +37,8 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "notes",
         app: "Notes",
-        brief: include_str!("../../scenarios/notes/brief.md"),
-        flow: include_str!("../../scenarios/notes/flow.json"),
+        brief: include_str!("../../../scenarios/notes/brief.md"),
+        flow: include_str!("../../../scenarios/notes/flow.json"),
         goal: "Create a new note titled tinycomputer lab note {run} with the supplied text.",
         texts: &[
             "tinycomputer lab note {run}\nWritten by a Jev intent flow.\nSecond line: each step was grounded on the live screen.",
@@ -50,8 +49,8 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "finder",
         app: "Finder",
-        brief: include_str!("../../scenarios/finder/brief.md"),
-        flow: include_str!("../../scenarios/finder/flow.json"),
+        brief: include_str!("../../../scenarios/finder/brief.md"),
+        flow: include_str!("../../../scenarios/finder/flow.json"),
         goal: "Make sure a folder named tinycomputer-lab exists on the Desktop, creating it if needed.",
         texts: &["tinycomputer-lab"],
         check: Check::DesktopFolder("tinycomputer-lab"),
@@ -60,8 +59,8 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "settings-appearance",
         app: "System Settings",
-        brief: include_str!("../../scenarios/settings-appearance/brief.md"),
-        flow: include_str!("../../scenarios/settings-appearance/flow.json"),
+        brief: include_str!("../../../scenarios/settings-appearance/brief.md"),
+        flow: include_str!("../../../scenarios/settings-appearance/flow.json"),
         goal: "Open the Appearance settings and leave the current appearance mode visible.",
         texts: &[],
         check: Check::AppearanceRead,
@@ -70,8 +69,8 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "mail-compose",
         app: "Mail",
-        brief: include_str!("../../scenarios/mail-compose/brief.md"),
-        flow: include_str!("../../scenarios/mail-compose/flow.json"),
+        brief: include_str!("../../../scenarios/mail-compose/brief.md"),
+        flow: include_str!("../../../scenarios/mail-compose/flow.json"),
         goal: "Write a new email to sam@example.com with the supplied subject and body, and stop before sending it.",
         texts: &[
             "sam@example.com",
@@ -95,8 +94,8 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "mail-reply",
         app: "Mail",
-        brief: include_str!("../../scenarios/mail-reply/brief.md"),
-        flow: include_str!("../../scenarios/mail-reply/flow.json"),
+        brief: include_str!("../../../scenarios/mail-reply/brief.md"),
+        flow: include_str!("../../../scenarios/mail-reply/flow.json"),
         goal: "Open the newest Inbox message, start a reply, type the supplied text, and stop before sending.",
         texts: &[
             "Thanks for your note. I have read it and will follow up properly by tomorrow.\n\nBest,\nAlex",
@@ -109,8 +108,8 @@ pub const SCENARIOS: &[Scenario] = &[
     Scenario {
         name: "spotify",
         app: "Spotify",
-        brief: include_str!("../../scenarios/spotify/brief.md"),
-        flow: include_str!("../../scenarios/spotify/flow.json"),
+        brief: include_str!("../../../scenarios/spotify/brief.md"),
+        flow: include_str!("../../../scenarios/spotify/flow.json"),
         goal: "Open Liked Songs and make sure a song is playing; choose DONE if one already is.",
         texts: &[],
         check: Check::ShowsPause,

@@ -6,7 +6,6 @@ use serde_json::Value;
 use tinycomputer_bus::{FlowRunResult, SnapshotRequest, names};
 
 use super::{Check, Scenario, Verdict, osascript};
-use super::{Check, Scenario, Verdict, osascript};
 use crate::lab::host::{Host, LabError};
 
 impl Scenario {
