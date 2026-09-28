@@ -75,7 +75,7 @@ use view::{Candidate, Depth, Screen, target_payload};
 const MAX_ACTIONS: u32 = 120;
 /// Upper bound on [`RunFlowRequest::max_model_calls`]. Jev is cheap, and
 /// every framing of a voted decision is one evaluation.
-const MAX_CALLS: u32 = 5000;
+const MAX_CALLS: u32 = 10_000;
 /// Choices, picks, and entries remembered for the brief's `so_far`.
 const MAX_SO_FAR: usize = 12;
 /// Longest goal the brief carries, in characters.

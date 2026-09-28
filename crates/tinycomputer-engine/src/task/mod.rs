@@ -84,10 +84,10 @@ pub const MAX_AWAIT_MS: u64 = 60_000;
 
 /// Jev evaluations a task may spend when its budget does not say. Jev is
 /// cheap, so this is generous: every decision is voted on several ways.
-pub(crate) const DEFAULT_MODEL_CALLS: u32 = 3000;
+pub(crate) const DEFAULT_MODEL_CALLS: u32 = 6000;
 
 /// How many ways each decision is asked when a task's budget does not say.
-pub(crate) const DEFAULT_VOTES: u32 = 5;
+pub(crate) const DEFAULT_VOTES: u32 = 7;
 
 /// The task controller.
 pub struct Tasks {
