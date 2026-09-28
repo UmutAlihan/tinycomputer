@@ -205,6 +205,9 @@ impl Digest {
             view.insert("in_front".to_owned(), Value::Array(in_front));
         }
         view.insert("regions".to_owned(), Value::Array(shown));
+        if omitted > 0 {
+            collapsed.push(format!("and {omitted} more regions not shown"));
+        }
         if !collapsed.is_empty() {
             view.insert("collapsed".to_owned(), json!(collapsed));
         }
