@@ -9,15 +9,15 @@ protocol the two speak to each other.
 
 Two reasons, both in the crate's own docs:
 
-1. **A crash in drawing a pixel must never take the agent down.** Window
+1. A crash in drawing a pixel must never take the agent down. Window
    management code is exactly the kind of thing that can misbehave on a
    given OS version or graphics driver. If it does, the worst that happens
    is the cursor stops appearing; the agent keeps working.
-2. **The cursor has to sit above whatever the agent is currently looking
-   at**, whether that is a native application window or a browser tab, and
-   has to keep drawing there as focus moves between them. A single
-   always-on-top window, owned by its own tiny process, is a simpler way to
-   get that than trying to draw inside every surface the agent might touch.
+2. The cursor has to sit above whatever the agent is currently looking at,
+   whether that is a native application window or a browser tab, and has to
+   keep drawing there as focus moves between them. A single always-on-top
+   window, owned by its own tiny process, is a simpler way to get that than
+   trying to draw inside every surface the agent might touch.
 
 The helper is deliberately dumb: it only knows how to put pixels on screen.
 Everything about what the cursor looks like (`sprite::Sprite`) and how it

@@ -1,7 +1,7 @@
 # Reading a journal
 
-The debug journal writes down every Jev exchange a run makes — the exact
-request, the raw answer, the latency, the retries, the token counts — plus
+The debug journal writes down every Jev exchange a run makes: the exact
+request, the raw answer, the latency, the retries, the token counts, plus
 how long every observation, action, decision, and step took. It is off by
 default, changes nothing about how a run behaves, and exists for exactly
 two jobs: working out why a run did what it did, and finding where a slow
