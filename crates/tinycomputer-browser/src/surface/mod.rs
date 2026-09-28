@@ -256,6 +256,22 @@ impl BrowserSurface {
         .unwrap_or(false)
     }
 
+    /// Whether the element `reference` names takes typed text: focusing it
+    /// lands on an input, a text area, an editable region, or a text-box
+    /// role. A page can give any `div` a `combobox` or `textbox` role — a
+    /// city in a list of suggestions, a card — and a fill or a paste into
+    /// one reports success while nothing holds the text.
+    fn takes_text(&self, reference: &str) -> bool {
+        self.perform(
+            "focus",
+            Action::Focus {
+                target: Target::reference(reference),
+            },
+        )
+        .ok
+            && self.focused_field_is_editable()
+    }
+
     fn perform(&self, command: &str, action: Action) -> DesktopResponse {
         let outcome = self.ensure_session().and_then(|id| {
             self.block(self.browser.perform(&id, action))
@@ -354,10 +370,17 @@ impl Surface for BrowserSurface {
                     },
                 )
             }
-            JevOperation::TypeText => targeted("type-text", |target, text| Action::Fill {
-                target,
-                value: text.unwrap_or_default(),
-            }),
+            JevOperation::TypeText => {
+                if let Some(reference) = reference.as_deref()
+                    && !self.takes_text(reference)
+                {
+                    return not_a_text_field();
+                }
+                targeted("type-text", |target, text| Action::Fill {
+                    target,
+                    value: text.unwrap_or_default(),
+                })
+            }
             JevOperation::Check => targeted("check", |target, _| Action::Check {
                 target,
                 checked: true,
@@ -422,6 +445,9 @@ impl Surface for BrowserSurface {
         );
         if !focused.ok {
             return focused;
+        }
+        if !self.focused_field_is_editable() {
+            return not_a_text_field();
         }
         if target
             .available_actions
@@ -566,6 +592,17 @@ fn failure(command: &str, error: &Error) -> DesktopResponse {
         code.push(character.to_ascii_uppercase());
     }
     DesktopResponse::err(command, DesktopError::new(code, error.to_string()))
+}
+
+/// The refusal for text aimed at an element that does not take it.
+fn not_a_text_field() -> DesktopResponse {
+    DesktopResponse::err(
+        "type-text",
+        DesktopError::new(
+            "NOT_A_TEXT_FIELD",
+            "the element does not take typed text: focusing it reaches no input, text area, or editable region",
+        ),
+    )
 }
 
 #[cfg(test)]
