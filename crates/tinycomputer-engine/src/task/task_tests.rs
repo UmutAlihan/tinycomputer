@@ -9,10 +9,12 @@
 
 mod approval_tests;
 mod describe_tests;
+mod errors_tests;
 mod human_tests;
 mod output_tests;
 mod plan_tests;
 mod rescue_tests;
+mod runner_tests;
 mod start_tests;
 mod status_tests;
 

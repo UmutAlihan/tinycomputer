@@ -85,6 +85,19 @@ fn an_entry_carries_exactly_the_fields_it_was_built_from() {
 }
 
 #[test]
+fn the_families_are_laid_end_to_end_in_contract_order() {
+    // `MEMBERS` is concatenated at compile time, so this is the only run of
+    // `concat` coverage can see.
+    let parts = [super::FLOW, super::TASK, super::DESKTOP, super::BROWSER];
+    let joined = super::concat(parts);
+    assert_eq!(joined.as_slice(), MEMBERS);
+    assert_eq!(
+        parts.iter().map(|part| part.len()).sum::<usize>(),
+        crate::names::METHODS.len()
+    );
+}
+
+#[test]
 fn a_summary_has_a_pinned_wire_form() {
     let summary = summaries()
         .into_iter()

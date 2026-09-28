@@ -22,6 +22,16 @@ fn an_app_with_several_windows_counts_as_launched() {
 }
 
 #[test]
+fn settling_pauses_for_the_settle_time_through_the_engines_wait() {
+    // A fixed sleep through the engine's own `Wait`: it needs no permission
+    // and touches nothing on the machine running the tests.
+    let desktop = crate::Desktop::new();
+    let started = std::time::Instant::now();
+    Surface::settle(&desktop);
+    assert!(started.elapsed() >= std::time::Duration::from_millis(crate::surface::SETTLE_MS));
+}
+
+#[test]
 fn the_desktop_backend_fails_closed_on_empty_targets_without_touching_input() {
     // Every call names nothing, so each fails before pressing, pasting, or
     // launching anything on the machine running the tests.
