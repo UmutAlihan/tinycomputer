@@ -74,7 +74,7 @@ the module already recognizes as sensitive by name (a field called
 `facts` is refused outright, so a typo can never leave a value shared by
 accident. A secret's value only ever reaches the decision model as
 `${name}`, exactly as described for flows in
-[Writing flows](flows.md#secrets-named-everywhere-except-where-it-counts) ,
+[Writing flows](flows.md#secrets-named-everywhere-except-where-it-counts):
 this is the same rule, enforced by the same masking, one level up.
 
 ### Constraints: where a task may act, and how far it goes on payment

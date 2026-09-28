@@ -18,10 +18,10 @@ and is nothing more than a handful of static HTML pages:
 | Page | What it exercises |
 |---|---|
 | `index.html` | a cookie-consent dialog sitting in front of the page, and a search form behind it |
-| `results.html` | a list of result cards with prices, times, durations, and stops — the cheapest is always IndiGo flight 6E-2135 at ₹6,840, so a checker can assert on that exact card |
+| `results.html` | a list of result cards with prices, times, durations, and stops: the cheapest is always IndiGo flight 6E-2135 at ₹6,840, so a checker can assert on that exact card |
 | `traveller.html` | a traveller form with `autocomplete` hints, plus a paid insurance checkbox a correct run should leave alone |
 | `extras.html` | a paid upsell, and a way to skip it |
-| `payment.html` | card fields (named `cc-*`) and a pay button — the point every task in this crate must stop in front of, never past |
+| `payment.html` | card fields (named `cc-*`) and a pay button: the point every task in this crate must stop in front of, never past |
 
 Nothing on it charges anything. The pay button on `payment.html` only marks
 the page as "paid" in memory; there is no real payment processor anywhere
@@ -54,7 +54,7 @@ it succeeded or not.
 `browser_fixture` (see
 [running the examples](running-the-examples.md#checking-the-browser-stack-without-spending-jev-credit-browser_fixture))
 drives the fixture with no Jev involved at all: it opens each page directly
-and asserts on the parsed screen — that the cookie sheet really is in
+and asserts on the parsed screen: that the cookie sheet really is in
 front, that the search form's fields are really named "From", "To", and
 "Departure date", that there really are four result cards, that ranking by
 lowest price really picks the ₹6,840 IndiGo flight, and that the payment
@@ -66,7 +66,7 @@ get wrong on top of it.
 `task_fixture` (see [live tasks](live-tasks.md)) runs a full booking task
 against the same fixture, but this time with live Jev making the small
 decisions: search, pick the cheapest result, fill in the traveller form
-(asking you, mid-run, for the one fact it was not given — the phone
+(asking you, mid-run, for the one fact it was not given, the phone
 number), skip the paid upsell, and stop before paying. Because the fixture
 never changes, this is a meaningful evaluation harness in its own right:
 if a change to the engine makes this task fail, that failure is really

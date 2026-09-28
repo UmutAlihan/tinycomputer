@@ -167,7 +167,7 @@ DesktopResponse::err("click", DesktopError::new("STALE_REF", "ref expired"));
 DesktopError::new("INVALID_ARGS", "amount must be positive").with_suggestion("use a positive number");
 ```
 
-For the Agent (task) interface, the reply shape is different again ,
+For the Agent (task) interface, the reply shape is different again:
 `AgentResponse<T>` and `AgentError`, covered in
 [The Agent and task types](agent-and-tasks.md), because a task-level failure
 needs a different vocabulary (a `hint` in one sentence, a `recoverable`

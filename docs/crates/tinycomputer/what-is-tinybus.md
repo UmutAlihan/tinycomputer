@@ -30,12 +30,12 @@ timeout.
 
 The reason to avoid a bespoke HTTP API: TinyBus already gives you typed
 methods, structured errors, a manifest a loader can verify before running
-anything, and, importantly, an in-memory transport. That last part matters
-more than it sounds: the *same* module code that would run out-of-process over
-a Unix socket can instead be loaded directly into the host process, with calls
-going through Rust function calls rather than a socket. A slim build gets the
-crash isolation of a separate process without paying a network round trip for
-every call. tinycomputer's tests exercise it exactly this way, over TinyBus's
+anything, and an in-memory transport. That last part matters more than it
+sounds. The *same* module code that would run out-of-process over a Unix
+socket can instead be loaded directly into the host process, with calls going
+through Rust function calls rather than a socket. A slim build gets the crash
+isolation of a separate process without paying a network round trip for every
+call. tinycomputer's tests exercise it exactly this way, over TinyBus's
 in-memory transport, so nothing in this crate's test suite ever binds a real
 socket.
 
