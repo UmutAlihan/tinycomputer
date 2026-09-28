@@ -179,9 +179,15 @@ impl BrowserSurface {
         let selector = format!("@{}", target.ref_id.trim_start_matches('@'));
         let bbox = self.block(self.browser.command(&id, json!({"action": "boundingbox", "selector": selector})));
         let value = self.block(self.browser.command(&id, json!({"action": "inputvalue", "selector": selector})));
-        let script = r#"(() => { const i=document.querySelector('input[role=searchbox]'); if(!i) return 'none'; const chain=[]; let e=i; for(let k=0;k<8&&e;k++){ const r=e.getBoundingClientRect(); const cs=getComputedStyle(e); chain.push(e.tagName+'.'+String(e.className).slice(0,30)+' '+Math.round(r.width)+'x'+Math.round(r.height)+' disp='+cs.display+' vis='+cs.visibility+' op='+cs.opacity+' ov='+cs.overflow+' h='+cs.height+' pos='+cs.position); e=e.parentElement;} i.focus(); const after=document.activeElement===i; return JSON.stringify({vw: innerWidth, vh: innerHeight, focusable: after, chain}); })()"#;
+        let script = r#"(() => JSON.stringify({active: document.activeElement && (document.activeElement.tagName+' '+String(document.activeElement.className).slice(0,40)+' val='+JSON.stringify(document.activeElement.value)), rows: [...document.querySelectorAll('.city-selection__list-item--info__left .body-medium-regular')].slice(0,6).map(e=>e.innerText), searchVal: (document.querySelector('input[role=searchbox]')||{}).value}))()"#;
         let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
         eprintln!("TCDBG {label} {} bbox={:?} value={:?} page={:?}", selector, bbox.map(|v| v.to_string()), value.map(|v| v.to_string()), page.map(|v| v.get("result").cloned()));
+        if label == "paste-before" {
+            let typed = self.perform("type", Action::Type { target: None, text: "Srin".to_owned(), delay_ms: Some(80) });
+            std::thread::sleep(std::time::Duration::from_millis(800));
+            let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
+            eprintln!("TCDBG after-type ok={} {:?} page={:?}", typed.ok, typed.error.map(|e| e.message), page.map(|v| v.get("result").cloned()));
+        }
     }
 
     /// Clicks the middle of `reference` even though something covers it,
