@@ -59,6 +59,13 @@ returns a `JEV_INVALID_CONFIG` error rather than silently sending credentials
 somewhere unexpected. In tests, endpoints on `http://127.0.0.1:*` are also
 accepted, so a scripted Jev server can stand in for the real one.
 
+A fourth constructor, `JevRuntime::sage(api_key, fast)`, builds a runtime
+that answers the same loops with Levanto Sage instead of Jev, for measuring
+one decision model against the other behind identical code. It is not
+reachable over the bus, and every call still goes through
+`JevRuntime::evaluate` below, exactly as a Jev-backed runtime's would. See
+[sage.md](sage.md).
+
 ### Why a Jev call can fail
 
 `JevRuntime::configure` itself can fail (a bad key, an unapproved endpoint)
