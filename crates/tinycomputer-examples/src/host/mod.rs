@@ -317,17 +317,29 @@ impl Host {
     }
 
     /// A screenshot of `session`'s page as image bytes: `BrowserScreenshot`,
-    /// then `BrowserReadOutput` chunk by chunk until the end, then
-    /// `BrowserReleaseOutput` — the handle protocol a host follows.
+    /// then [`Host::read_output`].
     ///
     /// # Errors
     ///
-    /// Fails on a transport error, an error envelope, a chunk that is not
-    /// base64, or an image whose length disagrees with its handle.
+    /// Fails on a transport error, an error envelope, or a bad chunk.
     pub async fn browser_screenshot(&self, session: &SessionId) -> Result<Vec<u8>, LabError> {
         use tinycomputer_bus::browser::names::methods;
         let request = SessionRequest::new(session.clone(), ScreenshotRequest::default());
         let output: OutputRef = data(self.proxy.call(methods::SCREENSHOT, (request,)).await?)?;
+        self.read_output(&output).await
+    }
+
+    /// A held output's bytes — a screenshot this host took, or one a task
+    /// view or report names: `BrowserReadOutput` chunk by chunk until the
+    /// end, then `BrowserReleaseOutput`, the handle protocol a host follows.
+    ///
+    /// # Errors
+    ///
+    /// Fails on a transport error, an error envelope (an expired output is
+    /// `OUTPUT_NOT_FOUND`), a chunk that is not base64, or an image whose
+    /// length disagrees with its handle.
+    pub async fn read_output(&self, output: &OutputRef) -> Result<Vec<u8>, LabError> {
+        use tinycomputer_bus::browser::names::methods;
         let mut bytes = Vec::new();
         loop {
             let request = ReadOutputRequest {

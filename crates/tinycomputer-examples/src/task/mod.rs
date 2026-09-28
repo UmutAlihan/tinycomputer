@@ -98,9 +98,10 @@ pub fn passed(status: &TaskStatus) -> bool {
 }
 
 /// Collects what a stopped task did into `out`, all over the bus: the
-/// report (`TaskReport`), a screenshot of each browser session still open
-/// (`BrowserScreenshot` and `BrowserReadOutput`) — then closes it — and, for
-/// a finished task, its records and any shaped result.
+/// report (`TaskReport`); `final.png`, the screenshot the task took as it
+/// stopped (`BrowserReadOutput` on the report's last artifact); an
+/// `open-<n>.png` of each browser session still open, which is then closed;
+/// and, for a finished task, its records and any shaped result.
 ///
 /// # Errors
 ///
@@ -124,24 +125,32 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         out.join("report.json"),
         serde_json::to_string_pretty(&report)?,
     )?;
+    // The screenshot the task took when it stopped, before its session was
+    // released — the only one left for a task that finished or failed.
+    if let Some(last) = report.artifacts.last() {
+        match host.read_output(last).await {
+            Ok(image) => {
+                std::fs::write(out.join("final.png"), image)?;
+                println!("screenshot: {} (taken as the task stopped)", out.join("final.png").display());
+            }
+            Err(error) => println!("the task's screenshot could not be read: {error}"),
+        }
+    }
+    // Sessions still open — a task paused at a checkpoint keeps its own — are
+    // captured as they stand now, then closed.
     for (index, session) in host.browser_sessions().await?.iter().enumerate() {
-        let name = if index == 0 {
-            "final.png".to_owned()
-        } else {
-            format!("final-{index}.png")
-        };
+        let name = format!("open-{index}.png");
         match host.browser_screenshot(&session.id).await {
             Ok(image) => {
                 std::fs::write(out.join(&name), image)?;
-                println!(
-                    "screenshot: {} ({})",
-                    out.join(&name).display(),
-                    session.url
-                );
+                println!("screenshot: {} ({})", out.join(&name).display(), session.url);
             }
             Err(error) => println!("screenshot of {} failed: {error}", session.id),
         }
         host.close_browser_session(&session.id).await?;
+    }
+    if report.artifacts.is_empty() && !out.join("open-0.png").exists() {
+        println!("no screenshot: the task's surface could not take one");
     }
     if let TaskStatus::Done {
         records, result, ..
