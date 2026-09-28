@@ -8,8 +8,8 @@ background, reporting back a status a calling model can act on: still
 running, needs a value, needs approval, reached a checkpoint, needs a
 person, done, or failed.
 
-This page covers the controller's behavior. For the flow language itself —
-`browse`, `enter`, `pick`, `stop_before`, and the rest of the step kinds —
+This page covers the controller's behavior. For the flow language itself,
+`browse`, `enter`, `pick`, `stop_before`, and the rest of the step kinds,
 see [flow/README.md](flow/README.md) and
 [writing-flows.md](../../writing-flows.md).
 

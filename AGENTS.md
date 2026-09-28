@@ -31,7 +31,9 @@ reading first is cheaper than rediscovering a rule by breaking it.
 
 | If you are about to… | Read, in order |
 |---|---|
-| get oriented | [`README.md`](README.md), [`docs/technical/architecture.md`](docs/technical/architecture.md) |
+| get oriented | [`README.md`](README.md), [`docs/how-it-works.md`](docs/how-it-works.md), [`docs/technical/architecture.md`](docs/technical/architecture.md) |
+| learn one crate or folder | its guide in [`docs/crates/`](docs/README.md#the-code-folder-by-folder) or [`docs/project/`](docs/project/README.md), then the crate's own `README.md` |
+| write or update user-facing docs | [`docs/README.md`](docs/README.md): the guides in `docs/` explain, `docs/technical/` specifies; keep both in step with the code |
 | add or change a member, payload, or field | [`crates/tinycomputer-bus/README.md`](crates/tinycomputer-bus/README.md), [`docs/technical/specs/desktop-module-contract.md`](docs/technical/specs/desktop-module-contract.md), `crates/tinycomputer-bus/src/version/` |
 | change desktop behaviour, a conversion, or a permission check | [`crates/tinycomputer-desktop/README.md`](crates/tinycomputer-desktop/README.md), "How a call travels" in [`docs/technical/architecture.md`](docs/technical/architecture.md), [`MODULE.md`](MODULE.md) |
 | change the browser adapter | [`crates/tinycomputer-browser/README.md`](crates/tinycomputer-browser/README.md), [`docs/technical/specs/unified-agent.md`](docs/technical/specs/unified-agent.md), [`docs/technical/specs/browser-sight.md`](docs/technical/specs/browser-sight.md), [`docs/technical/docker-lab.md`](docs/technical/docker-lab.md) |
@@ -104,18 +106,26 @@ vendor/
 ├── agent-browser/      # pinned browser automation engine, linked as a library
 └── tinyinference/      # pinned Jev client and the planner's LLM client
 docs/
-├── architecture.md     # the layers, how a call travels, configuration, safety
-├── jev-harness.md      # the Jev stack, one decision end to end, latency levers
-├── decision-loops.md   # every flow loop, question, and threshold
-├── jev-questions.md    # every Jev input, question id, answer shape, and use
-├── flow-examples.md    # real flows traced decision by decision
-├── jev-journal.md      # the debug journal and how to measure a run
-├── tasks.md            # the task API and the planner
-├── lab.md, docker-lab.md # live runs
-├── evals/              # recorded live results
-├── specs/              # behavior and architecture specifications
-├── plans/              # test-first implementation plans
-└── adr/                # immutable architecture decision records
+├── README.md           # the index: guides, per-crate docs, technical reference
+├── how-it-works.md, giving-it-a-task.md, writing-flows.md, how-it-decides.md,
+├── catching-mistakes.md, rescue.md, memory-and-saving.md, seeing-the-screen.md,
+├── safety-and-privacy.md, watching-a-run.md, glossary.md
+│                       # plain-language guides for users of the module
+├── crates/<crate>/     # a friendly guide per crate (engine's flow runtime in crates/tinycomputer-engine/flow/)
+├── project/            # the repository map, scripts/, docker/, vendor/, CI and tooling
+└── technical/          # the engineering reference
+    ├── architecture.md     # the layers, how a call travels, configuration, safety
+    ├── jev-harness.md      # the Jev stack, one decision end to end, latency levers
+    ├── decision-loops.md   # every flow loop, question, and threshold
+    ├── jev-questions.md    # every Jev input, question id, answer shape, and use
+    ├── flow-examples.md    # real flows traced decision by decision
+    ├── jev-journal.md      # the debug journal and how to measure a run
+    ├── tasks.md            # the task API and the planner
+    ├── lab.md, docker-lab.md # live runs
+    ├── evals/              # recorded live results
+    ├── specs/              # behavior and architecture specifications
+    ├── plans/              # test-first implementation plans
+    └── adr/                # immutable architecture decision records
 .jev-journal/           # git-ignored: debug journals written by local runs
 ```
 
