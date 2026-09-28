@@ -170,9 +170,9 @@ async fn an_unknown_member_is_a_transport_error_not_an_envelope() -> tinybus::Re
 /// in the order of [`names::METHODS`].
 ///
 /// The payloads are the same rejected-before-anything-happens ones the engine
-/// sweep in `desktop/test.rs` uses, and safe for the same reasons — see the
-/// note there. `ClipboardClear` is absent for that note's reason: there is no
-/// invalid input to hand it.
+/// sweep in `desktop/desktop_tests/members_tests.rs` uses, and safe for the
+/// same reasons — see the note there. `ClipboardClear` is absent for that
+/// note's reason: there is no invalid input to hand it.
 fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
     let empty_ref = json!([{ "ref_id": "" }]);
     let no_app = json!([{ "app": "" }]);
