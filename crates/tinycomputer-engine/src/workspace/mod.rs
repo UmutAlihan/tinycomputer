@@ -78,22 +78,20 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
                 screen
                     .context
                     .into_iter()
-                    .chain(
-                        screen.candidates.iter().filter_map(|node| {
-                            let held = node
-                                .value
-                                .as_ref()
-                                .and_then(serde_json::Value::as_str)
-                                .filter(|held| !held.trim().is_empty());
-                            match (&node.name, held) {
-                                (Some(name), Some(held)) => Some(format!(
-                                    "{name} = {:?}",
-                                    held.chars().take(80).collect::<String>()
-                                )),
-                                (name, _) => name.clone(),
-                            }
-                        }),
-                    )
+                    .chain(screen.candidates.iter().filter_map(|node| {
+                        let held = node
+                            .value
+                            .as_ref()
+                            .and_then(serde_json::Value::as_str)
+                            .filter(|held| !held.trim().is_empty());
+                        match (&node.name, held) {
+                            (Some(name), Some(held)) => Some(format!(
+                                "{name} = {:?}",
+                                held.chars().take(80).collect::<String>()
+                            )),
+                            (name, _) => name.clone(),
+                        }
+                    }))
                     .collect()
             })
             .unwrap_or_default()

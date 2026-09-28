@@ -55,10 +55,22 @@ impl Surface for Recorder {
             app: app.to_owned(),
             window: None,
             surface: "window".to_owned(),
-            candidates: vec![Candidate {
-                name: Some(format!("{} control", self.name)),
-                ..Candidate::default()
-            }],
+            candidates: vec![
+                Candidate {
+                    name: Some(format!("{} control", self.name)),
+                    ..Candidate::default()
+                },
+                Candidate {
+                    name: Some("Email".to_owned()),
+                    value: Some(serde_json::json!("asha@example.com")),
+                    ..Candidate::default()
+                },
+                Candidate {
+                    name: Some("Phone".to_owned()),
+                    value: Some(serde_json::json!("  ")),
+                    ..Candidate::default()
+                },
+            ],
             context: vec![format!("{} text", self.name)],
             unexplored: Vec::new(),
             text_nodes: Vec::new(),
@@ -253,12 +265,23 @@ fn visible_text_rereads_whatever_was_last_looked_at() {
     workspace.launch("Mail");
     assert_eq!(
         workspace.visible_text(),
-        ["desktop text", "desktop control"]
+        [
+            "desktop text",
+            "desktop control",
+            "Email = \"asha@example.com\"",
+            "Phone"
+        ],
+        "a field reads with what it holds"
     );
     workspace.navigate("https://flights.test");
     assert_eq!(
         workspace.visible_text(),
-        ["browser text", "browser control"]
+        [
+            "browser text",
+            "browser control",
+            "Email = \"asha@example.com\"",
+            "Phone"
+        ]
     );
     workspace.observe("Notes", None, Depth::Full).unwrap();
     assert_eq!(workspace.visible_text()[0], "desktop text");
