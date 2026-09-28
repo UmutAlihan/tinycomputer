@@ -329,17 +329,17 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .iter()
             .map(|assignment| signature(&assignment.field))
             .collect::<BTreeSet<_>>();
-        let offered = distinct(
-            fields
-                .iter()
-                .filter(|field| !taken.contains(&signature(field)))
-                .cloned()
-                .collect(),
-            self.include_values,
-        )
-        .into_iter()
-        .take(CAP)
-        .collect::<Vec<_>>();
+        // Unlike a click or expand target, two fields that describe alike
+        // are not interchangeable: split date parts and card expiry MM/YY
+        // boxes are the same shape but hold different text. `distinct`
+        // would collapse them to one offered choice — position in the pool
+        // is what tells them apart, so every field stays offered.
+        let offered = fields
+            .iter()
+            .filter(|field| !taken.contains(&signature(field)))
+            .cloned()
+            .take(CAP)
+            .collect::<Vec<_>>();
         if !open.is_empty() && !offered.is_empty() {
             let keys = numbered(offered.len());
             let mut questions = Questions::default();
