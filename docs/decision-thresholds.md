@@ -14,7 +14,6 @@ Change a constant and its row together.
 | `REGRESSION` | 0.25 | `act.rs` | progress drop that triggers undo |
 | `UNHELPFUL` | 0.20 | `act.rs` | `helped` probability that triggers undo |
 | `SHORTCUT_FLOOR` | 0.50 | `act.rs` | least probability for pressing a shortcut |
-| `STALL_TURNS` | 3 | `act.rs` | unchanged turns before a step fails |
 | `ACT` | 0.70 | `view/mod.rs` | element choice used without re-asking |
 | `NAMED_FLOOR` | 0.45 | `ground.rs` | element choice used when its name is in the purpose |
 | `CORROBORATED` | 0.80 | `ground.rs` | corroboration that accepts a target alone |
