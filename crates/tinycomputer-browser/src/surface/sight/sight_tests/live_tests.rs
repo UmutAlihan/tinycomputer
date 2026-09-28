@@ -3,8 +3,7 @@
 
 use serde_json::json;
 
-use super::reading;
-use crate::surface::sight::{Denoised, denoised, is_seen, screen, script, selector};
+use crate::surface::sight::script;
 
 /// Reads `html` by sight in a real browser: `None` unless
 /// `TINYCOMPUTER_LIVE_BROWSER=1`, since CI has no browser to launch. The

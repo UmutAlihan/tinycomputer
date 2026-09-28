@@ -1,18 +1,11 @@
 //! Tests for screenshots collected into held outputs, and downloads.
 
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, DownloadWaitRequest, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat,
-    ReadRequest, ScreenshotRequest, SessionId, SessionOptions, SnapshotRequest, Target,
-};
+use serde_json::json;
+use tinycomputer_bus::browser::{DownloadWaitRequest, ScreenshotRequest};
 
 use super::open;
 use crate::error::Error;
-use crate::fake::{Fake, failure, ok};
-use crate::sessions::{Browser, MAX_SESSIONS};
+use crate::fake::{Fake, ok};
 
 #[tokio::test]
 async fn a_screenshot_is_collected_into_a_held_output_and_its_file_removed() {

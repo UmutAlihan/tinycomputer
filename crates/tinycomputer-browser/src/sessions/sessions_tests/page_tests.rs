@@ -1,19 +1,15 @@
 //! Tests for the calls on a session's page: navigation, snapshots, actions,
 //! reading, evaluation, and raw commands.
 
-use std::path::PathBuf;
-use std::sync::Arc;
-
 use serde_json::{Value, json};
 use tinycomputer_bus::browser::{
-    Action, DownloadWaitRequest, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat,
-    ReadRequest, ScreenshotRequest, SessionId, SessionOptions, SnapshotRequest, Target,
+    Action, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat, ReadRequest,
+    SnapshotRequest, Target,
 };
 
 use super::open;
 use crate::error::Error;
 use crate::fake::{Fake, failure, ok};
-use crate::sessions::{Browser, MAX_SESSIONS};
 
 #[tokio::test]
 async fn navigation_reports_the_page_and_refusals_are_typed() {

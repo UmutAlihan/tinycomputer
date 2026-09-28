@@ -9,15 +9,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, DownloadWaitRequest, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat,
-    ReadRequest, ScreenshotRequest, SessionId, SessionOptions, SnapshotRequest, Target,
-};
+use tinycomputer_bus::browser::{SessionId, SessionOptions};
 
-use super::{Browser, MAX_SESSIONS};
-use crate::error::Error;
-use crate::fake::{Fake, failure, ok};
+use super::Browser;
+use crate::fake::Fake;
 
 mod artifacts_tests;
 mod lifecycle_tests;

@@ -1,17 +1,12 @@
 //! Tests for opening, capping, and naming sessions, and their scratch space.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
-use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, DownloadWaitRequest, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat,
-    ReadRequest, ScreenshotRequest, SessionId, SessionOptions, SnapshotRequest, Target,
-};
+use tinycomputer_bus::browser::{NavigateRequest, SessionId, SessionOptions};
 
 use super::{open, scratch};
 use crate::error::Error;
-use crate::fake::{Fake, failure, ok};
+use crate::fake::{Fake, failure};
 use crate::sessions::{Browser, MAX_SESSIONS};
 
 #[tokio::test]
