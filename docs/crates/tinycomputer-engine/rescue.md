@@ -259,6 +259,8 @@ completion.
 - `crates/tinycomputer-bus/src/agent/types.rs`, `Rescue`, `RescueOutcome`.
 - [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md),
   the formal spec.
+- [output.md](output.md), how the `collected` values in a briefing are
+  built and carried across a task's runs.
 - [`docs/technical/evals/2026-09-28-rescue.md`](../../technical/evals/2026-09-28-rescue.md),
   the live eval this page's examples are drawn from.
 - [rescue.md](../../rescue.md) (top-level guide) and
