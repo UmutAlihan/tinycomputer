@@ -110,4 +110,4 @@ pub fn is_agent_recoverable(name: &str) -> bool {
 }
 
 #[cfg(test)]
-mod test;
+mod errors_tests;

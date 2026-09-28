@@ -619,4 +619,4 @@ pub(crate) fn execute_desktop(
 }
 
 #[cfg(test)]
-mod test;
+mod surface_tests;

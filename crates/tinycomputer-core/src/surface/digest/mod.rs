@@ -501,4 +501,4 @@ fn clip(text: &str, limit: usize) -> String {
 }
 
 #[cfg(test)]
-mod test;
+mod digest_tests;

@@ -16,4 +16,4 @@ pub use types::{
 };
 
 #[cfg(test)]
-mod test;
+mod vocabulary_tests;

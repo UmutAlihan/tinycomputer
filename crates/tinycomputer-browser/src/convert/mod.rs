@@ -416,4 +416,4 @@ fn wait_state(state: WaitState) -> &'static str {
 }
 
 #[cfg(test)]
-mod test;
+mod convert_tests;

@@ -132,4 +132,4 @@ impl Key {
 }
 
 #[cfg(test)]
-mod test;
+mod keymap_tests;

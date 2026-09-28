@@ -136,4 +136,4 @@ impl VirtualCursor {
 }
 
 #[cfg(test)]
-mod test;
+mod glide_tests;

@@ -132,4 +132,4 @@ pub fn reformat_date<'a>(value: &str, hints: impl IntoIterator<Item = &'a str>) 
 }
 
 #[cfg(test)]
-mod test;
+mod dates_tests;

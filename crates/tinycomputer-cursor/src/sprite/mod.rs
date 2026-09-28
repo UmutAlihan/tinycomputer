@@ -264,4 +264,4 @@ fn byte(value: f64) -> u8 {
 }
 
 #[cfg(test)]
-mod test;
+mod sprite_tests;

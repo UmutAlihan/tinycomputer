@@ -25,4 +25,4 @@ mod types;
 pub use types::{ImageFormat, OutputChunk, OutputId, OutputRef, ScreenshotRequest};
 
 #[cfg(test)]
-mod test;
+mod output_tests;

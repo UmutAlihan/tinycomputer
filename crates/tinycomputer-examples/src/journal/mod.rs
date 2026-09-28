@@ -12,7 +12,7 @@
 //! ```
 
 #[cfg(test)]
-mod test;
+mod journal_tests;
 
 use std::{
     collections::BTreeMap,

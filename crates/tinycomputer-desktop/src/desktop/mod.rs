@@ -395,4 +395,4 @@ fn platform_adapter() -> impl PlatformAdapter {
 }
 
 #[cfg(test)]
-mod test;
+mod desktop_tests;

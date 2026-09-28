@@ -22,4 +22,4 @@ pub use types::{
 pub const FLOW_GUIDE: &str = include_str!("guide.md");
 
 #[cfg(test)]
-mod test;
+mod flow_tests;

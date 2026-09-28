@@ -478,4 +478,4 @@ impl Browser {
 }
 
 #[cfg(test)]
-mod test;
+mod sessions_tests;

@@ -430,4 +430,4 @@ pub fn rank(records: &[Record], criterion: Criterion) -> Option<Vec<usize>> {
 }
 
 #[cfg(test)]
-mod test;
+mod records_tests;

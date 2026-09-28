@@ -12,4 +12,4 @@ pub use types::{
 };
 
 #[cfg(test)]
-mod test;
+mod page_tests;

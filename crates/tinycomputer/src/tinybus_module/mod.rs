@@ -78,4 +78,4 @@ tinybus_module::module_export! {
 }
 
 #[cfg(test)]
-mod test;
+mod tinybus_module_tests;

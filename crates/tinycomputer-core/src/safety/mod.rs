@@ -461,4 +461,4 @@ fn contains_any(words: &str, phrases: &[&str]) -> bool {
 }
 
 #[cfg(test)]
-mod test;
+mod safety_tests;

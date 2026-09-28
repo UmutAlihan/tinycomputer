@@ -19,4 +19,4 @@ pub use types::{
 };
 
 #[cfg(test)]
-mod test;
+mod apps_tests;

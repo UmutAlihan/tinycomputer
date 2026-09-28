@@ -30,4 +30,4 @@ pub use types::{
 };
 
 #[cfg(test)]
-mod test;
+mod input_tests;
