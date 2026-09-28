@@ -149,19 +149,19 @@ fn shop_screen(sim: &Sim) -> Screen {
                 "Download terms",
                 "link",
                 &["Click"],
-                &["main "Terms""],
+                &["main \"Terms\""],
                 100.0,
             )],
             vec!["Terms and conditions of travel insurance".to_owned()],
         ),
         REVIEW => (
             "Review",
-            vec![node("Pay", "button", &["Click"], &["main "Review""], 100.0)],
+            vec![node("Pay", "button", &["Click"], &["main \"Review\""], 100.0)],
             vec!["Review your booking".to_owned()],
         ),
         _ => {
             let checkbox = |name: &str, checked: bool, y: f64| {
-                let mut box_node = node(name, "checkbox", &["Click"], &["form "Extras""], y);
+                let mut box_node = node(name, "checkbox", &["Click"], &["form \"Extras\""], y);
                 if checked {
                     box_node.states = vec!["checked".to_owned()];
                 }
@@ -176,10 +176,10 @@ fn shop_screen(sim: &Sim) -> Screen {
                         "Insurance terms",
                         "link",
                         &["Click"],
-                        &["form "Extras""],
+                        &["form \"Extras\""],
                         180.0,
                     ),
-                    node("Continue", "button", &["Click"], &["form "Extras""], 260.0),
+                    node("Continue", "button", &["Click"], &["form \"Extras\""], 260.0),
                 ],
                 vec!["Choose your extras".to_owned()],
             )
