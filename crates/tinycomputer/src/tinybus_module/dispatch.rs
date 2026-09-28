@@ -46,7 +46,7 @@ use tinycomputer_engine as agentic;
 pub(crate) struct DesktopService {
     desktop: Desktop,
     jev: Option<agentic::JevRuntime>,
-    tasks: Arc<agentic::Tasks>,
+    pub(super) tasks: Arc<agentic::Tasks>,
 }
 
 impl DesktopService {
