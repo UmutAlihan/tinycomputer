@@ -13,7 +13,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// hold, is something in the way) is left without it. Measured on a live
     /// results page, the brief pulled Jev's "is the search done?" from 0.75
     /// down to 0.39: it judged the step against the whole task.
-    fn brief_into(&self, request: &mut EvaluationRequest) {
+    pub(super) fn brief_into(&self, request: &mut EvaluationRequest) {
         let Some(brief) = self.brief() else {
             return;
         };
@@ -110,7 +110,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 const BRIEFED_NOULS: &[&str] = &["confirm"];
 
 /// `text` cut to `limit` characters, marked with `…` when it was cut.
-fn clip(text: &str, limit: usize) -> String {
+pub(super) fn clip(text: &str, limit: usize) -> String {
     if text.chars().count() <= limit {
         return text.to_owned();
     }

@@ -122,7 +122,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 
     /// `request` as it leaves for Jev: with the page-kind question on a web
     /// page, briefed, masked, and fitted to size.
-    fn outgoing(&self, log: &mut StepLog, mut request: EvaluationRequest) -> EvaluationRequest {
+    pub(super) fn outgoing(&self, log: &mut StepLog, mut request: EvaluationRequest) -> EvaluationRequest {
         if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
             log.used(FlowLoop::PageKind);
             request
@@ -137,7 +137,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     }
 
     /// Sends every framing to Jev at once.
-    fn spawn(
+    pub(super) fn spawn(
         &self,
         framings: &[vote::Framing],
     ) -> Vec<
@@ -177,7 +177,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 }
 
 /// The id of the page-kind question a request on a web page carries.
-const PAGE_KIND: &str = "page_kind";
+pub(super) const PAGE_KIND: &str = "page_kind";
 
 /// Shrinks `request` until its JSON is at most `limit` bytes: first the
 /// brief is kept on the first briefed question only, then the longest lists

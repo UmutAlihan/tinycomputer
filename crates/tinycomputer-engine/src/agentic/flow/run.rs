@@ -27,7 +27,7 @@ fn collect_stop_before(steps: &[FlowStep], phrases: &mut Vec<String>) {
 }
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
-    fn new(backend: B, runtime: &'r JevRuntime, request: &RunFlowRequest) -> Self {
+    pub(super) fn new(backend: B, runtime: &'r JevRuntime, request: &RunFlowRequest) -> Self {
         // A flow's own definitions may name the caller's values
         // (`"first_name": "${first name}"`), so they are expanded once
         // against them. The caller's values are never rescanned: one that
@@ -117,7 +117,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         }
     }
 
-    async fn start(&mut self, flow: &Flow) -> Result<(), Halt> {
+    pub(super) async fn start(&mut self, flow: &Flow) -> Result<(), Halt> {
         let app = self.app.clone();
         let mut log = StepLog::default();
         self.act(&mut log, "launch", None, move |backend| {
@@ -297,7 +297,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         &self.runtime.configuration.model
     }
 
-    fn finish(self, stop: FlowStopReason) -> DesktopResponse {
+    pub(super) fn finish(self, stop: FlowStopReason) -> DesktopResponse {
         self.runtime.journal.record("end", || {
             json!({
                 "stop": stop,

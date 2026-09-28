@@ -33,7 +33,8 @@ use super::{
     super::{Evaluator, JevRuntime},
     ask,
     backend::AgentBackend,
-    enter, fit, flow_guide, ground, memory, run_flow_with,
+    decide::fit,
+    enter, flow_guide, ground, memory, run_flow_with,
     steps::{
         self, already_chosen, already_holds, in_region, lists_more_than, looks_like_date, redacted,
     },
