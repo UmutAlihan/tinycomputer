@@ -36,6 +36,7 @@ mod enter;
 mod ground;
 mod ledger;
 mod memory;
+mod reflect;
 mod steps;
 mod survey;
 mod validate;
@@ -392,7 +393,15 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         self.ledger.begin();
         self.refused.clear();
         let started = Instant::now();
-        let result = steps::run(self, &mut log, &action, &text, &path).await;
+        let mut result = steps::run(self, &mut log, &action, &text, &path).await;
+        // A press can succeed and leave the wrong choice: reflect on it.
+        if let (FlowAction::Choose(_), Ok(ended)) = (&action, &result)
+            && ended.outcome == StepOutcome::Done
+            && !log.actions.is_empty()
+            && let Err(halt) = self.reflect(&mut log, &text).await
+        {
+            result = Err(halt);
+        }
         let wall_ms = millis(started.elapsed());
         let (ended, halt) = match result {
             Ok(ended) => (ended, None),
