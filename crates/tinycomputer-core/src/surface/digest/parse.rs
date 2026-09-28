@@ -3,9 +3,9 @@
 
 use std::collections::BTreeMap;
 
-use super::{Candidate, Screen, groups};
 use super::{Digest, Region, RegionKind};
 use super::{FRONT_ROLES, FRONT_WORDS, MAX_DEPTH, NOISE_WORDS, REGION_SIZE};
+use crate::surface::{Candidate, Screen, groups};
 
 /// Parses `screen` into regions.
 #[must_use]
