@@ -653,12 +653,12 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let mut gathered = Vec::with_capacity(batched);
         for (request, framings, handles) in asked {
             let (answered, failure) = self.gather(log, framings, handles).await;
-            gathered.push((request, answered, failure));
+            gathered.push((request, answered, failure, first));
         }
         if first < votes {
             let more = gathered
                 .iter()
-                .map(|(request, answered, _)| {
+                .map(|(request, answered, _, _)| {
                     let split = !answered.is_empty()
                         && !vote::settled(&vote::ballots(answered), PAGE_KIND);
                     split.then(|| {
@@ -671,8 +671,9 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             if more.iter().any(Option::is_some) {
                 self.rounds = self.rounds.saturating_add(1);
             }
-            for ((_, answered, failure), more) in gathered.iter_mut().zip(more) {
+            for ((_, answered, failure, framed), more) in gathered.iter_mut().zip(more) {
                 if let Some((framings, handles)) = more {
+                    *framed = votes;
                     let (fresh, error) = self.gather(log, framings, handles).await;
                     answered.extend(fresh);
                     if failure.is_none() {
@@ -682,7 +683,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             }
         }
         let mut replies = Vec::with_capacity(batched);
-        for (request, answered, failure) in gathered {
+        for (request, answered, failure, framed) in gathered {
             self.decisions = self.decisions.saturating_add(1);
             let answers = match (answered.is_empty(), failure) {
                 (true, Some(failure)) => return Err(Halt::Error(provider_error(&failure))),
@@ -703,7 +704,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 json!({
                     "step": self.step,
                     "questions": request.questions.keys().collect::<Vec<_>>(),
-                    "framings": answered.len(),
+                    "framings": framed,
                     "answered": answered.len(),
                     "batched": batched,
                     "request_bytes": serde_json::to_vec(&request).map_or(0, |bytes| bytes.len()),
