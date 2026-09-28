@@ -181,8 +181,14 @@ async fn the_open_router_planner_needs_a_key_and_never_prints_it() {
     let empty = PlannerConfig {
         api_key: " ".to_owned(),
         model: None,
+        rescue_model: None,
     };
     assert!(open_router(&empty).unwrap_err().contains("api_key"));
+    assert!(
+        super::open_router_rescuer(&empty)
+            .unwrap_err()
+            .contains("api_key")
+    );
 
     let config: PlannerConfig =
         serde_json::from_value(serde_json::json!({"api_key": "secret-key", "model": ""})).unwrap();
@@ -193,5 +199,17 @@ async fn the_open_router_planner_needs_a_key_and_never_prints_it() {
     // exercises the adapter without reaching OpenRouter.
     tinyinference_llm::deny_network_models();
     let failed = planner.plan("x", &[], &[], &[]).await.unwrap_err();
+    assert!(!failed.contains("secret-key"));
+
+    let config: PlannerConfig = serde_json::from_value(serde_json::json!(
+        {"api_key": "secret-key", "rescue_model": "openai/gpt-6-luna-pro"}
+    ))
+    .unwrap();
+    assert!(format!("{config:?}").contains("gpt-6-luna-pro"));
+    let rescuer = super::open_router_rescuer(&config).unwrap();
+    let failed = rescuer
+        .guide(&crate::rescue::Briefing::default())
+        .await
+        .unwrap_err();
     assert!(!failed.contains("secret-key"));
 }
