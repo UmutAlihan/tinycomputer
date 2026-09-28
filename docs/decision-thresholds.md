@@ -45,8 +45,7 @@ replace the single-number bars above at every site they apply to unless
 | `UNDECIDED_BAND` | 0.12 | `evidence/` | half-width of the band around a judgement's threshold inside which it is deliberated |
 | `MAX_FINALISTS` / `FINALIST_FLOOR` | 4 / 0.05 | `duel/` | most finalists a duel compares, and the least probability to be one |
 | `DUEL_WIN` | 0.60 | `duel/` | least share of every pairing the champion must take, both orders averaged |
-| `CONTRAST_KEEP` | 0.50 | `escalate/` | belief that keeps the duel's champion when contrasted |
-| `CONTRAST_ACCEPT` / `CONTRAST_LEAD` | 0.65 / 0.20 | `escalate/` | with no champion, the belief and lead a contrasted leader needs |
+| `CONTRAST_ACCEPT` / `CONTRAST_LEAD` | 0.65 / 0.20 | `escalate/` | with no duel champion, the belief and lead a contrasted leader needs to be taken over the duel's ranking |
 | `BRANCH_MARGIN` | 0.30 | `ground.rs` | lead of the chosen region under which narrowing keeps the runner-up region too |
 | `MISTAKE` | 0.50 | `act.rs` | "did what it was meant to" belief under which a press whose effect was missed is undone |
 | `CLEAR_MISTAKE` | 0.25 | `act.rs` | that belief under which any press is undone |

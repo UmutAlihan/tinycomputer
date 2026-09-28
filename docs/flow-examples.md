@@ -245,7 +245,7 @@ What is different on the web:
 | `that was a mistake (…); undid it (back)` in history | an expectation check missed and `intended` came back low; the undo went back a page and the screen matched its checkpoint | `expect`, `restore`, then `backtrack` events |
 | `failed: undid a mistake (…) but the screen does not match where it started` | a restoring undo could not be verified, so the step failed closed | the `restore` event's `similarity` and `rungs` |
 | `failed: will not press … irreversibly on uncertain evidence` | a deep `stop_before` vouched under 0.85 | the `is_0`/`only_near_0` answers in its exchanges |
-| no element pressed on a close call | the evidence gate deliberated, and neither the duel nor the contrast settled it | `evidence`, `escalate`, `duel` events for the step; `jev_journal --calibration` |
+| a close call pressed at its best ranking | the evidence gate deliberated, and neither the duel nor the contrast settled it; the runners-up are kept for a backtrack | `evidence`, `escalate`, `duel` events for the step; `jev_journal --calibration` |
 | `the Jev call budget ran out` (stop `ModelBudget`) | the call budget ran out | `jev_journal` summary: calls per step; voting multiplies them |
 
 Start from the step report, find that step's events in the journal

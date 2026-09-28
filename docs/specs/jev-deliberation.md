@@ -82,11 +82,18 @@ A deliberated decision climbs until a rung settles it:
    orders and counted Copeland-style. A finalist that takes at least
    `DUEL_WIN` of every pairing is the champion. Asking both orders cancels
    position bias, and two options cannot split a vote between lookalikes.
-3. **Contrast** (deep only). The champion, or failing one the two leaders, is
-   asked "is this the element?" beside "is this only similar to it, or next
-   to it?", calibrated as a pair. A champion is kept at `CONTRAST_KEEP`. With
-   no champion, a leader is taken only at `CONTRAST_ACCEPT` and a lead of
-   `CONTRAST_LEAD`. Otherwise grounding abstains and nothing is pressed.
+3. **Contrast** (deep only, when the duel named no champion). The two
+   leaders are each asked "is this the element?" beside "is this only similar
+   to it, or next to it?", calibrated as a pair. One is taken at
+   `CONTRAST_ACCEPT` with a lead of `CONTRAST_LEAD`.
+
+A close call no rung settles is still **acted on**, at its best ranking (the
+champion, else the duel's leader, else the pick as read), with the
+runners-up kept for a backtrack. Deliberation changes picks; it refuses one
+only when the evidence says nothing serves (`none` wins, or a weak scattered
+vote). Live on IndiGo, abstaining after an inconclusive contrast left a `do`
+step pressing nothing until it stalled, where a press, its effect check, and
+the undo would have recovered.
 4. **Views** (deep only, a judgement that would pass). The yes/no is asked
    again over other renderings: the screen alone, without the history that can lead it, and
    what changed since the step began. The readings are combined by their
@@ -99,8 +106,7 @@ A deliberated decision climbs until a rung settles it:
    Jev choosing `finished` was pulled to 0.49 by views, under `LEANS_DONE`,
    which overruled the finish and pressed the empty form's own Next.
 
-At `standard`, a target stops at the duel: the champion is taken, and no
-champion means abstaining.
+At `standard`, a target stops at the duel.
 
 Every rung goes through `FlowRun::ask`, so budget, masking, voting, and the
 journal all apply. Every rung checks the budget first. A run short of calls
@@ -156,8 +162,11 @@ does not show the state it was pressed toward, or a press that left the page
 when it should have opened a menu. An effect the screen neither confirms nor
 contradicts is `unclear` and changes nothing.
 
-After a miss, and after every press at the deep level, the next judgement
-carries `intended`/`unintended`, calibrated as a pair. Two cases are treated
+After a miss, the next judgement carries `intended`/`unintended`,
+calibrated as a pair. (It was asked after every deep press at first; live,
+Jev read a repair's legitimate reopening of a calendar as unintended and the
+undo broke the repair, so it is asked only where the screen already
+contradicts the prediction.) Two cases are treated
 as a mistake:
 
 - a miss with belief under `MISTAKE`;
@@ -213,7 +222,7 @@ began at (verified) when it has left it, and only then repairs.
 | Contrast, views, wider cross-check | — | — | yes |
 | Tree beam | — | yes | yes |
 | Denoising | — | yes | yes |
-| Expectation questions | — | on a miss | every press |
+| Expectation questions | — | on a miss | on a miss |
 | Checkpoints and verified undo | — | yes | yes |
 | Backtracks per step | — | 1 | 3 |
 | Irreversible-press bar | `LOCATE_FLOOR` | `LOCATE_FLOOR` | `IRREVERSIBLE_FLOOR` |
