@@ -36,13 +36,13 @@ fn goal_verifies_visible_static_text_without_an_action_ref() {
         }),
     );
     let screen = parse_reply(&crate::Desktop::new(), "Calculator", None, None, reply).unwrap();
-    let evidence = super::verify::verify(
+    let evidence = super::super::verify::verify(
         &screen,
         &[VisiblePredicate::NamePresent {
             name: "\u{200e}12".to_owned(),
         }],
     );
-    assert!(super::verify::satisfied(&evidence));
+    assert!(super::super::verify::satisfied(&evidence));
     assert_eq!(screen.candidates.len(), 1);
 }
 
