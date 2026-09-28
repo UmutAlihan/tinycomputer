@@ -427,6 +427,10 @@ impl App {
                 &["sheet"],
                 500.0,
             ));
+            candidates.push(Candidate {
+                value: Some(json!("unsaved-draft-42")),
+                ..node("Remember", "checkbox", &["Click"], &["sheet"], 500.0)
+            });
         }
         Screen {
             app: "Mail".to_owned(),
