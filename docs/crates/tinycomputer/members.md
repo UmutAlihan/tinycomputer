@@ -5,8 +5,8 @@ The module serves 67 members on one interface,
 `crates/tinycomputer_bus::names::METHODS` declares them, which is also the
 order they are dispatched in
 `crates/tinycomputer/src/tinybus_module/dispatch/mod.rs`. A test in
-`tinybus_module_tests/manifest_tests.rs` asserts the two stay in lockstep, so this list cannot silently drift from the
-code.
+`tinybus_module_tests/manifest_tests.rs` asserts the two stay in lockstep,
+so this list cannot silently drift from the code.
 
 Every member here except the eight task members (their own section below)
 takes at most one request payload and always answers with a `DesktopResponse`
