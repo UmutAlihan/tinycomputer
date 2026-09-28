@@ -89,19 +89,25 @@ The `planner` Cargo feature adds one concrete `LanguageModel`:
 `tinyinference_llm`'s OpenAI-compatible client pointed at OpenRouter. This is
 the only file in the crate that links a text-generating model at all: the
 key it is given in the module's private configuration never leaves this one
-adapter.
+adapter. It builds all three of the crate's language-model helpers, not
+just the planner:
 
 ```rust
 pub fn open_router(config: &PlannerConfig) -> Result<Planner, String>
+pub fn open_router_rescuer(config: &PlannerConfig) -> Result<Rescuer, String>
+pub fn open_router_shaper(config: &PlannerConfig) -> Result<Shaper, String>
 ```
 
 `PlannerConfig` holds the OpenRouter `api_key`, an optional `model`
-(`PLANNER_MODEL`, `anthropic/claude-sonnet-5`, when unset), and an optional
-`rescue_model` (see [rescue.md](rescue.md); the same file also builds the
-rescuer's model, since both are just OpenRouter chat completions with
-different settings). The planner's own model is asked for a JSON object
-response format, at a low sampling temperature (0.2), because a plan should
-be reproducible rather than creative.
+(`PLANNER_MODEL`, `anthropic/claude-sonnet-5`, when unset), an optional
+`rescue_model` (`RESCUE_MODEL`, `openai/gpt-6-luna`; see [rescue.md](rescue.md)),
+and an optional `output_model` (`OUTPUT_MODEL`, also `openai/gpt-6-luna`;
+see [output.md](output.md)). All three are just OpenRouter chat
+completions with different settings: the planner's own model is asked for
+a JSON object response format at a low sampling temperature (0.2), because
+a plan should be reproducible rather than creative, while the rescuer and
+the shaper are reasoning models given a little room to think before they
+answer.
 
 ## Errors a caller sees
 
