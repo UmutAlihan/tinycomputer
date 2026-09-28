@@ -72,7 +72,7 @@ async fn a_finished_task_keeps_its_last_screen_after_release() {
         "{:?}",
         done.status
     );
-    assert_eq!(*script.released.lock().unwrap(), [view.id.clone()]);
+    assert_eq!(*script.released.lock().unwrap(), std::slice::from_ref(&view.id));
     assert_eq!(tasks.report(&view.id).data.unwrap().artifacts, [shot()]);
 }
 
