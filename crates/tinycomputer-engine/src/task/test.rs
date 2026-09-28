@@ -193,7 +193,10 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
 
     let request = &script.requests.lock().unwrap()[0];
     assert_eq!(request.vars["email"], "asha@example.com");
-    assert!(!request.include_values, "field values never leave for Jev");
+    assert!(
+        request.include_values,
+        "Jev reads what fields hold; the runtime masks secrets"
+    );
     assert!(!request.allow_destructive);
     assert_eq!(
         (request.max_actions, request.max_model_calls, request.votes),

@@ -56,7 +56,8 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
     }
 
     /// The visible text of whatever was last observed or opened: its
-    /// context lines and control labels. Empty when nothing has been, or it
+    /// context lines, control labels, and what each field holds (`label =
+    /// "value"`, up to 80 characters). Empty when nothing has been, or it
     /// can no longer be read. Blocks, like every surface call.
     #[must_use]
     pub fn visible_text(&self) -> Vec<String>
@@ -78,10 +79,20 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
                     .context
                     .into_iter()
                     .chain(
-                        screen
-                            .candidates
-                            .iter()
-                            .filter_map(|node| node.name.clone()),
+                        screen.candidates.iter().filter_map(|node| {
+                            let held = node
+                                .value
+                                .as_ref()
+                                .and_then(serde_json::Value::as_str)
+                                .filter(|held| !held.trim().is_empty());
+                            match (&node.name, held) {
+                                (Some(name), Some(held)) => Some(format!(
+                                    "{name} = {:?}",
+                                    held.chars().take(80).collect::<String>()
+                                )),
+                                (name, _) => name.clone(),
+                            }
+                        }),
                     )
                     .collect()
             })

@@ -21,7 +21,9 @@
 //!
 //! Facts reach the flow as variables, so they are typed locally. Shared ones
 //! also brief Jev by value ([`FlowBrief`]); secret ones reach Jev only as
-//! `${name}`. The flow runs with `include_values` off, and every summary is
+//! `${name}`. The flow runs with `include_values` on, so Jev reads what a
+//! field holds and can check what was typed; the flow runtime masks every
+//! secret value, there too, before anything reaches Jev. Every summary is
 //! redacted of every fact.
 //!
 //! How a flow actually runs is behind [`FlowRunner`], so this controller is
@@ -736,7 +738,9 @@ fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraint
             vars,
             facts,
             allow_destructive: run.allow_destructive,
-            include_values: false,
+            // Jev must read what the fields hold to check what was typed.
+            // Secret values are masked in everything the runtime sends Jev.
+            include_values: true,
             max_actions,
             max_model_calls,
             votes: state.budget.votes.unwrap_or(DEFAULT_VOTES),
@@ -1003,7 +1007,7 @@ async fn rescue(
         .visible_text(&id)
         .await
         .iter()
-        .map(|line| facts.redact(line))
+        .map(|line| facts.redact(&facts.mask(line)))
         .collect();
     let briefing = Briefing {
         goal: facts.redact(&goal),
