@@ -10,7 +10,7 @@
 //! picked from things every application offers — pressing a visible control,
 //! a standard shortcut, scrolling, waiting.
 //!
-//! A deliberating run (`docs/specs/jev-deliberation.md`) adds a loop around
+//! A deliberating run (`docs/technical/specs/jev-deliberation.md`) adds a loop around
 //! every press. Before it, the press's effect is predicted (`expect.rs`) and
 //! a checkpoint taken (`checkpoint.rs`); after it, the effect is checked, and
 //! when the screen contradicts it the next judgement asks whether the press

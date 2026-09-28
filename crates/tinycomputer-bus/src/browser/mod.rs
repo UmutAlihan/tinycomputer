@@ -7,7 +7,7 @@
 //! [agent-browser](https://github.com/vercel-labs/agent-browser), linked as a
 //! library; these types were ported from the `tinybrowser-bus` crate, which
 //! this interface supersedes, so a host written against `tinybrowser` needs
-//! only the new interface name (`docs/specs/unified-agent.md`).
+//! only the new interface name (`docs/technical/specs/unified-agent.md`).
 //!
 //! # What is here
 //!

@@ -24,7 +24,7 @@
 //! The crate holds no engine, no bus, no model, and no runtime; it speaks the
 //! contract crate's closed operations and envelope. The surface
 //! adapters and `tinycomputer-engine` build on it
-//! (`docs/specs/unified-agent.md`).
+//! (`docs/technical/specs/unified-agent.md`).
 //!
 //! ```
 //! use tinycomputer_core::{Consequence, Criterion, Key, Platform, Record, consequence, rank};

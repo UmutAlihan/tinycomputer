@@ -3,11 +3,11 @@
 A flow ([`tinycomputer_bus::Flow`]) says what to accomplish in one application,
 step by step, with no UI knowledge. This module grounds each step on the live
 screen by composing small Jev questions in deterministic Rust. The design and
-its rationale are in `docs/specs/jev-intent-flows.md`, and
-`docs/decision-loops.md` walks through every loop and question
-(`docs/decision-thresholds.md` lists the thresholds), and
-`docs/specs/jev-wide-turns.md` specifies the wide strategy, and
-`docs/specs/jev-deliberation.md` how a decision is deliberated on its
+its rationale are in `docs/technical/specs/jev-intent-flows.md`, and
+`docs/technical/decision-loops.md` walks through every loop and question
+(`docs/technical/decision-thresholds.md` lists the thresholds), and
+`docs/technical/specs/jev-wide-turns.md` specifies the wide strategy, and
+`docs/technical/specs/jev-deliberation.md` how a decision is deliberated on its
 evidence, checked after acting, and undone and retried when wrong.
 
 ## Layout

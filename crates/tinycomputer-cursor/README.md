@@ -1,5 +1,9 @@
 # tinycomputer-cursor
 
+Part of [tinycomputer](../../README.md), a decision model (Jev) based harness for
+desktop and browser automation, written in Rust. This crate draws the cursor that lets a person watch the harness work. Its user guide is
+[`docs/crates/tinycomputer-cursor/`](../../docs/crates/tinycomputer-cursor/README.md).
+
 The agent's one on-screen cursor, shared by the desktop and browser surfaces:
 a second pointer that glides to where the agent is about to act. It is purely
 cosmetic. It sends no input and never moves the user's pointer.
@@ -33,4 +37,4 @@ cargo build -p tinycomputer-cursor --features overlay
 cargo run -p tinycomputer-examples --bin cursor_demo -- calm 3
 ```
 
-See [`docs/specs/virtual-cursor.md`](../../docs/specs/virtual-cursor.md).
+See [`docs/technical/specs/virtual-cursor.md`](../../docs/technical/specs/virtual-cursor.md).

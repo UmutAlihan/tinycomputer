@@ -16,7 +16,7 @@
 //! file, `journal.jsonl`. Every line is an event with an `event` kind, a
 //! sequence number, a wall-clock `at`, and `elapsed_ms` since the run's
 //! journal opened. The kinds and their fields are described in
-//! `README.md` next to this file; `docs/jev-journal.md` shows how to read
+//! `README.md` next to this file; `docs/technical/jev-journal.md` shows how to read
 //! and summarise one.
 //!
 //! A journal holds what Jev was shown: screen text, element names, and the

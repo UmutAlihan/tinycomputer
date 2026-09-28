@@ -8,7 +8,7 @@
 //! - [`run_goal`] runs a bounded, scoped goal with visible success predicates;
 //! - [`run_flow`] runs a high-level, UI-agnostic intent flow, grounding each
 //!   step on the live screen with small Jev questions
-//!   (`docs/specs/jev-intent-flows.md`);
+//!   (`docs/technical/specs/jev-intent-flows.md`);
 //! - [`validate_flow`] and [`flow_guide`] check and document flows without
 //!   touching the desktop.
 //!
@@ -20,7 +20,7 @@
 //! flow in the background and reports it as a status a model can act on,
 //! pausing for missing values, irreversible actions, and always at payment.
 //! With a [`Rescuer`], a failed step is first handed to a reasoning model
-//! for guidance, up to five times a task (`docs/specs/task-rescue.md`).
+//! for guidance, up to five times a task (`docs/technical/specs/task-rescue.md`).
 //!
 //! A [`Workspace`] joins the desktop and the browser into one surface, so a
 //! flow's `browse` and `open` steps move it between a web page and an
@@ -28,7 +28,7 @@
 //!
 //! The crate holds no bus: `tinycomputer` serves these functions over `TinyBus`.
 //! The browser surface and the task controller arrive here next
-//! (`docs/specs/unified-agent.md`).
+//! (`docs/technical/specs/unified-agent.md`).
 
 mod agentic;
 mod planner;

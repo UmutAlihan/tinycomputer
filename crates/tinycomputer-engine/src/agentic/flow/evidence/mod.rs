@@ -13,8 +13,8 @@
 //! From those a [`Verdict`] follows: act on it ([`Verdict::Accept`]), ask
 //! more before acting ([`Verdict::Deliberate`]), or leave it
 //! ([`Verdict::Abstain`]). Everything here is pure: the flow runtime asks,
-//! this module only reads. `docs/specs/jev-deliberation.md` is the contract,
-//! and every constant is listed in `docs/decision-thresholds.md`.
+//! this module only reads. `docs/technical/specs/jev-deliberation.md` is the contract,
+//! and every constant is listed in `docs/technical/decision-thresholds.md`.
 
 use tinyinference_decisions::Answer;
 

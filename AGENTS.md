@@ -11,7 +11,7 @@ observation and interaction for macOS, Windows, and Linux) and the vendored
 [`agent-browser`] engine (Chrome over CDP) into one installable TinyBus module,
 so a host can expose desktop and browser automation to an agent as typed tool
 calls, Jev-driven flows, and background tasks. `README.md` and
-`docs/architecture.md` describe the whole system.
+`docs/technical/architecture.md` describe the whole system.
 
 [`agent-desktop`]: https://github.com/lahfir/agent-desktop
 [`agent-browser`]: https://github.com/vercel-labs/agent-browser
@@ -31,22 +31,24 @@ reading first is cheaper than rediscovering a rule by breaking it.
 
 | If you are about to… | Read, in order |
 |---|---|
-| get oriented | [`README.md`](README.md), [`docs/architecture.md`](docs/architecture.md) |
-| add or change a member, payload, or field | [`crates/tinycomputer-bus/README.md`](crates/tinycomputer-bus/README.md), [`docs/specs/desktop-module-contract.md`](docs/specs/desktop-module-contract.md), `crates/tinycomputer-bus/src/version/` |
-| change desktop behaviour, a conversion, or a permission check | [`crates/tinycomputer-desktop/README.md`](crates/tinycomputer-desktop/README.md), "How a call travels" in [`docs/architecture.md`](docs/architecture.md), [`MODULE.md`](MODULE.md) |
-| change the browser adapter | [`crates/tinycomputer-browser/README.md`](crates/tinycomputer-browser/README.md), [`docs/specs/unified-agent.md`](docs/specs/unified-agent.md), [`docs/specs/browser-sight.md`](docs/specs/browser-sight.md), [`docs/docker-lab.md`](docs/docker-lab.md) |
-| change the shared screen model, keys, or safety rules | [`crates/tinycomputer-core/README.md`](crates/tinycomputer-core/README.md), "Safety, in one place" in [`docs/architecture.md`](docs/architecture.md) |
-| change a Jev loop, question, threshold, or budget | [`docs/jev-harness.md`](docs/jev-harness.md), [`docs/decision-loops.md`](docs/decision-loops.md), [`docs/decision-thresholds.md`](docs/decision-thresholds.md), [`docs/specs/jev-wide-turns.md`](docs/specs/jev-wide-turns.md), [`docs/specs/flow-reflection.md`](docs/specs/flow-reflection.md), [`docs/specs/jev-deliberation.md`](docs/specs/jev-deliberation.md), [`docs/jev-questions.md`](docs/jev-questions.md), [`docs/flow-examples.md`](docs/flow-examples.md), [`crates/tinycomputer-engine/src/agentic/flow/README.md`](crates/tinycomputer-engine/src/agentic/flow/README.md), [`docs/specs/jev-intent-flows.md`](docs/specs/jev-intent-flows.md), [`docs/specs/jev-briefing.md`](docs/specs/jev-briefing.md) |
-| change `RunGoal` or `ResolveIntent` | [`crates/tinycomputer-engine/src/agentic/README.md`](crates/tinycomputer-engine/src/agentic/README.md), [`docs/jev-harness.md`](docs/jev-harness.md) |
-| write, review, or debug a flow | [`crates/tinycomputer-bus/src/flow/guide.md`](crates/tinycomputer-bus/src/flow/guide.md), [`docs/flow-examples.md`](docs/flow-examples.md), [`docs/decision-loops.md`](docs/decision-loops.md) |
-| change the task API, pausing, budgets, the planner, rescues, or output shapes | [`docs/tasks.md`](docs/tasks.md), [`docs/specs/task-rescue.md`](docs/specs/task-rescue.md), [`docs/specs/task-output.md`](docs/specs/task-output.md), [`docs/specs/unified-agent.md`](docs/specs/unified-agent.md), [`crates/tinycomputer-skills/skills/tinycomputer/SKILL.md`](crates/tinycomputer-skills/skills/tinycomputer/SKILL.md) |
-| find out why a run did what it did, or why it was slow | [`docs/jev-journal.md`](docs/jev-journal.md), the failure table in [`docs/flow-examples.md`](docs/flow-examples.md), [`docs/lab.md`](docs/lab.md), "Debugging And Measuring Runs" below |
-| change the on-screen cursor | [`crates/tinycomputer-cursor/README.md`](crates/tinycomputer-cursor/README.md), [`docs/specs/virtual-cursor.md`](docs/specs/virtual-cursor.md) |
-| change the TinyBus glue, the ABI, or configuration keys | [`crates/tinycomputer/src/tinybus_module/README.md`](crates/tinycomputer/src/tinybus_module/README.md), "Configuration" in [`docs/architecture.md`](docs/architecture.md), [`MODULE.md`](MODULE.md) |
-| change packaging or a release | [`docs/specs/tinybus-module-release.md`](docs/specs/tinybus-module-release.md), "Releases" below |
+| get oriented | [`README.md`](README.md), [`docs/how-it-works.md`](docs/how-it-works.md), [`docs/technical/architecture.md`](docs/technical/architecture.md) |
+| learn one crate or folder | its guide in [`docs/crates/`](docs/README.md#the-code-folder-by-folder) or [`docs/project/`](docs/project/README.md), then the crate's own `README.md` |
+| write or update user-facing docs | [`docs/README.md`](docs/README.md): the guides in `docs/` explain, `docs/technical/` specifies; keep both in step with the code |
+| add or change a member, payload, or field | [`crates/tinycomputer-bus/README.md`](crates/tinycomputer-bus/README.md), [`docs/technical/specs/desktop-module-contract.md`](docs/technical/specs/desktop-module-contract.md), `crates/tinycomputer-bus/src/version/` |
+| change desktop behaviour, a conversion, or a permission check | [`crates/tinycomputer-desktop/README.md`](crates/tinycomputer-desktop/README.md), "How a call travels" in [`docs/technical/architecture.md`](docs/technical/architecture.md), [`MODULE.md`](MODULE.md) |
+| change the browser adapter | [`crates/tinycomputer-browser/README.md`](crates/tinycomputer-browser/README.md), [`docs/technical/specs/unified-agent.md`](docs/technical/specs/unified-agent.md), [`docs/technical/specs/browser-sight.md`](docs/technical/specs/browser-sight.md), [`docs/technical/docker-lab.md`](docs/technical/docker-lab.md) |
+| change the shared screen model, keys, or safety rules | [`crates/tinycomputer-core/README.md`](crates/tinycomputer-core/README.md), "Safety, in one place" in [`docs/technical/architecture.md`](docs/technical/architecture.md) |
+| change a Jev loop, question, threshold, or budget | [`docs/technical/jev-harness.md`](docs/technical/jev-harness.md), [`docs/technical/decision-loops.md`](docs/technical/decision-loops.md), [`docs/technical/decision-thresholds.md`](docs/technical/decision-thresholds.md), [`docs/technical/specs/jev-wide-turns.md`](docs/technical/specs/jev-wide-turns.md), [`docs/technical/specs/flow-reflection.md`](docs/technical/specs/flow-reflection.md), [`docs/technical/specs/jev-deliberation.md`](docs/technical/specs/jev-deliberation.md), [`docs/technical/jev-questions.md`](docs/technical/jev-questions.md), [`docs/technical/flow-examples.md`](docs/technical/flow-examples.md), [`crates/tinycomputer-engine/src/agentic/flow/README.md`](crates/tinycomputer-engine/src/agentic/flow/README.md), [`docs/technical/specs/jev-intent-flows.md`](docs/technical/specs/jev-intent-flows.md), [`docs/technical/specs/jev-briefing.md`](docs/technical/specs/jev-briefing.md) |
+| change `RunGoal` or `ResolveIntent` | [`crates/tinycomputer-engine/src/agentic/README.md`](crates/tinycomputer-engine/src/agentic/README.md), [`docs/technical/jev-harness.md`](docs/technical/jev-harness.md) |
+| write, review, or debug a flow | [`crates/tinycomputer-bus/src/flow/guide.md`](crates/tinycomputer-bus/src/flow/guide.md), [`docs/technical/flow-examples.md`](docs/technical/flow-examples.md), [`docs/technical/decision-loops.md`](docs/technical/decision-loops.md) |
+| change the task API, pausing, budgets, the planner, rescues, or output shapes | [`docs/technical/tasks.md`](docs/technical/tasks.md), [`docs/technical/specs/task-rescue.md`](docs/technical/specs/task-rescue.md), [`docs/technical/specs/task-output.md`](docs/technical/specs/task-output.md), [`docs/technical/specs/unified-agent.md`](docs/technical/specs/unified-agent.md), [`crates/tinycomputer-skills/skills/tinycomputer/SKILL.md`](crates/tinycomputer-skills/skills/tinycomputer/SKILL.md) |
+| find out why a run did what it did, or why it was slow | [`docs/technical/jev-journal.md`](docs/technical/jev-journal.md), the failure table in [`docs/technical/flow-examples.md`](docs/technical/flow-examples.md), [`docs/technical/lab.md`](docs/technical/lab.md), "Debugging And Measuring Runs" below |
+| change the on-screen cursor | [`crates/tinycomputer-cursor/README.md`](crates/tinycomputer-cursor/README.md), [`docs/technical/specs/virtual-cursor.md`](docs/technical/specs/virtual-cursor.md) |
+| change the TinyBus glue, the ABI, or configuration keys | [`crates/tinycomputer/src/tinybus_module/README.md`](crates/tinycomputer/src/tinybus_module/README.md), "Configuration" in [`docs/technical/architecture.md`](docs/technical/architecture.md), [`MODULE.md`](MODULE.md) |
+| change packaging or a release | [`docs/technical/specs/tinybus-module-release.md`](docs/technical/specs/tinybus-module-release.md), "Releases" below |
 | fix the Jev client itself | nothing here: it is `tinyinference_decisions` in `vendor/tinyinference`, fixed upstream |
-| run things on a real desktop or browser | [`docs/lab.md`](docs/lab.md), [`docs/docker-lab.md`](docs/docker-lab.md), past results in [`docs/evals/`](docs/evals/) |
-| start a new feature | [`docs/specs/README.md`](docs/specs/README.md), [`docs/plans/README.md`](docs/plans/README.md), [`docs/adr/`](docs/adr/0001-record-architecture-decisions.md), [`ROADMAP.md`](ROADMAP.md) |
+| run things on a real desktop or browser | [`docs/technical/lab.md`](docs/technical/lab.md), [`docs/technical/docker-lab.md`](docs/technical/docker-lab.md), past results in [`docs/technical/evals/`](docs/technical/evals/) |
+| start a new feature | [`docs/technical/specs/README.md`](docs/technical/specs/README.md), [`docs/technical/plans/README.md`](docs/technical/plans/README.md), [`docs/technical/adr/`](docs/technical/adr/0001-record-architecture-decisions.md), [`ROADMAP.md`](ROADMAP.md) |
 
 ## Project Structure
 
@@ -104,18 +106,14 @@ vendor/
 ├── agent-browser/      # pinned browser automation engine, linked as a library
 └── tinyinference/      # pinned Jev client and the planner's LLM client
 docs/
-├── architecture.md     # the layers, how a call travels, configuration, safety
-├── jev-harness.md      # the Jev stack, one decision end to end, latency levers
-├── decision-loops.md   # every flow loop, question, and threshold
-├── jev-questions.md    # every Jev input, question id, answer shape, and use
-├── flow-examples.md    # real flows traced decision by decision
-├── jev-journal.md      # the debug journal and how to measure a run
-├── tasks.md            # the task API and the planner
-├── lab.md, docker-lab.md # live runs
-├── evals/              # recorded live results
-├── specs/              # behavior and architecture specifications
-├── plans/              # test-first implementation plans
-└── adr/                # immutable architecture decision records
+├── README.md           # the index: guides, per-crate docs, technical reference
+├── how-it-works.md, …  # plain-language guides (docs/README.md lists them)
+├── crates/<crate>/     # a friendly guide per crate
+├── project/            # the repository map: scripts/, docker/, vendor/, CI
+└── technical/          # the engineering reference:
+    ├── architecture.md, jev-harness.md, decision-loops.md, decision-thresholds.md,
+    ├── jev-questions.md, flow-examples.md, jev-journal.md, tasks.md, lab.md, docker-lab.md
+    └── evals/, specs/, plans/, adr/  # live results, specs, plans, ADRs
 .jev-journal/           # git-ignored: debug journals written by local runs
 ```
 
@@ -128,7 +126,7 @@ on it alone.
 
 `crates/tinycomputer-desktop` wraps the engine, `crates/tinycomputer-engine`
 builds the Jev loops on it, and `crates/tinycomputer` serves both over the bus
-(`docs/specs/unified-agent.md` describes where the browser joins). The module
+(`docs/technical/specs/unified-agent.md` describes where the browser joins). The module
 crate depends on the contract and re-exports all of it, so
 `tinycomputer::SnapshotRequest` and `tinycomputer_bus::SnapshotRequest` are the
 *same* type rather than structural twins. That direction is load-bearing: a
@@ -171,18 +169,18 @@ for something the envelope can express.
   fails closed; never fall back to a default click.
 - **Thresholds are documented.** A constant in the flow runtime (`act.rs`, `ground.rs`, `enter.rs`,
   `reflect.rs`, `steps.rs`, `survey.rs`, `wide.rs`, `view/`, `vote.rs`, `mod.rs`, and deliberation's `evidence/`,
-  `escalate/`, `duel/`, `checkpoint/`, `attention/`) that a decision is thresholded on appears in `docs/decision-thresholds.md`; change both together.
+  `escalate/`, `duel/`, `checkpoint/`, `attention/`) that a decision is thresholded on appears in `docs/technical/decision-thresholds.md`; change both together.
 - **A loop change needs a simulator test.** Reproduce the behaviour in
   `agentic/flow/test.rs` (the scripted apps and the oracle Jev) before
   changing it, and assert the new behaviour there.
 - **The journal is opt-in, best effort, and inert.** It must stay off unless
   asked for, must never fail or alter a run, and must build nothing when off.
   A new timed operation in a loop gets a journal event, documented in the
-  event table of `docs/jev-journal.md`.
+  event table of `docs/technical/jev-journal.md`.
 - **Contract versioning.** `CONTRACT_VERSION` in `tinycomputer-bus` is `(major, minor)`:
   adding a member or an optional field is a minor bump; changing a wire form, removing
   a member, or renaming one (including the interface) is a major bump. Update the
-  pinned tests and note the bump in `docs/specs/desktop-module-contract.md`.
+  pinned tests and note the bump in `docs/technical/specs/desktop-module-contract.md`.
 - **The Jev client is upstream** (`tinyinference-decisions` in
   `vendor/tinyinference`): fix a client bug there, then bump the gitlink.
 
@@ -278,7 +276,7 @@ When a run goes wrong, decide where the fault is before touching code: the
 asked the wrong thing), the **flow** (the caller asked for the wrong thing),
 or the **engine** (the action reached the wrong element — an upstream bug).
 When a run is slow, read the summary's split first and change one lever from
-the table in [`docs/jev-harness.md`](docs/jev-harness.md) at a time.
+the table in [`docs/technical/jev-harness.md`](docs/technical/jev-harness.md) at a time.
 
 Journals and traces hold screen text, possibly personal data: they are
 git-ignored, and never go into a commit, issue, or pull request. Every
@@ -413,8 +411,8 @@ Write documentation for the reader who has never seen the code.
   public surface, and important operational constraints.
 - Keep `README.md`, `docs/`, and module docs aligned with code changes in the
   same commit that changes behavior.
-- Write accepted behavior and constraints in `docs/specs/` before creating a
-  linked, implementation-ordered plan in `docs/plans/`. Specs define what and
+- Write accepted behavior and constraints in `docs/technical/specs/` before creating a
+  linked, implementation-ordered plan in `docs/technical/plans/`. Specs define what and
   why; plans define how and in what sequence.
 - A new document is linked from `docs/README.md` and from "Read The Right
   Document First" above, so the next agent can find it.

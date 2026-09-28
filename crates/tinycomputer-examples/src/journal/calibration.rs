@@ -27,7 +27,7 @@ pub struct VerdictRow {
 }
 
 /// What deliberation did over a run, for tuning its thresholds against how
-/// steps actually ended (`docs/specs/jev-deliberation.md`).
+/// steps actually ended (`docs/technical/specs/jev-deliberation.md`).
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Calibration {
     /// Every site and verdict reached, in order.

@@ -1,5 +1,9 @@
 # tinycomputer-desktop
 
+Part of [tinycomputer](../../README.md), a decision model (Jev) based harness for
+desktop and browser automation, written in Rust. This crate is its desktop side: it reads and drives native applications through their accessibility trees. Its user guide is
+[`docs/crates/tinycomputer-desktop/`](../../docs/crates/tinycomputer-desktop/README.md).
+
 The agent-desktop adapter behind tinycomputer: `Desktop`, with one typed method
 per desktop member. Each method takes a request from `tinycomputer-bus` and
 returns a `DesktopResponse` envelope, so a stale ref or a missing permission

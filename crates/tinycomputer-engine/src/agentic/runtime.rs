@@ -122,7 +122,7 @@ impl JevRuntime {
     ///
     /// Every Jev exchange of every run, with its latency, and the time each
     /// flow spends observing, acting, and on each step, is appended to
-    /// `<dir>/<run id>/journal.jsonl`. See `docs/jev-journal.md`.
+    /// `<dir>/<run id>/journal.jsonl`. See `docs/technical/jev-journal.md`.
     #[must_use]
     pub fn with_journal(mut self, dir: impl Into<std::path::PathBuf>) -> Self {
         self.journal = Journal::at(dir);

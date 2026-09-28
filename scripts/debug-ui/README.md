@@ -10,7 +10,7 @@ no journal API, but still supports choosing files in the browser.
 Journal files may contain screen text and other personal data. The dev server
 reads them from the local checkout and serves them to the preview; it does not
 upload them to a cloud service. See
-[`docs/jev-journal.md`](../../../docs/jev-journal.md) for the event format and
+[`docs/technical/jev-journal.md`](../../docs/technical/jev-journal.md) for the event format and
 journal setup.
 
 From the repository root:

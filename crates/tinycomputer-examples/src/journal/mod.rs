@@ -3,7 +3,7 @@
 //! tallies what deliberation decided against how each step ended.
 //!
 //! The engine writes one `journal.jsonl` per run when the journal is on
-//! (`TINYCOMPUTER_JEV_JOURNAL=1`); `docs/jev-journal.md` describes the events.
+//! (`TINYCOMPUTER_JEV_JOURNAL=1`); `docs/technical/jev-journal.md` describes the events.
 //! This module is what the `jev_journal` binary prints with:
 //!
 //! ```sh

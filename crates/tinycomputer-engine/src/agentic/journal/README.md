@@ -3,7 +3,7 @@
 Opt-in, best-effort, append-only JSON Lines of every Jev exchange and every
 flow timing, one file per run. The user-facing guide — turning it on, the
 event table, reading a run with `jev_journal`, finding latency — is
-[`docs/jev-journal.md`](../../../../../docs/jev-journal.md).
+[`docs/technical/jev-journal.md`](../../../../../docs/technical/jev-journal.md).
 
 ## Design
 

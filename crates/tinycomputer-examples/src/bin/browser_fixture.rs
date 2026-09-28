@@ -3,7 +3,7 @@
 //! snapshot parsing into a screen, result grouping and exact ranking, and
 //! payment detection.
 //!
-//! Run it in the Docker lab (`docs/docker-lab.md`), never on the host:
+//! Run it in the Docker lab (`docs/technical/docker-lab.md`), never on the host:
 //!
 //! ```sh
 //! scripts/docker-lab -- bash -c '

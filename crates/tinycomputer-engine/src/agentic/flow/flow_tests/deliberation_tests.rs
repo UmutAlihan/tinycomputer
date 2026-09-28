@@ -1,6 +1,6 @@
 //! Deliberation against the simulator: the evidence gate and the
 //! escalation ladder — more framings, duels, contrast, and views
-//! (`docs/specs/jev-deliberation.md`).
+//! (`docs/technical/specs/jev-deliberation.md`).
 
 use super::*;
 
