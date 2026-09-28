@@ -87,14 +87,17 @@ A deliberated decision climbs until a rung settles it:
    to it?", calibrated as a pair. A champion is kept at `CONTRAST_KEEP`. With
    no champion, a leader is taken only at `CONTRAST_ACCEPT` and a lead of
    `CONTRAST_LEAD`. Otherwise grounding abstains and nothing is pressed.
-4. **Views** (deep only, judgements). The yes/no is asked again over other
-   renderings: the screen alone, without the history that can lead it, and
+4. **Views** (deep only, a judgement that would pass). The yes/no is asked
+   again over other renderings: the screen alone, without the history that can lead it, and
    what changed since the step began. The readings are combined by their
    **median**, so one dissenting view neither passes nor vetoes. Live on
    IndiGo, the screen-only view read "choose One Way" at 0.2 after the press,
    because a radio already selected shows no sign of who selected it. Under a
    minimum rule that one view failed the step; the median keeps it as one
-   voice of three.
+   voice of three. Views guard a *pass* only: a judgement under its bar is
+   left as the judge read it. On IndiGo's passenger page a judge at 0.64 with
+   Jev choosing `finished` was pulled to 0.49 by views, under `LEANS_DONE`,
+   which overruled the finish and pressed the empty form's own Next.
 
 At `standard`, a target stops at the duel: the champion is taken, and no
 champion means abstaining.
