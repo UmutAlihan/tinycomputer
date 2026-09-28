@@ -167,6 +167,22 @@ Ids are the keys the runtime uses; the journal and the trace show them.
 | `target` | Choice | up to 20 elements | used at 0.70, or at 0.45 when its name is in the purpose |
 | `again` | Choice | the same elements, reversed, lettered | agreeing with `target` plus `confirm` at 0.5 accepts it; `confirm` at 0.8 alone does too |
 
+### Deliberating (`escalate/`, `duel/`, `ground.rs`, `act.rs`, `steps.rs`)
+
+Asked only when the evidence behind an answer is thin, or after a press, under
+[`specs/jev-deliberation.md`](specs/jev-deliberation.md). A deliberated
+request is also re-asked in more framings, which changes no id.
+
+| Id | Type | Given | Answer used as |
+|---|---|---|---|
+| `wider` | Choice | every knockout winner, up to 20, when the region cut dropped some (deep) | a pick made without the region, checked against `target`; a disagreement goes to a duel |
+| `duel_<i>_<j>` | Choice | two finalists, `1` shown first | both orders of every pair, counted Copeland-style; a champion takes at least 0.60 of every pairing |
+| `is_<i>` | Noul | the purpose, one finalist | calibrated with `only_near_<i>`: keeps a champion at 0.50, takes a leader at 0.65 with a 0.20 lead; `is_0` also vouches for an irreversible press at 0.85 |
+| `only_near_<i>` | Noul | the same | the negation: a lookalike, or something next to the element |
+| `intended` | Noul | the step, the last press, what it was meant to do | calibrated with `unintended`: under 0.50 after a missed effect, or under 0.25 after any press, the press is undone |
+| `unintended` | Noul | the same | the negation: the wrong item opened, the page left, a choice cleared |
+| `done`, `not_done`, `holds`, `negated` with a `view` | Noul | the screen alone, or what changed since the step began | the judgement over another rendering; views that straddle the threshold keep the lowest |
+
 ### Entering text (`enter.rs`)
 
 | Id | Type | Given | Answer used as |
