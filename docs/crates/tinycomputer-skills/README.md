@@ -1,10 +1,16 @@
 # tinycomputer-skills
 
+tinycomputer is a decision model (Jev) based harness for desktop and browser
+automation: Jev answers small closed questions about what to press, and the
+harness reads the screen, asks, checks answers, acts, and verifies. This
+crate sits outside that loop. It is the leaflet that teaches an external
+calling agent how to hand the harness a task in the first place, not part of
+the Jev decision loop that runs once a task starts.
+
 This crate is not code that does anything at runtime. It is text: the
-instructions a calling agent needs in order to use tinycomputer's task API
-well, plus the JSON Schema that describes the shape of that API's main
-request. A host installs both into wherever it keeps skills for its own
-agent to read.
+instructions a calling agent needs to use tinycomputer's task API well, plus
+the JSON Schema that describes the shape of that API's main request. A host
+installs both into wherever it keeps skills for its own agent to read.
 
 ## Who needs this
 
