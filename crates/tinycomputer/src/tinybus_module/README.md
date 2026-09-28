@@ -18,7 +18,7 @@ unexpanded when the attribute runs. Writing them out is what lets the macro see
 them.
 
 The order they appear in is the order of `tinycomputer_bus::names::METHODS`, and
-`tinybus_module_tests/wire_tests.rs` asserts the generated dispatch table
+`tinybus_module_tests/manifest_tests.rs` asserts the generated dispatch table
 against that list.
 
 ## Why every member blocks elsewhere
