@@ -111,7 +111,7 @@ Destructiveness itself comes from two sources, taken as the higher of the
 two: Jev's own answer to a yes/no "would this be hard to undo" question, and
 a small deterministic word list (`deterministic_destructive` in
 `policy.rs`), "delete", "send", "purchase", "buy", "pay", "submit",
-"confirm", "overwrite", "quit without saving", "empty trash", "sign out" —
+"confirm", "overwrite", "quit without saving", "empty trash", "sign out",
 checked against the goal text and the target's own label. The word list
 exists so that an action that is obviously irreversible is never left to a
 model's judgment call alone.
