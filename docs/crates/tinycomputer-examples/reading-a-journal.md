@@ -17,8 +17,8 @@ covers the `jev_journal` binary that reads it back.
 TINYCOMPUTER_JEV_JOURNAL=1 scripts/lab run mail-compose --mode flow
 ```
 
-Set the variable before whatever loads the module — the lab, `task_live`,
-your own host embedding it — starts. It is read once, when Jev is
+Set the variable before whatever loads the module (the lab, `task_live`,
+your own host embedding it) starts. It is read once, when Jev is
 configured. Any other truthy value (`true`, `on`, `yes`) also just turns it
 on and writes under `.jev-journal/` in the current directory; anything else
 is treated as the directory name to write under instead. `.jev-journal/` is
@@ -45,7 +45,7 @@ for each.
 | (none) | a human-readable summary: wall time, how much of it was Jev vs. observing vs. acting, per-step timings, the slowest calls |
 | `--transcript` | every exchange, in order: the state Jev saw and the answer it gave, for reading a run step by step |
 | `--json` | the summary as JSON, for scripting or comparing two runs |
-| `--calibration` | how deliberation's verdicts (accept, deliberate, abstain) lined up with how each step actually ended, with the rungs it climbed and any undo — this is how the constants in [`decision-thresholds.md`](../../technical/decision-thresholds.md) get tuned from real runs, not guessed |
+| `--calibration` | how deliberation's verdicts (accept, deliberate, abstain) lined up with how each step actually ended, with the rungs it climbed and any undo: this is how the constants in [`decision-thresholds.md`](../../technical/decision-thresholds.md) get tuned from real runs, not guessed |
 
 A plain summary looks roughly like this (the exact numbers will differ):
 
@@ -84,7 +84,7 @@ jq 'select(.event=="exchange" and .step=="3") | .request.state' \
 
 These two things look similar and answer different questions. `trace: true`
 on a `RunFlow` request returns one exchange per *decision* in the result
-itself, with the answers already merged — this is what the lab writes to
+itself, with the answers already merged. This is what the lab writes to
 `jev.jsonl` next to every run, and what
 [`the lab`](the-lab.md#what-a-run-leaves-behind) covers. The journal instead
 records every *framing* actually sent and received, with real timings, for

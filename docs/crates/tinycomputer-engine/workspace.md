@@ -1,7 +1,7 @@
 # The workspace
 
 A flow can open a desktop application, then browse to a web page, then
-switch back to the application, a booking confirmation emailed and then
+switch back to the application: a booking confirmation emailed and then
 checked in a Mail app, say. `Workspace<D, W>`, in
 `crates/tinycomputer-engine/src/workspace/mod.rs`, is what makes that
 possible without every caller of the flow runtime having to track which
@@ -19,8 +19,8 @@ A call that names an application routes by that name (`Workspace::side_for`):
   `http://` or `https://` goes to the browser;
 - anything else goes to the desktop.
 
-A call that does not name an application, acting on a candidate returned
-by an earlier observation, or reading its value back, goes to whichever
+A call that does not name an application (acting on a candidate returned
+by an earlier observation, or reading its value back) goes to whichever
 side is *active*: the side that was last successfully observed or opened.
 That is what lets a flow step like "click Continue" work without repeating
 which surface it is on: the candidate it is acting on came from that side's

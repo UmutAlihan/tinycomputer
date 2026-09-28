@@ -1,9 +1,13 @@
 # tinycomputer-bus
 
-`tinycomputer-bus` is the dictionary for talking to tinycomputer. It defines
-every message that can cross the wire: what a request looks like, what a
-reply looks like, and the exact names used to ask for something. It holds no
-logic and touches no screen. It is just the shapes of things.
+tinycomputer is a Jev-based harness for desktop and browser automation: Jev
+decides what to press or type by answering small closed questions, and the
+harness does everything else, reading the screen, asking, checking the
+answer, acting, and verifying. `tinycomputer-bus` is the dictionary the
+harness and a host use to talk to each other. It defines every message that
+can cross the wire: what a request looks like, what a reply looks like, and
+the exact names used to ask for something. It holds no logic and touches no
+screen. It is just the shapes of things.
 
 ## Who needs this
 
