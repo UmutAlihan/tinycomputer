@@ -4313,14 +4313,12 @@ async fn a_hesitant_wide_pick_is_confirmed_before_it_is_pressed() {
 
 #[tokio::test]
 async fn a_journaled_wide_run_records_its_survey_and_each_turns_decisions() {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
     let app = App::with(|sim| sim.extra_buttons = 60);
     let scratch = std::env::temp_dir().join(format!(
         "tinycomputer-wide-journal-{}-{}",
         std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
+        COUNTER.fetch_add(1, Ordering::Relaxed)
     ));
     let runtime = runtime(Oracle {
         app: app.clone(),
