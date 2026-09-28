@@ -1,7 +1,7 @@
 # Grounding: picking one element
 
 A flow step never names a button. It says "click to accomplish: start a
-new email message," and something in `ground.rs` has to turn that into one
+new email message," and something in `ground/` has to turn that into one
 specific element on the current screen. This is grounding, and it runs
 whenever `activate`, `choose`, or `stop_before` needs one element for a
 purpose.

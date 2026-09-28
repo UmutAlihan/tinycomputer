@@ -23,7 +23,7 @@ one is at least as good everywhere.
 ## What Jev is shown, differently
 
 Under `"wide"`, the shared state replaces a flat element list and a short
-history with two richer sections, built by `wide.rs`, `survey.rs`, and
+history with two richer sections, built by `wide/`, `survey.rs`, and
 `ledger.rs`:
 
 ### The digest

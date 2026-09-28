@@ -265,7 +265,7 @@ surface's `settle` before looking again — network-idle on the browser, a short
 pause on the desktop — so the next turn's screen reflects what the action did
 rather than the moment before it took effect.
 
-The shortcut list (`act.rs::SHORTCUTS`) is short and safe: new item, new
+The shortcut list (`act/mod.rs::SHORTCUTS`) is short and safe: new item, new
 folder, find, reply, settings, back, next field, confirm (Return), and dismiss
 (Escape). None of them sends, deletes, or quits. They are written in macOS
 spelling (`cmd+n`); each surface translates them, so the desktop sends
@@ -315,7 +315,7 @@ completion estimate reaches 0.75 the step is `Done`; otherwise it fails with
 ## Grounding: picking one element
 
 `activate`, `choose`, and `stop_before` all need one element for a purpose,
-such as "click to accomplish: start a new email message". `ground.rs` finds it
+such as "click to accomplish: start a new email message". `ground/` finds it
 with as few and as small questions as the screen allows. Every Choice offers at
 most 20 options plus `none` (`CAP`), and a larger pool is narrowed, never
 silently cut.
@@ -487,7 +487,7 @@ Find the failed step's note in the report (`timeline.txt`), read what Jev
 was shown for it (`jev.jsonl`, or [`jev-journal.md`](jev-journal.md)), and
 decide whether the fault is the observation, the question, the flow, or the
 engine; [`flow-examples.md`](flow-examples.md) maps common notes to causes.
-Reproduce it in the simulator (`agentic/flow/test.rs`), then fix it.
+Reproduce it in the simulator (`agentic/flow/flow_tests/`), then fix it.
 
 ## The wide strategy, and the thresholds
 
