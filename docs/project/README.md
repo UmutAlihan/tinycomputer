@@ -24,7 +24,7 @@ vendored engine, fixed there and picked up here as a pinned-commit bump.
 |---|---|
 | [`crates/`](#crates) | every Rust package in the workspace |
 | [`vendor/`](vendor/README.md) | four pinned git submodules: the engines and clients this adapter wraps |
-| [`docs/`](../README.md) | architecture, specs, plans, guides, and this project documentation |
+| [`docs/`](../technical/README.md) | architecture, specs, plans, guides, and this project documentation |
 | [`scripts/`](scripts/README.md) | developer tools: the lab, the docker lab, the journal inspector |
 | [`docker/`](docker/README.md) | the Dockerfile the docker lab builds from |
 | [`.github/`](ci-and-tooling/README.md) | CI workflows, the release workflow, and issue/PR templates |
