@@ -153,7 +153,7 @@ still suit a caller that:
 - wants one action or one bounded loop, not a multi-step plan;
 - is willing to hold the confirmation-id round trip itself;
 - does not need pausing for missing values, payment checkpoints, or a
-  rescuer, those only exist in the task controller (see
+  rescuer: those only exist in the task controller (see
   [tasks.md](tasks.md)).
 
 Most new work should reach for `StartTask` and a flow instead: it gets
