@@ -540,6 +540,23 @@ fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<C
     text_nodes
 }
 
+/// What lies over the simulated page: a promo toast, or something that
+/// covers the New Message button.
+fn overlays(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
+    if sim.has(Quirk::Covered) {
+        for candidate in &mut candidates {
+            if candidate.name.as_deref() == Some("New Message") {
+                candidate.states = vec!["covered".to_owned()];
+            }
+        }
+    }
+    if sim.has(Quirk::PromoToast) {
+        let toast = [root, "region \"Unlimited date changes\""];
+        candidates.push(node("Close", "button", &["Click"], &toast, 700.0));
+        candidates.push(node("Learn more", "link", &["Click"], &toast, 720.0));
+    }
+}
+
 impl App {
     fn screen(&self) -> Screen {
         let sim = self.sim();
@@ -617,18 +634,7 @@ impl App {
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
         }
-        if sim.has(Quirk::Covered) {
-            for candidate in &mut candidates {
-                if candidate.name.as_deref() == Some("New Message") {
-                    candidate.states = vec!["covered".to_owned()];
-                }
-            }
-        }
-        if sim.has(Quirk::PromoToast) {
-            let toast = [root.as_str(), "region \"Unlimited date changes\""];
-            candidates.push(node("Close", "button", &["Click"], &toast, 700.0));
-            candidates.push(node("Learn more", "link", &["Click"], &toast, 720.0));
-        }
+        overlays(&sim, &root, &mut candidates);
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
         if sim.obstacle {
