@@ -302,3 +302,29 @@ async fn steps_the_guidance_covers_are_dropped_and_the_guard_is_kept() {
     );
     assert_eq!(tasks.report(&view.id).data.unwrap().rescues[0].covers, 1);
 }
+
+#[tokio::test]
+async fn a_secret_a_field_holds_never_reaches_the_rescuer() {
+    let (tasks, script, model) = rescued(vec![failed_at_step_two()], &[Err("down")]);
+    *script.screen.lock().unwrap() = vec![
+        "Card number = \"4111 1111 1111 1111\"".to_owned(),
+        "Email = \"asha@example.com\"".to_owned(),
+    ];
+    let view = tasks
+        .start(&StartTaskRequest {
+            flow: Some(flow(flights())),
+            facts: BTreeMap::from([
+                ("card".to_owned(), "4111111111111111".to_owned()),
+                ("email".to_owned(), "asha@example.com".to_owned()),
+            ]),
+            secret_facts: vec!["card".to_owned()],
+            ..StartTaskRequest::default()
+        })
+        .data
+        .unwrap();
+    settle(&tasks, &view.id).await;
+    let asked = model.seen.lock().unwrap()[0][1].text.clone();
+    assert!(asked.contains("Card number = \"${card}\""), "{asked}");
+    assert!(asked.contains("Email = \"‹email›\""), "{asked}");
+    assert!(!asked.contains("1111"));
+}
