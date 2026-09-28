@@ -167,3 +167,33 @@ Flights renders two unnamed lists at one place, and their first cards were
 read as one card; unnamed lists are now numbered in page order (`list`,
 `list 2`). IndiGo's desktop widget still draws no search box, so Srinagar
 still cannot be entered there.
+
+## Batching independent decisions
+
+Two narrow-strategy chains asked Jev things that did not depend on each
+other, one round trip at a time. `FlowRun::ask_batch` now sends independent
+requests together (every framing of every request in flight at once), and
+the turn and grounding use it ([`jev-harness.md`](../jev-harness.md)):
+
+- a step's first turn asks the judge and grounding's first round together;
+- narrowing asks the region question and a knockout cut along the regions
+  together, instead of up to three region rounds and then a knockout.
+
+Same code otherwise, both runs twice each, alternating, in the Docker lab
+(sight, narrow, votes 5). "Jev wait" is each round trip's slowest request,
+summed: the time a step actually waited for Jev.
+
+| | fixture, before | fixture, batched | Kashmir, before | Kashmir, batched |
+|---|---|---|---|---|
+| outcome | pass ×2 | pass ×2 | step 11 ×2 | step 11 ×2 |
+| wall | 28.4 / 27.6 s | 28.0 / 27.9 s | 41.2 / 40.4 s | **35.9 / 34.0 s** |
+| Jev wait | 7.5 / 6.9 s | 6.7 / 6.6 s | 20.6 / 20.5 s | **16.8 / 15.2 s** |
+| round trips | 15 | 12 | 42 | **27** |
+| decisions / calls | 15 / 75 | 15 / 75 | 42 / 210 | 39 / 195 |
+| round trips per `do` turn | mean 1.50, most 2 | mean 1.00, most 1 | mean 2.75, most 5 | **mean 1.50, most 2** |
+
+On Kashmir's crowded pages the Jev wait fell by about a fifth and the run
+by about 14%; the batched run also made fewer calls, since one knockout
+replaces the extra region rounds. On the fixture, whose pages are small,
+each first turn saves one round trip, but settling (20 s of the 28) hides
+it. Settling is now the largest cost on both: 14–21 s per run.
