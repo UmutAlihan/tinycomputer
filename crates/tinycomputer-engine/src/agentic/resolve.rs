@@ -57,9 +57,9 @@ pub(super) async fn resolve_intent_with<B: AgentBackend>(
 }
 
 pub(super) struct ResolveOutcome {
-    decision: JevDecision,
-    evaluations: Vec<EvaluationResult>,
-    action_failure: Option<DesktopResponse>,
+    pub(super) decision: JevDecision,
+    pub(super) evaluations: Vec<EvaluationResult>,
+    pub(super) action_failure: Option<DesktopResponse>,
 }
 
 #[allow(clippy::too_many_arguments)]
