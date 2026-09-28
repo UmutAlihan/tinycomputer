@@ -76,8 +76,8 @@ through the same small set of error codes:
 ## The evaluate call
 
 `JevRuntime::evaluate` takes an optional step label (used only for the
-journal) and an `EvaluationRequest`, Jev's own request shape, from
-`tinyinference_decisions`, and returns either an `EvaluationResult` or an
+journal) and an `EvaluationRequest` (Jev's own request shape, from
+`tinyinference_decisions`), and returns either an `EvaluationResult` or an
 `EvaluationFailure`. Every caller in this crate builds that request the same
 way it builds any other: state (the goal, the screen's app and window, recent
 actions), and one or more `Question`s, each a closed choice with named
