@@ -239,10 +239,11 @@ impl BrowserSurface {
   const element = document.activeElement;
   if (!element) return false;
   const tag = (element.tagName || '').toLowerCase();
-  if (tag === 'input' || tag === 'textarea') return true;
-  if (element.isContentEditable) return true;
-  const role = (element.getAttribute('role') || '').toLowerCase();
-  return ['combobox', 'searchbox', 'textbox'].includes(role);
+  if (tag === 'textarea' || element.isContentEditable) return true;
+  if (tag !== 'input') return false;
+  const type = (element.getAttribute('type') || 'text').toLowerCase();
+  return ['text', 'search', 'email', 'tel', 'url', 'number', 'password'].includes(type)
+    && !element.readOnly && !element.disabled;
 })()";
         let Ok(id) = self.ensure_session() else {
             return false;
