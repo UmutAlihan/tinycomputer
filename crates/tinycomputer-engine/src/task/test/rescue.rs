@@ -337,3 +337,27 @@ async fn a_secret_a_field_holds_never_reaches_the_rescuer() {
     assert!(asked.contains("Email = \"‹email›\""), "{asked}");
     assert!(!asked.contains("1111"));
 }
+
+#[tokio::test]
+async fn a_skip_resumes_at_the_next_step_with_the_guard_kept() {
+    let skip = r#"{"action": "skip", "reason": "the results already opened the cheapest flight",
+      "covers": 1}"#;
+    let (tasks, script, _) = rescued(
+        vec![
+            failed_at_step_two(),
+            finished_run(FlowStopReason::Completed, vec![], &[], None),
+        ],
+        &[Ok(skip)],
+    );
+    let view = begin(&tasks, TaskBudget::default());
+    assert!(matches!(
+        settle(&tasks, &view.id).await.status,
+        TaskStatus::Done { .. }
+    ));
+    let steps = script.requests.lock().unwrap()[1].flow.steps.clone();
+    assert_eq!(steps, [flow(flights()).steps[3].clone()], "only the guard is left");
+    let rescue = &tasks.report(&view.id).data.unwrap().rescues[0];
+    assert!(rescue.steps.is_empty());
+    assert_eq!(rescue.covers, 1);
+    assert_eq!(rescue.outcome, RescueOutcome::Recovered);
+}
