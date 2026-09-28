@@ -40,6 +40,11 @@
     'button', 'link', 'checkbox', 'radio', 'switch', 'tab', 'menuitem', 'menuitemcheckbox',
     'menuitemradio', 'option', 'treeitem', 'slider', 'gridcell',
   ];
+  const NESTED = 'a[href], button, input, select, textarea, [role="button"], [role="option"], '
+    + '[role="link"], [role="combobox"], [role="menuitem"], [role="radio"], [role="checkbox"], '
+    + '[role="tab"], [role="listbox"], [role="menu"], [role="dialog"]';
+  const CARD_SELECTOR = 'li, [role="listitem"], [role="row"], article, [role="article"]';
+  const MODAL_SELECTOR = 'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
   const tag = (element) => element.tagName.toLowerCase();
   const role = (element) => (element.getAttribute('role') || '').toLowerCase().split(' ')[0];
   const disabled = (element) =>
@@ -159,7 +164,7 @@
       if (!parent || parent === seen || !squash(node.data)) continue;
       seen = parent;
       if (!shown(parent) || insideText(parent)) continue;
-      if (parent.closest('button, a[href], select, option, [role="button"], [role="option"]')) continue;
+      if (parent.closest(NESTED)) continue;
       const text = clip(parent.innerText || node.data, 80);
       if (text) words.push({ element: parent, text, rect: box(parent) });
     }
@@ -199,6 +204,24 @@
     return best;
   };
 
+  // The words shown on the element itself, leaving out those of the
+  // controls nested in it when it holds several: a field's button that holds
+  // its open list of choices is named by the field, not by the choices. A
+  // wrapper around one control is that control, and keeps its words.
+  const ownText = (element) => {
+    if (element.querySelectorAll(NESTED).length < 2) return squash(element.innerText);
+    const parts = [];
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      const nested = parent && parent.closest(NESTED);
+      if (nested && nested !== element && element.contains(nested)) continue;
+      if (parent && shown(parent) && squash(node.data)) parts.push(squash(node.data));
+      if (parts.join(' ').length > limits.name) break;
+    }
+    return squash(parts.join(' '));
+  };
+
   // What a person reads as the element's name, and a description when the
   // page says more about it than it shows.
   const naming = (element, what) => {
@@ -209,11 +232,14 @@
     if (['textbox', 'searchbox', 'combobox', 'slider'].includes(what) || (tag(element) === 'input' && !input)) {
       const labels = element.labels ? [...element.labels].map((label) => squash(label.innerText)).join(' ') : '';
       const checkable = ['checkbox', 'radio', 'switch'].includes(what);
-      const name = squash(labels) || nearby(element, checkable) || squash(element.getAttribute('placeholder'))
-        || aria || title || (tag(element) === 'input' ? squash(element.value) : '');
+      // A label the page ties to the field comes first; then the words a
+      // person reads beside it, and last what the empty box shows.
+      const name = squash(labels) || aria || nearby(element, checkable)
+        || squash(element.getAttribute('placeholder')) || title
+        || (tag(element) === 'input' && !['text', 'search', 'password'].includes(element.type) ? squash(element.value) : '');
       return { name: clip(name, limits.name), description: aria && aria !== name ? clip(aria, limits.name) : '' };
     }
-    const text = squash(element.innerText);
+    const text = ownText(element);
     if (text) {
       const description = aria && aria !== text && !text.includes(aria) ? clip(aria, limits.name) : '';
       return { name: clip(text, limits.name), description };
@@ -224,7 +250,17 @@
     const name = aria || title || pictured || '';
     if (name) return { name: clip(name, limits.name), description: '' };
     const icon = iconWords(element);
-    return { name: icon, description: icon ? 'an icon' : '' };
+    if (icon) return { name: icon, description: 'an icon' };
+    // A picture link with no words: where it leads is all there is to go on.
+    const href = tag(element) === 'a' && element.getAttribute('href');
+    if (href) {
+      try {
+        const path = new URL(href, location.href).pathname.split('/').filter(Boolean).pop() || '';
+        const read = squash(decodeURIComponent(path).replace(/\.[a-z]+$/i, '').replace(/[-_]+/g, ' '));
+        if (read) return { name: '', description: clip(`leads to ${read}`, limits.name) };
+      } catch (error) { /* an unreadable address names nothing */ }
+    }
+    return { name: '', description: '' };
   };
 
   const CARDS = { li: 'listitem', tr: 'row', article: 'article' };
@@ -317,6 +353,10 @@
     if (!hit || element.contains(hit) || hit.contains(element)) return false;
     const input = standIn(element);
     if (input && (hit === input || input.contains(hit))) return false;
+    // A result card's own text laid over its link: clicking there is
+    // clicking the card, as a person would.
+    const card = element.closest(CARD_SELECTOR);
+    if (card && card.contains(hit) && !hit.closest(MODAL_SELECTOR)) return false;
     return !(element.labels && [...element.labels].some((label) => label.contains(hit)));
   };
 
@@ -368,6 +408,28 @@
   collectWords();
   const nodes = [];
   const controls = new Set();
+  const seen = [];
+  // Intersection over union of two boxes.
+  const overlap = (a, b) => {
+    const across = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+    const down = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+    const shared = across * down;
+    const union = a.width * a.height + b.width * b.height - shared;
+    return union > 0 ? shared / union : 0;
+  };
+  const home = (element) => element.closest('label') || (element.labels && element.labels[0]) || null;
+  // Whether `element` is what a person sees as the control `other` already
+  // is: drawn in the same box, drawn inside it with the same words, or the
+  // same kind of control in the same label (a page's own radio drawn beside
+  // the real one).
+  const same = (other, element, what) => {
+    const related = other.element.contains(element) || element.contains(other.element)
+      || other.element.parentElement === element.parentElement;
+    if (related && overlap(box(other.element), box(element)) >= 0.6) return true;
+    if (other.element.contains(element)
+      && squash(other.element.innerText) === squash(element.innerText)) return true;
+    return other.record.role === what && home(element) !== null && home(element) === home(other.element);
+  };
   let unreachable = 0;
   let texts = 0;
   const insideControl = (element) => {
@@ -423,9 +485,27 @@
       // Drawn by its label instead: the label stands in for it.
       if ([...(element.labels || [])].some((label) => standIn(label) === element)) continue;
     }
-    controls.add(element);
     const { name, description } = naming(element, what);
-    nodes.push({
+    // Two elements drawn as one box are one control to a person: the one
+    // that takes text, or else the first, with the other's words kept.
+    const twin = seen.find((other) => same(other, element, what));
+    if (twin) {
+      const takes = what === 'textbox' || what === 'searchbox';
+      const twinTakes = twin.record.role === 'textbox' || twin.record.role === 'searchbox';
+      if (!takes || twinTakes) {
+        if (name && (!twin.record.name || twin.record.description === 'an icon')) {
+          twin.record.name = name;
+          twin.record.description = description;
+        }
+        else if (!twin.record.description && name && name !== twin.record.name) twin.record.description = name;
+        controls.add(element);
+        continue;
+      }
+      nodes.splice(nodes.indexOf(twin.record), 1);
+      seen.splice(seen.indexOf(twin), 1);
+    }
+    controls.add(element);
+    const record = {
       id: mark(element),
       role: what,
       name,
@@ -434,7 +514,9 @@
       states: statesOf(element, what),
       box: [box(element).x, box(element).y, box(element).width, box(element).height].map(Math.round),
       path: pathOf(element),
-    });
+    };
+    nodes.push(record);
+    seen.push({ element, record });
   }
   window.__tinycomputerSeen = next;
 
