@@ -52,7 +52,7 @@ The planner's protocol is explicit about the boundary. It is told:
 - never to invent a personal detail itself;
 - that a shared fact may appear in any step's text, written the way a
   person would ("choose ${title} in the title field");
-- that a secret fact may appear **only** as an `enter` step's value, never
+- that a secret fact may appear **only** as an `enter` step's value: never
   in an `open` application name, a `browse` address, a `do`, `verify`,
   `wait_for`, `stop_before`, `choose`, `read`, `extract`, `pick`,
   `repeat_until`, or `if` text, and never as an `enter` slot's own name
@@ -60,7 +60,7 @@ The planner's protocol is explicit about the boundary. It is told:
 - to enter payment details only from secret facts it was actually given,
   and to end any purchase or booking with a `stop_before` for paying;
 - that a `choose` option must be the label the page shows ("Saver"), never a
-  description ("the cheapest fare"), picking by a criterion is what `pick`
+  description ("the cheapest fare"): picking by a criterion is what `pick`
   is for;
 - to guard sending, deleting, publishing, or submitting with a `stop_before`.
 
