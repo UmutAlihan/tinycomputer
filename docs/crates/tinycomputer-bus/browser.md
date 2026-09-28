@@ -239,13 +239,48 @@ assert!(errors::is_agent_recoverable(errors::NO_SUCH_ELEMENT));
 assert!(!errors::is_agent_recoverable(errors::BROWSER_UNAVAILABLE));
 ```
 
+## Calling a browser member directly
+
+A caller that wants to drive a page itself, rather than through a task, can
+call these members directly. Open a session, act on it, then read a
+screenshot back in chunks:
+
+```rust,ignore
+use tinycomputer_bus::{DesktopResponse, browser::names::methods};
+
+let opened: DesktopResponse = proxy.call(methods::OPEN_SESSION, (json!({}),)).await?;
+let session = opened.data.as_ref().unwrap()["id"].clone();
+
+proxy
+    .call(methods::NAVIGATE, (json!({"session": session, "url": "https://example.com/"}),))
+    .await?;
+
+let clicked: DesktopResponse = proxy
+    .call(
+        methods::PERFORM,
+        (json!({"session": session, "action": "click", "target": {"kind": "ref", "value": "e3"}}),),
+    )
+    .await?;
+
+let shot: DesktopResponse = proxy.call(methods::SCREENSHOT, (json!({"session": session}),)).await?;
+let output = shot.data.as_ref().unwrap()["id"].clone();
+let chunk: DesktopResponse = proxy
+    .call(methods::READ_OUTPUT, (json!({"output": output}),))
+    .await?;
+```
+
+(`crates/tinycomputer/src/tinybus_module/test/browser.rs` runs this same
+sequence against the in-memory bus.)
+
 ## Where the browser fits into flows and tasks
 
 A `Flow` step's `browse` action and a `StartTask`'s browser surface are both
-built on exactly this interface underneath. Most callers reach `Snapshot`,
-`Action`, and `ReadPage` indirectly, through a flow or a task, rather than
-calling this interface's members directly, see [Writing flows](flows.md)
-and [The Agent and task types](agent-and-tasks.md). This interface's own
-contract version is `crate::CONTRACT_VERSION`, the same one the desktop
-interface uses: the two ship in one module and version together (see
+built on exactly these members underneath, and `BrowserListSessions` shows a
+running task's session beside any a caller opened directly. Most callers
+still reach a page through a flow or a task rather than calling these members
+directly, since a flow's `browse`/`extract`/`read` steps already cover
+picking, reading, and choosing without naming a ref by hand, see
+[Writing flows](flows.md) and [The Agent and task types](agent-and-tasks.md).
+These members' contract version is `crate::CONTRACT_VERSION`, the same one
+the desktop members use: the whole module ships and versions as one (see
 [Versioning and compatibility](versioning.md)).
