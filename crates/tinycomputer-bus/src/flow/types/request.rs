@@ -3,15 +3,10 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde::{
-    Deserialize, Deserializer, Serialize, Serializer,
-    de::{self, MapAccess, Visitor},
-    ser::SerializeMap,
-};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{JevMetrics, JevTarget};
-use super::{Flow, FlowStep, StepReport};
+use super::Flow;
 
 /// One Jev decision loop.
 ///

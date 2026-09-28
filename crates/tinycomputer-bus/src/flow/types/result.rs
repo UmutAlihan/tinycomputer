@@ -1,16 +1,12 @@
 //! What a flow run reports: why it stopped, and what each step did.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-use serde::{
-    Deserialize, Deserializer, Serialize, Serializer,
-    de::{self, MapAccess, Visitor},
-    ser::SerializeMap,
-};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{JevMetrics, JevTarget};
 use super::{FlowLoop, GroundingHint};
+use crate::{JevMetrics, JevTarget};
 
 /// Why a flow run stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
