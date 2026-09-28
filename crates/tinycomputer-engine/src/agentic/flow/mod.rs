@@ -85,15 +85,6 @@ use backend::{AgentBackend, blocking, observe_async};
 use validate::{step_path, substitute_safe};
 use view::{Candidate, Depth, Screen, target_payload};
 
-/// One request of a batch as its framings came back: the request, the
-/// framings that answered, the first failure, and how many were asked.
-type Gathered = (
-    EvaluationRequest,
-    Vec<(vote::Framing, BTreeMap<String, Answer>)>,
-    Option<tinyinference_decisions::EvaluationFailure>,
-    u32,
-);
-
 /// Upper bound on [`RunFlowRequest::max_actions`].
 const MAX_ACTIONS: u32 = 120;
 /// Upper bound on [`RunFlowRequest::max_model_calls`]. Jev is cheap, and
@@ -642,34 +633,34 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         if votes > 1 {
             log.used(FlowLoop::Vote);
         }
-        // A deliberating run asks a few framings first and the rest only
-        // where those split (`vote::settled`); the legacy path asks them all.
-        let first = if self.deliberation == Deliberation::Off {
-            votes
-        } else {
-            votes.min(vote::FIRST_VOTES)
-        };
         let batched = requests.len();
         let mut asked = Vec::with_capacity(batched);
         for request in requests {
             let request = self.outgoing(log, request);
-            let framings = vote::framings(&request, first);
+            let framings = vote::framings(&request, votes);
             let handles = self.spawn(&framings);
             asked.push((request, framings, handles));
         }
         self.rounds = self.rounds.saturating_add(1);
         let asked_at = Instant::now();
-        let mut gathered = Vec::with_capacity(batched);
-        for (request, framings, handles) in asked {
-            let (answered, failure) = self.gather(log, framings, handles).await;
-            gathered.push((request, answered, failure, first));
-        }
-        if first < votes {
-            self.ask_the_rest(log, &mut gathered, first, votes).await;
-        }
         let mut replies = Vec::with_capacity(batched);
-        for (request, answered, failure, framed) in gathered {
+        for (request, framings, handles) in asked {
             self.decisions = self.decisions.saturating_add(1);
+            let mut answered = Vec::new();
+            let mut failure = None;
+            for (framing, handle) in framings.into_iter().zip(handles) {
+                match handle.await {
+                    Ok(Ok(evaluation)) => {
+                        merge_metrics(&mut self.metrics, &evaluation);
+                        log.calls = log.calls.saturating_add(1);
+                        answered.push((framing, evaluation.response.answers));
+                    }
+                    Ok(Err(error)) => {
+                        failure.get_or_insert(error);
+                    }
+                    Err(_) => {}
+                }
+            }
             let answers = match (answered.is_empty(), failure) {
                 (true, Some(failure)) => return Err(Halt::Error(provider_error(&failure))),
                 (true, None) => {
@@ -689,7 +680,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 json!({
                     "step": self.step,
                     "questions": request.questions.keys().collect::<Vec<_>>(),
-                    "framings": framed,
+                    "framings": votes,
                     "answered": answered.len(),
                     "batched": batched,
                     "request_bytes": serde_json::to_vec(&request).map_or(0, |bytes| bytes.len()),
@@ -710,78 +701,6 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             replies.push(answers);
         }
         Ok(replies)
-    }
-
-    /// Asks every request in `gathered` whose first `first` framings split
-    /// in the rest of its `votes`, all at once, and adds their answers.
-    async fn ask_the_rest(
-        &mut self,
-        log: &mut StepLog,
-        gathered: &mut [Gathered],
-        first: u32,
-        votes: u32,
-    ) {
-        let more = gathered
-            .iter()
-            .map(|(request, answered, _, _)| {
-                let split =
-                    !answered.is_empty() && !vote::settled(&vote::ballots(answered), PAGE_KIND);
-                split.then(|| {
-                    let framings = vote::framings_between(request, first, votes);
-                    let handles = self.spawn(&framings);
-                    (framings, handles)
-                })
-            })
-            .collect::<Vec<_>>();
-        if more.iter().any(Option::is_some) {
-            self.rounds = self.rounds.saturating_add(1);
-        }
-        for ((_, answered, failure, framed), more) in gathered.iter_mut().zip(more) {
-            if let Some((framings, handles)) = more {
-                *framed = votes;
-                let (fresh, error) = self.gather(log, framings, handles).await;
-                answered.extend(fresh);
-                if failure.is_none() {
-                    *failure = error;
-                }
-            }
-        }
-    }
-
-    /// Waits for every framing in `handles`, charging each answer to the run
-    /// and the step: the framings that answered, and the first failure.
-    async fn gather(
-        &mut self,
-        log: &mut StepLog,
-        framings: Vec<vote::Framing>,
-        handles: Vec<
-            tokio::task::JoinHandle<
-                Result<
-                    tinyinference_decisions::EvaluationResult,
-                    tinyinference_decisions::EvaluationFailure,
-                >,
-            >,
-        >,
-    ) -> (
-        Vec<(vote::Framing, BTreeMap<String, Answer>)>,
-        Option<tinyinference_decisions::EvaluationFailure>,
-    ) {
-        let mut answered = Vec::new();
-        let mut failure = None;
-        for (framing, handle) in framings.into_iter().zip(handles) {
-            match handle.await {
-                Ok(Ok(evaluation)) => {
-                    merge_metrics(&mut self.metrics, &evaluation);
-                    log.calls = log.calls.saturating_add(1);
-                    answered.push((framing, evaluation.response.answers));
-                }
-                Ok(Err(error)) => {
-                    failure.get_or_insert(error);
-                }
-                Err(_) => {}
-            }
-        }
-        (answered, failure)
     }
 
     /// `request` as it leaves for Jev: with the page-kind question on a web

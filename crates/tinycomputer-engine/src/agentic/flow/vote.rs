@@ -24,13 +24,6 @@
 //! much, is the evidence deliberation (`evidence.rs`) decides on. A
 //! deliberating decision may later be asked in further framings (`widen`),
 //! whose answers join the same ballot.
-//!
-//! When the run deliberates, a decision is asked in stages: the first
-//! [`FIRST_VOTES`] framings, and the rest of the run's votes only when those
-//! do not already agree ([`settled`]). A decision waits for its slowest
-//! framing, so a clear decision asked three ways is both cheaper and faster
-//! than one asked seven; a split one still gets every vote, and deliberation
-//! can widen it further.
 
 use std::collections::BTreeMap;
 
@@ -39,14 +32,6 @@ use tinyinference_decisions::{Answer, ChoiceAnswer, EvaluationRequest, NoulAnswe
 
 /// Most framings one decision is asked in.
 pub(super) const MAX_VOTES: u32 = 9;
-
-/// Framings a deliberating run asks first; the rest of its votes follow only
-/// when these disagree.
-pub(super) const FIRST_VOTES: u32 = 3;
-
-/// Widest range of yes/no beliefs across framings that still counts as
-/// agreeing, when every one is on the same side of one half.
-pub(super) const SETTLED_SPREAD: f64 = 0.2;
 
 /// A perspective added to each framing after the first, in turn.
 const PERSPECTIVES: [&str; 4] = [
@@ -200,48 +185,6 @@ pub(super) fn ballots(
         })
         .filter(|(_, answers)| !answers.is_empty())
         .collect()
-}
-
-/// Whether every question's ballot but `aside`'s already agrees, so asking
-/// further framings would not change the decision: every Choice framing
-/// picked the same option, every Score framing peaked at the same level, and
-/// every Noul framing sits on the same side of one half, within
-/// [`SETTLED_SPREAD`] of the others. A ballot of fewer than two answers
-/// shows no agreement.
-pub(super) fn settled(ballots: &BTreeMap<String, Vec<Answer>>, aside: &str) -> bool {
-    ballots
-        .iter()
-        .filter(|(id, _)| id.as_str() != aside)
-        .all(|(_, answers)| answers.len() >= 2 && agrees(answers))
-}
-
-fn agrees(answers: &[Answer]) -> bool {
-    let peak = |probabilities: &BTreeMap<String, f64>| {
-        probabilities
-            .iter()
-            .max_by(|left, right| left.1.total_cmp(right.1))
-            .map(|(key, _)| key.clone())
-    };
-    let mut picks = std::collections::BTreeSet::new();
-    let mut beliefs = Vec::new();
-    for answer in answers {
-        match answer {
-            Answer::Choice(choice) => {
-                picks.insert(choice.choice.clone());
-            }
-            Answer::Score(score) => {
-                picks.insert(peak(&score.probabilities).unwrap_or_default());
-            }
-            Answer::Noul(noul) => beliefs.push(noul.noul),
-        }
-    }
-    let (low, high) = beliefs
-        .iter()
-        .fold((f64::MAX, f64::MIN), |(low, high), belief| {
-            (low.min(*belief), high.max(*belief))
-        });
-    picks.len() <= 1
-        && (beliefs.is_empty() || ((low >= 0.5) == (high >= 0.5) && high - low <= SETTLED_SPREAD))
 }
 
 /// Each question's ballot averaged into one answer.

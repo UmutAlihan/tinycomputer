@@ -30,11 +30,6 @@ const FIELD_ERROR: f64 = 0.7;
 /// Probability that a form asks for a detail, under which a detail with no
 /// field is taken as not asked for rather than failing the step.
 const NOT_ASKED: f64 = 0.35;
-/// Details no picker offered, on a screen with no editable field at all,
-/// after which the rest are not looked for one by one: this is not the form
-/// they go in, and the step fails for a rescue to read rather than grounding
-/// a picker per detail.
-const BLIND_PICK_MISSES: usize = 1;
 
 /// One slot matched to one field.
 #[derive(Debug, Clone)]
@@ -213,7 +208,6 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         pending: &mut BTreeSet<usize>,
     ) -> Result<(), Halt> {
         let mut revealed = false;
-        let mut saw_fields = false;
         // Fields that refused the text this step: a `div` a page labels a
         // combobox, or a field that would not hold what was typed. Offered
         // again, the same wrong field wins again — struck by `element_kind`
@@ -233,7 +227,6 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .into_iter()
                 .filter(|field| !struck.contains(&element_kind(field)))
                 .collect::<Vec<_>>();
-            saw_fields |= !fields.is_empty();
             let assignments = if fields.is_empty() {
                 Vec::new()
             } else {
@@ -293,15 +286,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         // next slot; a budget stop or a backend error means acting further
         // is unsafe or pointless, and must end the step instead of being
         // read as "this slot has no picker".
-        let mut missed = 0;
         for index in pending.clone() {
-            if !saw_fields && missed >= BLIND_PICK_MISSES {
-                self.history.push(format!(
-                    "no field and no picker on this screen; not looking for: {}",
-                    names(slots, pending)
-                ));
-                break;
-            }
             let slot = &slots[index];
             match self
                 .pick_option(log, &slot.slot, &slot.text, private[index], false)
@@ -310,7 +295,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 Ok(_) => {
                     pending.remove(&index);
                 }
-                Err(Halt::Failed(_)) => missed += 1,
+                Err(Halt::Failed(_)) => {}
                 Err(halt) => return Err(halt),
             }
         }

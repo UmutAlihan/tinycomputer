@@ -26,13 +26,10 @@ Change a constant and its row together.
 | `REPAIR_TURNS` | 4 | `reflect.rs` | turns one reflection repair may spend |
 | `MAX_ACTIONS` / `MAX_CALLS` | 120 / 10000 | `mod.rs` | per-run caps on actions and Jev calls |
 | `MAX_VOTES` | 9 | `vote.rs` | most framings one decision is asked in; a deliberated decision is widened up to it |
-| `FIRST_VOTES` | 3 | `vote.rs` | framings a deliberating run asks first; the rest of the run's votes follow only when these do not agree |
-| `SETTLED_SPREAD` | 0.2 | `vote.rs` | widest range of yes/no beliefs across framings, all on one side of one half, that still counts as agreeing |
 | `STALL_TURNS` / `MAX_IDLE_WAITS` | 3 / 2 | `act.rs` | unchanged turns before a step fails; idle waits before Jev may not wait again |
 | `MAX_OBSTACLES` / `MAX_UNDOS` | 2 / 2 | `act.rs` | obstacles dismissed and undos run per step at most |
 | `FIELD_ERROR` | 0.70 | `enter.rs` | field-error probability that makes a slot be entered again |
 | `NOT_ASKED` | 0.35 | `enter.rs` | "the form asks for it" probability under which a slot with no field is taken as not asked for |
-| `BLIND_PICK_MISSES` | 1 | `enter.rs` | details no picker offered, on a screen with no editable field, after which the rest are not looked for one by one and the step fails |
 
 ## Deliberation
 

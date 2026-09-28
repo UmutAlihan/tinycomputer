@@ -113,17 +113,6 @@ The gate runs where the single bars used to:
 - conditions (`verify`, `wait_for`, `if`, `repeat_until`, and `stop_before`'s
   "has happened").
 
-### Staged votes (`flow/vote.rs`)
-
-A deliberating run asks each decision in `FIRST_VOTES` (3) framings first,
-and in the rest of its votes only when those do not agree (`vote::settled`):
-every Choice picks the same option, every Score peaks at the same level, and
-every yes/no sits on one side of one half, within `SETTLED_SPREAD`. The page
-kind rides along and never holds a decision back. A decision waits for its
-slowest framing, so a clear one asked three ways is both cheaper and faster;
-a split one still gets every vote, and the ladder below can widen it
-further. `off` asks every vote at once, as before.
-
 ### 2. The escalation ladder (`flow/escalate/`, `flow/duel/`)
 
 A deliberated decision climbs until a rung settles it:
