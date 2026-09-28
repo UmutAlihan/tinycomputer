@@ -34,8 +34,13 @@ fails the task.
     screen.
   - The rescuer sees names only, like the planner.
 - **Answer.** One JSON object:
-  - `{"action": "retry", "reason", "steps"}` gives 1 to 6 flow steps
-    (`MAX_RESCUE_STEPS`) to run in place of the failed one.
+  - `{"action": "retry", "reason", "steps", "covers"}` gives 1 to 6 flow
+    steps (`MAX_RESCUE_STEPS`) to run in place of the failed one. `covers`
+    (default 0) is how many of the steps right after the failed one they
+    also do. Those steps are dropped rather than run twice, as when one
+    rescue fills fields the plan filled in three steps. A covered step may
+    never hold a `stop_before`, at any depth, and `covers` may not run past
+    the end of the flow; either answer goes back as invalid.
   - `{"action": "give_up", "reason"}` is for when no step can help: the site
     blocks, a person must act, or the goal is out of reach.
 - **Validation.** The guidance, followed by the steps after the failed one,
@@ -47,7 +52,7 @@ fails the task.
 
   An invalid answer goes back with its errors, up to `REPAIRS` (2) times.
 - **Resume.** The task runs a new flow: the guidance, then every step after
-  the failed one, unchanged. It runs on the same app, variables, and
+  the failed one and the covered ones, unchanged. It runs on the same app, variables, and
   `allow_destructive`, from what the budget has left. `stop_before` guards
   are kept, and the flow runtime gates irreversible presses as always. A
   later failure, including one in the guidance, can be rescued again.
@@ -61,7 +66,8 @@ fails the task.
   reads "the rescuer gave up: …". Once the rescues are spent, the task fails
   exactly as it did before rescues existed.
 - **Record.** `TaskReport.rescues` lists every rescue: the step, the failure,
-  the reason, the steps, and the outcome. Outcomes are:
+  the reason, the steps, how many following steps they covered, and the
+  outcome. Outcomes are:
   - `running`;
   - `recovered`, when every guidance step finished or reached its approval;
   - `failed_again`;
@@ -78,8 +84,9 @@ fails the task.
   first, and a budget or validity failure is not the page's fault.
 - **Run under `RunFlow` alone.** Rescues belong to the task controller, so
   the flow runtime keeps one door, to Jev.
-- **Rewrite anything but the failed step.** The flow's later steps are the
-  caller's plan.
+- **Rewrite later steps.** It may drop the steps its own guidance already
+  does, but never reword or reorder the caller's plan after them, and never
+  drop a guard.
 - **Rescue nested steps.** A failure inside an `if` or `repeat_until` stops
   the task as before, because the resume point of a nested step cannot be
   recovered from its path.

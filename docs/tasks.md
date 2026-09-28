@@ -260,9 +260,11 @@ reasoning model for guidance before it fails
 with the failed step marked, what the run reached, earlier rescues, the
 screen's visible text as untrusted data, and the fact names — every fact value
 redacted. It answers with up to six steps to run in place of the failed one,
-checked by the flow validator, or gives up. The task then runs the guidance
-and every step after the failed one unchanged, `stop_before` included, from
-what the budget has left.
+checked by the flow validator, or gives up. Its `covers` count drops as many
+of the steps right after the failed one when its steps already do them, but
+never a step holding a `stop_before`. The task then runs the guidance and
+every remaining step unchanged, `stop_before` included, from what the budget
+has left.
 
 A task gets three rescues at most (`budget.max_rescues`, 0 to 3; 0 turns them
 off), and one rescue may think for two minutes. A rescue that gives up, fails,
