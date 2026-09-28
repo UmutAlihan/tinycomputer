@@ -38,7 +38,7 @@ Source: [`crates/tinycomputer-bus/src/agent/names/mod.rs`](../../../crates/tinyc
 
 | Member | Takes | Returns |
 |---|---|---|
-| `Describe` | nothing | `Capabilities`: surfaces available, whether Jev and the planner are configured, the flow guide, every member's JSON Schema, worked examples |
+| `Describe` | nothing | `Capabilities`: surfaces available, whether Jev and the planner are configured, the flow guide, every task member's JSON Schema, worked examples, and a `catalogue` of all 80 members |
 | `PlanTask` | `PlanTaskRequest` | `TaskPlan`: a drafted flow, without touching anything |
 | `StartTask` | `StartTaskRequest` | `TaskView`, at once |
 | `AwaitTask` | `AwaitTaskRequest` | `TaskView`, once something changes or the timeout passes |
