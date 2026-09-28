@@ -51,8 +51,11 @@ engine's argument types, the permission preflight, and the bus surface.
   wire name, which reuses the desktop's code where the meaning is the same
   (`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `POLICY_DENIED`,
   `INVALID_ARGS`, `INTERNAL`); the full name is in `details.name`, the
-  recovery hint is `browser::errors::recovery`'s, and a call refused before
-  anything reached the browser is marked `not_delivered`. The members share
+  recovery hint is `browser::errors::recovery`'s — a timeout or page error,
+  which may follow a click that landed, says to inspect the page before
+  retrying — and only a call refused on a local lookup (an unknown session or
+  output) is marked `not_delivered`; every other failure's delivery is
+  `unknown`. The members share
   one `Browser` with the task runner, so `BrowserReadOutput` reads a
   screenshot a task view names and `BrowserListSessions` shows a task's
   session. The `ai.tinyhumans.tinycomputer.Browser` interface and its
