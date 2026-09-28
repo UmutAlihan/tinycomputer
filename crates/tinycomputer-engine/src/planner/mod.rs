@@ -51,7 +51,7 @@ pub struct Turn {
 }
 
 impl Turn {
-    fn new(role: Role, text: impl Into<String>) -> Self {
+    pub(crate) fn new(role: Role, text: impl Into<String>) -> Self {
         Self {
             role,
             text: text.into(),
