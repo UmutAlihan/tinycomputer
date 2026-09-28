@@ -5126,7 +5126,8 @@ fn a_selected_sibling_plainly_contradicts_the_option() {
     assert_eq!(
         steps::left_unchosen(
             &screen(vec![tab("Return", true), tab("One way", false)]),
-            "One way"
+            "One way",
+            false
         )
         .as_deref(),
         Some("tab \"One way\" is not selected; tab \"Return\" is")
@@ -5134,14 +5135,16 @@ fn a_selected_sibling_plainly_contradicts_the_option() {
     assert!(
         steps::left_unchosen(
             &screen(vec![tab("Return", false), tab("One way", true)]),
-            "One way"
+            "One way",
+            false
         )
         .is_none()
     );
     assert!(
         steps::left_unchosen(
             &screen(vec![tab("Return", false), tab("One way", false)]),
-            "One way"
+            "One way",
+            false
         )
         .is_none(),
         "nothing selected settles nothing: Jev is asked"
