@@ -202,8 +202,8 @@ fn says(node: &Candidate) -> Option<String> {
 }
 
 /// One element as a line of the state Jev reads: its label, what its
-/// description adds to its name, where an unnamed element sits, what it holds when `include_values` is set (up to
-/// 80 characters), and its states.
+/// description adds to its name, where an unnamed element sits, what it
+/// holds when `include_values` is set (up to 80 characters), and its states.
 #[must_use]
 pub fn element_line(node: &Candidate, include_values: bool) -> String {
     let mut line = label(node);

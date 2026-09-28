@@ -474,7 +474,10 @@ fn a_named_element_keeps_the_description_that_tells_it_apart() {
         element_line(&october, false),
         "button \"18\" (Sunday, 18 October 2026)"
     );
-    assert_ne!(element_line(&september, false), element_line(&october, false));
+    assert_ne!(
+        element_line(&september, false),
+        element_line(&october, false)
+    );
     assert_eq!(
         describe(&october, false)["untrusted_accessibility_data"]["says"],
         "Sunday, 18 October 2026"
