@@ -17,21 +17,20 @@ handing over a whole job does not want to think in those terms, and should
 not have to know that "book a flight" turns into forty small decisions
 across two applications. The Agent interface is built to be driven by a
 model with only a few members, one reply shape, and state that explains
-itself:
+itself.
 
-- **Few members.** Call `Describe` once, then `StartTask`, `AwaitTask`, and
-  `ContinueTask` until the status is final.
-- **One reply shape.** Every member answers `AgentResponse<T>`; a failed call
-  carries an `AgentError` with a stable code, a one-sentence message, a
-  one-sentence hint, and whether retrying could help.
-- **Self-describing state.** A `TaskView` says in one sentence what is
-  happening, which member calls make sense right now, and, inside
-  `TaskStatus`, exactly what the task needs from the caller.
-- **No refs, selectors, or coordinates at this level.** Those stay private to
-  the flow the task is running underneath.
-- **Shared facts are briefed by value; secret facts stay templates.** A
-  traveller's name briefs the decision model so it knows who it is booking
-  for. A card number is only ever shown to it as `${name}`.
+There are few members: call `Describe` once, then loop over `StartTask`,
+`AwaitTask`, and `ContinueTask` until the status is final. There is one
+reply shape: every member answers `AgentResponse<T>`, and a failed call
+carries an `AgentError` with a stable code, a one-sentence message, a
+one-sentence hint, and whether retrying could help. The state explains
+itself: a `TaskView` says in one sentence what is happening, which member
+calls make sense right now, and, inside `TaskStatus`, exactly what the task
+needs from the caller. There are no refs, selectors, or coordinates at this
+level; those stay private to the flow a task runs underneath. And shared
+facts are briefed by value while secret facts stay templates: a traveller's
+name briefs the decision model so it knows who it is booking for, but a card
+number is only ever shown to it as `${name}`.
 
 ## The members
 
