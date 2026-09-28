@@ -1,5 +1,9 @@
 # tinycomputer-browser
 
+Part of [tinycomputer](../../README.md), a decision model (Jev) based harness for
+desktop and browser automation, written in Rust. This crate is its browser side: it drives Chrome and shows the harness a web page. Its user guide is
+[`docs/crates/tinycomputer-browser/`](../../docs/crates/tinycomputer-browser/README.md).
+
 The agent-browser adapter behind tinycomputer's `Browser` interface. It turns the
 typed requests in `tinycomputer_bus::browser` into agent-browser commands and
 the engine's replies into typed results. agent-browser is linked in-process as

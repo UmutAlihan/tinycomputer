@@ -1,5 +1,9 @@
 # tinycomputer-engine
 
+Part of [tinycomputer](../../README.md), a decision model (Jev) based harness for
+desktop and browser automation, written in Rust. This crate is the harness itself: the loops that ask Jev and act on its answers, tasks, the planner, and rescues. Its user guide is
+[`docs/crates/tinycomputer-engine/`](../../docs/crates/tinycomputer-engine/README.md).
+
 The agent runtime behind tinycomputer's agentic members. It composes the surface
 adapters with Jev, TypeSafe's decision model:
 

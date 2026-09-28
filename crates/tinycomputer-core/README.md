@@ -1,5 +1,9 @@
 # tinycomputer-core
 
+Part of [tinycomputer](../../README.md), a decision model (Jev) based harness for
+desktop and browser automation, written in Rust. This crate is the shared ground the harness stands on: the screen model, keys, safety rules, and facts. Its user guide is
+[`docs/crates/tinycomputer-core/`](../../docs/crates/tinycomputer-core/README.md).
+
 The shared, engine-free domain of tinycomputer's surfaces. Everything here is
 deterministic and behaves the same for a desktop application and a web page.
 
