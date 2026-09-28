@@ -42,25 +42,38 @@ impl std::fmt::Debug for JevRuntime {
 impl JevRuntime {
     /// Build a runtime from the module's private `jev` configuration.
     ///
+    /// `request.provider` selects the decision model: Jev through one of its
+    /// three routes, `OpenJEV`, or Levanto Sage (see [`JevProvider`]).
+    ///
     /// # Errors
     ///
     /// Returns a `JEV_INVALID_CONFIG` [`DesktopError`] when the provider,
     /// endpoint, or credentials in `request` cannot form a trusted client.
     pub fn configure(request: &JevConfig) -> Result<Self, Box<DesktopError>> {
+        if let Some(endpoint) = &request.endpoint_url
+            && !trusted_endpoint(request.provider, endpoint)
+        {
+            return Err(Box::new(DesktopError::new(
+                "JEV_INVALID_CONFIG",
+                "endpoint is not an approved Jev provider route",
+            )));
+        }
+        if request.provider == JevProvider::Sage {
+            return Self::sage_at(
+                request.api_key(),
+                request.fast.unwrap_or(false),
+                request.endpoint_url.as_deref(),
+            );
+        }
         let mut config = match request.provider {
             JevProvider::TypeSafe => ClientConfig::new(request.api_key()),
             JevProvider::OpenRouter => ClientConfig::openrouter(request.api_key()),
             JevProvider::TinyHumansOpenRouter => {
                 ClientConfig::tinyhumans_openrouter(request.api_key())
             }
+            JevProvider::OpenJev | JevProvider::Sage => ClientConfig::openjev(request.api_key()),
         };
         if let Some(endpoint) = &request.endpoint_url {
-            if !trusted_endpoint(request.provider, endpoint) {
-                return Err(Box::new(DesktopError::new(
-                    "JEV_INVALID_CONFIG",
-                    "endpoint is not an approved Jev provider route",
-                )));
-            }
             config = config.with_endpoint_url(endpoint);
         }
         if let Some(timeout_ms) = request.timeout_ms {
@@ -82,8 +95,10 @@ impl JevRuntime {
                 model: request
                     .model
                     .clone()
-                    .unwrap_or_else(|| "jev-latest".to_owned()),
+                    .filter(|model| !model.trim().is_empty())
+                    .unwrap_or_else(|| request.provider.default_model().to_owned()),
                 endpoint_url: request.endpoint_url.clone(),
+                fast: false,
             },
             pending: Arc::new(Mutex::new(HashMap::new())),
             journal: Journal::from_env(),
@@ -94,27 +109,47 @@ impl JevRuntime {
     /// `api_key`; `fast` scores each choice in one pass rather than one per
     /// option.
     ///
-    /// For measuring Sage behind the same loops (`agentic/sage/`): it is not
-    /// reachable over the bus, and [`JevConfiguration`] names it by its model,
-    /// `levanto-sage`.
+    /// The same runtime [`JevRuntime::configure`] builds for the `sage`
+    /// provider (`agentic/sage/`); [`JevConfiguration`] names it by its
+    /// model, `levanto-sage`.
     ///
     /// # Errors
     ///
     /// Returns a `JEV_INVALID_CONFIG` [`DesktopError`] when `api_key` is
     /// empty.
     pub fn sage(api_key: &str, fast: bool) -> Result<Self, Box<DesktopError>> {
-        let client = tinyinference_decisions::sage::SageClient::new(api_key)
-            .map_err(|error| config_error(&error))?;
+        Self::sage_at(api_key, fast, None)
+    }
+
+    /// The Sage runtime, at `endpoint` when one was approved.
+    fn sage_at(
+        api_key: &str,
+        fast: bool,
+        endpoint: Option<&str>,
+    ) -> Result<Self, Box<DesktopError>> {
+        let client = match endpoint {
+            Some(endpoint) => tinyinference_decisions::sage::SageClient::with_base_url(api_key, endpoint),
+            None => tinyinference_decisions::sage::SageClient::new(api_key),
+        }
+        .map_err(|error| config_error(&error))?;
         Ok(Self {
             client: Arc::new(sage::SageEvaluator::new(client, fast)),
             configuration: JevConfiguration {
-                provider: JevProvider::TypeSafe,
-                model: "levanto-sage".to_owned(),
-                endpoint_url: None,
+                provider: JevProvider::Sage,
+                model: JevProvider::Sage.default_model().to_owned(),
+                endpoint_url: endpoint.map(str::to_owned),
+                fast,
             },
             pending: Arc::new(Mutex::new(HashMap::new())),
             journal: Journal::from_env(),
         })
+    }
+
+    /// The non-secret summary of this runtime's decision model: provider,
+    /// model, endpoint override, and Sage's `fast` flag.
+    #[must_use]
+    pub fn configuration(&self) -> &JevConfiguration {
+        &self.configuration
     }
 
     /// This runtime with the debug journal written under `dir`, whatever
@@ -213,15 +248,28 @@ impl Evaluator for Client {
     }
 }
 
-pub(super) fn trusted_endpoint(provider: JevProvider, endpoint: &str) -> bool {
-    let approved = match provider {
+/// The one endpoint each decision provider may be configured at: its own
+/// published route. `OpenJEV` and Sage have no `TinyHumans` proxy route in
+/// `tinyinference-decisions`, so none is approved for them.
+#[must_use]
+pub const fn approved_endpoint(provider: JevProvider) -> &'static str {
+    match provider {
         JevProvider::TypeSafe => "https://api.typesafe.ai/v1/systemone",
         JevProvider::OpenRouter => "https://openrouter.ai/api/alpha/decisions",
         JevProvider::TinyHumansOpenRouter => {
             "https://api.tinyhumans.ai/agent-integrations/openrouter/systemone"
         }
-    };
-    if endpoint == approved {
+        JevProvider::OpenJev => "https://api.openjev.sh/v1/systemone",
+        JevProvider::Sage => "https://sage.levanto.ai/",
+    }
+}
+
+pub(super) fn trusted_endpoint(provider: JevProvider, endpoint: &str) -> bool {
+    let approved = approved_endpoint(provider);
+    // Sage's endpoint is its API root, so its trailing slash is optional.
+    if endpoint == approved
+        || (provider == JevProvider::Sage && endpoint == approved.trim_end_matches('/'))
+    {
         return true;
     }
     #[cfg(test)]
