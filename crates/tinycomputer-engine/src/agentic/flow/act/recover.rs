@@ -2,36 +2,26 @@
 //! mistaken press, backtracking into the next-best candidate, and noticing
 //! a screen that oscillates.
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    time::Instant,
-};
-
 use serde_json::json;
-use tinycomputer_bus::{FlowLoop, JevOperation, StepOutcome};
-use tinyinference_decisions::{Answer, EvaluationRequest};
+use tinycomputer_bus::FlowLoop;
 
 use crate::agentic::flow::{
-    Ended, FlowRun, Halt, StepLog,
-    ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
-    attention::Cleared,
+    FlowRun, Halt, StepLog,
+    ask::{self, Questions, probability},
     backend::AgentBackend,
     checkpoint::{Checkpoint, Reversibility, classify},
     denoise,
-    escalate::Belief,
-    expect::{self, Effect, Outcome},
-    ground::{AGREED, Grounded, Opening},
-    memory::{learn, remember},
-    view::{
-        Candidate, Screen, change_note, element_kind, fingerprint, is_destructive, label, signature,
-    },
-    wide::{Dismissal, Prepared},
+    expect::{self, Outcome},
+    ground::{AGREED, Grounded},
+    view::{Candidate, Screen, fingerprint, label, signature},
 };
 
-use super::{DONE, ALREADY_DONE, LEANS_DONE, BLOCKED, REGRESSION, UNHELPFUL, SHORTCUT_FLOOR, STALL_TURNS, MAX_IDLE_WAITS, MAX_OBSTACLES, MAX_UNDOS, MISTAKE, CLEAR_MISTAKE, MAX_BRANCHES, SCREEN_VIEW, CHANGES_VIEW, MOVES, SHORTCUTS, LastAction, Expected, DoState, Move, creates_new, DISMISS_VERBS, OVERLAYS, words, closed_the_overlay, covered, threshold, finish_floor, finished, activate_purpose, judge::{Judgement, Speculated}};
+use super::{
+    BLOCKED, CLEAR_MISTAKE, DoState, Expected, MAX_BRANCHES, MAX_OBSTACLES, MAX_UNDOS, MISTAKE,
+    REGRESSION, UNHELPFUL, judge::Judgement,
+};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Dismisses an obstacle or undoes a regression; `true` when it acted.
     pub(super) async fn recover(
         &mut self,
@@ -191,7 +181,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Checks the last press's expected effect against `screen`.
-    pub(super) fn check_expectation(&self, log: &mut StepLog, state: &mut DoState, screen: &Screen) {
+    pub(super) fn check_expectation(
+        &self,
+        log: &mut StepLog,
+        state: &mut DoState,
+        screen: &Screen,
+    ) {
         let Some(last) = state.last.as_mut() else {
             return;
         };
@@ -219,7 +214,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Bans both presses that took the screen back to where it was two
     /// turns ago: pressed in turn, they undo each other.
-    pub(super) fn note_oscillation(&mut self, log: &mut StepLog, state: &mut DoState, screen: &Screen) {
+    pub(super) fn note_oscillation(
+        &mut self,
+        log: &mut StepLog,
+        state: &mut DoState,
+        screen: &Screen,
+    ) {
         if !self.deliberates(FlowLoop::Denoise) {
             return;
         }
@@ -330,5 +330,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
         }))
     }
-
 }

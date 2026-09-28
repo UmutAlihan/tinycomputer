@@ -1,36 +1,23 @@
 //! The turn loop of a `do` step: judge the screen, recover from a bad
 //! turn, make a move, and note what changed.
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    time::Instant,
-};
+use std::time::Instant;
 
 use serde_json::json;
-use tinycomputer_bus::{FlowLoop, JevOperation, StepOutcome};
-use tinyinference_decisions::{Answer, EvaluationRequest};
+use tinycomputer_bus::StepOutcome;
 
 use crate::agentic::flow::{
     Ended, FlowRun, Halt, StepLog,
-    ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
-    attention::Cleared,
     backend::AgentBackend,
-    checkpoint::{Checkpoint, Reversibility, classify},
-    denoise,
-    escalate::Belief,
-    expect::{self, Effect, Outcome},
-    ground::{AGREED, Grounded, Opening},
-    memory::{learn, remember},
-    view::{
-        Candidate, Screen, change_note, element_kind, fingerprint, is_destructive, label, signature,
-    },
-    wide::{Dismissal, Prepared},
+    view::{Screen, change_note, fingerprint, label, signature},
 };
 
-use super::{DONE, ALREADY_DONE, LEANS_DONE, BLOCKED, REGRESSION, UNHELPFUL, SHORTCUT_FLOOR, STALL_TURNS, MAX_IDLE_WAITS, MAX_OBSTACLES, MAX_UNDOS, MISTAKE, CLEAR_MISTAKE, MAX_BRANCHES, SCREEN_VIEW, CHANGES_VIEW, MOVES, SHORTCUTS, LastAction, Expected, DoState, Move, creates_new, DISMISS_VERBS, OVERLAYS, words, closed_the_overlay, covered, threshold, finish_floor, finished, activate_purpose, judge::{Judgement, Speculated}};
+use super::{
+    DONE, DoState, LastAction, MAX_IDLE_WAITS, Move, STALL_TURNS, closed_the_overlay, creates_new,
+    finish_floor, finished,
+};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Runs the `do` loop for `intent` for at most `max_turns` turns.
     pub(in crate::agentic::flow) async fn accomplish(
         &mut self,
@@ -219,5 +206,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         Ok(())
     }
-
 }

@@ -1,36 +1,30 @@
 //! Judging a `do` turn: whether the step is done, how far along it is,
 //! whether something is in the way, and which move to make next.
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    time::Instant,
-};
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::json;
-use tinycomputer_bus::{FlowLoop, JevOperation, StepOutcome};
+use tinycomputer_bus::FlowLoop;
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use crate::agentic::flow::{
-    Ended, FlowRun, Halt, StepLog,
+    FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
-    attention::Cleared,
     backend::AgentBackend,
-    checkpoint::{Checkpoint, Reversibility, classify},
     denoise,
     escalate::Belief,
-    expect::{self, Effect, Outcome},
-    ground::{AGREED, Grounded, Opening},
-    memory::{learn, remember},
-    view::{
-        Candidate, Screen, change_note, element_kind, fingerprint, is_destructive, label, signature,
-    },
+    expect::Outcome,
+    ground::Opening,
+    view::{Screen, change_note, fingerprint, label},
     wide::{Dismissal, Prepared},
 };
 
-use super::{DONE, ALREADY_DONE, LEANS_DONE, BLOCKED, REGRESSION, UNHELPFUL, SHORTCUT_FLOOR, STALL_TURNS, MAX_IDLE_WAITS, MAX_OBSTACLES, MAX_UNDOS, MISTAKE, CLEAR_MISTAKE, MAX_BRANCHES, SCREEN_VIEW, CHANGES_VIEW, MOVES, SHORTCUTS, LastAction, Expected, DoState, Move, creates_new, DISMISS_VERBS, OVERLAYS, words, closed_the_overlay, covered, threshold, finish_floor, finished, activate_purpose};
+use super::{
+    CHANGES_VIEW, DoState, MOVES, SCREEN_VIEW, SHORTCUT_FLOOR, SHORTCUTS, activate_purpose,
+    threshold,
+};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Judges one turn's screen the way the strategy asks: one wide request,
     /// or a narrow judge — on the first turn with grounding's first round
     /// beside it. After a press whose effect was missed it also asks
@@ -282,7 +276,6 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         questions
     }
-
 }
 
 /// One turn's reading of the screen.

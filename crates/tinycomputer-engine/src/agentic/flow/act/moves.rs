@@ -1,36 +1,22 @@
 //! Making a `do` move: pressing a grounded control, a shortcut, a scroll,
 //! or a wait, and clearing an obstacle out of the way.
 
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    time::Instant,
-};
+use std::collections::BTreeSet;
 
 use serde_json::json;
-use tinycomputer_bus::{FlowLoop, JevOperation, StepOutcome};
-use tinyinference_decisions::{Answer, EvaluationRequest};
+use tinycomputer_bus::{JevOperation, StepOutcome};
 
 use crate::agentic::flow::{
     Ended, FlowRun, Halt, StepLog,
-    ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
-    attention::Cleared,
+    ask::{self, Questions, chosen},
     backend::AgentBackend,
-    checkpoint::{Checkpoint, Reversibility, classify},
-    denoise,
-    escalate::Belief,
-    expect::{self, Effect, Outcome},
-    ground::{AGREED, Grounded, Opening},
     memory::{learn, remember},
-    view::{
-        Candidate, Screen, change_note, element_kind, fingerprint, is_destructive, label, signature,
-    },
-    wide::{Dismissal, Prepared},
+    view::{Candidate, Screen, element_kind, is_destructive, label, signature},
 };
 
-use super::{DONE, ALREADY_DONE, LEANS_DONE, BLOCKED, REGRESSION, UNHELPFUL, SHORTCUT_FLOOR, STALL_TURNS, MAX_IDLE_WAITS, MAX_OBSTACLES, MAX_UNDOS, MISTAKE, CLEAR_MISTAKE, MAX_BRANCHES, SCREEN_VIEW, CHANGES_VIEW, MOVES, SHORTCUTS, LastAction, Expected, DoState, Move, creates_new, DISMISS_VERBS, OVERLAYS, words, closed_the_overlay, covered, threshold, finish_floor, finished, activate_purpose, judge::{Judgement, Speculated}};
+use super::{Expected, Move, activate_purpose, covered, creates_new, judge::Judgement};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Carries out the move Jev chose.
     pub(super) async fn make_move(
         &mut self,
@@ -117,7 +103,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// The elements a move of `capability` may target: not banned this
     /// step, and not of a kind that refused text.
-    pub(super) fn pool(&self, screen: &Screen, capability: &str, banned: &BTreeSet<String>) -> Vec<Candidate> {
+    pub(super) fn pool(
+        &self,
+        screen: &Screen,
+        capability: &str,
+        banned: &BTreeSet<String>,
+    ) -> Vec<Candidate> {
         screen
             .candidates
             .iter()
@@ -265,7 +256,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let mut options = keys
             .iter()
             .cloned()
-            .zip(pool.iter().map(|node| crate::agentic::flow::view::describe(node, false)))
+            .zip(
+                pool.iter()
+                    .map(|node| crate::agentic::flow::view::describe(node, false)),
+            )
             .collect::<Vec<_>>();
         options.push(("escape".to_owned(), json!("Press Escape to close it.")));
         let answers = self
@@ -311,5 +305,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         Ok(())
     }
-
 }
