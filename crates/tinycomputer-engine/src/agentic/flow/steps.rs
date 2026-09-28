@@ -164,6 +164,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Judges one condition on the current screen.
+    ///
+    /// A deliberating run settles a judgement near [`DONE`] on its evidence
+    /// (`escalate::settle_belief`), at the deep level also asking it over
+    /// the screen alone, without the history that can lead it.
     pub(super) async fn holds(
         &mut self,
         log: &mut StepLog,
@@ -171,24 +175,37 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ) -> Result<f64, Halt> {
         log.used(FlowLoop::Completion);
         let screen = self.look().await?;
-        let answers = self
-            .ask(
-                log,
-                ask::request(
-                    self.model(),
-                    self.state(&screen, condition_text),
-                    Questions::default()
-                        .with("holds", condition(condition_text))
-                        .with("negated", ask::negated(condition_text))
-                        .with("coverage", ask::coverage(condition_text)),
-                ),
-            )
-            .await?;
-        let held = ask::combined(
-            ask::calibrated(&answers, "holds", "negated"),
-            ask::top_level(&answers, "coverage"),
-        )
-        .unwrap_or_default();
+        let questions = || {
+            Questions::default()
+                .with("holds", condition(condition_text))
+                .with("negated", ask::negated(condition_text))
+        };
+        let request = ask::request(
+            self.model(),
+            self.state(&screen, condition_text),
+            questions().with("coverage", ask::coverage(condition_text)),
+        );
+        let mut answers = self.ask(log, request.clone()).await?;
+        let belief = Belief {
+            site: "holds",
+            yes: "holds",
+            no: "negated",
+            top: Some("coverage"),
+            threshold: DONE,
+        };
+        let views = if self.deep() {
+            vec![ask::request(
+                self.model(),
+                ask::state(&screen, condition_text, &[], self.include_values),
+                questions(),
+            )]
+        } else {
+            Vec::new()
+        };
+        let held = self
+            .settle_belief(log, belief, &request, &mut answers, views)
+            .await?
+            .unwrap_or_default();
         log.confidence = Some(held);
         Ok(held)
     }

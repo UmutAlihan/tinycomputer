@@ -21,7 +21,7 @@ use std::{
 
 use serde_json::{Value, json};
 use tinycomputer_bus::{
-    DesktopResponse, Flow, FlowLoop, FlowRunResult, FlowStopReason, GroundingHint, JevOperation,
+    Deliberation, DesktopResponse, Flow, FlowLoop, FlowRunResult, FlowStopReason, GroundingHint, JevOperation,
     RunFlowRequest, StepOutcome, ValidateFlowRequest,
 };
 use tinyinference_decisions::{
@@ -1278,10 +1278,12 @@ async fn one_crowded_region_falls_back_to_a_knockout() {
 
 #[tokio::test]
 async fn a_low_confidence_choice_is_used_only_when_the_re_ask_agrees() {
+    // The legacy re-ask and corroboration path: a deliberating run settles
+    // a low pick with its evidence ladder instead (`test/deliberation.rs`).
     let agreed = run_with(
         App::default(),
         json!({"app": "Mail", "steps": ["start a new email message"]}),
-        |_| {},
+        |request| request.deliberation = Deliberation::Off,
         |id, question, _| match id {
             "move" => Some(pick(question, "activate", 0.9)),
             "target" => Some(pick(question, "New Message", 0.5)),
@@ -1296,7 +1298,10 @@ async fn a_low_confidence_choice_is_used_only_when_the_re_ask_agrees() {
     let disagreed = run_with(
         App::default(),
         json!({"app": "Mail", "steps": ["start a new email message"]}),
-        |request| request.max_actions = 3,
+        |request| {
+            request.max_actions = 3;
+            request.deliberation = Deliberation::Off;
+        },
         |id, question, _| match id {
             "move" => Some(pick(question, "activate", 0.9)),
             "target" => Some(pick(question, "New Message", 0.5)),
