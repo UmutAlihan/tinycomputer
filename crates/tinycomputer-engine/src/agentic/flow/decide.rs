@@ -132,7 +132,11 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 
     /// `request` as it leaves for Jev: with the page-kind question on a web
     /// page, briefed, masked, and fitted to size.
-    pub(super) fn outgoing(&self, log: &mut StepLog, mut request: EvaluationRequest) -> EvaluationRequest {
+    pub(super) fn outgoing(
+        &self,
+        log: &mut StepLog,
+        mut request: EvaluationRequest,
+    ) -> EvaluationRequest {
         if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
             log.used(FlowLoop::PageKind);
             request
@@ -183,7 +187,6 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             }
         }
     }
-
 }
 
 /// The id of the page-kind question a request on a web page carries.

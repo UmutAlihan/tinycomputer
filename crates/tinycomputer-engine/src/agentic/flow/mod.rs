@@ -74,8 +74,8 @@ use std::{
 
 use serde_json::json;
 use tinycomputer_bus::{
-    Deliberation, DesktopError, DesktopResponse, FLOW_GUIDE, FlowActionRecord, FlowBrief,
-    FlowLoop, FlowStopReason, FlowStrategy, GroundingHint, JevExchange, JevMetrics, JevTarget,
+    Deliberation, DesktopError, DesktopResponse, FLOW_GUIDE, FlowActionRecord, FlowBrief, FlowLoop,
+    FlowStopReason, FlowStrategy, GroundingHint, JevExchange, JevMetrics, JevTarget,
     RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
 use tinycomputer_core::Facts;

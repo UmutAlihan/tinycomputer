@@ -108,7 +108,6 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             self.so_far.remove(0);
         }
     }
-
 }
 
 /// The yes/no questions that are about choosing, not judging the screen:
