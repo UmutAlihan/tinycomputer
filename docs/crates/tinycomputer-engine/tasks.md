@@ -118,6 +118,13 @@ it can just try one of the calls the last view offered.
 
 ## Pausing and resuming
 
+Every run of a task, whichever kind of pause split it from the last one,
+starts with what earlier runs already saved: `run_request` (in
+`task/mod.rs`) fills `RunFlowRequest.collected` from the task's own state
+before each new run, so a step such as "open the next chat not yet read"
+still knows what earlier runs already read. See [output.md](output.md)
+for the whole run-memory picture, including what the rescuer is shown.
+
 Three kinds of pause exist, and each resumes differently:
 
 - **`NeedsInput`.** `ContinueTask.inputs` merges into the task's facts, the
