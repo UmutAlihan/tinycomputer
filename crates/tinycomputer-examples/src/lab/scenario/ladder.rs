@@ -1,12 +1,6 @@
 //! The scenario ladder itself: every lab task, easiest first.
 
-use std::process::Command;
-
-use serde_json::Value;
-use tinycomputer_bus::{FlowRunResult, SnapshotRequest, names};
-
 use super::{Check, Reset, Scenario};
-use crate::lab::host::{Host, LabError};
 
 /// Every scenario, easiest first.
 pub const SCENARIOS: &[Scenario] = &[

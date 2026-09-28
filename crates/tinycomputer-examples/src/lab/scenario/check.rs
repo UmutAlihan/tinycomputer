@@ -1,7 +1,5 @@
 //! Checking a run against the application's real state.
 
-use std::process::Command;
-
 use serde_json::Value;
 use tinycomputer_bus::{FlowRunResult, SnapshotRequest, names};
 
@@ -139,6 +137,19 @@ fn appearance_read_verdict(flow: Option<&FlowRunResult>) -> Verdict {
         passed: named.len() == 1 && (named[0] == expected || named[0] == "auto"),
         detail: format!("read {read:?}; the system reports {expected}"),
     }
+}
+
+async fn snapshot_text(host: &Host, app: &str) -> Result<String, LabError> {
+    let reply = host
+        .call(
+            names::methods::SNAPSHOT,
+            serde_json::to_value(SnapshotRequest {
+                app: Some(app.to_owned()),
+                ..SnapshotRequest::default()
+            })?,
+        )
+        .await?;
+    Ok(reply.data.map(|data| data.to_string()).unwrap_or_default())
 }
 
 fn contains(observed: &str, expected: &str) -> Verdict {

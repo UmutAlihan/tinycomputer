@@ -8,13 +8,6 @@
 //! rather than trusting the run's own report. Snapshot checks need no
 //! Automation permission beyond what the lab already uses.
 
-use std::process::Command;
-
-use serde_json::Value;
-use tinycomputer_bus::{FlowRunResult, SnapshotRequest, names};
-
-use super::host::{Host, LabError};
-
 mod check;
 mod ladder;
 mod prepare;

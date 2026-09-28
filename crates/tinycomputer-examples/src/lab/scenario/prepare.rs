@@ -3,8 +3,7 @@
 
 use std::process::Command;
 
-use serde_json::Value;
-use tinycomputer_bus::{FlowRunResult, SnapshotRequest, names};
+use tinycomputer_bus::names;
 
 use super::{Reset, Scenario};
 use crate::lab::host::{Host, LabError};
@@ -55,17 +54,4 @@ pub fn osascript(script: &str) -> String {
         Ok(output) => format!("error: {}", String::from_utf8_lossy(&output.stderr).trim()),
         Err(error) => format!("error: {error}"),
     }
-}
-
-async fn snapshot_text(host: &Host, app: &str) -> Result<String, LabError> {
-    let reply = host
-        .call(
-            names::methods::SNAPSHOT,
-            serde_json::to_value(SnapshotRequest {
-                app: Some(app.to_owned()),
-                ..SnapshotRequest::default()
-            })?,
-        )
-        .await?;
-    Ok(reply.data.map(|data| data.to_string()).unwrap_or_default())
 }
