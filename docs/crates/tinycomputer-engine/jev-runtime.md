@@ -9,8 +9,8 @@ Jev's answer.
 
 `JevRuntime`, in `src/agentic/mod.rs`, is the one place in this crate that
 talks to Jev. The doc comment on the crate calls it "the one door to Jev",
-and the code backs that up: every other module — the flow runtime, the task
-controller, `RunGoal`, `ResolveIntent` — asks Jev by calling
+and the code backs that up: every other module, the flow runtime, the task
+controller, `RunGoal`, `ResolveIntent`, asks Jev by calling
 `JevRuntime::evaluate` (indirectly, through the loops built on it), never by
 holding a client of its own. That matters for three reasons: the budget is
 charged in one place, secrets are masked in one place, and the debug journal
@@ -49,9 +49,9 @@ journal handle. The module clones it per call rather than rebuilding it.
 Three providers are recognised, each with one approved endpoint that
 `JevRuntime::configure` checks `endpoint_url` against before it will use it:
 
-- **`TypeSafe`** — TypeSafe's own System One API, the default.
-- **`OpenRouter`** — OpenRouter's Jev-compatible decisions API.
-- **`TinyHumansOpenRouter`** — Tiny Humans' authenticated OpenRouter proxy,
+- **`TypeSafe`**, TypeSafe's own System One API, the default.
+- **`OpenRouter`**, OpenRouter's Jev-compatible decisions API.
+- **`TinyHumansOpenRouter`**, Tiny Humans' authenticated OpenRouter proxy,
   the only one that takes an `sdk_name`.
 
 Passing an `endpoint_url` that is not the provider's own approved route
@@ -61,7 +61,7 @@ accepted, so a scripted Jev server can stand in for the real one.
 
 ### Why a Jev call can fail
 
-`JevRuntime::configure` itself can fail — a bad key, an unapproved endpoint —
+`JevRuntime::configure` itself can fail, a bad key, an unapproved endpoint —
 before anything runs. Once running, every Jev call funnels its failure
 through the same small set of error codes:
 
@@ -76,16 +76,16 @@ through the same small set of error codes:
 ## The evaluate call
 
 `JevRuntime::evaluate` takes an optional step label (used only for the
-journal) and an `EvaluationRequest` — Jev's own request shape, from
-`tinyinference_decisions` — and returns either an `EvaluationResult` or an
+journal) and an `EvaluationRequest`, Jev's own request shape, from
+`tinyinference_decisions`, and returns either an `EvaluationResult` or an
 `EvaluationFailure`. Every caller in this crate builds that request the same
 way it builds any other: state (the goal, the screen's app and window, recent
 actions), and one or more `Question`s, each a closed choice with named
 criteria.
 
-The function itself is short, because most of the interesting work — turning
+The function itself is short, because most of the interesting work, turning
 a screen into candidates, turning candidates into a question, gating the
-answer against a confidence threshold — lives in the modules that call it
+answer against a confidence threshold, lives in the modules that call it
 (`agentic::screen`, `agentic::policy`, and, for whole flows, `agentic::flow`;
 see [goals-and-intents.md](goals-and-intents.md) for the two loops that live
 directly in `agentic/mod.rs`, and the flow module's own docs for the rest).
@@ -113,11 +113,11 @@ always logs.
 ## Run identity and the journal
 
 A `JevRuntime` carries a journal handle (see [journal.md](journal.md)) that
-starts a new run each time one of the top-level entry points — `resolve_intent`,
-`run_goal`, `run_flow` — begins. `JevRuntime::begin_run(kind, label)` opens (or
+starts a new run each time one of the top-level entry points, `resolve_intent`,
+`run_goal`, `run_flow`, begins. `JevRuntime::begin_run(kind, label)` opens (or
 continues) a run in the journal and returns a new runtime pointed at it;
-`JevRuntime::journaled_as(run_id)` lets a caller — the task controller, which
-runs one task across several separate flow runs — keep every run of one task
+`JevRuntime::journaled_as(run_id)` lets a caller, the task controller, which
+runs one task across several separate flow runs, keep every run of one task
 in the same journal file, by giving them all the same run id.
 
 `JevRuntime::with_journal(dir)` switches the journal on unconditionally,
@@ -140,10 +140,10 @@ confirmation id.
 
 ## Source
 
-- `crates/tinycomputer-engine/src/agentic/mod.rs` — `JevRuntime`, `evaluate`,
+- `crates/tinycomputer-engine/src/agentic/mod.rs`, `JevRuntime`, `evaluate`,
   provider configuration, confirmation handles.
-- `crates/tinycomputer-bus/src/agentic/` — `JevConfig`, `JevProvider`, and the
+- `crates/tinycomputer-bus/src/agentic/`, `JevConfig`, `JevProvider`, and the
   other payload types that cross the bus.
-- [`docs/technical/jev-harness.md`](../../technical/jev-harness.md) — the
+- [`docs/technical/jev-harness.md`](../../technical/jev-harness.md), the
   full Jev stack, one decision end to end, and the levers that change its
   latency.

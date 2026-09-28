@@ -33,11 +33,11 @@ search field"), `resolve_intent`:
 `ResolveIntentRequest` also takes `text` (what to type, if the operation
 needs it), `root` (a container ref to narrow observation to, rather than the
 whole window), and `include_values` (whether field values may be shown to
-Jev at all — off by default, since a field's contents can be personal).
+Jev at all, off by default, since a field's contents can be personal).
 
 One shortcut lives ahead of the Jev call: `visible_completion` checks a
 narrow class of already-satisfied intents directly from the screen —
-currently, "is something playing" — without spending a Jev call to confirm
+currently, "is something playing", without spending a Jev call to confirm
 what is already visible. This is a small, deliberately limited optimization,
 not a general pattern; everything else always asks.
 
@@ -53,7 +53,7 @@ pub async fn run_goal(
 
 `RunGoalRequest` describes a bounded loop: an application, a goal in plain
 words ("the playlist is playing"), a budget (`max_steps`, `max_elapsed_ms`,
-`max_model_calls`), and optional scoping — `window` / `window_id` to stay on
+`max_model_calls`), and optional scoping, `window` / `window_id` to stay on
 one window, `allowed_operations` and `allowed_targets` to restrict what the
 loop may do, and `text` values consumed in order by text-entering steps.
 
@@ -97,7 +97,7 @@ The gate (`agentic::policy::gate_with_evidence`) is the same threshold logic
 - `DONE` or `BLOCKED` need confidence at or above 0.70 (`ACT`) to be trusted;
   below that, the loop abstains rather than declaring victory or giving up on
   a guess.
-- Below 0.55 (`FLOOR`) confidence, the loop abstains outright — unless the
+- Below 0.55 (`FLOOR`) confidence, the loop abstains outright, unless the
   target's own name is an exact match for a phrase in the goal (an "exact
   named match"), which is trusted down to 0.45.
 - At or above the destructive threshold (0.50), the decision becomes
@@ -110,7 +110,7 @@ The gate (`agentic::policy::gate_with_evidence`) is the same threshold logic
 Destructiveness itself comes from two sources, taken as the higher of the
 two: Jev's own answer to a yes/no "would this be hard to undo" question, and
 a small deterministic word list (`deterministic_destructive` in
-`policy.rs`) — "delete", "send", "purchase", "buy", "pay", "submit",
+`policy.rs`), "delete", "send", "purchase", "buy", "pay", "submit",
 "confirm", "overwrite", "quit without saving", "empty trash", "sign out" —
 checked against the goal text and the target's own label. The word list
 exists so that an action that is obviously irreversible is never left to a
@@ -119,8 +119,8 @@ model's judgment call alone.
 ### Confirmation handles
 
 When the gate returns `ConfirmationRequired`, `run_goal` does not act. It
-stores the pending decision — the screen it was taken on, the exact target,
-how far the loop had already run — in the runtime's confirmation table (see
+stores the pending decision, the screen it was taken on, the exact target,
+how far the loop had already run, in the runtime's confirmation table (see
 [jev-runtime.md](jev-runtime.md)) and returns a `confirmation_id` instead of
 a result. The caller decides, then calls `run_goal` again with
 `RunGoalRequest.continuation` set to a `GoalContinuation { id, approve }`:
@@ -133,7 +133,7 @@ RunGoalRequest {
 ```
 
 Approving re-observes the screen first and checks the exact target is still
-there, unchanged, with the same available actions, before acting — a page
+there, unchanged, with the same available actions, before acting, a page
 that changed underneath the confirmation fails closed with `StaleTarget`
 rather than clicking whatever is now in that position. Declining returns
 `Cancelled` without touching the desktop. Either way the handle is consumed:
@@ -153,7 +153,7 @@ still suit a caller that:
 - wants one action or one bounded loop, not a multi-step plan;
 - is willing to hold the confirmation-id round trip itself;
 - does not need pausing for missing values, payment checkpoints, or a
-  rescuer — those only exist in the task controller (see
+  rescuer, those only exist in the task controller (see
   [tasks.md](tasks.md)).
 
 Most new work should reach for `StartTask` and a flow instead: it gets
@@ -163,9 +163,9 @@ state machine and just needs one desktop loop inside it.
 
 ## Source
 
-- `crates/tinycomputer-engine/src/agentic/mod.rs` — `resolve_intent`,
+- `crates/tinycomputer-engine/src/agentic/mod.rs`, `resolve_intent`,
   `run_goal`, `continue_goal`, the confirmation table.
-- `crates/tinycomputer-engine/src/agentic/policy.rs` — the gate, the action
+- `crates/tinycomputer-engine/src/agentic/policy.rs`, the gate, the action
   space, and the destructive word list.
-- `crates/tinycomputer-bus/src/agentic/` — `ResolveIntentRequest`,
+- `crates/tinycomputer-bus/src/agentic/`, `ResolveIntentRequest`,
   `RunGoalRequest`, `GoalContinuation`, `JevRunResult`, `JevStopReason`.

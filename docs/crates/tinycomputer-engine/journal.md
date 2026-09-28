@@ -10,8 +10,8 @@ does.** Every write is best effort; a write that fails is silently dropped
 rather than failing the run it is describing.
 
 This page covers the journal from inside this crate. For how to actually
-read one afterwards — the CLI tool, what a summary looks like, how to spot
-where time went — see [`docs/technical/jev-journal.md`](../../technical/jev-journal.md).
+read one afterwards, the CLI tool, what a summary looks like, how to spot
+where time went, see [`docs/technical/jev-journal.md`](../../technical/jev-journal.md).
 
 ## Turning it on
 
@@ -34,9 +34,9 @@ TINYCOMPUTER_JEV_JOURNAL=1 scripts/lab run <scenario> --mode flow
 ## Where a run's journal lives
 
 Each run gets its own directory, `<dir>/<run id>/`, holding one file:
-`journal.jsonl` (`JOURNAL_FILE`) — JSON Lines, one event per line. A run id
+`journal.jsonl` (`JOURNAL_FILE`), JSON Lines, one event per line. A run id
 sorts by start time and is safe as a single path segment:
-`20260928T101530Z-flow-a1b2c3` — a compact UTC timestamp, the run's kind
+`20260928T101530Z-flow-a1b2c3`, a compact UTC timestamp, the run's kind
 (`flow`, `goal`, `intent`, `goal-continuation`), and three random bytes so
 two runs started in the same second never collide.
 
@@ -55,7 +55,7 @@ the first thing to touch the journal.
 
 The task controller uses a different entry point,
 `JevRuntime::journaled_as(run_id)`, so that every flow run belonging to one
-*task* — the first run, and every rescue's or approval's continuation of it
+*task*, the first run, and every rescue's or approval's continuation of it
 — writes to the same journal file, named after the task rather than after
 whichever run happened to start it. Reading one task's whole story back
 later means reading one file, not stitching several together.
@@ -64,21 +64,21 @@ later means reading one file, not stitching several together.
 
 Every event carries `event` (its kind), `seq` (a per-run sequence number),
 `at` (a wall-clock RFC 3339 timestamp), and `elapsed_ms` (time since the
-run's journal was opened) — written by `Journal::record`, which every event
+run's journal was opened), written by `Journal::record`, which every event
 kind goes through. Two kinds matter most:
 
-- **`run`** — written once, when a run begins: its `kind`, a human `label`
+- **`run`**, written once, when a run begins: its `kind`, a human `label`
   (the goal or intent text, or the task's), the Jev `model` in use, and the
   process id.
-- **`exchange`** — written for every single Jev call, win or lose: the
+- **`exchange`**, written for every single Jev call, win or lose: the
   optional `step` label, which `questions` were asked, the request's byte
   size, the full `request` sent, and either `{"ok": true, latency_ms,
   attempts, request_id, model, input_tokens, output_tokens, answers}` or
   `{"ok": false, latency_ms, attempts, error}`.
 
-The exact field list for every event kind — including the ones the flow
+The exact field list for every event kind, including the ones the flow
 runtime and its grounding, voting, and deliberation logic add on top of
-these two — is catalogued in
+these two, is catalogued in
 [`docs/technical/jev-journal.md`](../../technical/jev-journal.md); this page
 only covers the two written from inside `JevRuntime` itself.
 
@@ -87,18 +87,18 @@ only covers the two written from inside `JevRuntime` itself.
 A journal holds exactly what Jev was shown: screen text, element names, and
 the caller's own goal or task text. Facts are masked before a request is
 ever built (see [tasks.md](tasks.md#facts-and-secrets)), so a secret value
-is not in a journal — but ordinary personal data visible on screen can be.
+is not in a journal, but ordinary personal data visible on screen can be.
 `.jev-journal/`, the default directory, is git-ignored for exactly that
 reason, and a journal, a trace, or a transcript should never be pasted into
 a commit, an issue, or a pull request.
 
 ## Source
 
-- `crates/tinycomputer-engine/src/agentic/journal/mod.rs` — `Journal`,
+- `crates/tinycomputer-engine/src/agentic/journal/mod.rs`, `Journal`,
   `RunJournal`, `record`, `exchange`, `fresh_id`, `sanitize`.
-- `crates/tinycomputer-engine/src/agentic/mod.rs` — `JevRuntime::begin_run`,
+- `crates/tinycomputer-engine/src/agentic/mod.rs`, `JevRuntime::begin_run`,
   `with_journal`, `journaled_as`, `journal_dir`.
-- [`docs/technical/jev-journal.md`](../../technical/jev-journal.md) — every
+- [`docs/technical/jev-journal.md`](../../technical/jev-journal.md), every
   event kind's fields, the CLI reader, and how to read a summary.
-- [watching-a-run.md](../../watching-a-run.md) — the less technical version
+- [watching-a-run.md](../../watching-a-run.md), the less technical version
   of this page.

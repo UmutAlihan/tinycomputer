@@ -1,13 +1,13 @@
 # The workspace
 
 A flow can open a desktop application, then browse to a web page, then
-switch back to the application — a booking confirmation emailed and then
+switch back to the application, a booking confirmation emailed and then
 checked in a Mail app, say. `Workspace<D, W>`, in
 `crates/tinycomputer-engine/src/workspace/mod.rs`, is what makes that
 possible without every caller of the flow runtime having to track which
 surface a given step belongs to. It joins a desktop surface and a browser
 surface into one thing that implements `tinycomputer_core::surface::Surface`
-— the same trait either side implements alone — so the flow runtime, and
+— the same trait either side implements alone, so the flow runtime, and
 everything above it, can just call one `Surface` and let the workspace route
 each call correctly.
 
@@ -19,8 +19,8 @@ A call that names an application routes by that name (`Workspace::side_for`):
   `http://` or `https://` goes to the browser;
 - anything else goes to the desktop.
 
-A call that does not name an application — acting on a candidate returned
-by an earlier observation, or reading its value back — goes to whichever
+A call that does not name an application, acting on a candidate returned
+by an earlier observation, or reading its value back, goes to whichever
 side is *active*: the side that was last successfully observed or opened.
 That is what lets a flow step like "click Continue" work without repeating
 which surface it is on: the candidate it is acting on came from that side's
@@ -35,7 +35,7 @@ pub struct Workspace<D, W> {
 }
 ```
 
-`active` flips only after a call on that side actually succeeds — a failed
+`active` flips only after a call on that side actually succeeds, a failed
 `navigate` or `launch` never makes the browser active, so a call that names
 no application is never accidentally routed to a side that just failed to
 open.
@@ -63,7 +63,7 @@ fn no_desktop(command: &str) -> DesktopResponse {
 ```
 
 The initial active side defaults to whichever one is actually present —
-desktop first, if both are available — so a browser-only workspace never
+desktop first, if both are available, so a browser-only workspace never
 starts pointed at a side it was never given.
 
 ## What routes where
@@ -73,7 +73,7 @@ Every method on `Surface` is handled, but not all the same way:
 | Method | Routing |
 |---|---|
 | `observe` | By the named application; whichever side answers becomes active and is remembered as `last_app`. |
-| `execute` | By the *active* side — it never takes an application name, since it acts on a candidate the active side's own observation produced. |
+| `execute` | By the *active* side, it never takes an application name, since it acts on a candidate the active side's own observation produced. |
 | `read_value` | Same as `execute`: whichever side is active. |
 | `paste`, `press` | By the named application, like `observe`. |
 | `launch` | By the named application; success makes that side active. |
@@ -84,7 +84,7 @@ Every method on `Surface` is handled, but not all the same way:
 ## Reading what is on screen without acting
 
 `Workspace::visible_text()` returns the visible text of whatever was last
-observed or opened — its context lines, every control's label, and what
+observed or opened, its context lines, every control's label, and what
 each field currently holds, rendered as `label = "value"` and cut to 80
 characters per field. This is what the task controller hands the rescuer
 (see [rescue.md](rescue.md)) when a step fails, and what `human_wall`
@@ -95,11 +95,11 @@ returns an empty list rather than failing.
 
 ## Source
 
-- `crates/tinycomputer-engine/src/workspace/mod.rs` — `Workspace`, `Side`,
+- `crates/tinycomputer-engine/src/workspace/mod.rs`, `Workspace`, `Side`,
   `side_for`, `visible_text`.
-- `crates/tinycomputer-core/src/surface/` — the `Surface` trait both sides
+- `crates/tinycomputer-core/src/surface/`, the `Surface` trait both sides
   implement.
-- `crates/tinycomputer-engine/src/task/mod.rs` — `TaskConstraints.surfaces`,
+- `crates/tinycomputer-engine/src/task/mod.rs`, `TaskConstraints.surfaces`,
   which decides which side (or sides) a task's workspace is built with.
 - [`docs/technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md)
-  — the spec for joining the desktop and the browser.
+ , the spec for joining the desktop and the browser.

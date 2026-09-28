@@ -1,7 +1,7 @@
 # Tasks
 
 `Tasks`, in `crates/tinycomputer-engine/src/task/mod.rs`, is the controller
-behind the Agent interface — the thing most callers should actually use
+behind the Agent interface, the thing most callers should actually use
 instead of `RunGoal` or `ResolveIntent` directly. Give it a flow (or a
 plain-language task, with a planner configured) and it runs that flow in the
 background, reporting back a status a calling model can act on: still
@@ -38,24 +38,24 @@ StartTask  ──> TaskView (Running)
 
 ## Starting a task
 
-`StartTaskRequest` takes either `task` (plain language — needs a planner
+`StartTaskRequest` takes either `task` (plain language, needs a planner
 configured, or the task pauses immediately with `NeedsPlan`) or `flow` (a
 flow you wrote yourself). It also takes:
 
-- `facts` — values the flow may type, by name (`${first name}`, `${card
+- `facts`, values the flow may type, by name (`${first name}`, `${card
   number}`). See [Facts and secrets](#facts-and-secrets) below.
-- `secret_facts` — names among `facts` to keep secret beyond what is
+- `secret_facts`, names among `facts` to keep secret beyond what is
   recognised automatically.
-- `constraints` — where the task may act and how far it may go (see below).
-- `budget` — upper bounds on the work it may do (see below).
-- `memory` — grounding hints from an earlier run, so this one reads less of
+- `constraints`, where the task may act and how far it may go (see below).
+- `budget`, upper bounds on the work it may do (see below).
+- `memory`, grounding hints from an earlier run, so this one reads less of
   the screen to find the same elements again.
-- `trace` — record every Jev exchange for `TaskReport`.
+- `trace`, record every Jev exchange for `TaskReport`.
 
 Before anything runs, the flow is validated with the same checker a flow
 author's `Describe` call uses. A flow that references an undefined
-`${name}` is not rejected outright — that becomes a pause instead (see
-below) — but any other structural problem (an unknown step kind, a
+`${name}` is not rejected outright, that becomes a pause instead (see
+below), but any other structural problem (an unknown step kind, a
 `stop_before` guidance that does not itself guard, and so on) fails
 `StartTask` immediately with `INVALID_FLOW`.
 
@@ -97,12 +97,12 @@ Every `TaskView.status` is one of nine states (`TaskStatus` in
 | `Running` | Working. | `AwaitTask` |
 | `NeedsInput` | Missing one or more `${name}` values. | `ContinueTask.inputs` |
 | `NeedsApproval` | Stopped in front of an irreversible action (a `stop_before`). | `ContinueTask.approve` |
-| `Checkpoint` | Stopped at a checkpoint — always on reaching a payment page, when the task is not allowed to fill the payment form. | `ContinueTask.approve` only if `continuable`; a payment checkpoint never is |
+| `Checkpoint` | Stopped at a checkpoint, always on reaching a payment page, when the task is not allowed to fill the payment form. | `ContinueTask.approve` only if `continuable`; a payment checkpoint never is |
 | `NeedsHuman` | Blocked on something only a person can do: a captcha, a login page, a one-time code. | `ContinueTask { answer: "done" }` once the person has |
 | `NeedsPlan` | A plain-language `task` arrived and no planner is configured. | Write a flow from the returned `guide` and call `StartTask` again with it |
-| `Done` | Finished, with an `answer` and any `records` from `extract`/`pick` steps. | — (final) |
-| `Failed` | Could not finish, with `reason`, `hint`, and whether `recoverable`. | — (final, unless recoverable — see below) |
-| `Cancelled` | Stopped by `CancelTask`. | — (final) |
+| `Done` | Finished, with an `answer` and any `records` from `extract`/`pick` steps. |, (final) |
+| `Failed` | Could not finish, with `reason`, `hint`, and whether `recoverable`. |, (final, unless recoverable, see below) |
+| `Cancelled` | Stopped by `CancelTask`. |, (final) |
 
 `TaskStatus::is_final()` is true for `Done`, `Failed`, `Cancelled`, and a
 non-continuable `Checkpoint`. `next_calls` (in `task/mod.rs`) computes which
@@ -117,14 +117,14 @@ Three kinds of pause exist, and each resumes differently:
 - **`NeedsInput`.** `ContinueTask.inputs` merges into the task's facts, the
   flow is re-checked now that the values are known (a `${name}` that looked
   merely unused at `StartTask` time can turn out to be one that must never
-  reach a model, once its value is finally known — so the check runs again
+  reach a model, once its value is finally known, so the check runs again
   in full), and if nothing is still missing the flow starts.
 - **`NeedsApproval`.** The paused `stop_before` and everything after it were
   captured as a `Resume::Approval` when the flow stopped. `ContinueTask
   { approve: true }` runs the guarded action first, on its own
   (`allow_destructive: true`, for just that one step), then the rest of the
   flow, if any, as a second run. `approve: false` cancels the task outright
-  — the action was declined, so there is nothing left to do — and releases
+ , the action was declined, so there is nothing left to do, and releases
   whatever surface it held.
 - **`NeedsHuman`.** The failed step and everything after it were captured as
   a `Resume::Retry`. Any `ContinueTask` call while paused here re-runs from
@@ -135,12 +135,12 @@ Three kinds of pause exist, and each resumes differently:
 ### How a `NeedsHuman` pause is detected
 
 A step failure only becomes `NeedsHuman` when it looks recoverable *and* the
-run has something to retry (a `Resume::Retry` was captured — see
+run has something to retry (a `Resume::Retry` was captured, see
 `human_wall` in `task/mod.rs`). Whether a person, not a rescue, is actually
 needed is decided by reading the screen's visible text for the signs of a
-wall only a person can pass (`tinycomputer_core::human_needed` — a captcha, a
+wall only a person can pass (`tinycomputer_core::human_needed`, a captcha, a
 login form, a one-time-code prompt). If no such wall is detected, the
-failure is left alone (and may be handed to the rescuer instead — see
+failure is left alone (and may be handed to the rescuer instead, see
 [rescue.md](rescue.md)).
 
 ## Budgets, across every run of a task
@@ -149,7 +149,7 @@ A `TaskBudget` bounds a whole *task*, not one flow run of it. That
 distinction matters because a task rarely finishes in exactly one flow run:
 an approval, a missing value, or a rescue each splits it into another run,
 and each of those runs must be charged against what the task has already
-spent — never given a fresh budget just because it happens to be a new
+spent, never given a fresh budget just because it happens to be a new
 `RunFlow` call underneath.
 
 ```rust
@@ -168,19 +168,19 @@ The controller tracks cumulative `Spent { actions, model_calls, elapsed_ms }`
 on the task's `State`, and `run_request` (in `task/mod.rs`) computes each new
 run's request with what remains: `max_actions - spent.actions`,
 `max_model_calls - spent.model_calls`, and so on. `max_elapsed_ms` has no
-equivalent inside a single `RunFlowRequest` — a flow run cannot police its
-own wall-clock time from the inside — so it is enforced by the task
+equivalent inside a single `RunFlowRequest`, a flow run cannot police its
+own wall-clock time from the inside, so it is enforced by the task
 controller itself, wrapping the call to the flow runner in a
 `tokio::time::timeout` for whatever time remains. Time spent waiting for the
 caller to answer a pause is not counted: the clock only runs while a flow is
 actually running.
 
 `votes` (how many independent framings each decision is asked, then
-averaged — see [`docs/technical/jev-harness.md`](../../technical/jev-harness.md))
+averaged, see [`docs/technical/jev-harness.md`](../../technical/jev-harness.md))
 defaults to 7 for a task, deliberately generous: Jev is cheap, so a task
 would rather ask several ways and average than risk one bad framing costing
 the whole run. `RunGoal` and `ResolveIntent`, called directly rather than
-through a task, do not get this default — it is specific to the task
+through a task, do not get this default, it is specific to the task
 controller's own defaults, not the flow runtime's.
 
 ## Constraints
@@ -202,7 +202,7 @@ pub struct TaskConstraints {
 - `surfaces` restricts a task to `desktop`, `browser`, or both; see
   [workspace.md](workspace.md) for how a flow step then routes to the right
   one.
-- `origins` restricts which web origins a browser session may load — the
+- `origins` restricts which web origins a browser session may load, the
   sites card details may be typed on, for instance.
 - `allow_destructive` lets a task perform irreversible actions without
   pausing at all. Off by default: a fresh task always pauses at a
@@ -216,14 +216,14 @@ Paying is never automatic, in either `PaymentMode`. The mode only changes
 *how far* a task goes on its way to the control that pays:
 
 - **`StopAtPayment`** (the default). The task stops at the step that pays
-  and hands it back as a **non-continuable** `Checkpoint` — a dead end for
+  and hands it back as a **non-continuable** `Checkpoint`, a dead end for
   this task; a person finishes the payment themselves, and the task's
   browser session is only released by `CancelTask`.
 - **`FillThenApprove`**. The task fills the payment form from the caller's
   secret facts, then pauses as an ordinary `NeedsApproval`, the same as any
   other irreversible action. Only `ContinueTask.approve` presses the control
-  that pays. This mode requires `constraints.origins` to be set — `StartTask`
-  refuses with `ORIGINS_REQUIRED` otherwise — so card details are typed only
+  that pays. This mode requires `constraints.origins` to be set, `StartTask`
+  refuses with `ORIGINS_REQUIRED` otherwise, so card details are typed only
   on sites the caller explicitly named.
 
 Whichever mode is in force, the task's Jev brief always carries the matching
@@ -241,15 +241,15 @@ builds on) splits every fact into shared or secret:
   of the brief Jev is given by value, so it can, say, pick "Female" from a
   list or tell "Mr" from "Ms".
 - **Secret** facts (a card number, a passport number, a password, a one-time
-  code) reach a model only as `${name}` — never the value. A field is
+  code) reach a model only as `${name}`, never the value. A field is
   automatically secret when its name matches a recognised sensitive term
   (`card number`, `cvv`, `otp`, `passport`, `aadhaar`, `pan`, `iban`, and
-  more — see `is_sensitive_name` in `tinycomputer-core`) or when its value
+  more, see `is_sensitive_name` in `tinycomputer-core`) or when its value
   looks like a card number, and a caller can add more names to `secret_facts`
   but can never make a recognised-sensitive one shared.
 
 Facts run with `include_values: true` at the flow layer, so Jev can read
-what a field currently holds and check that what was typed matches — but the
+what a field currently holds and check that what was typed matches, but the
 flow runtime masks every secret value in anything it builds for Jev before
 it leaves the machine, so a secret fact's value is never actually visible to
 the model even though the field it landed in is. Every summary, every
@@ -295,13 +295,13 @@ controller first checks whether it looks like a captcha or login wall
 (`NeedsHuman`, above); failing that, and if a rescuer is configured and the
 task's rescue budget is not spent, it is handed to the rescuer for guidance
 before the task is allowed to fail outright. See [rescue.md](rescue.md) for
-that whole path — retry, skip, or give up, and what the rescuer is and is
+that whole path, retry, skip, or give up, and what the rescuer is and is
 not shown.
 
 Only once a rescue is not attempted (no rescuer configured, or the budget is
 spent) or the rescuer itself gives up does the task actually move to
 `Failed`. A `Failed` task's `recoverable` flag tells a caller whether trying
-again — after applying `hint` — has a real chance, versus a structural
+again, after applying `hint`, has a real chance, versus a structural
 problem (an invalid flow, a budget set too low structurally) that retrying
 alone will not fix.
 
@@ -324,17 +324,17 @@ rather than silently dropping one that is still in progress.
 
 ## Source
 
-- `crates/tinycomputer-engine/src/task/mod.rs` — `Tasks`, `Cell`, `State`,
+- `crates/tinycomputer-engine/src/task/mod.rs`, `Tasks`, `Cell`, `State`,
   `drive`, `rescued`, `human_wall`, budgets.
-- `crates/tinycomputer-engine/src/task/interpret.rs` — turning a flow run's
+- `crates/tinycomputer-engine/src/task/interpret.rs`, turning a flow run's
   result into `Next` (continue or stop-with-status) and `Resume`.
-- `crates/tinycomputer-engine/src/task/describe.rs` — `Describe`'s
+- `crates/tinycomputer-engine/src/task/describe.rs`, `Describe`'s
   capabilities reply: members, schemas, worked examples.
-- `crates/tinycomputer-bus/src/agent/types.rs` — every payload type named on
+- `crates/tinycomputer-bus/src/agent/types.rs`, every payload type named on
   this page.
-- `crates/tinycomputer-core/src/facts/mod.rs` — `Facts`, `is_sensitive_name`,
+- `crates/tinycomputer-core/src/facts/mod.rs`, `Facts`, `is_sensitive_name`,
   `redact`, `mask`.
-- [`docs/technical/tasks.md`](../../technical/tasks.md) — the formal contract
+- [`docs/technical/tasks.md`](../../technical/tasks.md), the formal contract
   (note: check the code, not that document, for exact card-data and
-  `PaymentMode` behavior — this page and the code are current).
+  `PaymentMode` behavior, this page and the code are current).
 - [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md).

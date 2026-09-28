@@ -28,7 +28,7 @@ Jev stack underneath all of it, described from the implementer's side.
 
 ## How the pieces fit
 
-A caller — a model driving the module over TinyBus — has three ways to get
+A caller, a model driving the module over TinyBus, has three ways to get
 something done, in increasing order of how much it hands over:
 
 1. **Point at one thing.** `ResolveIntent` finds the one element on screen
@@ -46,7 +46,7 @@ All three eventually ask Jev the same kind of small, closed question through
 one door, [`JevRuntime`](jev-runtime.md): given this screen and this goal,
 which operation and which element. `RunGoal` and `ResolveIntent` ask it
 directly, one decision at a time; the flow runtime (in `flow/`, out of scope
-for this page — see [flow/README.md](flow/README.md)) asks it once per flow
+for this page, see [flow/README.md](flow/README.md)) asks it once per flow
 step, with its own grounding and voting; the task controller sits above the
 flow runtime and does not talk to Jev itself.
 
@@ -79,17 +79,17 @@ A few things run alongside that column rather than inside it:
 
 If you are new to this crate, read in this order:
 
-1. [jev-runtime.md](jev-runtime.md) — what Jev is, how it is configured, and
+1. [jev-runtime.md](jev-runtime.md), what Jev is, how it is configured, and
    the one door everything calls through.
-2. [goals-and-intents.md](goals-and-intents.md) — the older, lower-level
+2. [goals-and-intents.md](goals-and-intents.md), the older, lower-level
    loops: `ResolveIntent` and `RunGoal`.
-3. [tasks.md](tasks.md) — the task controller: the thing most callers
+3. [tasks.md](tasks.md), the task controller: the thing most callers
    actually use.
-4. [planner.md](planner.md) and [rescue.md](rescue.md) — the two places a
+4. [planner.md](planner.md) and [rescue.md](rescue.md), the two places a
    language model helps without touching the screen.
-5. [workspace.md](workspace.md) — how one flow reaches both a desktop
+5. [workspace.md](workspace.md), how one flow reaches both a desktop
    application and a web page.
-6. [journal.md](journal.md) — how to see what a run actually did.
+6. [journal.md](journal.md), how to see what a run actually did.
 
 ## Cross-cutting guides
 
@@ -110,15 +110,15 @@ from a less technical angle:
 
 ## Technical references
 
-- [`docs/technical/architecture.md`](../../technical/architecture.md) — the
+- [`docs/technical/architecture.md`](../../technical/architecture.md), the
   whole system, how a call travels.
-- [`docs/technical/jev-harness.md`](../../technical/jev-harness.md) — the Jev
+- [`docs/technical/jev-harness.md`](../../technical/jev-harness.md), the Jev
   stack end to end, with latency levers.
-- [`docs/technical/tasks.md`](../../technical/tasks.md) — the task API's
+- [`docs/technical/tasks.md`](../../technical/tasks.md), the task API's
   formal contract.
 - [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md)
-  — the rescuer's spec.
+ , the rescuer's spec.
 - [`docs/technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md)
-  — where the browser joins the desktop.
-- [`docs/technical/jev-journal.md`](../../technical/jev-journal.md) — reading
+ , where the browser joins the desktop.
+- [`docs/technical/jev-journal.md`](../../technical/jev-journal.md), reading
   and summarising a journal.
