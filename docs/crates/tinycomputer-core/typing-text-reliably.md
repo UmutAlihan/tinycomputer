@@ -60,7 +60,7 @@ Two small pieces of logic decide whether a read-back value "counts":
   delivery failure.
 - `tokenized(held)` recognizes a token field's read-back: it is made up
   entirely of the object-replacement character (`U+FFFC`), commas, and
-  whitespace, the shape a mail client's "to" field takes once every typed
+  whitespace: the shape a mail client's "to" field takes once every typed
   address has become an attachment chip. A tokenized value can never be
   compared against the text that produced it, so `deliver_text` treats it as
   a special case rather than as a mismatch.
