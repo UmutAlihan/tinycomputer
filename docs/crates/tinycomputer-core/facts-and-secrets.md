@@ -88,7 +88,7 @@ the first place.
 ## The rest of the surface
 
 - `Facts::merged(other)` combines two sets of facts, keeping a name secret if
-  either side marked it so, merging never demotes a secret back to shared.
+  either side marked it so: merging never demotes a secret back to shared.
 - `Facts::names()`, `Facts::shared()`, `Facts::secret_names()`,
   `Facts::missing(wanted)` give you the bookkeeping views a caller needs: what
   is known, what a model may be briefed with, which names are secret (so even

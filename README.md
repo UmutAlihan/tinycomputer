@@ -1,25 +1,38 @@
 # tinycomputer
 
-An installable TinyBus module that lets an agent use a computer: desktop
-applications through their accessibility trees, and web pages through a real
-Chrome. A host loads one `cdylib`, and an agent behind that host can click
-through Mail or fill in a booking form without screenshots, pixel matching, or
-any knowledge of the application's interface.
+tinycomputer lets an AI agent use a computer. It can work in desktop apps
+like Mail and Notes, and on websites in a real Chrome browser. Give it a job
+like "find the cheapest flight from Delhi to Srinagar on 14 October and fill
+in my details up to payment". It works out the clicks itself, asks you when
+it needs something, and always stops before money moves.
 
-The module works at three levels, and a caller picks whichever fits:
+It doesn't use screenshots or pixel matching, and nobody has to tell it where
+the buttons are. It reads the screen the way a screen reader does, as a list
+of named buttons and fields, and a small decision model called Jev picks what
+to press, one small question at a time.
 
-- **Primitives.** 54 typed desktop members (`Snapshot`, `Click`, `SetValue`,
-  `Press`, `Launch`, …) over the vendored
-  [`agent-desktop`](https://github.com/lahfir/agent-desktop) engine. The caller
-  decides everything.
-- **Flows.** A short, plain-language script of what to accomplish ("start a new
-  email message", `enter` a recipient and subject, `stop_before` sending). The
-  module works out how on the live screen by asking Jev, TypeSafe's decision
-  model, many small questions.
-- **Tasks.** One call hands over a whole job, such as "find the cheapest flight
-  from Delhi to Srinagar on 14 October and fill in my details up to payment". It
-  runs in the background across the browser and desktop apps, pauses for
-  missing details and approvals, and always stops at payment.
+tinycomputer ships as a TinyBus module: one library that a host program
+loads, which an agent then calls.
+
+## What it can do
+
+- **Run a whole task in the background.** Hand over a job in plain words. A
+  planner turns it into steps, and tinycomputer carries them out across the
+  browser and your desktop apps.
+- **Pause when it needs you.** It stops for a missing detail, for your
+  approval before anything irreversible (send, delete, submit), and for a
+  person to solve a captcha or type a one-time code.
+- **Stop at payment.** Reaching a Pay button ends the task there, with the
+  page left open for you to finish.
+- **Recover from mistakes.** It checks every click, undoes the ones that made
+  things worse, and tries the next best option.
+- **Get past a stuck step.** When a step fails, a reasoning model looks at the
+  screen and suggests another way through, up to five times.
+- **Remember.** It keeps track of what it has read during a task, can return
+  results in the JSON shape you ask for, and learns which buttons worked so
+  the next run is faster.
+- **Keep your details private.** Secret details like passport or card numbers
+  are typed into fields and never shown to any model.
 
 ## A task, from the caller's side
 
@@ -31,348 +44,100 @@ The module works at three levels, and a caller picks whichever fits:
 }]}
 ```
 
-`StartTask` returns at once with a task id. The caller long-polls `AwaitTask`
-until the status asks for something:
+`StartTask` returns right away with a task id. You then call `AwaitTask`,
+which waits until something changes and tells you where things stand:
 
-- `needs_input`: a detail is missing; answer with `ContinueTask({inputs})`.
-- `needs_approval`: the task found an irreversible action (send, delete,
-  confirm a booking); answer with `ContinueTask({approve})`.
-- `needs_human`: a captcha, a one-time code, or a login wall; a person deals
-  with it, then `ContinueTask`.
-- `checkpoint`: the task reached the payment page and stopped. A person pays.
-- `done`, `failed`, or `cancelled`.
+| Status | Means | You do |
+|---|---|---|
+| `running` | still working | wait again |
+| `needs_input` | it needs a detail you didn't give | answer with `ContinueTask` |
+| `needs_approval` | it found something irreversible | approve or decline |
+| `needs_human` | captcha, one-time code, or login | a person handles it, then `ContinueTask` |
+| `checkpoint` | it reached payment and stopped | a person pays |
+| `done` | finished | read the result |
+| `failed` | a step failed and couldn't be rescued | read the report |
 
-Every view carries a one-sentence `summary`, progress, the current step, and
-`next`, the calls that make sense from here.
+Every answer carries a one-sentence summary and a list of the calls that make
+sense next. [Giving it a task](docs/giving-it-a-task.md) walks through a full
+session.
 
-The caller's details are typed into fields locally. Jev and the planner only
-ever see their names. Card data is refused outright.
-[`docs/technical/tasks.md`](docs/technical/tasks.md) walks through a full session.
-
-## How it works
-
-The core of the module is a loop that grounds a plain-language step on a
-screen it has never seen:
+## How it works, briefly
 
 ```text
- look at the screen ─► ask Jev small questions ─► act through a closed operation
-        ▲                                                   │
-        └──────── check what changed, recover if worse ◄────┘
+ look at the screen ─► ask Jev small questions ─► act ─► check what changed
+        ▲                                                       │
+        └───────────── undo it and try again if it got worse ◄──┘
 ```
 
-Jev never writes text and never plans. It answers three kinds of closed
-question: yes/no (a Noul), a position on a scale (a Score), or a pick among
-labelled options (a Choice), each with probabilities. Deterministic Rust does
-the rest. For a step like "start a new email message" one turn asks, in a
-single request:
+Jev never writes text and never plans. It answers yes/no questions, scale
+questions, and "which of these options" questions, each with a probability.
+Every question is asked several ways at once (options shuffled, wording
+varied) and the answers are averaged, so a bias toward the first option or
+toward "yes" cancels out. When the answers don't clearly agree, tinycomputer
+asks more, compares the top candidates head to head, and keeps the
+runners-up in case the first pick turns out wrong.
 
-- is the step done, and is it still not done (averaged, to cancel a model's
-  lean toward "yes");
-- how far along it is, on five levels;
-- whether something unrelated is in the way;
-- which kind of move to make: press a control, use a standard shortcut,
-  expand, scroll, wait, or give up.
+The safety rules are plain code, not a model's judgement. Text on a web page
+is always treated as data, never as instructions.
 
-Pressing a control needs one element out of possibly hundreds. The runtime
-never shows Jev more than 20 options at once. It narrows by screen region,
-re-asks with the options reversed and relabelled when the first answer is not
-confident, and asks "is this the right element?" before using a doubtful pick.
-After acting it compares the screen before and after, bans a control that did
-nothing, undoes one that made things worse, and dismisses dialogs that get in
-the way.
+[How it works](docs/how-it-works.md) tells the whole story.
 
-Text goes in by setting the field's value and reading it back. If it did not
-arrive, the runtime pastes it and reads it back again. Irreversible controls
-are never pressed by an ordinary step, and a screen with card fields is never
-clicked through.
+## Three ways to use it
 
-[`docs/technical/decision-loops.md`](docs/technical/decision-loops.md) explains every step kind,
-question, and threshold in detail.
+| Level | You give it | It works out |
+|---|---|---|
+| Tasks | a job in plain words | the plan, every click, when to stop and ask |
+| Flows | a short list of plain steps ("start a new email", "stop before sending") | which buttons and fields make each step happen |
+| Primitives | exact commands (`Snapshot`, `Click`, `SetValue`, ...) | nothing: you decide everything |
 
-## Architecture
+See [Writing flows](docs/writing-flows.md) for flows, and the
+[module docs](docs/crates/tinycomputer/members.md) for all 67 members.
 
-```text
- tinycomputer (cdylib)        TinyBus glue: manifest, dispatch, config
-        │
- tinycomputer-engine          Jev runtime, flow runtime, workspace, tasks, planner
-        │                 │
- tinycomputer-desktop    tinycomputer-browser       adapters, one Surface each
-        │                 │
- vendor/agent-desktop   vendor/agent-browser      the engines, pinned by gitlink
+## Documentation
 
- tinycomputer-core            Surface trait, screen model, keymap, safety, facts
- tinycomputer-cursor          the agent's drawn cursor: aim points, human glides
- tinycomputer-bus             the wire contract, with no runtime at all
-```
+Start at [`docs/README.md`](docs/README.md). The guides:
 
-Dependencies point one way: `bus` ← `core` ← {`desktop`, `browser`} ←
-`engine` ← `tinycomputer`. The decision loops are written once against the
-`Surface` trait in `tinycomputer-core`, so they run the same over a desktop
-window and a browser tab. A `Workspace` joins the two, so one flow can search
-flights on the web and then write an email in Mail.
+- [How it works](docs/how-it-works.md)
+- [Giving it a task](docs/giving-it-a-task.md)
+- [Writing flows](docs/writing-flows.md)
+- [How it decides](docs/how-it-decides.md)
+- [Catching mistakes](docs/catching-mistakes.md)
+- [Rescues](docs/rescue.md)
+- [Memory and saving](docs/memory-and-saving.md)
+- [How it sees the screen](docs/seeing-the-screen.md)
+- [Safety and privacy](docs/safety-and-privacy.md)
+- [Watching a run](docs/watching-a-run.md)
+- [Glossary](docs/glossary.md)
 
-| Crate | Holds |
+Each crate and top-level folder has its own guide under
+[`docs/crates/`](docs/README.md#the-code-folder-by-folder) and
+[`docs/project/`](docs/project/README.md). The engineering reference
+(architecture, every loop and threshold, specs, plans, and recorded live
+runs) is in [`docs/technical/`](docs/technical/README.md).
+
+## Setting it up
+
+The host passes the module a configuration when it loads it. The parts that
+matter most:
+
+| Key | What it's for |
 |---|---|
-| `tinycomputer-bus` | every type that crosses the bus: member names, payloads, the `DesktopResponse` envelope, the Agent and browser types, the flow grammar and guide, the contract version |
-| `tinycomputer-core` | the `Surface` trait and `Screen`; verified text delivery; result cards; the per-OS keymap; the safety classifier and payment detector; facts; price, time, duration, and stop parsers |
-| `tinycomputer-cursor` | the agent's one on-screen cursor, shared by desktop and browser: aim points, human glide paths (overshoot, correction, wobble, tremor, Fitts timing), its look, and — with the `overlay` feature — the `tinycomputer-cursor-overlay` helper that draws it in a click-through, never-focused window on macOS and Windows; cosmetic, it sends no input |
-| `tinycomputer-desktop` | `Desktop`, one typed method per desktop member, with a permission preflight; `Desktop` as a `Surface` |
-| `tinycomputer-browser` | `Browser` sessions over agent-browser linked in-process; `BrowserSurface` |
-| `tinycomputer-engine` | Jev, `RunGoal`, `ResolveIntent`, the flow runtime, the workspace, the task controller, the optional planner |
-| `tinycomputer` | the TinyBus module; no behaviour of its own |
-| `tinycomputer-skills` | agent-facing `SKILL.md` and schemas for the task API |
-| `tinycomputer-examples` | examples, the lab, the travel fixture, live verifiers |
+| `jev` | the decision model's provider and key. Without it, only the primitives work |
+| `planner` | an OpenRouter key for the planner, which also brings rescues and output shapes. Without it, you write flows yourself |
+| `browser.executable` | which Chrome to use, if it can't find one |
+| `cursor` | the on-screen cursor you can watch: `off`, `brisk`, `natural`, or `calm` |
 
-A host that only makes calls depends on `tinycomputer-bus` alone and compiles no
-engine, no TinyBus, and no accessibility backend. `tinycomputer` re-exports the
-contract, so `tinycomputer::SnapshotRequest` and
-`tinycomputer_bus::SnapshotRequest` are the same type rather than structural
-twins. The adapters are plain libraries that another host can take without the
-engine.
+Every key is described in
+[the module's configuration guide](docs/crates/tinycomputer/configuration.md).
 
-[`docs/technical/architecture.md`](docs/technical/architecture.md) covers how a call travels
-through the layers, threading, configuration, and the safety checks.
+Desktop control needs Accessibility permission (and Screen Recording for
+screenshots). tinycomputer checks first and tells you what's missing. macOS
+and Windows are fully supported; on Linux the desktop side isn't available
+yet, but the browser works anywhere Chrome runs.
 
-## The members
+## For developers
 
-All 67 members are served on `ai.tinyhumans.tinycomputer.Desktop` at
-`/ai/tinyhumans/tinycomputer/Desktop`. `tinycomputer_bus::names::METHODS` lists
-them in dispatch order; here they are by family:
-
-| Family | Members |
-| --- | --- |
-| Tasks | `Describe` `PlanTask` `StartTask` `AwaitTask` `ContinueTask` `CancelTask` `TaskReport` `ListTasks` |
-| Goals and flows | `ResolveIntent` `RunGoal` `RunFlow` `ValidateFlow` `FlowGuide` |
-| Observation | `Snapshot` `Find` `Get` `Is` `Screenshot` |
-| Interaction | `Click` `DoubleClick` `TripleClick` `RightClick` `Type` `SetValue` `Clear` `Focus` `Select` `Toggle` `Check` `Uncheck` `Expand` `Collapse` `Scroll` `ScrollTo` |
-| Input | `Press` `KeyDown` `KeyUp` `Hover` `Drag` `MouseMove` `MouseClick` `MouseDown` `MouseUp` `MouseWheel` |
-| Apps and windows | `Launch` `CloseApp` `ListApps` `ListWindows` `ListDisplays` `ListSurfaces` `FocusWindow` `ResizeWindow` `MoveWindow` `Minimize` `Maximize` `Restore` |
-| Clipboard | `ClipboardGet` `ClipboardSet` `ClipboardClear` |
-| Notifications | `ListNotifications` `NotificationAction` `DismissNotification` `DismissAllNotifications` |
-| Waiting | `Wait` |
-| System | `Version` `Status` `Permissions` |
-
-`StartTask`, `ContinueTask`, `TaskReport`, `RunGoal`, `ResolveIntent`, and
-`RunFlow` are confidential: they carry the caller's values and page data, so
-the bus requires an attested module and keeps them away from monitors.
-
-The browser's typed contract (`OpenSession`, `Navigate`, `Snapshot`,
-`Perform`, `ReadPage`, `Screenshot`, downloads, and outputs) is defined in
-`tinycomputer-bus` and implemented by `tinycomputer-browser`, but not yet served
-as bus members. Today the browser is reached through tasks.
-
-### Primitives: observe, then act on what you observed
-
-`Snapshot` walks an application's accessibility tree and returns a compact
-description in which every element carries a ref, such as `@s8f3k2p9:e1`.
-Interaction members take refs. They do not take coordinates, and they do not
-take selectors evaluated fresh at click time.
-
-That indirection is the design. A ref is bound to the snapshot it came from,
-so acting on one either reaches the element that was described or fails with
-`STALE_REF` and asks for a fresh snapshot. It will not click whatever has since
-moved into that position.
-
-```rust,ignore
-use tinycomputer_bus::{names, DesktopResponse, RefRequest, SnapshotRequest};
-
-let proxy = connection.proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)?;
-
-// `skeleton` caps the walk at three levels: structure without leaf detail,
-// enough to decide where to look before spending a full walk on a subtree.
-let tree: DesktopResponse = proxy
-    .call(names::methods::SNAPSHOT, (SnapshotRequest {
-        app: Some("Safari".to_owned()),
-        skeleton: true,
-        ..Default::default()
-    },))
-    .await?;
-
-let clicked: DesktopResponse = proxy
-    .call(names::methods::CLICK, (RefRequest::new("@s8f3k2p9:e1"),))
-    .await?;
-```
-
-Ref actions go through the platform's accessibility API rather than
-synthesized input, so by default they do not steal focus, move the cursor, or
-touch the clipboard. A run can proceed while someone else is using the
-machine. Headed mode and the `Input` members exist for the cases that need a
-real cursor.
-
-Every member returns a `DesktopResponse`, on success and on failure, carrying
-either the data or a structured error with its code, a suggestion, whether a
-retry is safe, and how to recover. A TinyBus error is reserved for a transport
-or dispatch failure. See
-[`crates/tinycomputer-bus/README.md`](crates/tinycomputer-bus/README.md).
-
-`KeyDown`, `KeyUp`, `MouseDown`, and `MouseUp` validate their arguments and then
-refuse: holding a button down is stateful and this module is not. They are
-served rather than omitted so the refusal is an explained reply naming what to
-use instead, rather than an `UnknownMethod`.
-
-### Flows
-
-`RunFlow` runs a flow: an `app`, optional `vars`, and steps that say what to
-accomplish, never how.
-
-```json
-{ "app": "Mail",
-  "steps": [
-    { "open": "Mail" },
-    "start a new email message",
-    { "enter": { "recipient": "sam@example.com", "subject": "Friday", "message body": "Hi Sam, …" } },
-    { "verify": "the draft shows the recipient, the subject, and the message body" },
-    { "stop_before": "sending the email" } ] }
-```
-
-The step kinds are `do` (or a plain string), `open`, `browse`, `enter`,
-`choose`, `read`, `extract`, `pick`, `verify`, `wait_for`, `stop_before`,
-`repeat_until`, and `if`. `FlowGuide` returns the authoring guide as prompt
-text, `ValidateFlow` checks a candidate without touching anything, and the
-guide itself is
-[`crates/tinycomputer-bus/src/flow/guide.md`](crates/tinycomputer-bus/src/flow/guide.md).
-Nothing irreversible happens without `allow_destructive`. The design and its
-rationale are in [`docs/technical/specs/jev-intent-flows.md`](docs/technical/specs/jev-intent-flows.md).
-
-### Goals
-
-`RunGoal` is the older single-goal loop for the desktop. The host sends one
-bounded goal with an exact window, allowed operations and target labels,
-prepared text, and success predicates the module checks on the accessibility
-tree after every action. By default an action judged hard to undo stops with a
-one-use `confirmation_id`; the host shows it to a person and calls again with
-`continuation: {"id": "...", "approve": true}`. Approval takes a fresh
-snapshot and acts only if exactly one element still matches the original
-target. `ResolveIntent` grounds one described element, optionally acting on it.
-See [`crates/tinycomputer-engine/src/agentic/README.md`](crates/tinycomputer-engine/src/agentic/README.md).
-
-## Configuration
-
-The host passes the module a JSON object at load and on reinitialization.
-TinyBus treats it as sensitive host-control traffic: monitors never receive it,
-and its buffers are zeroized after use. Reinitialization replaces the served
-object only after the whole new configuration validates.
-
-| Key | Meaning |
-|---|---|
-| `session_id`, `trace_path`, `trace_strict`, `headed` | agent-desktop's session, trace, and input mode |
-| `jev` | Jev provider, API key, and optional model, endpoint, timeout, retries, and `sdk_name` |
-| `planner` | an OpenRouter `api_key` and optional `model`; absent means tasks need a flow |
-| `browser.executable` | the Chrome or Chromium binary to launch |
-| `cursor` | the agent's on-screen cursor for desktop and browser: a pace (`off`, `brisk`, `natural` (default), `calm`) or `{pace, overlay}`, where `overlay` is the path to the shipped `tinycomputer-cursor-overlay` helper |
-
-Without `jev`, the Jev-driven members answer `JEV_NOT_CONFIGURED` and the
-primitives keep working. For the TinyHumans proxy, the host supplies
-`jev.sdk_name`, and the Jev client sends it as `x-sdk-name` only to that exact
-endpoint.
-
-## Safety
-
-Several independent checks keep a run from doing something that cannot be
-undone. None of them relies on a model's judgement.
-
-- An ordinary step refuses to press a control whose label reads as
-  destructive, that the flow's own `stop_before` names, or that is an unnamed
-  button in a confirmation sheet. Only `stop_before` reaches one, and it
-  presses only with `allow_destructive` or an approval.
-- A payment control, or any click on a screen showing card fields, stops the
-  run at a checkpoint. Nothing ever types payment data.
-- Jev and the planner see fact names, never values. Values are redacted from
-  every summary.
-- Screen text is always passed to Jev as untrusted data, and a move Jev was
-  not offered fails closed.
-- Budgets cap a task's actions, Jev calls, and time across all its runs, and
-  constraints confine it to chosen surfaces and origins.
-
-## Permissions and platforms
-
-Desktop automation needs permissions a person grants: accessibility access,
-and screen recording for captures. The module checks before it acts, because
-an accessibility API called by an unauthorized process usually returns an
-empty tree rather than an error. The snapshot succeeds, finds nothing, and
-the click reports the element is not there, which looks exactly like an
-application with no such button. Checking first turns that into `PERM_DENIED`
-naming the setting to change.
-
-macOS and Windows have full accessibility backends. Linux builds, loads, and
-answers, but implements no surfaces yet, so desktop observation there fails
-with `PLATFORM_NOT_SUPPORTED`. That comes from the vendored engine and will
-follow it. The browser works wherever Chrome or Chromium runs.
-
-## The lab
-
-`scripts/lab` builds and attests the module, runs scenarios against real
-macOS applications, checks the real application state, and writes a timeline
-and every Jev exchange for each run:
-
-```sh
-scripts/lab run mail-compose                  # a hand-written flow
-scripts/lab run mail-compose --mode goal      # the single-goal RunGoal baseline
-scripts/lab run mail-compose --mode authored  # an LLM writes the flow
-scripts/lab eval all --modes flow,goal --trials 3
-```
-
-Anything that launches Chromium runs in a Linux container instead of on the
-host:
-
-```sh
-scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture
-```
-
-See [`docs/technical/lab.md`](docs/technical/lab.md) and [`docs/technical/docker-lab.md`](docs/technical/docker-lab.md).
-
-## Layout
-
-```text
-Cargo.toml                 # virtual workspace: members, shared metadata, lints
-crates/
-├── tinycomputer-bus/       # the wire contract
-│   └── src/
-│       ├── names/         # interface, object path, one constant per member
-│       ├── envelope/      # DesktopResponse and DesktopError
-│       ├── agent/         # the task API: TaskView, TaskStatus, requests
-│       ├── agentic/       # RunGoal, ResolveIntent, Jev configuration
-│       ├── flow/          # the flow grammar and guide.md
-│       ├── browser/       # the browser contract
-│       └── observation/ interaction/ input/ apps/ clipboard/ …
-├── tinycomputer-core/      # surface/ keymap/ safety/ records/ facts/
-├── tinycomputer-cursor/    # glide/ animate/ sprite/ screen/ + bin/: the agent's cursor
-├── tinycomputer-desktop/   # desktop/ (the 54 members) and surface/
-├── tinycomputer-browser/   # sessions/ convert/ reply/ linked/ outputs/ surface/
-├── tinycomputer-engine/
-│   └── src/
-│       ├── agentic/       # RunGoal and ResolveIntent; flow/ is the flow runtime
-│       ├── workspace/     # the desktop and the browser as one surface
-│       ├── task/          # the task controller
-│       └── planner/       # the optional LLM planner
-├── tinycomputer/           # the cdylib: tinybus_module/ dispatch, runner, manifest
-├── tinycomputer-skills/    # SKILL.md for agents
-└── tinycomputer-examples/  # bins, the lab, scenarios, fixtures/travel
-vendor/
-├── tinybus/               # TinyBus host types and module SDK
-├── agent-desktop/         # the desktop engine
-├── agent-browser/         # the browser engine, linked as a library
-└── tinyinference/         # the Jev client, and the LLM client for the planner
-docs/                      # architecture, loops, tasks, lab, specs, plans, ADRs
-```
-
-Within each crate, feature areas are directory modules: `mod.rs` for the
-implementation and exports, `types.rs` for substantial types, and `test.rs` for
-unit tests. [`AGENTS.md`](AGENTS.md) holds the full repository guidance, and
-`CLAUDE.md` is a symlink to it.
-
-## The vendored engines
-
-The four submodules are pinned by gitlink, and this repository never edits
-them. A wrong tree or a wrong click is fixed upstream and arrives here as a
-gitlink bump in its own commit. `vendor/agent-browser` currently points at the
-`library-target` branch of `tinyhumansai/agent-browser`, which adds the
-library target this module links; it moves back to upstream once that change
-lands there.
-
-## Development
-
-Clone with submodules, or initialize them before building:
+The repository is a Rust workspace. Clone it with its submodules:
 
 ```sh
 git submodule update --init --recursive
@@ -387,71 +152,32 @@ cargo build --all-targets --all-features
 cargo test --all-features
 ```
 
-Useful extras:
+The tests need no display, no permissions, no browser, and no network. Live
+runs against real apps and sites use the lab:
 
 ```sh
-cargo run -p tinycomputer-examples --bin basic
-cargo build -p tinycomputer --release --lib   # the installable cdylib
-cargo doc --no-deps --all-features           # CI builds it with RUSTDOCFLAGS="-D warnings"
-cargo deny check all                         # supply chain; see deny.toml
-.github/scripts/check-file-coverage.sh 90 coverage.json   # needs cargo-llvm-cov
-
-# Load the built cdylib through the real TinyBus dynamic loader:
-cargo run -p tinycomputer-examples --bin verify_module -- \
-  target/release/libtinycomputer.so
+scripts/lab run mail-compose
+scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture
 ```
 
-The test suite needs no display server, no granted permission, no browser, and
-no network. It covers the contract's wire form, the conversions, the
-permission preflight, the browser adapter against a scripted engine, the flow
-runtime against a simulated application and an oracle Jev, the task
-controller against scripted runs, and the served interface over the in-memory
-transport. Anything that drives a real application or site is a live run, kept
-out of the suite.
+| Crate | Holds |
+|---|---|
+| `tinycomputer` | the loadable module |
+| `tinycomputer-engine` | tasks, the planner, rescues, the Jev runtime, the flow runtime |
+| `tinycomputer-bus` | the wire contract |
+| `tinycomputer-core` | the shared screen model, safety rules, facts |
+| `tinycomputer-desktop` | desktop apps, through agent-desktop |
+| `tinycomputer-browser` | web pages, through agent-browser |
+| `tinycomputer-cursor` | the cursor you can watch |
+| `tinycomputer-skills` | the guide and schemas for calling agents |
+| `tinycomputer-examples` | examples, the lab, saved plans |
 
-## Releasing
-
-Run the **Release** workflow from the Actions tab with a `patch`, `minor`, or
-`major` bump. It validates the workspace and opens a version pull request for
-the one `[workspace.package]` version every member inherits. Merge that PR
-after required checks pass, then run the workflow with `current` to tag the
-checked version, build `crates/tinycomputer` as a TinyBus `cdylib`, and create
-the GitHub release. Use `current` again to resume an interrupted release.
-
-Assets are named `tinycomputer-<version>-<platform>.<tar.gz|zip>` and contain
-the native module, its SHA-256 `modules.toml`, the license, and
-[`MODULE.md`](MODULE.md). Every release also publishes `checksum.toml`, which
-TinyBus uses to verify an archive before extracting it. The workflow loads the
-published Ubuntu archive through TinyBus's GitHub release API and calls its
-`Version` member before declaring the release successful.
-
-The native matrix covers Ubuntu 22.04 and 24.04 on x86_64 and ARM64; Fedora 43
-and 44 on x86_64 and ARM64; Arch Linux on x86_64; macOS 15 and 26 on Intel and
-Apple Silicon; Windows Server 2022 and 2025 on x86_64; and Windows 11 on ARM64.
-Do not hand-edit the version in the root `Cargo.toml`.
-
-## Documentation
-
-- [`docs/technical/architecture.md`](docs/technical/architecture.md): the layers, how a call
-  travels, threading, configuration, safety
-- [`docs/technical/jev-harness.md`](docs/technical/jev-harness.md): the Jev stack, one decision
-  end to end, and where the time goes
-- [`docs/technical/decision-loops.md`](docs/technical/decision-loops.md): how the flow runtime
-  grounds each step, question by question
-- [`docs/technical/jev-questions.md`](docs/technical/jev-questions.md) and
-  [`docs/technical/flow-examples.md`](docs/technical/flow-examples.md): every Jev input and
-  output, and real flows traced decision by decision
-- [`docs/technical/jev-journal.md`](docs/technical/jev-journal.md): the debug journal, for reading
-  a run back and measuring its latency
-- [`docs/technical/tasks.md`](docs/technical/tasks.md): the task API, pausing and resuming,
-  private values, the planner
-- [`docs/technical/lab.md`](docs/technical/lab.md) and [`docs/technical/docker-lab.md`](docs/technical/docker-lab.md):
-  live runs
-- [`docs/technical/specs/`](docs/technical/specs/README.md), [`docs/technical/plans/`](docs/technical/plans/README.md),
-  [`docs/technical/adr/`](docs/technical/adr/0001-record-architecture-decisions.md): specs, plans,
-  and decision records
-- [`AGENTS.md`](AGENTS.md), [`CONTRIBUTING.md`](CONTRIBUTING.md),
-  [`SECURITY.md`](SECURITY.md)
+[`AGENTS.md`](AGENTS.md) has the full contributor guidelines
+(`CLAUDE.md` links to it), and
+[`docs/technical/architecture.md`](docs/technical/architecture.md) explains
+how the layers fit. Releases are covered in
+[the release guide](docs/crates/tinycomputer/releases.md). See also
+[`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md).
 
 ## License
 
