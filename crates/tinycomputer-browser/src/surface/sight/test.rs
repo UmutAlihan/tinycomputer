@@ -226,6 +226,8 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
           <header class="header shadow"><a href="/download">Download app</a></header>
           <div class="badge adults-picker"><button>2 adults</button></div>
           <p class="address">Address: 1 Lake Road</p>
+          <div class="css-1ad4k9 sc-hAdSfq"><button>Continue</button></div>
+          <div class="AdSlot_wrapper__x1y2"><a href="/deal">Watch deal</a></div>
         </main>"#,
     )
     .await
@@ -240,6 +242,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
         "Download app",
         "2 adults",
         "Address: 1 Lake Road",
+        "Continue",
     ] {
         assert!(names.iter().any(|name| name == kept), "{kept} in {names:?}");
     }
@@ -250,6 +253,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
         "Sponsored",
         "Grand Hotel",
         "Buy now",
+        "Watch deal",
     ] {
         assert!(
             !names.iter().any(|name| name.contains(dropped)),
@@ -259,7 +263,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
     assert_eq!(reading["unreachable"], 0, "an ad frame never hides the page");
     assert_eq!(
         reading["denoised"],
-        json!({"ads": 7, "empty": 0, "hidden": 0}),
+        json!({"ads": 8, "empty": 0, "hidden": 0}),
         "{names:?}"
     );
 }
