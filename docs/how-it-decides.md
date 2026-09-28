@@ -170,7 +170,7 @@ Both use the same bars and the same safety rules.
 
 Jev is the default, but the loops only depend on the shape of the questions.
 Levanto Sage answers the same three kinds of question, and an adapter lets it
-stand in for Jev (from code; the module has no Sage setting). Every call
+stand in for Jev (the module's `jev.provider = "sage"`; in the examples, `TINYCOMPUTER_DECISIONS=sage`). Every call
 still goes through the same path, so budgets, masking, voting, and the
 journal all apply. On two live bookings it reached the same places as Jev in
 one case, but was several times slower and more expensive. See
