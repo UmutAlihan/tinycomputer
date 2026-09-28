@@ -803,7 +803,12 @@ fn an_unnamed_control_is_named_by_what_it_shows_but_a_field_never_is() {
 /// A page read by sight: one field and one result link a card covers.
 fn sighted_fake() -> Fake {
     Fake::scripted(|command| match command["action"].as_str().unwrap() {
-        "evaluate" if command["script"].as_str().unwrap().contains("__tinycomputerSeen") => {
+        "evaluate"
+            if command["script"]
+                .as_str()
+                .unwrap()
+                .contains("__tinycomputerSeen") =>
+        {
             Some(ok(&json!({"result": {
                 "ok": true,
                 "title": "Flights",
@@ -835,7 +840,11 @@ fn sight_reads_the_page_and_its_refs_reach_their_marks() {
     let field = screen.candidates[0].clone();
     assert_eq!(field.ref_id, "seen:1");
 
-    let typed = surface.execute(JevOperation::TypeText, Some(field), Some("Srinagar".to_owned()));
+    let typed = surface.execute(
+        JevOperation::TypeText,
+        Some(field),
+        Some("Srinagar".to_owned()),
+    );
     assert!(typed.ok, "{:?}", typed.error);
     let fill = fake.last("fill");
     assert_eq!(fill["selector"], r#"[data-tc-seen="1"]"#, "{fill}");

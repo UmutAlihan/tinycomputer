@@ -385,9 +385,7 @@ impl Surface for BrowserSurface {
                         DesktopError::new("INVALID_TARGET", "the operation needs a target"),
                     )
                 },
-                |reference| {
-                    self.perform(command, action(self::target(&reference), text.clone()))
-                },
+                |reference| self.perform(command, action(self::target(&reference), text.clone())),
             )
         };
         if let Some(reference) = reference

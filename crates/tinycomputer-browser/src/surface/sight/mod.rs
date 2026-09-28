@@ -77,7 +77,10 @@ pub(crate) fn script(root: Option<&str>) -> String {
         "name": MAX_NAME,
         "text": MAX_TEXT,
     });
-    format!("({})({root}, {limits})", SIGHT_JS.trim().trim_end_matches(';'))
+    format!(
+        "({})({root}, {limits})",
+        SIGHT_JS.trim().trim_end_matches(';')
+    )
 }
 
 /// Whether `reference` was minted by sight.

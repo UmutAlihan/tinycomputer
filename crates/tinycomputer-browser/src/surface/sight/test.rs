@@ -48,10 +48,17 @@ fn a_reading_becomes_controls_text_and_context_in_page_order() {
         .map(|node| node.ref_id.as_str())
         .collect::<Vec<_>>();
     assert_eq!(refs, ["seen:1", "seen:2", "seen:3", "seen:4", "seen:5"]);
-    assert_eq!(screen.context, ["We use cookies", "To"], "repeats kept once");
+    assert_eq!(
+        screen.context,
+        ["We use cookies", "To"],
+        "repeats kept once"
+    );
     assert_eq!(screen.text_nodes.len(), 3);
     assert_eq!(screen.text_nodes[0].role, "text");
-    assert_eq!(screen.text_nodes[1].order, 2, "text keeps its place among controls");
+    assert_eq!(
+        screen.text_nodes[1].order, 2,
+        "text keeps its place among controls"
+    );
 
     let field = &screen.candidates[1];
     assert_eq!(field.name.as_deref(), Some("To"));
@@ -101,9 +108,15 @@ fn the_script_is_called_with_its_root_and_limits() {
     let whole = script(None);
     assert!(whole.starts_with('('), "{}", &whole[..40]);
     assert!(whole.contains("data-tc-seen"));
-    assert!(whole.ends_with(
-        r#"(null, {"controls":800,"labels":3000,"name":120,"text":160,"texts":400})"#
-    ));
+    assert!(
+        whole.ends_with(
+            r#"(null, {"controls":800,"labels":3000,"name":120,"text":160,"texts":400})"#
+        )
+    );
     let under = script(Some("seen:7"));
-    assert!(under.contains(r#"("[data-tc-seen=\"7\"]", {"#), "{}", &under[under.len() - 120..]);
+    assert!(
+        under.contains(r#"("[data-tc-seen=\"7\"]", {"#),
+        "{}",
+        &under[under.len() - 120..]
+    );
 }
