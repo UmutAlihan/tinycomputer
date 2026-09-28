@@ -308,11 +308,30 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         before: &[(Candidate, String)],
     ) -> Result<(), Halt> {
         let screen = self.look().await?;
+        let alike = |screen_candidates: &[Candidate], kind: &str| {
+            screen_candidates
+                .iter()
+                .filter(|candidate| element_kind(candidate) == kind)
+                .count()
+        };
+        let before_candidates = before
+            .iter()
+            .map(|(field, _)| field.clone())
+            .collect::<Vec<_>>();
         for (field, text) in before {
+            let kind = element_kind(field);
+            // Only a field told apart by its kind alone is put back: rows of
+            // a list share one, and a field that refused text takes none.
+            if self.refused.contains(&kind)
+                || alike(&before_candidates, &kind) != 1
+                || alike(&screen.candidates, &kind) != 1
+            {
+                continue;
+            }
             let Some(now) = screen
                 .candidates
                 .iter()
-                .find(|candidate| element_kind(candidate) == element_kind(field))
+                .find(|candidate| element_kind(candidate) == kind)
                 .cloned()
             else {
                 continue;
