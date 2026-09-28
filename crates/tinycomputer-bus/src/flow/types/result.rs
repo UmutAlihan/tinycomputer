@@ -5,6 +5,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(doc)]
+use super::RunFlowRequest;
 use super::{FlowLoop, GroundingHint};
 use crate::{JevMetrics, JevTarget};
 
