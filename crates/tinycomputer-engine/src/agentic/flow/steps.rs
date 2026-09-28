@@ -272,7 +272,88 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// opened autocomplete expects. `enter` turns that off for a slot with
     /// no field: the focus there is the field it just filled for another
     /// slot, and typing into it would spoil that value.
+    ///
+    /// A deliberating run records every text field's value first, and puts
+    /// back any the attempts changed when the step fails: typing the option
+    /// to filter a list lands wherever the focus is, and on a form with no
+    /// such list that is the field filled last (live on Emirates, "Female"
+    /// for a gender the form never asked for turned "Raina" into
+    /// "RainaFemale").
     pub(super) async fn pick_option(
+        &mut self,
+        log: &mut StepLog,
+        what: &str,
+        option: &str,
+        private: bool,
+        into_focus: bool,
+    ) -> Result<Ended, Halt> {
+        let before = if self.deliberates(FlowLoop::Checkpoint) {
+            Some(held_text(&self.look().await?))
+        } else {
+            None
+        };
+        let result = self
+            .try_option(log, what, option, private, into_focus)
+            .await;
+        if let (Some(before), Err(Halt::Failed(_))) = (before, &result) {
+            self.restore_text(log, &before).await?;
+        }
+        result
+    }
+
+    /// Puts back every field of `before` whose text the step changed.
+    async fn restore_text(
+        &mut self,
+        log: &mut StepLog,
+        before: &[(Candidate, String)],
+    ) -> Result<(), Halt> {
+        let screen = self.look().await?;
+        for (field, text) in before {
+            let Some(now) = screen
+                .candidates
+                .iter()
+                .find(|candidate| element_kind(candidate) == element_kind(field))
+                .cloned()
+            else {
+                continue;
+            };
+            let current = now
+                .value
+                .as_ref()
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .trim()
+                .to_owned();
+            if current == text.trim() {
+                continue;
+            }
+            log.used(FlowLoop::Checkpoint);
+            let app = self.app.clone();
+            let target = now.clone();
+            let previous = text.clone();
+            let reply = self
+                .act(log, "retype (undo)", Some(&now), move |backend| {
+                    deliver_text(&backend, &app, &target, &previous)
+                })
+                .await?;
+            self.history.push(format!(
+                "the step typed into {} by mistake; put its text back, ok={}",
+                label(&now),
+                reply.ok
+            ));
+            self.runtime.journal.record("restore", || {
+                json!({
+                    "step": self.step,
+                    "rungs": ["retype"],
+                    "restored": reply.ok,
+                    "target": label(&now),
+                })
+            });
+        }
+        Ok(())
+    }
+
+    async fn try_option(
         &mut self,
         log: &mut StepLog,
         what: &str,
@@ -954,6 +1035,25 @@ const MONTHS: &[&str] = &[
     "november",
     "december",
 ];
+
+/// Every text field on `screen` that holds text, with that text: what a
+/// failed `choose` puts back.
+fn held_text(screen: &Screen) -> Vec<(Candidate, String)> {
+    screen
+        .candidates
+        .iter()
+        .filter(|candidate| {
+            candidate
+                .available_actions
+                .iter()
+                .any(|action| action == "SetValue" || action == "TypeText")
+        })
+        .filter_map(|candidate| {
+            let text = candidate.value.as_ref()?.as_str()?.trim();
+            (!text.is_empty()).then(|| (candidate.clone(), text.to_owned()))
+        })
+        .collect()
+}
 
 /// Whether `option` names a calendar day: a month name and a day number that
 /// is a real day of that month (a year, when given, decides February's 28th
