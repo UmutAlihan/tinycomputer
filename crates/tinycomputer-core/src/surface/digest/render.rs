@@ -1,12 +1,10 @@
 //! Rendering a digest within a byte budget, most relevant region first, and
 //! looking elements up by region.
 
-use std::collections::BTreeMap;
-
 use serde_json::{Value, json};
 
-use super::{Candidate, Screen, element_line, groups, label};
 use super::{CARD_CHARS, COLLAPSED_SLACK, EXAMPLES, LIST_CARDS, SUMMARY_CHARS};
+use super::{Candidate, Screen, element_line, groups, label};
 use super::{Digest, Region, RegionKind, Rendering};
 
 impl Digest {
@@ -235,7 +233,7 @@ fn summary(screen: &Screen, region: &Region) -> String {
     )
 }
 
-fn clip(text: &str, limit: usize) -> String {
+pub(super) fn clip(text: &str, limit: usize) -> String {
     if text.chars().count() <= limit {
         return text.to_owned();
     }

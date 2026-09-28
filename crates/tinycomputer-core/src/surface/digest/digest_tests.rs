@@ -334,8 +334,8 @@ fn values_are_shown_only_when_allowed_and_long_cards_are_clipped() {
         view(&shown)["regions"][0]["elements"][0],
         "e0 textfield \"To\" = \"sam@example.com\" [focused]"
     );
-    assert_eq!(super::clip("abcdef", 3), "abc…");
-    assert_eq!(super::clip("abc", 3), "abc");
+    assert_eq!(super::render::clip("abcdef", 3), "abc…");
+    assert_eq!(super::render::clip("abc", 3), "abc");
 }
 
 #[test]
