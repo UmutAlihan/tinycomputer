@@ -8,8 +8,13 @@
 //!    question's ballot.
 //! 2. **A duel** (`duel.rs`): the finalists of a target Choice compared two
 //!    at a time, in both orders.
-//! 3. **Contrast** (deep only): each remaining finalist asked "is this the
-//!    element?" beside "is this only something similar or next to it?".
+//! 3. **Contrast** (deep only, when the duel named no champion): the two
+//!    leaders each asked "is this the element?" beside "is this only
+//!    something similar or next to it?".
+//!
+//! A close call no rung settles is still acted on, at its best ranking, with
+//! the runners-up kept for a backtrack: deliberation changes picks, and
+//! refuses one only when the evidence says nothing on screen serves.
 //! 4. **Views** (deep only, a judgement that would pass): a yes/no asked again over other
 //!    renderings of the screen — the screen alone, without the history that
 //!    can lead it, and what changed since the step began. The readings are
@@ -39,9 +44,6 @@ use super::{
     vote,
 };
 
-/// Least calibrated belief that the duel's champion is the element, when a
-/// contrast is asked about it.
-pub(super) const CONTRAST_KEEP: f64 = 0.5;
 /// Least calibrated belief a finalist needs, with no champion, to be taken.
 pub(super) const CONTRAST_ACCEPT: f64 = 0.65;
 /// Least lead that finalist needs over the other one contrasted.
@@ -328,18 +330,33 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             finalists.truncate(duel::MAX_FINALISTS - 1);
             finalists.push(cross.clone());
         }
-        let ranked = self.duel(log, &offer, finalists).await?;
-        let Some((ranked, champion)) = ranked else {
-            return Ok(None);
+        // Deliberation changes a pick; it refuses one only when nothing
+        // serves (`Verdict::Abstain`, above). A close call no rung settles
+        // is acted on at its best ranking, with the runners-up kept for a
+        // backtrack: in a `do` loop, pressing nothing stalls the step, and
+        // the effect check and undo are there to catch a wrong press.
+        let Some((ranked, champion)) = self.duel(log, &offer, finalists).await? else {
+            return Ok(pick.map(|(candidate, probability)| {
+                self.frontier = runners_up(&offer, merged, &candidate);
+                Grounded {
+                    candidate,
+                    confidence: probability,
+                }
+            }));
         };
-        let chosen = if self.deep() && self.enabled(FlowLoop::Escalation) {
-            self.contrast(log, &offer, &ranked, champion).await?
+        let contrasted = if champion.is_none() && self.deep() && self.enabled(FlowLoop::Escalation)
+        {
+            self.contrast(log, &offer, &ranked).await?
         } else {
-            champion.map(|champion| (ranked[champion].clone(), 1.0))
+            None
         };
-        let Some((candidate, belief)) = chosen else {
-            return Ok(None);
-        };
+        let (candidate, belief) = contrasted.unwrap_or_else(|| {
+            let best = champion.unwrap_or(0);
+            (
+                ranked[best].clone(),
+                if champion.is_some() { 1.0 } else { 0.0 },
+            )
+        });
         let probability = pick
             .as_ref()
             .filter(|(first, _)| first.ref_id == candidate.ref_id)
@@ -438,22 +455,18 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(Some((ranked, champion)))
     }
 
-    /// The finalist a contrast settles on, with its belief: the champion
-    /// when it holds up, otherwise the better of the two leading finalists
-    /// when it is clearly better.
+    /// The better of the two leading finalists of a duel with no champion,
+    /// with its belief, when a contrast shows it clearly better; `None`
+    /// leaves the duel's ranking to decide.
     async fn contrast(
         &mut self,
         log: &mut StepLog,
         offer: &Offer<'_>,
         ranked: &[Candidate],
-        champion: Option<usize>,
     ) -> Result<Option<(Candidate, f64)>, Halt> {
-        let tested = match champion {
-            Some(champion) => vec![ranked[champion].clone()],
-            None => ranked.iter().take(2).cloned().collect(),
-        };
-        if self.room() == 0 {
-            return Ok(champion.map(|champion| (ranked[champion].clone(), 0.0)));
+        let tested = ranked.iter().take(2).cloned().collect::<Vec<_>>();
+        if self.room() == 0 || tested.len() < 2 {
+            return Ok(None);
         }
         let mut questions = Questions::default();
         for (index, candidate) in tested.iter().enumerate() {
@@ -487,14 +500,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .unwrap_or_default()
             })
             .collect::<Vec<_>>();
-        let settled = if champion.is_some() {
-            (beliefs[0] >= CONTRAST_KEEP).then(|| (tested[0].clone(), beliefs[0]))
-        } else {
-            let best = usize::from(beliefs.get(1).is_some_and(|other| *other > beliefs[0]));
-            let other = beliefs.get(1 - best).copied().unwrap_or_default();
-            (beliefs[best] >= CONTRAST_ACCEPT && beliefs[best] - other >= CONTRAST_LEAD)
-                .then(|| (tested[best].clone(), beliefs[best]))
-        };
+        let best = usize::from(beliefs[1] > beliefs[0]);
+        let other = beliefs[1 - best];
+        let settled = (beliefs[best] >= CONTRAST_ACCEPT && beliefs[best] - other >= CONTRAST_LEAD)
+            .then(|| (tested[best].clone(), beliefs[best]));
         self.climbed(
             log,
             "target",

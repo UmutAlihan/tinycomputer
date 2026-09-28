@@ -452,7 +452,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             let target = last.target.as_ref()?;
             let expected = last.expected.as_ref()?;
             let missed = matches!(last.outcome, Some(Outcome::Missed(_)));
-            (missed || self.deep()).then(|| {
+            missed.then(|| {
                 (
                     format!("pressed {}", label(target)),
                     expected.effect.meant(&label(target)),
