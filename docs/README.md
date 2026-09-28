@@ -82,7 +82,10 @@ and repairs what its press left in
 deliberated on its evidence — escalated, dueled, checked after acting, and
 undone and retried when wrong — is in
 [`specs/jev-deliberation.md`](specs/jev-deliberation.md)
-([`plans/jev-deliberation.md`](plans/jev-deliberation.md)).
+([`plans/jev-deliberation.md`](plans/jev-deliberation.md)). How a failed step
+is handed to a reasoning model for guidance before a task fails is in
+[`specs/task-rescue.md`](specs/task-rescue.md)
+([`plans/task-rescue.md`](plans/task-rescue.md)).
 
 ## Conventions
 

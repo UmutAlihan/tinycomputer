@@ -131,7 +131,8 @@ share that workspace, so a resumed task picks up on the page the last run left.
   visible text. If it shows a captcha, "verify you are human", a one-time code,
   two-factor authentication, or "sign in to continue", the status becomes
   `needs_human` and `ContinueTask` reruns the failed step and the rest once
-  the person has got past it. If not, it stays `failed`.
+  the person has got past it. If not, and a rescuer is configured, the failure
+  is rescued (below). Otherwise it stays `failed`.
 - **A budget ran out, or the flow was invalid.** `failed`, with a hint such as
   "raise budget.max_actions".
 
@@ -149,6 +150,7 @@ is acted on: `deep` (the default), `standard`, or `off`
 ([`specs/jev-deliberation.md`](specs/jev-deliberation.md)). Deliberation
 spends calls only where the evidence is thin, and degrades rung by rung when
 the budget runs short rather than failing the run.
+`budget.max_rescues` caps how many failed steps are rescued (below).
 The flow runtime has no clock, so `max_elapsed_ms` is enforced by
 the controller, which times out a run that would go past what is left. Time
 spent waiting for the caller does not count.
@@ -249,10 +251,30 @@ questions, which the task reports as `needs_input` before anything runs.
 `PlanTask` is the dry run: it returns the flow and the questions without
 starting anything, so a caller can inspect or edit the plan first.
 
-The planner does not rewrite the plan when a step fails partway through a
-run. A failed step ends the task as `failed` (or `needs_human`), and a caller
-that wants to try again starts a new task with a corrected flow. The lab's
-`authored` mode does the multi-round version outside the module.
+## Rescues
+
+When a top-level step fails and no person is needed, the task asks a
+reasoning model for guidance before it fails
+([`specs/task-rescue.md`](specs/task-rescue.md)). The rescuer
+(`crates/tinycomputer-engine/src/rescue/`) is briefed with the goal, the flow
+with the failed step marked, what the run reached, earlier rescues, the
+screen's visible text as untrusted data, and the fact names — every fact value
+redacted. It answers with up to six steps to run in place of the failed one,
+checked by the flow validator, or gives up. The task then runs the guidance
+and every step after the failed one unchanged, `stop_before` included, from
+what the budget has left.
+
+A task gets three rescues at most (`budget.max_rescues`, 0 to 3; 0 turns them
+off), and one rescue may think for two minutes. A rescue that gives up, fails,
+or gives no valid guidance leaves the task `failed`, with the rescuer's reason
+in the `hint`. `TaskReport.rescues` lists each one with its outcome:
+`recovered` when its steps all finished, `failed_again`, or `gave_up`.
+
+The planner's configuration brings the rescuer, on the same key: an optional
+`rescue_model` (default `openai/gpt-6-luna`, asked with low reasoning effort).
+`Describe` reports it as `rescue_configured`. A plain `RunFlow` is not
+rescued: rescues belong to the task controller, and the flow runtime asks
+only Jev.
 
 ## Where the code is
 
@@ -262,6 +284,7 @@ that wants to try again starts a new task with a corrected flow. The lab's
 | `task/interpret.rs` | what a finished run means: continue, pause, or stop, and how to resume |
 | `task/describe.rs` | `Describe`: capabilities, schemas, and examples |
 | `planner/mod.rs` | the planning protocol, validation, and repairs |
-| `planner/openrouter.rs` | the OpenRouter `LanguageModel` (feature `planner`) |
+| `planner/openrouter.rs` | the OpenRouter `LanguageModel`s for the planner and the rescuer (feature `planner`) |
+| `rescue/mod.rs` | the rescue protocol, the briefing, validation, and repairs |
 | `workspace/mod.rs` | the desktop and the browser as one surface |
 | `tinycomputer/src/tinybus_module/runner.rs` | the module's `FlowRunner`: one workspace and browser session per task |
