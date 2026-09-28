@@ -157,26 +157,21 @@ pub(super) fn ordinal(label: &str) -> Option<(&str, usize)> {
 
 /// A card field's visible text: an actionable node's name or description
 /// unconditionally, falling back to its held value only when `include_values`
-/// is set; a ref-less text node — always field content by construction, per
-/// [`super::screen::Screen::text_nodes`] — only when `include_values` is set,
-/// regardless of which of its fields carries that content.
+/// is set — the same gate [`super::screen::element_line`] applies to an
+/// ordinary element. A ref-less text node's text is shown unconditionally,
+/// as before: most of it is ordinary card text (a price, an airline name)
+/// that never reaches `context` only because it carries no ref of its own,
+/// not because it is field content.
 fn text_of(node: &Candidate, actionable: bool, include_values: bool) -> Option<String> {
+    let named = || node.name.clone().or_else(|| node.description.clone());
     let held_value = || match &node.value {
         Some(Value::String(value)) => Some(value.clone()),
         _ => None,
     };
     let text = if actionable {
-        node.name
-            .clone()
-            .or_else(|| node.description.clone())
-            .or_else(|| include_values.then(held_value).flatten())
-    } else if include_values {
-        node.name
-            .clone()
-            .or_else(|| node.description.clone())
-            .or_else(held_value)
+        named().or_else(|| include_values.then(held_value).flatten())
     } else {
-        None
+        named().or_else(held_value)
     }?;
     let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
     (!text.is_empty()).then_some(text)
