@@ -23,6 +23,9 @@ toggles.
 
 ## Remaining
 
-- Live evaluation, `off` against `deep`, on the Docker lab scenarios, with the
-  journal on. Record it in `docs/evals/` and tune the constants from
-  `--calibration`.
+- The live evaluation is recorded in
+  [`../evals/2026-09-28-deliberation.md`](../evals/2026-09-28-deliberation.md):
+  no measurable gain yet, because every run ended on site or perception
+  problems first. A replayable benchmark of the post-search pages is the
+  next step to measure it, and `--calibration` over those runs is how the
+  constants get tuned.
