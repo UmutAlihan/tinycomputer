@@ -37,6 +37,7 @@
 
 mod act;
 mod ask;
+mod attention;
 mod backend;
 mod checkpoint;
 mod denoise;
