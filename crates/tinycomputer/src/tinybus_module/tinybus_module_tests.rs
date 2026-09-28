@@ -7,12 +7,8 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{DesktopService, setup};
+use super::DesktopService;
 use serde_json::json;
-use tinybus::broker::Broker;
-use tinybus::transport::memory::MemoryBus;
-use tinybus::{Connection, Interface};
-use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
 
 mod config_tests;
 mod manifest_tests;

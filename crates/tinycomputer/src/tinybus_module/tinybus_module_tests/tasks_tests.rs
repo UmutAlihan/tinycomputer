@@ -1,12 +1,12 @@
 //! Tests for the task members over a real bus, and the runner's workspaces.
 
 use super::service;
-use crate::tinybus_module::{DesktopService, setup};
+use crate::tinybus_module::setup;
 use serde_json::json;
 use tinybus::broker::Broker;
 use tinybus::transport::memory::MemoryBus;
 use tinybus::{Connection, Interface};
-use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
+use tinycomputer_bus::names;
 
 #[tokio::test]
 async fn the_ordinary_task_members_answer_over_a_real_bus() -> tinybus::Result<()> {

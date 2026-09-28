@@ -1,13 +1,9 @@
 //! Tests for the module configuration: rejection, desktop availability, the
 //! planner, the browser executable, and the cursor.
 
-use super::service;
-use crate::tinybus_module::{DesktopService, setup};
+use crate::tinybus_module::DesktopService;
 use serde_json::json;
-use tinybus::broker::Broker;
-use tinybus::transport::memory::MemoryBus;
-use tinybus::{Connection, Interface};
-use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
+use tinycomputer_bus::DesktopResponse;
 
 #[test]
 fn a_malformed_configuration_is_rejected_rather_than_defaulted() {

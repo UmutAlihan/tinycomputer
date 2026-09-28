@@ -1,12 +1,8 @@
 //! Tests that the declared manifest, the dispatch table, and the contract agree.
 
 use super::service;
-use crate::tinybus_module::{DesktopService, setup};
-use serde_json::json;
-use tinybus::broker::Broker;
-use tinybus::transport::memory::MemoryBus;
-use tinybus::{Connection, Interface};
-use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
+use tinybus::Interface;
+use tinycomputer_bus::names;
 
 /// The `methods = [...]` list `module_export!` was handed, read back out of
 /// this module's own source.
@@ -16,7 +12,7 @@ use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
 /// Reading the literals the macro was given is the same assertion — that the
 /// declared manifest and the contract agree — reached the safe way.
 fn manifest_methods() -> Vec<String> {
-    let source = include_str!("mod.rs");
+    let source = include_str!("../mod.rs");
     let (_, rest) = source
         .split_once("    methods = [")
         .expect("the module declares a methods list");
