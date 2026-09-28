@@ -1,7 +1,16 @@
 //! Reading the screen: one budgeted look, and exploring the subtrees it cut
 //! short.
 
-use super::*;
+use std::time::Instant;
+
+use serde_json::json;
+
+use super::{
+    FlowRun, Halt, MAX_BLIND_LOOKS, MAX_EXPLORED,
+    backend::{AgentBackend, observe_async},
+    view::{Depth, Screen},
+};
+use crate::agentic::journal::millis;
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// Reads the application's current surface.
