@@ -230,8 +230,9 @@ None of them trusts a model's judgement.
   presses only with `allow_destructive` or an approval.
 - A control classified as payment, or any click on a screen that shows card
   fields, stops the run, and the task controller makes that a final
-  checkpoint. Nothing ever types payment data, and card data is refused as a
-  fact.
+  checkpoint. Card data is always a secret fact, and it is typed only under
+  `payment: "fill_then_approve"`, which is limited to the caller's
+  `origins` and still waits for approval before the control that pays.
 - Secret values never reach Jev: they are masked to `${name}` in everything
   it is sent, what a field holds included. Shared values brief Jev, and
   tasks let it read field contents (`include_values`). The planner and the

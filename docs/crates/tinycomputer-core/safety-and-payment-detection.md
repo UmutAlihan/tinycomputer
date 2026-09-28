@@ -14,13 +14,13 @@ For the plain-language version of why that separation matters, see
 `consequence(label)` reads a control's visible label and classifies what
 pressing it would commit the user to:
 
-- `Consequence::Reversible`, nothing that cannot be undone or navigated away
+- `Consequence::Reversible`: nothing that cannot be undone or navigated away
   from. This is the default: most buttons ("Book", "Continue", "Next") are
   reversible, because a booking flow keeps leading to more forms before
   anything is actually charged.
-- `Consequence::Irreversible`, a message sent, data deleted, a post
+- `Consequence::Irreversible`: a message sent, data deleted, a post
   published, a reservation confirmed. Needs explicit human approval.
-- `Consequence::Payment`, money changes hands. Never made on its own; always
+- `Consequence::Payment`: money changes hands. Never made on its own; always
   stopped at, or held for approval.
 
 ```rust

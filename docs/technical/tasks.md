@@ -189,18 +189,22 @@ follows three rules:
    is typed into a field. Summaries, step intents
    in the view, and the final answer go through `Facts::redact`, which
    replaces each value with `‹name›`.
-2. Facts are only typed: a flow may use `${fact}` only as an `enter` step's
-   value. In any other position (step text, a condition, a slot's name, an
-   `open` app, a `browse` address) validation rejects the flow before anything
-   runs. `open` and `browse` count because the app or address stays visible to
-   every later question. When `ContinueTask` supplies a new value, the flow is
-   checked again, since a name that looked undefined at the start may now be a
-   fact used somewhere it must not be.
-3. Card data is refused: a fact whose name labels card data (card number,
-   credit or debit card, CVV, CVC, security code, card expiry, card PIN, UPI
-   PIN), or any value of 13 to 19 digits that passes the Luhn check, is refused
-   with `CARD_DATA_REFUSED`, both at `StartTask` and at `ContinueTask`. No task can be handed a card to
-   type.
+2. Secrets are only typed: a flow may use a secret `${fact}` only as an
+   `enter` step's value. In any other position (step text, a condition, a
+   slot's name, an `open` app, a `browse` address) validation rejects the
+   flow before anything runs. `open` and `browse` count because the app or
+   address stays visible to every later question. Shared facts may appear
+   anywhere. When `ContinueTask` supplies a new value, the flow is checked
+   again, since a name that looked undefined at the start may now be a fact
+   used somewhere it must not be.
+3. Card data is always secret: a fact is secret when `secret_facts` names
+   it, when its name labels a card (card number, CVV, card expiry, card PIN,
+   and the like), a password, a one-time code, or an identity or account
+   number, or when its value is a plausible card number
+   (`tinycomputer-core/src/facts/`). A caller can make any fact secret but
+   never make one of these shared, and naming a secret that is not a fact is
+   refused with `UNKNOWN_SECRET`. Card details are typed only under
+   `payment: "fill_then_approve"`, which requires `origins` (below).
 
 ## Payment is a checkpoint, unless the caller opted out
 
