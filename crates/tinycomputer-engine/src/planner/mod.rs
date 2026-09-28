@@ -229,12 +229,16 @@ fn plan_for(flow: Flow, known: &BTreeSet<String>, secrets: &BTreeSet<String>) ->
 
 /// The flow in a model's reply, tolerating code fences and prose around it.
 fn parse(text: &str) -> Result<Flow, String> {
+    serde_json::from_value(json_object(text)?).map_err(|error| error.to_string())
+}
+
+/// The one JSON object in a model's reply, tolerating code fences and prose
+/// around it.
+pub(crate) fn json_object(text: &str) -> Result<Value, String> {
     let trimmed = text.trim();
     let start = trimmed.find('{').ok_or("no JSON object")?;
     let end = trimmed.rfind('}').ok_or("no JSON object")? + 1;
-    let value: Value =
-        serde_json::from_str(&trimmed[start..end.max(start)]).map_err(|error| error.to_string())?;
-    serde_json::from_value(value).map_err(|error| error.to_string())
+    serde_json::from_str(&trimmed[start..end.max(start)]).map_err(|error| error.to_string())
 }
 
 #[cfg(test)]
