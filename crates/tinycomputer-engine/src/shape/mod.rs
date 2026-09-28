@@ -21,7 +21,7 @@ pub(crate) mod schema;
 use std::sync::Arc;
 
 use serde_json::{Value, json};
-use tinycomputer_bus::agent::TaskOutput;
+use tinycomputer_bus::agent::{LanguageModelConfiguration, TaskOutput};
 
 use crate::planner::{LanguageModel, REPAIRS, Role, Turn, json_object};
 

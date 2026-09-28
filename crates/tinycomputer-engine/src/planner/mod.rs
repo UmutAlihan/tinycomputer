@@ -20,7 +20,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use serde_json::Value;
-use tinycomputer_bus::agent::{InputField, SurfaceKind, TaskPlan};
+use tinycomputer_bus::agent::{InputField, LanguageModelConfiguration, SurfaceKind, TaskPlan};
 use tinycomputer_bus::{FLOW_GUIDE, Flow};
 use tinycomputer_core::is_sensitive_name;
 

@@ -24,7 +24,7 @@ mod render;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use tinycomputer_bus::agent::Rescue;
+use tinycomputer_bus::agent::{LanguageModelConfiguration, Rescue};
 use tinycomputer_bus::{FLOW_GUIDE, Flow, FlowStep, StepReport};
 
 use crate::planner::{LanguageModel, REPAIRS, Role, Turn};
