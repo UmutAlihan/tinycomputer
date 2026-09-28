@@ -6,7 +6,7 @@ use super::{CONTRACT_VERSION, binds, is_compatible};
 
 #[test]
 fn the_shipped_contract_version_is_pinned() {
-    assert_eq!(CONTRACT_VERSION, (2, 6));
+    assert_eq!(CONTRACT_VERSION, (2, 7));
 }
 
 #[test]
@@ -16,8 +16,12 @@ fn the_contract_binds_to_itself() {
 
 #[test]
 fn a_newer_minor_on_the_module_side_binds() {
-    assert!(is_compatible((2, 6)));
+    assert!(is_compatible((2, 7)));
     assert!(is_compatible((2, 97)));
+    // 2.7 accepts the `open_jev` and `sage` decision providers and the
+    // planner's `tiny_humans` route: a 2.7 host may configure them, which a
+    // 2.6 module refuses.
+    assert!(!is_compatible((2, 6)));
     // 2.6 serves the browser members: a 2.6 host may call
     // `BrowserNavigate`, which a 2.5 module does not answer.
     assert!(!is_compatible((2, 5)));
