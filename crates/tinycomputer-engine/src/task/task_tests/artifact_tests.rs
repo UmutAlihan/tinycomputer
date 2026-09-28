@@ -89,7 +89,9 @@ async fn a_capture_that_never_answers_does_not_hold_the_task_back() {
         &[],
         None,
     )]);
-    script.stuck.store(true, std::sync::atomic::Ordering::SeqCst);
+    script
+        .stuck
+        .store(true, std::sync::atomic::Ordering::SeqCst);
     let view = start(
         &tasks,
         json!({"app": "browser", "steps": ["search for flights"]}),
@@ -103,8 +105,15 @@ async fn a_capture_that_never_answers_does_not_hold_the_task_back() {
         }
         current = settle(&tasks, &view.id).await;
     }
-    assert!(matches!(current.status, TaskStatus::Done { .. }), "{:?}", current.status);
-    assert_eq!(*script.released.lock().unwrap(), std::slice::from_ref(&view.id));
+    assert!(
+        matches!(current.status, TaskStatus::Done { .. }),
+        "{:?}",
+        current.status
+    );
+    assert_eq!(
+        *script.released.lock().unwrap(),
+        std::slice::from_ref(&view.id)
+    );
     assert!(tasks.report(&view.id).data.unwrap().artifacts.is_empty());
 }
 
@@ -112,7 +121,9 @@ async fn a_capture_that_never_answers_does_not_hold_the_task_back() {
 async fn a_task_cut_off_by_its_time_budget_keeps_its_last_screen() {
     let (tasks, script) = with_shot(Vec::new());
     let reply = tasks.start(&StartTaskRequest {
-        flow: Some(flow(json!({"app": "browser", "steps": ["search for flights"]}))),
+        flow: Some(flow(
+            json!({"app": "browser", "steps": ["search for flights"]}),
+        )),
         budget: tinycomputer_bus::agent::TaskBudget {
             max_elapsed_ms: Some(1),
             ..tinycomputer_bus::agent::TaskBudget::default()
@@ -127,7 +138,11 @@ async fn a_task_cut_off_by_its_time_budget_keeps_its_last_screen() {
         }
         current = settle(&tasks, &view.id).await;
     }
-    assert!(matches!(current.status, TaskStatus::Failed { .. }), "{:?}", current.status);
+    assert!(
+        matches!(current.status, TaskStatus::Failed { .. }),
+        "{:?}",
+        current.status
+    );
     assert_eq!(tasks.report(&view.id).data.unwrap().artifacts, [shot()]);
     assert_eq!(*script.events.lock().unwrap(), ["capture", "release"]);
 }
