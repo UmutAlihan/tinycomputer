@@ -5,8 +5,6 @@ use std::time::{Duration, Instant};
 use tinycomputer_bus::agent::{AwaitTaskRequest, TaskStatus, TaskView};
 use tinycomputer_engine::Tasks;
 
-type Failure = Box<dyn std::error::Error>;
-
 /// Follows the task until it stops, cancelling it past the time limit.
 pub(crate) async fn follow(tasks: &Tasks, mut view: TaskView) -> Result<TaskView, String> {
     let limit = Duration::from_secs(
