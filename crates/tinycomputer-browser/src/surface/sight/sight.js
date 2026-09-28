@@ -47,8 +47,12 @@
   const MODAL_SELECTOR = 'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
   const tag = (element) => element.tagName.toLowerCase();
   const role = (element) => (element.getAttribute('role') || '').toLowerCase().split(' ')[0];
+  // A page that greys a control out by style alone says so only in its class:
+  // a calendar's past day is `rdrDay rdrDayDisabled`, pressable but inert.
+  const DISABLED_CLASS = /disabled$/i;
   const disabled = (element) =>
-    element.disabled === true || element.getAttribute('aria-disabled') === 'true';
+    element.disabled === true || element.getAttribute('aria-disabled') === 'true'
+    || [...element.classList].some((name) => DISABLED_CLASS.test(name));
 
   const insideText = (element) => {
     for (let parent = element; parent; parent = parent.parentElement) {
