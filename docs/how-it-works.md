@@ -1,9 +1,14 @@
 # How tinycomputer works
 
-tinycomputer lets an AI agent use a computer the way a person would. It can
-open Mail and write a draft, or go to an airline's website and fill in a
-booking form up to the payment page. It does this without screenshots and
-without being told where any button is.
+tinycomputer is a decision model (Jev) based harness for desktop and browser
+automation, written in Rust. It can open Mail and write a draft, or go to an
+airline's website and fill in a booking form up to the payment page. It does
+this without screenshots and without being told where any button is.
+
+The idea in one line: Jev decides, the harness does everything else. Jev
+only answers small, closed questions about the screen. The Rust harness
+decides which questions to ask, checks the answers, acts, verifies what
+happened, and enforces every safety rule.
 
 This page is the big picture. Each section links to a page that goes into
 more detail.
