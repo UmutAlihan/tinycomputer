@@ -176,9 +176,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         let prepared = self.outgoing(log, request.clone());
         let framings = vote::framings_between(&prepared, from, to);
+        let votes = u32::try_from(framings.len()).unwrap_or(u32::MAX);
         let handles = self.spawn(&framings);
         self.rounds = self.rounds.saturating_add(1);
         self.decisions = self.decisions.saturating_add(1);
+        let asked_at = Instant::now();
         let mut answered = Vec::new();
         for (framing, handle) in framings.into_iter().zip(handles) {
             if let Ok(Ok(evaluation)) = handle.await {
@@ -190,8 +192,33 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if answered.is_empty() {
             return Ok(None);
         }
-        for (id, fresh) in vote::ballots(&answered) {
-            self.ballots.entry(id).or_default().extend(fresh);
+        // Widening is its own decision — an extra rung asked outside
+        // `FlowRun::ask_batch` — so it journals and traces exactly as that
+        // shared path does: a `decision` event with this round's framings,
+        // and a `JevExchange` with this round's own (not the accumulated)
+        // answers, when tracing.
+        let fresh = vote::ballots(&answered);
+        for (id, ballot) in fresh.clone() {
+            self.ballots.entry(id).or_default().extend(ballot);
+        }
+        self.runtime.journal.record("decision", || {
+            json!({
+                "step": self.step,
+                "questions": prepared.questions.keys().collect::<Vec<_>>(),
+                "framings": votes,
+                "answered": answered.len(),
+                "batched": 1,
+                "request_bytes": serde_json::to_vec(&prepared).map_or(0, |bytes| bytes.len()),
+                "wall_ms": crate::agentic::journal::millis(asked_at.elapsed()),
+            })
+        });
+        if self.tracing {
+            self.trace.push(JevExchange {
+                step: self.step.clone(),
+                state: prepared.state,
+                questions: serde_json::to_value(&prepared.questions).unwrap_or_default(),
+                answers: serde_json::to_value(vote::tally(&fresh)).unwrap_or_default(),
+            });
         }
         let ballots = request
             .questions
