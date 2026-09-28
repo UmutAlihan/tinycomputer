@@ -272,7 +272,10 @@ fn decisions(key: &str) -> Result<JevRuntime, Failure> {
         let sage = std::env::var("SAGE_API_KEY")
             .map_err(|_| "TINYCOMPUTER_DECISIONS=sage needs SAGE_API_KEY")?;
         let fast = std::env::var("SAGE_FAST").is_ok_and(|value| value == "1");
-        return Ok(JevRuntime::sage(&sage, fast).map_err(|error| error.message)?);
+        // The same private configuration a host sends the module.
+        let jev: JevConfig =
+            serde_json::from_value(json!({"api_key": sage, "provider": "sage", "fast": fast}))?;
+        return Ok(JevRuntime::configure(&jev).map_err(|error| error.message)?);
     }
     let jev: JevConfig =
         serde_json::from_value(json!({"api_key": key, "provider": "open_router"}))?;
