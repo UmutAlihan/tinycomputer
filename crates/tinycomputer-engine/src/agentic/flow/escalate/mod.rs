@@ -10,7 +10,7 @@
 //!    at a time, in both orders.
 //! 3. **Contrast** (deep only): each remaining finalist asked "is this the
 //!    element?" beside "is this only something similar or next to it?".
-//! 4. **Views** (deep only): a yes/no judgement asked again over other
+//! 4. **Views** (deep only, a judgement that would pass): a yes/no asked again over other
 //!    renderings of the screen — the screen alone, without the history that
 //!    can lead it, and what changed since the step began. The readings are
 //!    combined by their median, so one dissenting view neither passes nor
@@ -241,7 +241,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 return Ok(Some(held));
             }
         }
-        if !self.deep() || views.is_empty() || self.room() == 0 {
+        // Views guard a pass: a judgement that would not clear its bar has
+        // nothing for them to veto, and pulling it lower only overrules what
+        // else rests on it — Jev's own "finished" at `LEANS_DONE`.
+        if !self.deep() || views.is_empty() || self.room() == 0 || held < belief.threshold {
             return Ok(Some(held));
         }
         let seen = self.ask_batch(log, views).await?;
