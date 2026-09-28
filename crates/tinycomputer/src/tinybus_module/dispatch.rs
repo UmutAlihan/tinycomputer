@@ -80,10 +80,7 @@ impl DesktopService {
     /// # Errors
     ///
     /// Propagates whatever [`Desktop::from_config`] rejects.
-    pub(crate) fn with_browser(
-        config: &serde_json::Value,
-        browser: Arc<Browser>,
-    ) -> Result<Self> {
+    pub(crate) fn with_browser(config: &serde_json::Value, browser: Arc<Browser>) -> Result<Self> {
         let cursor = Arc::new(cursor_config(config)?);
         let desktop = Desktop::from_config(config)?.with_cursor(cursor.clone());
         let jev = config
@@ -621,7 +618,9 @@ impl DesktopService {
     ) -> TinyBusResult<DesktopResponse> {
         Ok(browser_reply(
             "browser-perform",
-            self.browser.perform(&request.session, request.request).await,
+            self.browser
+                .perform(&request.session, request.request)
+                .await,
         ))
     }
 
@@ -688,10 +687,7 @@ impl DesktopService {
     }
 
     /// Lists a session's retained downloads.
-    async fn browser_list_downloads(
-        &self,
-        request: SessionRef,
-    ) -> TinyBusResult<DesktopResponse> {
+    async fn browser_list_downloads(&self, request: SessionRef) -> TinyBusResult<DesktopResponse> {
         Ok(browser_reply(
             "browser-list-downloads",
             self.browser.list_downloads(&request.session).await,

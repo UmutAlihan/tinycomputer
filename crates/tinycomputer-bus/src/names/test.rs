@@ -51,7 +51,10 @@ fn the_families_appear_in_the_documented_order() {
     // Agentic goal members come first because they compose the primitive
     // families below. The list is also the asserted dispatch order.
     assert_eq!(METHODS.first(), Some(&methods::RESOLVE_INTENT));
-    assert_eq!(METHODS.last(), Some(&crate::browser::names::methods::WAIT_DOWNLOAD));
+    assert_eq!(
+        METHODS.last(),
+        Some(&crate::browser::names::methods::WAIT_DOWNLOAD)
+    );
 }
 
 #[test]

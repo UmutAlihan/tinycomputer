@@ -92,7 +92,10 @@ fn codes_reuse_the_desktop_spelling_where_the_meaning_matches() {
 
 #[test]
 fn an_unknown_name_travels_as_internal() {
-    assert_eq!(code("ai.tinyhumans.tinycomputer.Browser.Error.Invented"), "INTERNAL");
+    assert_eq!(
+        code("ai.tinyhumans.tinycomputer.Browser.Error.Invented"),
+        "INTERNAL"
+    );
 }
 
 #[test]
@@ -107,7 +110,10 @@ fn only_retryable_hints_are_offered_for_recoverable_names() {
     for name in NAMES {
         if let Some(hint) = recovery(name) {
             if hint.retryable {
-                assert!(is_agent_recoverable(name), "{name} is retryable but not recoverable");
+                assert!(
+                    is_agent_recoverable(name),
+                    "{name} is retryable but not recoverable"
+                );
             }
         }
     }
@@ -115,7 +121,12 @@ fn only_retryable_hints_are_offered_for_recoverable_names() {
 
 #[test]
 fn a_refused_navigation_offers_no_way_out() {
-    for name in [BLOCKED_BY_POLICY, BROWSER_UNAVAILABLE, LIMIT_EXCEEDED, MODULE_FAILED] {
+    for name in [
+        BLOCKED_BY_POLICY,
+        BROWSER_UNAVAILABLE,
+        LIMIT_EXCEEDED,
+        MODULE_FAILED,
+    ] {
         assert!(recovery(name).is_none(), "{name} must not suggest a retry");
     }
     assert!(recovery(NO_SUCH_SESSION).is_some_and(|hint| !hint.retryable));

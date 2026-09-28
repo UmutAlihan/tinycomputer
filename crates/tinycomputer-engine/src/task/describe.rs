@@ -8,8 +8,8 @@
 
 use serde_json::{Value, json};
 use tinycomputer_bus::agent::names::{CONFIDENTIAL, methods};
-use tinycomputer_bus::browser::names::methods as browser;
 use tinycomputer_bus::agent::{Capabilities, Example, MemberDoc, SurfaceAvailability};
+use tinycomputer_bus::browser::names::methods as browser;
 use tinycomputer_bus::{CONTRACT_VERSION, FLOW_GUIDE, STEP_KINDS};
 
 /// The capabilities reply for a module with these surfaces, whether Jev is

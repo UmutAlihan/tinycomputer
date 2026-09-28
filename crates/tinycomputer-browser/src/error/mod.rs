@@ -191,9 +191,7 @@ impl Error {
     /// What a caller should do next, in one sentence, when that is known.
     fn suggestion(&self) -> Option<&'static str> {
         match self {
-            Self::StaleRef { .. } => {
-                Some("take a fresh BrowserSnapshot and use a ref from it")
-            }
+            Self::StaleRef { .. } => Some("take a fresh BrowserSnapshot and use a ref from it"),
             Self::NoSuchElement { .. } => {
                 Some("take a fresh BrowserSnapshot and choose a target that is on the page")
             }

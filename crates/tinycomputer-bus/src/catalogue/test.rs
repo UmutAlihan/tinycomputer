@@ -59,7 +59,10 @@ fn every_summary_is_one_sentence() {
 #[test]
 fn an_unknown_member_has_no_entry() {
     assert!(member("Teleport").is_none());
-    assert_eq!(member("BrowserNavigate").map(|m| m.family), Some(Family::Browser));
+    assert_eq!(
+        member("BrowserNavigate").map(|m| m.family),
+        Some(Family::Browser)
+    );
 }
 
 #[test]

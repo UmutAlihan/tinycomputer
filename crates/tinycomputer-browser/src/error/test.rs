@@ -144,7 +144,11 @@ fn a_stale_ref_envelope_matches_the_desktop_recovery() {
     assert_eq!(envelope.code, "STALE_REF");
     let hint = envelope.recovery.expect("a stale ref has a way out");
     assert_eq!(hint.strategy, "refresh_snapshot_then_retry_original");
-    assert!(envelope.suggestion.is_some_and(|s| s.contains("BrowserSnapshot")));
+    assert!(
+        envelope
+            .suggestion
+            .is_some_and(|s| s.contains("BrowserSnapshot"))
+    );
     assert_eq!(envelope.disposition.retry, RetryDisposition::Safe);
 }
 
@@ -164,7 +168,11 @@ fn a_refused_navigation_says_not_to_retry() {
     .envelope();
     assert_eq!(envelope.code, "POLICY_DENIED");
     assert!(envelope.recovery.is_none());
-    assert!(envelope.suggestion.is_some_and(|s| s.starts_with("do not retry")));
+    assert!(
+        envelope
+            .suggestion
+            .is_some_and(|s| s.starts_with("do not retry"))
+    );
     assert_eq!(
         envelope.disposition.delivery,
         DeliveryDisposition::NotDelivered
@@ -175,5 +183,9 @@ fn a_refused_navigation_says_not_to_retry() {
 fn a_lost_connection_suggests_a_new_session() {
     let envelope = Error::connection_lost("closed").envelope();
     assert_eq!(envelope.code, "SESSION_NOT_FOUND");
-    assert!(envelope.suggestion.is_some_and(|s| s.contains("BrowserOpenSession")));
+    assert!(
+        envelope
+            .suggestion
+            .is_some_and(|s| s.contains("BrowserOpenSession"))
+    );
 }

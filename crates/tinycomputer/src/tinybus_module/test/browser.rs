@@ -26,7 +26,10 @@ struct Scripted(Arc<Mutex<Vec<Value>>>);
 impl Engine for Scripted {
     fn execute(&mut self, command: Value) -> Reply<'_> {
         let reply = answer(&command);
-        self.0.lock().expect("the log is not poisoned").push(command);
+        self.0
+            .lock()
+            .expect("the log is not poisoned")
+            .push(command);
         Box::pin(async move { reply })
     }
 }
@@ -38,7 +41,9 @@ fn answer(command: &Value) -> Value {
             "url": command["url"], "title": "Example"
         }}),
         Some("screenshot") => {
-            let path = command["path"].as_str().expect("a screenshot names its path");
+            let path = command["path"]
+                .as_str()
+                .expect("a screenshot names its path");
             std::fs::write(path, b"scripted image").expect("the scratch file is writable");
             json!({"success": true, "data": {"path": path}})
         }
@@ -116,7 +121,10 @@ async fn call(proxy: &Proxy, member: &str, request: Value) -> tinybus::Result<De
 
 fn data(reply: &DesktopResponse) -> &Value {
     assert!(reply.ok, "{} failed: {:?}", reply.command, reply.error);
-    reply.data.as_ref().expect("a successful reply carries data")
+    reply
+        .data
+        .as_ref()
+        .expect("a successful reply carries data")
 }
 
 #[tokio::test]
@@ -223,10 +231,16 @@ async fn an_unknown_session_is_refused_before_anything_is_sent() -> tinybus::Res
     let (_server, proxy) = serve(&scratch).await?;
 
     for (member, request) in [
-        (methods::NAVIGATE, json!({"session": "s-404", "url": "https://example.com"})),
+        (
+            methods::NAVIGATE,
+            json!({"session": "s-404", "url": "https://example.com"}),
+        ),
         (methods::SNAPSHOT, json!({"session": "s-404"})),
         (methods::READ_PAGE, json!({"session": "s-404"})),
-        (methods::EVALUATE, json!({"session": "s-404", "expression": "1"})),
+        (
+            methods::EVALUATE,
+            json!({"session": "s-404", "expression": "1"}),
+        ),
         (methods::LIST_DOWNLOADS, json!({"session": "s-404"})),
         (methods::WAIT_DOWNLOAD, json!({"session": "s-404"})),
     ] {
@@ -283,7 +297,12 @@ async fn an_open_session_takes_the_configured_executable() -> tinybus::Result<()
 async fn a_malformed_request_is_a_bus_error_not_a_panic() -> tinybus::Result<()> {
     let scratch = Scratch::new("malformed");
     let (_server, proxy) = serve(&scratch).await?;
-    let reply = call(&proxy, methods::NAVIGATE, json!({"url": "https://example.com"})).await;
+    let reply = call(
+        &proxy,
+        methods::NAVIGATE,
+        json!({"url": "https://example.com"}),
+    )
+    .await;
     assert!(reply.is_err(), "a request with no session does not decode");
     Ok(())
 }
