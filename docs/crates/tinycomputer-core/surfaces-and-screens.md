@@ -135,8 +135,8 @@ much it looks like one.
 Re-observing a screen mints new refs every time, even when nothing visible
 changed. So the crate never compares refs to detect a change; it compares
 `fingerprint()`, a string built from every candidate's `signature()` (role,
-label, value, states, and where it sits in the tree, deliberately without
-the ref), plus the window title, the surface kind, and the context text. Two
+label, value, states, and where it sits in the tree, deliberately leaving
+out the ref), plus the window title, the surface kind, and the context text. Two
 screens with the same fingerprint are the same screen as far as anyone
 watching is concerned, even if every ref in them is brand new.
 
@@ -152,7 +152,7 @@ change_note(&before, &after, true)
 `label()` gives a short human label for one element (role plus name, e.g.
 `button "Book"`), and `exact_named_match()` answers a narrower question: does
 a goal's text name this exact candidate, by containing a run of at least two
-of its name's words in order? That is deliberately strict, a single word in
+of its name's words in order? That is deliberately strict. A single word in
 common is not enough to count as "the goal named this element", because it
 guards against acting on the wrong element just because two labels share one
 common word.
