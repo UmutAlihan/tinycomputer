@@ -364,11 +364,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if self.wide() {
             return self.wide_state(screen, purpose);
         }
-        if self.deliberates(FlowLoop::Denoise) {
+        let mut state = if self.deliberates(FlowLoop::Denoise) {
             let history = denoise::compact(&self.history);
-            return ask::state(screen, purpose, &history, self.include_values);
+            ask::state(screen, purpose, &history, self.include_values)
+        } else {
+            ask::state(screen, purpose, &self.history, self.include_values)
+        };
+        if let Some(collected) = self.collected() {
+            state["already_collected"] = collected;
         }
-        ask::state(screen, purpose, &self.history, self.include_values)
+        state
     }
 
     /// The regions narrowing follows: the chosen one, and the runner-up too

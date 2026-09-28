@@ -285,6 +285,29 @@ The planner's configuration brings the rescuer, on the same key: an optional
 rescued: rescues belong to the task controller, and the flow runtime asks
 only Jev.
 
+## Output shapes
+
+A finished task's `records` are raw: whatever the screen showed, in its
+order, with its duplicates and chrome. A caller that needs a fixed shape
+passes `output` with `StartTask`
+([`specs/task-output.md`](specs/task-output.md)): `instructions` in plain
+language and, optionally, a JSON `schema`. When every step has finished,
+the shaper (`crates/tinycomputer-engine/src/shape/`) sends the goal, the
+instructions, the schema, and what the steps saved — every fact value
+redacted, wrapped as untrusted data — to a reasoning model in one pass. Its
+JSON object is checked against the schema, sent back with what is wrong up
+to twice, and returned as `done.result` beside the records. A result that
+never fits fails the task, not recoverable, with the records still in
+`TaskReport`.
+
+The schema is a subset of JSON Schema: `type`, `properties`, `required`,
+`additionalProperties` (a boolean), `items`, `enum`, `minItems`, `maxItems`,
+`description`, and `title`, with an `object` at the top. `StartTask` refuses
+anything else (`INVALID_OUTPUT`), so every rule given is checked, and refuses
+`output` without a planner configured (`OUTPUT_UNAVAILABLE`). The shaping
+model is the planner configuration's `output_model` (default
+`openai/gpt-6-luna`); `Describe` reports it as `output_configured`.
+
 ## Where the code is
 
 | File | Holds |
@@ -293,7 +316,8 @@ only Jev.
 | `task/interpret.rs` | what a finished run means: continue, pause, or stop, and how to resume |
 | `task/describe.rs` | `Describe`: capabilities, schemas, and examples |
 | `planner/mod.rs` | the planning protocol, validation, and repairs |
-| `planner/openrouter.rs` | the OpenRouter `LanguageModel`s for the planner and the rescuer (feature `planner`) |
+| `planner/openrouter.rs` | the OpenRouter `LanguageModel`s for the planner, the rescuer, and the shaper (feature `planner`) |
 | `rescue/mod.rs` | the rescue protocol, the briefing, validation, and repairs |
+| `shape/mod.rs`, `shape/schema.rs` | the output pass: its protocol, repairs, and the JSON Schema subset it checks |
 | `workspace/mod.rs` | the desktop and the browser as one surface |
 | `tinycomputer/src/tinybus_module/runner.rs` | the module's `FlowRunner`: one workspace and browser session per task |

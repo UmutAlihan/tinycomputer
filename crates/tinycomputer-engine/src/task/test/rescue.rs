@@ -14,9 +14,9 @@ use crate::task::Tasks;
 
 /// Answers from a queue and records every conversation it was shown.
 #[derive(Default)]
-struct Model {
-    answers: Mutex<VecDeque<Result<String, String>>>,
-    seen: Mutex<Vec<Vec<Turn>>>,
+pub(super) struct Model {
+    pub(super) answers: Mutex<VecDeque<Result<String, String>>>,
+    pub(super) seen: Mutex<Vec<Vec<Turn>>>,
 }
 
 impl LanguageModel for Model {

@@ -135,6 +135,19 @@ fn closer_rank(candidate: &Candidate) -> Option<usize> {
         .position(|rank| rank.contains(&name.as_str()))
 }
 
+/// `candidate`'s own accessible name or description, lower-cased and
+/// trimmed — the word [`distractions`] tells an unambiguous dismissal from a
+/// generic "OK"/"Okay" by.
+fn closer_label(candidate: &Candidate) -> String {
+    candidate
+        .name
+        .as_deref()
+        .or(candidate.description.as_deref())
+        .unwrap_or_default()
+        .trim()
+        .to_lowercase()
+}
+
 fn words(text: &str) -> Vec<String> {
     text.split(|character: char| !character.is_alphanumeric())
         .filter(|word| !word.is_empty())
@@ -214,13 +227,24 @@ pub(super) fn distractions(
             .chain(members.iter().map(|(_, member)| label(member)))
             .collect::<Vec<_>>()
             .join(" ");
-        let marked = front
-            || words(&text)
-                .iter()
-                .any(|word| DISTRACTION_WORDS.contains(&word.as_str()));
+        let named = words(&text)
+            .iter()
+            .any(|word| DISTRACTION_WORDS.contains(&word.as_str()));
+        let marked = front || named;
         // A plain "Close" says enough; an "Accept" or "Reject" in ordinary
         // content, with nothing to say it is a distraction, is the step's.
-        if (!marked && rank != 1) || named_by_step(&text) {
+        // "OK"/"Okay" say nothing either way — the same word confirms a
+        // deletion as readily as it dismisses a toast — so, unlike the rest
+        // of this tier, they need the container's own words to say it is
+        // boilerplate; being merely frontmost is not enough, or a
+        // destructive confirmation dialog would be clicked through as a
+        // distraction before its `stop_before` is ever reached.
+        let accepted = if matches!(closer_label(closer).as_str(), "ok" | "okay") {
+            named
+        } else {
+            marked || rank == 1
+        };
+        if !accepted || named_by_step(&text) {
             continue;
         }
         found.push((

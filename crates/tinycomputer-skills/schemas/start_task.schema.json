@@ -39,7 +39,17 @@
         "max_rescues": {"type": "integer", "minimum": 0, "maximum": 5, "description": "How many failed steps a reasoning model may rescue with guidance before the task fails (default and most 5; 0 turns rescues off). Needs the module's planner configuration."}
       }
     },
-    "trace": {"type": "boolean"}
+    "trace": {"type": "boolean"},
+    "output": {
+      "type": "object",
+      "description": "The shape to return the answer in. When set, a finished task hands what its read, extract, and pick steps saved to one reasoning-model pass, and done.result holds a JSON object satisfying `schema`. Needs the planner configured.",
+      "properties": {
+        "instructions": {"type": "string", "description": "What to return, in plain language: which records to keep, how many, in what order, and how to name things."},
+        "schema": {"type": "object", "description": "A JSON Schema the result must satisfy, using only type, properties, required, additionalProperties (a boolean), items, enum, minItems, maxItems, description, and title; its top-level type, if given, is object."}
+      },
+      "required": ["instructions"],
+      "additionalProperties": false
+    }
   },
   "members": ["Describe", "PlanTask", "StartTask", "AwaitTask", "ContinueTask", "CancelTask", "TaskReport", "ListTasks"]
 }

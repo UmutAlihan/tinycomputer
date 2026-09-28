@@ -52,6 +52,14 @@ use super::{
 /// thousand tokens: at 40,000 a live booking page reached 28,000 tokens of
 /// Jev's 32,000 once the questions were added.
 pub(super) const DIGEST_BUDGET: usize = 24_000;
+
+/// How many of the run's saved variables every state recalls: the most
+/// recent ones, enough for a step that walks a list to know which items
+/// it has done.
+pub(super) const MAX_COLLECTED: usize = 12;
+
+/// How much of each saved value the state recalls.
+pub(super) const COLLECTED_CHARS: usize = 120;
 /// Most candidates one move is offered: two Choices of [`CAP`]. The survey
 /// ranks the relevant regions first, and a larger knockout mostly added a
 /// final round.
@@ -124,6 +132,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 );
             }
             fields.insert("memory".to_owned(), self.memory_view(purpose));
+            if let Some(collected) = self.collected() {
+                fields.insert("already_collected".to_owned(), collected);
+            }
         }
         state
     }
@@ -173,6 +184,44 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 self.max_actions.saturating_sub(self.actions),
                 self.max_calls.saturating_sub(self.metrics.calls),
             ),
+        })
+    }
+
+    /// What the run has saved so far, for Jev to remember across steps: the
+    /// last [`MAX_COLLECTED`] variables read, each value clipped to
+    /// [`COLLECTED_CHARS`], and an `extract`'s rows as their count and first
+    /// row. `None` before anything is read. It goes through the same masking
+    /// as the rest of the state.
+    pub(super) fn collected(&self) -> Option<Value> {
+        let clip = |text: &str| -> String {
+            let mut clipped: String = text.chars().take(COLLECTED_CHARS).collect();
+            if text.chars().count() > COLLECTED_CHARS {
+                clipped.push('…');
+            }
+            clipped
+        };
+        let saved = self
+            .read
+            .iter()
+            .rev()
+            .take(MAX_COLLECTED)
+            .rev()
+            .filter_map(|name| {
+                let value = self.vars.get(name)?;
+                let shown = match serde_json::from_str::<Vec<Vec<String>>>(value) {
+                    Ok(rows) => format!(
+                        "{} items; the first: {}",
+                        rows.len(),
+                        clip(&rows.first().map(|row| row.join(" · ")).unwrap_or_default())
+                    ),
+                    Err(_) => clip(value),
+                };
+                Some((name.clone(), Value::String(shown)))
+            })
+            .collect::<serde_json::Map<_, _>>();
+        (!saved.is_empty()).then(|| {
+            json!({"untrusted_accessibility_data": saved,
+                   "note": "what earlier steps of this run read and saved, by variable name"})
         })
     }
 

@@ -24,6 +24,7 @@ Every reply is `{ok, data}` or `{ok: false, error: {code, message, hint, recover
 - **Facts:** pass the person's details (names, date of birth, email, phone) as `facts`, and refer to them in a flow as `${name}`. They brief the module's decision model so it knows whom it is acting for, and are typed on the person's machine.
 - **Secrets stay templates.** A card number, CVV, passport number, password, or one-time code is secret: the decision model only ever sees `${name}`, and a flow may use it only as an `enter` value. Name any other secret in `secret_facts`.
 - **Never pay on the person's behalf.** By default the task stops at payment for the person to finish. With `constraints.payment` set to `fill_then_approve` (and `origins` listed) it fills the card form from secret facts, then waits for `ContinueTask.approve` before pressing pay — ask the person before approving.
+- **Want the answer in a fixed shape?** Pass `output`: `instructions` in plain words and, optionally, a JSON `schema` (a subset: `type`, `properties`, `required`, `additionalProperties`, `items`, `enum`, `minItems`, `maxItems`; an object at the top). The finished task returns `done.result` matching it, beside the raw `records`. Needs the planner (`Describe` says `output_configured`).
 - **Constraints:** `constraints.surfaces` limits where the task may act; `constraints.origins` limits which sites it may load. `allow_destructive` lets it send, delete, or confirm without asking; leave it off unless the person said so.
 
 ## Statuses and what to do
@@ -36,7 +37,7 @@ Every reply is `{ok, data}` or `{ok: false, error: {code, message, hint, recover
 | `needs_human` | a captcha, a one-time code, or a login only a person can pass | tell the person `reason`; once they are done, `ContinueTask` with `answer: "done"` |
 | `checkpoint` | stopped, usually at a payment page | tell the person the `summary` and where it stopped; they finish from there |
 | `needs_plan` | plain-language task, no planner | write a flow with `guide` and start again with `flow` |
-| `done` | finished | report `answer`; `records` holds anything read or extracted |
+| `done` | finished | report `answer`, or `result` when you passed `output`; `records` holds anything read or extracted |
 | `failed` | could not finish; a configured rescuer already tried up to five times | explain `reason`; if `recoverable`, try again changed as `hint` says |
 
 ## Writing flows that work

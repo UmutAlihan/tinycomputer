@@ -363,7 +363,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         // is acted on at its best ranking, with the runners-up kept for a
         // backtrack: in a `do` loop, pressing nothing stalls the step, and
         // the effect check and undo are there to catch a wrong press.
-        let Some((ranked, champion)) = self.duel(log, &offer, finalists).await? else {
+        let Some((ranked, champion, shares)) = self.duel(log, &offer, finalists).await? else {
             return Ok(pick.map(|(candidate, probability)| {
                 self.frontier = runners_up(&offer, merged, &candidate);
                 Grounded {
@@ -380,10 +380,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         };
         let (candidate, belief) = contrasted.unwrap_or_else(|| {
             let best = champion.unwrap_or(0);
-            (
-                ranked[best].clone(),
-                if champion.is_some() { 1.0 } else { 0.0 },
-            )
+            // The finalist's own mean share of its pairings — a measured
+            // belief, whether or not it swept every rival — never a
+            // constant that would clear any later bar (`IRREVERSIBLE_FLOOR`
+            // included) regardless of how close the duel actually was.
+            (ranked[best].clone(), shares[best])
         });
         let probability = pick
             .as_ref()
@@ -431,18 +432,19 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         verdict
     }
 
-    /// The finalists ranked by a duel, and the champion's index among them.
-    /// One finalist needs no duel; `None` when there is none, or the duel
-    /// loop is off.
+    /// The finalists ranked by a duel, the champion's index among them, and
+    /// each ranked finalist's own mean share of its pairings — a measured
+    /// belief, `1.0` only for the one finalist a skipped duel never had to
+    /// compare. `None` when there are no finalists, or the duel loop is off.
     async fn duel(
         &mut self,
         log: &mut StepLog,
         offer: &Offer<'_>,
         finalists: Vec<Candidate>,
-    ) -> Result<Option<(Vec<Candidate>, Option<usize>)>, Halt> {
+    ) -> Result<Option<(Vec<Candidate>, Option<usize>, Vec<f64>)>, Halt> {
         match finalists.len() {
             0 => return Ok(None),
-            1 => return Ok(Some((finalists, Some(0)))),
+            1 => return Ok(Some((finalists, Some(0), vec![1.0]))),
             _ => {}
         }
         if !self.deliberates(FlowLoop::Duel) || self.room() == 0 {
@@ -475,12 +477,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let champion = standing
             .champion
             .and_then(|champion| standing.order.iter().position(|index| *index == champion));
+        // Each finalist's summed share (`Standing::strength`) is over one
+        // pairing with every other finalist — `finalists.len() - 1` of
+        // them, at least one here since the single-finalist case already
+        // returned above — so dividing by that count reads it back as a
+        // mean share, in `[0, 1]` like any other belief.
+        let pairings = f64::from(u32::try_from(finalists.len() - 1).unwrap_or(u32::MAX));
         let ranked = standing
             .order
             .iter()
             .map(|index| finalists[*index].clone())
             .collect();
-        Ok(Some((ranked, champion)))
+        let shares = standing
+            .order
+            .iter()
+            .map(|index| standing.strength[*index] / pairings)
+            .collect();
+        Ok(Some((ranked, champion, shares)))
     }
 
     /// The better of the two leading finalists of a duel with no champion,

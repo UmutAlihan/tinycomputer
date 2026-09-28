@@ -75,6 +75,7 @@ Every flow question about a screen shares the state built by `ask::state`:
 | `elements` | one line per actionable element, `role "name" = "value" [states]`, wrapped as `untrusted_accessibility_data` | 120 lines |
 | `recent_actions` | history: step outcomes, change notes ("window is now …; appeared: …"), and runtime notes ("that made things worse; undid it") | last 20 lines |
 | `field_contents` | only with `include_values`: what each text field holds, including rich-text bodies and token fields | 12 fields × 400 characters |
+| `already_collected` | once a `read`, `extract`, or `pick` has saved something: each saved variable's value (an `extract`'s as its count and first row), wrapped as `untrusted_accessibility_data`, so a step walking a list knows which items are done; masked like the rest | the last 12 variables × 120 characters |
 
 A blank screen, when no window can be read, arrives as `surface: "none"` with
 a note in `visible_text` saying a keyboard shortcut may still work.
@@ -208,14 +209,15 @@ Slot names go to Jev. Slot values never do.
 |---|---|---|---|
 | `source` | Choice | readable text on screen, 60 per page | for `read`, stored at 0.5 or above |
 | `record` | Choice | up to 60 result cards, each as its fields | for `pick`, when the criterion did not parse; used at 0.5 |
+| `list` | Choice | up to 6 lists showing, each as its length and first 3 items | for `extract`, and a `pick` whose criterion did not parse, when more than one list shows; used at 0.5, else the longest |
 
-`extract` asks nothing, and `pick` asks nothing when its `by` parses as a
-price, time, duration, or stop-count criterion.
+`extract` asks nothing when one list shows, and `pick` asks nothing when its
+`by` parses as a price, time, duration, or stop-count criterion.
 
 ## The wide strategy (`wide.rs`, `survey.rs`)
 
 With `strategy: "wide"` the state keeps `app`, `window`, `surface`,
-`current_step`, `visible_text`, and `field_contents`, and replaces
+`current_step`, `visible_text`, `field_contents`, and `already_collected`, and replaces
 `elements` and `recent_actions` with:
 
 | Field | Holds |

@@ -88,15 +88,19 @@ impl DesktopService {
                     serde_json::from_value(value.clone()).map_err(|_| invalid())?;
                 let planner = agentic::open_router(&config).map_err(|_| invalid())?;
                 let rescuer = agentic::open_router_rescuer(&config).map_err(|_| invalid())?;
-                Ok::<_, crate::Error>((planner, rescuer))
+                let shaper = agentic::open_router_shaper(&config).map_err(|_| invalid())?;
+                Ok::<_, crate::Error>((planner, rescuer, shaper))
             })
             .transpose()?;
         let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone());
         runner.executable = browser_executable(config)?;
         runner.cursor = cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
-        if let Some((planner, rescuer)) = planner {
-            tasks = tasks.with_planner(planner).with_rescuer(rescuer);
+        if let Some((planner, rescuer, shaper)) = planner {
+            tasks = tasks
+                .with_planner(planner)
+                .with_rescuer(rescuer)
+                .with_shaper(shaper);
         }
         let tasks = Arc::new(tasks);
         Ok(Self {
@@ -180,8 +184,7 @@ impl DesktopService {
                 },
             ],
             self.jev.is_some(),
-            self.tasks.planner_configured(),
-            self.tasks.rescue_configured(),
+            &self.tasks,
         ))
     }
 

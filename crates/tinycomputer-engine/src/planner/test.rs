@@ -182,10 +182,16 @@ async fn the_open_router_planner_needs_a_key_and_never_prints_it() {
         api_key: " ".to_owned(),
         model: None,
         rescue_model: None,
+        output_model: None,
     };
     assert!(open_router(&empty).unwrap_err().contains("api_key"));
     assert!(
         super::open_router_rescuer(&empty)
+            .unwrap_err()
+            .contains("api_key")
+    );
+    assert!(
+        super::open_router_shaper(&empty)
             .unwrap_err()
             .contains("api_key")
     );
@@ -209,6 +215,19 @@ async fn the_open_router_planner_needs_a_key_and_never_prints_it() {
     let rescuer = super::open_router_rescuer(&config).unwrap();
     let failed = rescuer
         .guide(&crate::rescue::Briefing::default())
+        .await
+        .unwrap_err();
+    assert!(!failed.contains("secret-key"));
+
+    // The shaper takes its own model, and goes through the same adapter.
+    let config: PlannerConfig = serde_json::from_value(serde_json::json!(
+        {"api_key": "secret-key", "output_model": "openai/gpt-6-luna-pro"}
+    ))
+    .unwrap();
+    assert!(format!("{config:?}").contains("output_model"));
+    let shaper = super::open_router_shaper(&config).unwrap();
+    let failed = shaper
+        .shape(&crate::shape::Harvest::default())
         .await
         .unwrap_err();
     assert!(!failed.contains("secret-key"));

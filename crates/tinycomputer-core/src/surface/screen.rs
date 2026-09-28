@@ -202,8 +202,14 @@ fn says(node: &Candidate) -> Option<String> {
 }
 
 /// One element as a line of the state Jev reads: its label, what its
-/// description adds to its name, where an unnamed element sits, what it
-/// holds when `include_values` is set (up to 80 characters), and its states.
+/// description adds to its name, where an unnamed element sits, and what it
+/// holds when `include_values` is set, in full.
+///
+/// A held value is never clipped here: the flow runtime masks secrets out
+/// of this line by their exact value (`FlowRun::mask`), and a value cut
+/// short first would leave its unmasked prefix in the line, since neither
+/// exact replacement nor digit-run masking can find a value that is no
+/// longer whole. The runtime clips the masked line afterward instead.
 #[must_use]
 pub fn element_line(node: &Candidate, include_values: bool) -> String {
     let mut line = label(node);
@@ -217,8 +223,7 @@ pub fn element_line(node: &Candidate, include_values: bool) -> String {
         && let Some(value) = node.value.as_ref().and_then(Value::as_str)
         && !value.is_empty()
     {
-        let shown: String = value.chars().take(80).collect();
-        let _ = write!(line, " = {shown:?}");
+        let _ = write!(line, " = {value:?}");
     }
     if !node.states.is_empty() {
         let _ = write!(line, " [{}]", node.states.join(", "));

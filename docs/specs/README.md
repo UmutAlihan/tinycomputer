@@ -29,4 +29,6 @@ example, [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime, and
 [`flow-reflection.md`](flow-reflection.md) for checking what a `choose` left,
 [`jev-deliberation.md`](jev-deliberation.md) for deciding on evidence and
 undoing mistakes, [`task-rescue.md`](task-rescue.md) for rescuing a failed
-step with a reasoning model, and [`virtual-cursor.md`](virtual-cursor.md) for the agent's drawn cursor.
+step with a reasoning model, [`task-output.md`](task-output.md) for
+remembering saved values and shaping a task's answer, and
+[`virtual-cursor.md`](virtual-cursor.md) for the agent's drawn cursor.

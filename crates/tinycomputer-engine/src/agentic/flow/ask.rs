@@ -19,8 +19,6 @@ pub(super) const MAX_READ_SOURCES: usize = 60;
 const MAX_STATE_ELEMENTS: usize = 120;
 /// Recent history lines shared with Jev.
 const MAX_HISTORY: usize = 20;
-/// Longest field value shown in `field_contents`, in characters.
-const MAX_FIELD_CHARS: usize = 400;
 /// Most fields shown in `field_contents`.
 const MAX_FIELDS: usize = 12;
 
@@ -77,9 +75,12 @@ fn field_contents(screen: &Screen) -> Vec<Value> {
             .map(|value| detokenize(value, following(&ordered, node.order)));
         let text = own.or_else(|| rich_text(&ordered, node));
         if let Some(text) = text {
+            // Not clipped to `MAX_FIELD_CHARS` here: `FlowRun::mask` needs
+            // the whole value to find a secret by its exact text, and the
+            // runtime clips the masked result afterward instead.
             fields.push(json!({
                 "field": label(node),
-                "holds": text.chars().take(MAX_FIELD_CHARS).collect::<String>(),
+                "holds": text,
             }));
         }
         if fields.len() >= MAX_FIELDS {
