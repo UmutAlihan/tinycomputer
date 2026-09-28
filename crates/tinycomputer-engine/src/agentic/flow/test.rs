@@ -4842,3 +4842,18 @@ async fn a_row_that_refused_the_text_is_never_pressed_while_revealing_a_field() 
         "no field that takes text was found for: destination search; 1 element(s) the page offered as fields refused the text"
     );
 }
+
+#[tokio::test]
+async fn debug_dismiss_criteria_dump() {
+    let hidden = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        wide,
+        |_, _, _| None,
+    )
+    .await;
+    let Question::Choice(dismiss) = &hidden.requests[0].questions["dismiss"] else {
+        panic!("dismiss is a choice");
+    };
+    eprintln!("{}", serde_json::to_string_pretty(&dismiss.criteria).unwrap());
+}
