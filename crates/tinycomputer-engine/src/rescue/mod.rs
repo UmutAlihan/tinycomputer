@@ -250,12 +250,37 @@ fn covered(value: &Value, briefing: &Briefing) -> Result<usize, String> {
     Ok(covers)
 }
 
-/// Whether `step` holds a `stop_before`, at any depth.
+/// Whether `step` holds a `stop_before`, at any depth. Used only to refuse
+/// covering one (`covered`, above): a step that might hold a guard on some
+/// path is never dropped, even when [`ends_in_guard`] would not credit it
+/// with actually running one.
 fn guards(step: &FlowStep) -> bool {
     match step.action() {
         FlowAction::StopBefore(_) => true,
         FlowAction::If(branch) => branch.then.iter().chain(&branch.otherwise).any(guards),
         FlowAction::RepeatUntil(repeat) => repeat.steps.iter().any(guards),
+        _ => false,
+    }
+}
+
+/// Whether `step`, as the *last* step of a sequence, guarantees a
+/// `stop_before` runs before anything after the sequence can: a bare
+/// `stop_before`, or an `if` whose every branch is non-empty and itself ends
+/// in one. `steps.iter().any(guards)` is not enough — a guard inside only
+/// one branch of an `if`, or inside a `repeat_until` body that can run zero
+/// times, can be skipped entirely, resuming the rest of the flow with no
+/// checkpoint in front of the irreversible action it was meant to gate.
+fn ends_in_guard(step: &FlowStep) -> bool {
+    match step.action() {
+        FlowAction::StopBefore(_) => true,
+        FlowAction::If(branch) => {
+            !branch.then.is_empty()
+                && !branch.otherwise.is_empty()
+                && branch.then.last().is_some_and(ends_in_guard)
+                && branch.otherwise.last().is_some_and(ends_in_guard)
+        }
+        // A `repeat_until` may run its body zero times, so even a body that
+        // always ends in a guard cannot be credited with running one.
         _ => false,
     }
 }
