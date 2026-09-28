@@ -45,6 +45,13 @@
   const disabled = (element) =>
     element.disabled === true || element.getAttribute('aria-disabled') === 'true';
 
+  const insideText = (element) => {
+    for (let parent = element; parent; parent = parent.parentElement) {
+      if (tag(parent) === 'textarea' || parent.isContentEditable) return true;
+    }
+    return false;
+  };
+
   // A box that takes typed text: a text-like input, a text area, or the
   // outermost editable region. Whatever role the page gives it.
   const takesText = (element) => {
@@ -151,7 +158,8 @@
       const parent = node.parentElement;
       if (!parent || parent === seen || !squash(node.data)) continue;
       seen = parent;
-      if (!shown(parent)) continue;
+      if (!shown(parent) || insideText(parent)) continue;
+      if (parent.closest('button, a[href], select, option, [role="button"], [role="option"]')) continue;
       const text = clip(parent.innerText || node.data, 80);
       if (text) words.push({ element: parent, text, rect: box(parent) });
     }
@@ -165,7 +173,6 @@
     let best = null;
     let bestGap = Infinity;
     for (const word of words) {
-      if (element.contains(word.element) && !['label', 'span', 'div', 'p'].includes(tag(word.element))) continue;
       const rect = word.rect;
       const across = Math.min(rect.bottom, field.bottom) - Math.max(rect.top, field.top);
       const along = Math.min(rect.right, field.right) - Math.max(rect.left, field.left);
@@ -330,7 +337,6 @@
     if (input.required === true || aria('required') === 'true') states.push('required');
     if (offscreen(element)) states.push('offscreen');
     else if (covered(element)) states.push('covered');
-    if (what === 'textbox' && tag(element) === 'input' && element.type === 'password') states.push('protected');
     return states;
   };
 
@@ -341,6 +347,7 @@
       return chosen ? squash(chosen.textContent) : '';
     }
     if (what === 'textbox' || what === 'searchbox') {
+      if (name === 'input' && element.type === 'password') return '';
       return name === 'input' || name === 'textarea' ? element.value : element.innerText;
     }
     if (what === 'slider') return String(element.value);
@@ -369,12 +376,6 @@
     }
     return false;
   };
-  const insideText = (element) => {
-    for (let parent = element; parent; parent = parent.parentElement) {
-      if (tag(parent) === 'textarea' || parent.isContentEditable) return true;
-    }
-    return false;
-  };
   const inFront = (element) => {
     const rect = box(element);
     const x = Math.min(Math.max((rect.left + rect.right) / 2, 0), width - 1);
@@ -396,7 +397,8 @@
   for (let node = base; node; node = walker.nextNode()) {
     if (node.nodeType === Node.TEXT_NODE) {
       const parent = node.parentElement;
-      if (!parent || !squash(node.data) || parent === lastText || texts >= limits.texts) continue;
+      if (!parent || !squash(node.data) || texts >= limits.texts) continue;
+      if (lastText && lastText.contains(parent)) continue;
       if (insideControl(parent) || insideText(parent) || !shown(parent)) continue;
       const rect = box(parent);
       if (rect.bottom < -height || rect.top > 2 * height) continue;
