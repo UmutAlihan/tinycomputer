@@ -119,7 +119,7 @@ impl DesktopService {
             .transpose()?;
         let executable = browser_executable(config)?;
         let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone(), browser.clone());
-        runner.executable = executable.clone();
+        runner.executable.clone_from(&executable);
         runner.cursor = cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
         if let Some((planner, rescuer, shaper)) = planner {
@@ -668,11 +668,13 @@ impl DesktopService {
         &self,
         request: ReadOutputRequest,
     ) -> TinyBusResult<DesktopResponse> {
-        Ok(browser_reply(
-            "browser-read-output",
-            self.browser
-                .read_output(&request.output, request.offset, request.max_len),
-        ))
+        self.on_outputs(move |browser| {
+            browser_reply(
+                "browser-read-output",
+                browser.read_output(&request.output, request.offset, request.max_len),
+            )
+        })
+        .await
     }
 
     /// Releases a held output before it expires.
@@ -680,10 +682,13 @@ impl DesktopService {
         &self,
         request: OutputRequest,
     ) -> TinyBusResult<DesktopResponse> {
-        Ok(browser_reply(
-            "browser-release-output",
-            self.browser.release_output(&request.output),
-        ))
+        self.on_outputs(move |browser| {
+            browser_reply(
+                "browser-release-output",
+                browser.release_output(&request.output),
+            )
+        })
+        .await
     }
 
     /// Lists a session's retained downloads.
@@ -721,6 +726,18 @@ impl DesktopService {
         tokio::task::spawn_blocking(move || call(&tasks))
             .await
             .map_err(|error| TinyBusError::failed(format!("task call failed: {error}")))
+    }
+
+    /// Runs a held-output call on a blocking thread: encoding a chunk of up
+    /// to four mebibytes is work the dispatch task should not wait on.
+    async fn on_outputs<F>(&self, call: F) -> TinyBusResult<DesktopResponse>
+    where
+        F: FnOnce(&Browser) -> DesktopResponse + Send + 'static,
+    {
+        let browser = self.browser.clone();
+        tokio::task::spawn_blocking(move || call(&browser))
+            .await
+            .map_err(|error| TinyBusError::failed(format!("output call failed: {error}")))
     }
 
     fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
