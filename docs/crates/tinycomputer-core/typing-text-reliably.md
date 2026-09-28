@@ -42,8 +42,8 @@ worked."
 
 `read_settled` reads the field once immediately. If that already holds the
 text (or the field cannot be read at all), it stops there. Otherwise it calls
-`Surface::settle()`, the hook a surface uses to wait for whatever "give the
-page a beat" means on its own platform, and reads once more. This is why
+`Surface::settle()` (the hook a surface uses to wait for whatever "give the
+page a beat" means on its own platform) and reads once more. This is why
 `Surface::settle()` exists as a method at all rather than a fixed sleep
 somewhere in this crate: a token field that turns a typed address into a chip
 needs a moment to do that; a plain text field does not, and a fixed delay
