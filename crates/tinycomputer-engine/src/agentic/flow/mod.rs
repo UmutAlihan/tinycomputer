@@ -684,7 +684,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         framings: &[vote::Framing],
     ) -> Vec<
         tokio::task::JoinHandle<
-            Result<tinyinference_decisions::EvaluationResult, super::EvaluationFailure>,
+            Result<tinyinference_decisions::EvaluationResult, tinyinference_decisions::EvaluationFailure>,
         >,
     > {
         framings
