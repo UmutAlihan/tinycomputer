@@ -20,6 +20,7 @@ its rationale are in `docs/specs/jev-intent-flows.md`, and
 | `enter.rs` | slot matching and verified delivery, top to bottom |
 | `steps.rs` | `open`, `choose`, `read`, `verify`, `wait_for`, `stop_before`, `if`, `repeat_until` |
 | `memory.rs` | grounding hints: remember, recall, learn |
+| `reflect.rs` | after a `choose` presses something: does the screen show its choice? repair once, else fail |
 | `wide.rs` | the wide strategy: one request per `do` turn over the screen digest (judgement, `dismiss`, every move's target), the wide state, resolving prepared targets |
 | `survey.rs` | the wide strategy's attention pass: which regions of a crowded screen matter, which distract |
 | `ledger.rs` | the working memory wide questions see: finished steps, recent actions across steps, tried and failed, next step |
