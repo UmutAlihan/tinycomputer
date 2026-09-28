@@ -16,12 +16,12 @@ mod service;
 
 pub(super) use service::desktop_availability;
 
-use tinybus::{Error as TinyBusError, Result as TinyBusResult};
+use tinybus::Result as TinyBusResult;
 use tinycomputer_bus::{
     ClipboardGetRequest, ClipboardSetRequest, CloseAppRequest, DesktopResponse,
     DismissAllNotificationsRequest, DismissNotificationRequest, DragRequest, FindRequest,
     FocusWindowRequest, GetRequest, HoldKeyRequest, HoldMouseRequest, HoverRequest, IsRequest,
-    JevConfig, LaunchRequest, ListAppsRequest, ListNotificationsRequest, ListSurfacesRequest,
+    LaunchRequest, ListAppsRequest, ListNotificationsRequest, ListSurfacesRequest,
     ListWindowsRequest, MouseClickRequest, MouseMoveRequest, MouseWheelRequest, MoveWindowRequest,
     NotificationActionRequest, PermissionsRequest, PressRequest, RefRequest, ResizeWindowRequest,
     ResolveIntentRequest, RunFlowRequest, RunGoalRequest, ScreenshotRequest, ScrollRequest,
@@ -36,9 +36,8 @@ use tinycomputer_bus::agent::{
     StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport, TaskView,
 };
 
-use super::runner::{WorkspaceRunner, jev_not_configured};
-use crate::{Desktop, Result};
-use tinycomputer_browser::{CursorPace, ScreenCursor};
+use super::runner::jev_not_configured;
+use crate::Desktop;
 use tinycomputer_engine as agentic;
 
 /// The object served at [`tinycomputer_bus::names::OBJECT_PATH`].

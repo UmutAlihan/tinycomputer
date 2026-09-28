@@ -1,29 +1,7 @@
 //! Reading the module configuration's `browser` and `cursor` keys.
 
-use tinybus::{Error as TinyBusError, Result as TinyBusResult};
-use tinycomputer_bus::{
-    ClipboardGetRequest, ClipboardSetRequest, CloseAppRequest, DesktopResponse,
-    DismissAllNotificationsRequest, DismissNotificationRequest, DragRequest, FindRequest,
-    FocusWindowRequest, GetRequest, HoldKeyRequest, HoldMouseRequest, HoverRequest, IsRequest,
-    JevConfig, LaunchRequest, ListAppsRequest, ListNotificationsRequest, ListSurfacesRequest,
-    ListWindowsRequest, MouseClickRequest, MouseMoveRequest, MouseWheelRequest, MoveWindowRequest,
-    NotificationActionRequest, PermissionsRequest, PressRequest, RefRequest, ResizeWindowRequest,
-    ResolveIntentRequest, RunFlowRequest, RunGoalRequest, ScreenshotRequest, ScrollRequest,
-    SelectRequest, SetValueRequest, SnapshotRequest, TypeRequest, ValidateFlowRequest, WaitRequest,
-    WindowRequest,
-};
-
-use std::sync::Arc;
-
-use tinycomputer_bus::agent::{
-    AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, PlanTaskRequest,
-    StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport, TaskView,
-};
-
-use super::runner::{WorkspaceRunner, jev_not_configured};
-use crate::{Desktop, Result};
+use crate::Result;
 use tinycomputer_browser::{CursorPace, ScreenCursor};
-use tinycomputer_engine as agentic;
 
 /// The `browser.executable` configuration: the Chrome or Chromium binary to
 /// launch where the platform's own discovery would not find one.
