@@ -216,13 +216,13 @@ Paying is never automatic, in either `PaymentMode`. The mode only changes
 *how far* a task goes on its way to the control that pays:
 
 - **`StopAtPayment`** (the default). The task stops at the step that pays
-  and hands it back as a **non-continuable** `Checkpoint`, a dead end for
-  this task; a person finishes the payment themselves, and the task's
+  and hands it back as a **non-continuable** `Checkpoint`: a dead end for
+  this task. A person finishes the payment themselves, and the task's
   browser session is only released by `CancelTask`.
 - **`FillThenApprove`**. The task fills the payment form from the caller's
   secret facts, then pauses as an ordinary `NeedsApproval`, the same as any
   other irreversible action. Only `ContinueTask.approve` presses the control
-  that pays. This mode requires `constraints.origins` to be set, `StartTask`
+  that pays. This mode requires `constraints.origins` to be set; `StartTask`
   refuses with `ORIGINS_REQUIRED` otherwise, so card details are typed only
   on sites the caller explicitly named.
 
@@ -244,12 +244,12 @@ builds on) splits every fact into shared or secret:
   code) reach a model only as `${name}`, never the value. A field is
   automatically secret when its name matches a recognised sensitive term
   (`card number`, `cvv`, `otp`, `passport`, `aadhaar`, `pan`, `iban`, and
-  more, see `is_sensitive_name` in `tinycomputer-core`) or when its value
+  more; see `is_sensitive_name` in `tinycomputer-core`) or when its value
   looks like a card number, and a caller can add more names to `secret_facts`
   but can never make a recognised-sensitive one shared.
 
 Facts run with `include_values: true` at the flow layer, so Jev can read
-what a field currently holds and check that what was typed matches, but the
+what a field currently holds and check that what was typed matches. But the
 flow runtime masks every secret value in anything it builds for Jev before
 it leaves the machine, so a secret fact's value is never actually visible to
 the model even though the field it landed in is. Every summary, every
