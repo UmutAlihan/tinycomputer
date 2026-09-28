@@ -17,17 +17,17 @@ use super::screen::{Candidate, Screen};
 
 #[derive(Debug)]
 pub(super) struct PendingRun {
-    created: Instant,
-    started: Instant,
-    request: RunGoalRequest,
-    decision: JevDecision,
-    screen: Screen,
-    target: Candidate,
-    turns: Vec<JevTurn>,
-    history: Vec<String>,
-    unchanged: u32,
-    metrics: JevMetrics,
-    journal: Journal,
+    pub(super) created: Instant,
+    pub(super) started: Instant,
+    pub(super) request: RunGoalRequest,
+    pub(super) decision: JevDecision,
+    pub(super) screen: Screen,
+    pub(super) target: Candidate,
+    pub(super) turns: Vec<JevTurn>,
+    pub(super) history: Vec<String>,
+    pub(super) unchanged: u32,
+    pub(super) metrics: JevMetrics,
+    pub(super) journal: Journal,
 }
 
 pub(super) fn queue_confirmation(runtime: &JevRuntime, run: PendingRun) -> DesktopResponse {

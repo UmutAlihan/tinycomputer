@@ -21,9 +21,9 @@ use super::sage;
 /// Configured Jev transport and non-secret policy metadata.
 #[derive(Clone)]
 pub struct JevRuntime {
-    client: Arc<dyn Evaluator>,
-    configuration: JevConfiguration,
-    pending: Arc<Mutex<HashMap<String, PendingRun>>>,
+    pub(super) client: Arc<dyn Evaluator>,
+    pub(super) configuration: JevConfiguration,
+    pub(super) pending: Arc<Mutex<HashMap<String, PendingRun>>>,
     journal: Journal,
 }
 
@@ -148,12 +148,12 @@ impl JevRuntime {
     }
 
     /// This runtime writing to `journal`.
-    fn within(self, journal: Journal) -> Self {
+    pub(super) fn within(self, journal: Journal) -> Self {
         Self { journal, ..self }
     }
 
     /// This runtime with a run of `kind` begun in its journal.
-    fn begin_run(&self, kind: &str, label: &str) -> Self {
+    pub(super) fn begin_run(&self, kind: &str, label: &str) -> Self {
         Self {
             journal: self.journal.begin(kind, label, &self.configuration.model),
             ..self.clone()
@@ -161,7 +161,7 @@ impl JevRuntime {
     }
 
     /// Asks Jev one request, journaling the exchange against `step`.
-    async fn evaluate(
+    pub(super) async fn evaluate(
         &self,
         step: Option<&str>,
         request: &EvaluationRequest,
