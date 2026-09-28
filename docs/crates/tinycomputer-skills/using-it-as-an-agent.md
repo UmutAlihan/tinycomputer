@@ -94,6 +94,27 @@ examples.
 `allow_destructive` lets a task send, delete, or confirm without pausing
 for approval; leave it off unless the person has said they want that.
 
+## Looking closer, or driving the browser yourself
+
+Tasks are the way in; the module also serves 13 `Browser…` primitives for
+when you need to look or act directly instead of handing over a whole job.
+They reply `{ok, command, data}` or
+`{ok: false, error: {code, message, suggestion, recovery}}`, the same shape
+on the desktop and in the browser: `STALE_REF` always means take a fresh
+snapshot and choose again.
+
+- `BrowserListSessions` shows every open browser session, a running task's
+  included.
+- `BrowserOpenSession`, then `BrowserNavigate` and `BrowserSnapshot` with
+  `{"session": id, …}`; act on a ref with `BrowserPerform`, for example
+  `{"session": "s-1", "action": "click", "target": {"kind": "ref", "value": "e3"}}`.
+- `BrowserScreenshot` returns an output id, not an image: read it with
+  `BrowserReadOutput` from `offset` 0 until `eof`, then
+  `BrowserReleaseOutput`. The same call works for a screenshot a task view
+  names.
+- `BrowserCloseSession` when done with a session you opened; leave a task's
+  own session to the task.
+
 ## The example, as a sanity check
 
 `SKILL.md` ends with a full worked example: a flight search, a pick by
