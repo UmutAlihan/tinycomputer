@@ -332,6 +332,52 @@ pub enum FlowLoop {
     /// Checking, after a `choose` pressed something, that the screen shows
     /// the choice it asked for, and repairing it once when it does not.
     Reflection,
+    /// Deciding from the evidence behind an answer — its margin over the
+    /// runner-up and how many framings agreed — rather than from one
+    /// probability: accept, deliberate further, or abstain.
+    Evidence,
+    /// Asking an undecided question again, more ways, before acting on it.
+    Escalation,
+    /// Settling close candidates by asking about them two at a time, in
+    /// both orders.
+    Duel,
+    /// Narrowing a crowded screen level by level while keeping the two best
+    /// branches wherever a level is close.
+    TreeGrounding,
+    /// Ranking what is in view first and leaving out elements that cannot
+    /// serve any step: disabled, zero-size, or pressed without effect again.
+    Denoise,
+    /// Predicting what an action should change and checking the screen for
+    /// it, so a wrong click is noticed.
+    Expectation,
+    /// Recording where the step started and restoring it after a mistake,
+    /// verified against the record.
+    Checkpoint,
+    /// Returning to a checkpoint and trying the next-best candidate.
+    Backtrack,
+}
+
+/// How much the flow runtime deliberates before it acts on a decision.
+///
+/// Jev's probabilities measure how concentrated an answer is, not how likely
+/// it is to be right, so a single number near a threshold decides badly.
+/// Deliberation reads the evidence behind each answer and, when it is thin,
+/// asks more — more framings, pairwise duels, contrasting questions — before
+/// acting; it checks each action's effect, and undoes and retries a mistake.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Deliberation {
+    /// The single-threshold gates alone, as before deliberation existed.
+    Off,
+    /// The evidence gate, more framings and pairwise duels on a close call,
+    /// effect checks, checkpoints, and one backtrack per step.
+    Standard,
+    /// Everything `Standard` does, plus contrasting questions, judging over
+    /// several views of the screen, a flat-versus-tree cross-check when
+    /// grounding, a stricter bar for irreversible presses, and up to three
+    /// backtracks per step.
+    #[default]
+    Deep,
 }
 
 /// How the flow runtime spends its Jev decisions.
@@ -426,6 +472,9 @@ pub struct RunFlowRequest {
     pub trace: bool,
     /// How decisions are asked: [`FlowStrategy::Narrow`] unless set.
     pub strategy: FlowStrategy,
+    /// How much the runtime deliberates before acting on a decision:
+    /// [`Deliberation::Deep`] unless set.
+    pub deliberation: Deliberation,
 }
 
 impl Default for RunFlowRequest {
@@ -437,13 +486,14 @@ impl Default for RunFlowRequest {
             allow_destructive: false,
             include_values: false,
             max_actions: 60,
-            max_model_calls: 1500,
-            votes: 5,
+            max_model_calls: 3000,
+            votes: 7,
             brief: FlowBrief::default(),
             disabled_loops: Vec::new(),
             memory: Vec::new(),
             trace: false,
             strategy: FlowStrategy::Narrow,
+            deliberation: Deliberation::Deep,
         }
     }
 }
