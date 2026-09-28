@@ -49,8 +49,8 @@ screen shows; the step does two things and must be split; what it needs is furth
 or behind a tab; the page has not loaded or needs a different entry point. Write short, \
 concrete steps, one action each. Every step must change something on the screen: to leave \
 an offer, an add-on, or a field as it is, write no step for it and move on to the control \
-that continues. To pass an optional page (seats, meals, extras) without buying \
-anything, press its Skip or No thanks control: its Next often waits for a choice. Refer to the person's details only as ${name} variables \
+that continues. To pass an optional page without choosing anything on it, press its \
+Skip or No thanks control: its Next often waits for a choice. Refer to the person's details only as ${name} variables \
 from the names you are given, never invent a new one, and use a secret only as an `enter` \
 value. Never pay, submit, send, book, or delete: put a stop_before in front of anything \
 irreversible. Give up when no step can help: the site blocks or withholds data, a person \

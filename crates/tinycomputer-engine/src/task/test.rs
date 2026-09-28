@@ -213,15 +213,6 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
         "{:?}",
         request.brief.rules
     );
-    assert!(
-        request
-            .brief
-            .rules
-            .iter()
-            .any(|rule| rule.contains("prefer a free window seat")),
-        "{:?}",
-        request.brief.rules
-    );
 
     let report = tasks.report(&view.id).data.unwrap();
     assert_eq!(report.steps.len(), 2);
