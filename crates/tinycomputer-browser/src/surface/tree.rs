@@ -19,10 +19,18 @@ const FIELD_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "textarea", "
 /// Roles a value is typed into.
 const TYPED_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "spinbutton", "textarea"];
 
-/// Roles whose own value is what was typed or selected into them, so it
-/// must never be propagated as an enclosing unnamed container's
-/// content-derived description.
-const TEXT_ENTRY_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbutton", "combobox"];
+/// Roles whose inner text is what was typed into them.
+const TEXT_ENTRY_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbutton"];
+
+/// [`TEXT_ENTRY_ROLES`] plus `combobox`: every role whose own *value* is
+/// typed or selected content, private unless values are shared, and so must
+/// never be propagated as an enclosing unnamed container's content-derived
+/// description. `combobox` is not in `TEXT_ENTRY_ROLES` itself because an
+/// unnamed, valueless combobox — a city-search row's own container — must
+/// still be describable by what it shows; it is only the role's *value*,
+/// once it holds one, that is never safe to show as someone else's
+/// description.
+const VALUE_BEARING_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbutton", "combobox"];
 
 /// Longest description an unnamed control takes from the text inside it.
 const MAX_CONTENT_NAME: usize = 120;
