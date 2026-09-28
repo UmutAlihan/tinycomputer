@@ -124,8 +124,10 @@ hand from `Describe`'s guide and pass it as `flow` instead of `task`.
 - `crates/tinycomputer-engine/src/planner/mod.rs`, `Planner`, the protocol
   text, `plan_for` (turning a flow into a `TaskPlan`).
 - `crates/tinycomputer-engine/src/planner/openrouter.rs`, the OpenRouter
-  `LanguageModel`, `PlannerConfig`.
+  `LanguageModel`, `PlannerConfig`, `open_router_rescuer`, `open_router_shaper`.
 - `crates/tinycomputer-engine/src/agentic/flow/`, `check_flow` and
   `missing_inputs`, which the planner reuses unchanged.
 - [writing-flows.md](../../writing-flows.md), the flow language the
   planner (and every human flow author) writes in.
+- [rescue.md](rescue.md) and [output.md](output.md), the other two
+  language-model helpers this same adapter builds.
