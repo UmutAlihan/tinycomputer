@@ -14,6 +14,9 @@
 //! It is shown fact *names* only. The task controller builds the
 //! [`Briefing`] with every fact value already redacted, including from the
 //! screen, which is wrapped as untrusted data.
+//!
+//! `render` writes the briefing the model reads, and `judge` checks its
+//! answer and builds the flow that resumes the task.
 
 mod judge;
 mod render;
