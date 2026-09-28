@@ -59,7 +59,8 @@ Start with these, in order:
   inspecting Jev journal JSONL files.
 - [`lab.md`](lab.md) and [`docker-lab.md`](docker-lab.md): running flows on a
   real desktop, and anything that launches Chromium in a container.
-- [`evals/`](evals): recorded results of live runs.
+- [`evals/`](evals): recorded results of live runs. [`evals/2026-09-29-sage.md`](evals/2026-09-29-sage.md)
+  compares Levanto Sage with Jev behind the same flows.
 
 The contract for what this module serves, and why it is shaped that way, is in
 [`specs/desktop-module-contract.md`](specs/desktop-module-contract.md), with its
@@ -85,7 +86,9 @@ undone and retried when wrong — is in
 ([`plans/jev-deliberation.md`](plans/jev-deliberation.md)). How a failed step
 is handed to a reasoning model for guidance before a task fails is in
 [`specs/task-rescue.md`](specs/task-rescue.md)
-([`plans/task-rescue.md`](plans/task-rescue.md)).
+([`plans/task-rescue.md`](plans/task-rescue.md)). How a run remembers what it
+saved, and how a finished task returns it in the caller's JSON shape, is in
+[`specs/task-output.md`](specs/task-output.md).
 
 ## Conventions
 

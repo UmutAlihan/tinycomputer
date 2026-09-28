@@ -7,6 +7,7 @@
 mod flow;
 mod journal;
 mod policy;
+mod sage;
 mod screen;
 mod task;
 mod verify;
@@ -129,6 +130,33 @@ impl JevRuntime {
                     .clone()
                     .unwrap_or_else(|| "jev-latest".to_owned()),
                 endpoint_url: request.endpoint_url.clone(),
+            },
+            pending: Arc::new(Mutex::new(HashMap::new())),
+            journal: Journal::from_env(),
+        })
+    }
+
+    /// A runtime whose decisions Levanto Sage makes in place of Jev, with
+    /// `api_key`; `fast` scores each choice in one pass rather than one per
+    /// option.
+    ///
+    /// For measuring Sage behind the same loops (`agentic/sage/`): it is not
+    /// reachable over the bus, and [`JevConfiguration`] names it by its model,
+    /// `levanto-sage`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `JEV_INVALID_CONFIG` [`DesktopError`] when `api_key` is
+    /// empty.
+    pub fn sage(api_key: &str, fast: bool) -> Result<Self, Box<DesktopError>> {
+        let client = tinyinference_decisions::sage::SageClient::new(api_key)
+            .map_err(|error| config_error(&error))?;
+        Ok(Self {
+            client: Arc::new(sage::SageEvaluator::new(client, fast)),
+            configuration: JevConfiguration {
+                provider: JevProvider::TypeSafe,
+                model: "levanto-sage".to_owned(),
+                endpoint_url: None,
             },
             pending: Arc::new(Mutex::new(HashMap::new())),
             journal: Journal::from_env(),

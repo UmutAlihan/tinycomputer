@@ -45,3 +45,16 @@ bounded accessibility snapshot cannot prove an element is absent.
 Intent flows (`RunFlow`, `ValidateFlow`, `FlowGuide`) live in `flow/`; see
 `flow/README.md`. They share only the Jev runtime and its error mapping with
 the task loop above.
+
+`sage/` lets Levanto Sage take the decisions in place of Jev, for measuring
+it behind the same loops (`JevRuntime::sage`). It sends each Jev request to
+Sage as one batch group and maps the answers back:
+
+- a yes/no gets Sage's probability of yes;
+- a choice gets Sage's per-option probabilities, normalised;
+- a score gets a Sage five-level scale, spread back over the request's own
+  levels.
+
+Every call still goes through `JevRuntime::evaluate`. It is not reachable over
+the bus; `task_live` selects it with `TINYCOMPUTER_DECISIONS=sage`. See
+`docs/technical/evals/2026-09-29-sage.md`.

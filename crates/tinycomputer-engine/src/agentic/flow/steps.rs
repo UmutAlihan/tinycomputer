@@ -7,7 +7,7 @@ use tinycomputer_bus::{
     ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
     RepeatStep, StepOutcome,
 };
-use tinycomputer_core::surface::{Group, result_families, result_groups};
+use tinycomputer_core::surface::{Group, result_families};
 use tinycomputer_core::{Criterion, Record, rank};
 
 use crate::workspace::BROWSER;
@@ -39,6 +39,10 @@ const MAX_PICK_SUMMARY: usize = 400;
 pub(super) const IRREVERSIBLE_FLOOR: f64 = 0.85;
 /// Least probability a `read` or `stop_before` target needs.
 const LOCATE_FLOOR: f64 = 0.5;
+/// How many lists an `extract` offers Jev when several show.
+const MAX_LISTS: usize = 6;
+/// How many of a list's first items an `extract` shows Jev to tell it apart.
+const LIST_PREVIEW: usize = 3;
 
 /// Runs one step.
 pub(super) async fn run<B: AgentBackend + Sync>(
@@ -56,7 +60,7 @@ pub(super) async fn run<B: AgentBackend + Sync>(
         FlowAction::Choose(choose) => run.choose(log, choose).await,
         FlowAction::Read(read) => run.read(log, read).await,
         FlowAction::Pick(pick) => run.pick(log, pick).await,
-        FlowAction::Extract(read) => run.extract(read).await,
+        FlowAction::Extract(read) => run.extract(log, read).await,
         FlowAction::Verify(_) => run.verify(log, text).await,
         FlowAction::WaitFor(_) => run.wait_for(log, text).await,
         FlowAction::StopBefore(_) => run.stop_before(log, text).await,
@@ -670,29 +674,64 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(())
     }
 
-    async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
-        let what = substitute_safe(&read.what, &self.vars, &self.facts);
-        let mut screen = self.look().await?;
-        self.explore(&mut screen).await;
-        let ordered = ask::ordered_nodes(&screen);
-        let sources: Vec<(String, Value, String)> = screen
+    /// Every piece of text a `read` may take, as (label, what Jev is shown,
+    /// the text itself): each element's text, its name apart when it says
+    /// something the text does not, and the screen's static lines.
+    fn read_sources(&self, screen: &super::view::Screen) -> Vec<(String, Value, String)> {
+        let ordered = ask::ordered_nodes(screen);
+        screen
             .candidates
             .iter()
-            .filter_map(|candidate| {
+            .flat_map(|candidate| {
                 // A rich-text area (a mail body, a web view) holds no value
                 // of its own; its text is read from the ref-less nodes
                 // `screen.text_nodes` kept for it, the same source
                 // `field_contents` reads from for the state Jev already sees.
-                let text = ask::rich_text(&ordered, candidate).or_else(|| readable(candidate))?;
-                Some((
-                    label(candidate),
-                    json!({"untrusted_accessibility_data": {
-                        "element": label(candidate),
-                        "shows": if self.include_values { json!(text) } else { json!(format!("{} characters", text.chars().count())) },
-                        "state": candidate.states.join(", "),
-                    }}),
-                    text,
-                ))
+                let text = ask::rich_text(&ordered, candidate).or_else(|| readable(candidate));
+                // An element whose name says something its value does not —
+                // a chat's button named for the chat, holding its last
+                // message — offers its name as a source of its own, so a
+                // read of the name is not handed the value.
+                let name = candidate
+                    .name
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|name| !name.is_empty() && text.as_deref() != Some(*name))
+                    .map(str::to_owned);
+                let shown = |text: &str| {
+                    if self.include_values {
+                        json!(text)
+                    } else {
+                        json!(format!("{} characters", text.chars().count()))
+                    }
+                };
+                let value = text.map(|text| {
+                    (
+                        label(candidate),
+                        json!({"untrusted_accessibility_data": {
+                            "element": label(candidate),
+                            "part": if name.is_some() { "value" } else { "text" },
+                            "shows": shown(&text),
+                            "state": candidate.states.join(", "),
+                        }}),
+                        text,
+                    )
+                });
+                // Only beside a value: a name alone is already what the
+                // value source shows.
+                let name = name.filter(|_| value.is_some()).map(|name| {
+                    (
+                        label(candidate),
+                        json!({"untrusted_accessibility_data": {
+                            "element": label(candidate),
+                            "part": "name",
+                            "shows": name,
+                            "state": candidate.states.join(", "),
+                        }}),
+                        name,
+                    )
+                });
+                name.into_iter().chain(value)
             })
             .chain(screen.context.iter().map(|line| {
                 (
@@ -701,7 +740,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     line.clone(),
                 )
             }))
-            .collect();
+            .collect()
+    }
+
+    async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
+        let what = substitute_safe(&read.what, &self.vars, &self.facts);
+        let mut screen = self.look().await?;
+        self.explore(&mut screen).await;
+        let sources = self.read_sources(&screen);
         if sources.is_empty() {
             return Err(Halt::Failed(format!("nothing readable shows {what}")));
         }
@@ -786,7 +832,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let (groups, best, how) = if let Some((groups, best)) = ranked {
             (groups, best, "ranked")
         } else {
-            let groups = &families[0];
+            // Several lists show (a chat list beside the open chat's
+            // messages): judge within the one `from` names.
+            let list = if families.len() > 1 {
+                self.judge_list(log, &screen, &from, &families).await?
+            } else {
+                0
+            };
+            let groups = &families[list];
             let best = self.judge_pick(log, &screen, &from, &by, groups).await?;
             (groups, best, "judged")
         };
@@ -834,14 +887,21 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Stores every item of the list showing as JSON rows of their text.
-    async fn extract(&mut self, read: &ReadStep) -> Result<Ended, Halt> {
+    /// Where several lists show, Jev says which one is `what`.
+    async fn extract(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
         let what = substitute_safe(&read.what, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
-        let groups = result_groups(&screen);
-        if groups.is_empty() {
+        let mut families = result_families(&screen);
+        if families.is_empty() {
             return Err(Halt::Failed(format!("no list of {what} is showing")));
         }
+        let chosen = if families.len() > 1 {
+            self.judge_list(log, &screen, &what, &families).await?
+        } else {
+            0
+        };
+        let groups = families.swap_remove(chosen);
         let rows = groups
             .iter()
             .map(|group| group.fields.clone())
@@ -860,6 +920,58 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             StepOutcome::Done,
             format!("extracted {} items into {}", rows.len(), read.into),
         ))
+    }
+
+    /// Asks Jev which of the lists showing is `what`, each shown by its
+    /// first [`LIST_PREVIEW`] items, among the first [`MAX_LISTS`]. A list
+    /// not clearly chosen falls back to the longest, the one an `extract`
+    /// took before it asked.
+    async fn judge_list(
+        &mut self,
+        log: &mut StepLog,
+        screen: &super::view::Screen,
+        what: &str,
+        families: &[Vec<Group>],
+    ) -> Result<usize, Halt> {
+        let shown = &families[..families.len().min(MAX_LISTS)];
+        let keys = numbered(shown.len());
+        log.used(FlowLoop::Narrowing);
+        let answers = self
+            .ask(
+                log,
+                ask::request(
+                    self.model(),
+                    self.state(screen, &format!("extract {what}")),
+                    Questions::default().with(
+                        "list",
+                        ask::options(
+                            json!({
+                                "task": "Choose the list on screen that is this list.",
+                                "what": what,
+                            }),
+                            keys.iter().cloned().zip(shown.iter().map(|groups| {
+                                let items = groups
+                                    .iter()
+                                    .take(LIST_PREVIEW)
+                                    .map(|group| group.fields.clone())
+                                    .collect::<Vec<_>>();
+                                json!({"untrusted_accessibility_data": {
+                                    "items": groups.len(),
+                                    "first": items,
+                                }})
+                            })),
+                        ),
+                    ),
+                ),
+            )
+            .await?;
+        let Some((choice, confidence)) =
+            chosen(&answers, "list").filter(|(_, confidence)| *confidence >= LOCATE_FLOOR)
+        else {
+            return Ok(0);
+        };
+        log.confidence = Some(confidence);
+        Ok(keys.iter().position(|key| *key == choice).unwrap_or(0))
     }
 
     /// Asks Jev which record best meets `by`, among the first

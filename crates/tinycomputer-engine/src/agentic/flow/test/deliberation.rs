@@ -463,6 +463,65 @@ async fn an_irreversible_press_needs_a_deep_accept() {
     assert_eq!(sure.result.stop, FlowStopReason::Completed);
 }
 
+#[tokio::test]
+async fn a_duel_champions_own_share_still_needs_a_deep_accept() {
+    // Two lookalike "Select" buttons force `stop_before`'s target through a
+    // duel: a tied initial Choice escalates to widening, then a duel names
+    // one a champion by only DUEL_WIN's margin — a real but middling
+    // belief, nowhere near IRREVERSIBLE_FLOOR. Its confidence must be that
+    // measured share, not a blanket 1.0 that would skip `vouch` outright.
+    let flow = json!({"app": "Mail", "steps": [{"stop_before": "selecting the 09:00 flight"}]});
+    let answer = |id: &str, question: &Question| match id {
+        "target" => Some(weighted(
+            question,
+            &[("listitem #1", 0.45), ("listitem #2", 0.45)],
+        )),
+        // Every framing of the duel gives "listitem #2" a share of about
+        // 0.71 — over DUEL_WIN (0.6), so it is crowned champion, but well
+        // under IRREVERSIBLE_FLOOR (0.85).
+        _ if id.starts_with("duel_") => Some(pick(question, "listitem #2", 0.55)),
+        _ => None,
+    };
+    let unsure = run_with(
+        lookalikes(),
+        flow.clone(),
+        |request| request.allow_destructive = true,
+        move |id, question, _| match id {
+            "is_0" => Some(noul(0.5)),
+            _ => answer(id, question),
+        },
+    )
+    .await;
+    assert_eq!(
+        unsure.result.stop,
+        FlowStopReason::StepFailed,
+        "a champion's own ~0.71 share must not clear the irreversible floor by itself"
+    );
+    assert!(unsure.result.steps[0].note.contains("uncertain evidence"));
+    for used in [FlowLoop::Evidence, FlowLoop::Escalation, FlowLoop::Duel] {
+        assert!(loops(&unsure, 0).contains(&used), "{used:?}");
+    }
+
+    let sure = run_with(
+        lookalikes(),
+        flow,
+        |request| request.allow_destructive = true,
+        move |id, question, _| match id {
+            "is_0" => Some(noul(0.97)),
+            "holds" => Some(noul(0.95)),
+            _ => answer(id, question),
+        },
+    )
+    .await;
+    assert_eq!(
+        sure.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        sure.result.steps
+    );
+    assert_eq!(sure.app.sim().picked, ["@s:select-2"]);
+}
+
 /// A large screen whose target, Message 7, sits in Region 1; each region's
 /// knockout finds its own best guess.
 fn crowded() -> App {

@@ -59,7 +59,7 @@ flow ──► step driver ──► one step ──► its loops ──► Flow
 | `choose` | grounding, a short `do` to reveal | `target`, `again`, `confirm`, then the `do` set | which option to click |
 | `read` | narrowing | `source` | which text to store |
 | `pick` | exact ranking, else narrowing | `record` (only when `by` does not parse) | which result to open |
-| `extract` | none | none | nothing: parsed locally |
+| `extract` | narrowing, when several lists show | `list` (only then) | which list is the one named |
 | `verify`, `wait_for`, `if`, `repeat_until` | condition | `holds`, `negated`, `coverage` | whether the condition holds |
 | `stop_before` | grounding, then a condition | `target`, …, then `holds` | which control is irreversible; whether it acted |
 | `open`, `browse` | none | none | nothing: launch or navigate |
@@ -398,8 +398,8 @@ not.
 | `browse` | switches the flow to the browser, opens a session if needed, and navigates |
 | `choose` | grounds the option among clickable, non-destructive elements (preferring ones inside the region `what` names, when the page carries one) and clicks it; failing that, reveals it with a three-turn `do` loop, then either pages a date picker's calendar forward to the requested day or types the option into the field that just gained focus to filter an autocomplete, retrying up to four times; a private option (a value `enter` could not type) is picked the same way but never asked about, so Jev never sees it; once a `choose` step has pressed something, it is reflected on — does the screen show the choice it asked for? — and repaired once when not ([`specs/flow-reflection.md`](specs/flow-reflection.md)) |
 | `read` | offers every readable element and context line as options, 60 at a time, and stores the chosen text in a variable if Jev is at least 0.5 sure |
-| `extract` | finds the repeated cards on screen and stores them as JSON rows of their text; no Jev call |
-| `pick` | finds the repeated cards, ranks them exactly when the criterion parses, otherwise asks Jev, stores the winner's text, and clicks its primary control |
+| `extract` | finds the repeated cards on screen — or, where nothing repeats by ordinal (a desktop tree), runs of three or more same-role leaf siblings — and stores them as JSON rows of their text; asks Jev which list is meant only when several show |
+| `pick` | finds the repeated cards, ranks them exactly when the criterion parses, otherwise asks Jev which list `from` names (when several show) and which card meets `by`, stores the winner's text, and clicks its primary control |
 | `verify` | judges the condition once and fails the step below 0.75 |
 | `wait_for` | judges the condition up to ten times, waiting between checks |
 | `if` | judges the condition and runs `then` at 0.75 or above, `else` otherwise |

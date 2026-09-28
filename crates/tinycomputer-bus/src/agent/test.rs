@@ -115,10 +115,49 @@ fn statuses_are_tagged_by_state() {
 }
 
 #[test]
+fn an_output_shape_and_its_result_pin_their_wire_form() {
+    let request: StartTaskRequest = serde_json::from_value(json!({
+        "task": "read my newest chats",
+        "output": {
+            "instructions": "each chat's name and last message",
+            "schema": {"type": "object", "required": ["chats"]}
+        }
+    }))
+    .unwrap();
+    let output = request.output.clone().unwrap();
+    assert_eq!(output.instructions, "each chat's name and last message");
+    assert_eq!(output.schema.unwrap()["required"][0], "chats");
+    // Without an output, the request's wire form is as it was before 2.5.
+    let plain = serde_json::to_value(StartTaskRequest::default()).unwrap();
+    assert!(plain.get("output").is_none());
+
+    let done = TaskStatus::Done {
+        answer: "Finished all 3 steps.".to_owned(),
+        records: BTreeMap::new(),
+        result: Some(json!({"chats": []})),
+    };
+    let wire = serde_json::to_value(&done).unwrap();
+    assert_eq!(wire["result"], json!({"chats": []}));
+    assert_eq!(serde_json::from_value::<TaskStatus>(wire).unwrap(), done);
+    // A 2.4 module's `done` carries no result, and still reads.
+    let older: TaskStatus =
+        serde_json::from_value(json!({"state": "done", "answer": "ok", "records": {}})).unwrap();
+    assert!(matches!(older, TaskStatus::Done { result: None, .. }));
+    let bare = serde_json::to_value(TaskStatus::Done {
+        answer: "ok".to_owned(),
+        records: BTreeMap::new(),
+        result: None,
+    })
+    .unwrap();
+    assert!(bare.get("result").is_none());
+}
+
+#[test]
 fn only_settled_statuses_are_final() {
     let done = TaskStatus::Done {
         answer: "done".to_owned(),
         records: BTreeMap::new(),
+        result: None,
     };
     let failed = TaskStatus::Failed {
         step: Some(2),

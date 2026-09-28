@@ -33,6 +33,7 @@
 mod agentic;
 mod planner;
 mod rescue;
+mod shape;
 mod task;
 mod workspace;
 
@@ -42,8 +43,12 @@ pub use agentic::{
 };
 pub use planner::{Completion, LanguageModel, Planner, REPAIRS, Role, Turn};
 #[cfg(feature = "planner")]
-pub use planner::{PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer};
+pub use planner::{
+    OUTPUT_MODEL, PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer,
+    open_router_shaper,
+};
 pub use rescue::{Briefing, Guidance, MAX_RESCUE_STEPS, MAX_RESCUES, Rescuer, SCREEN_CHARS};
+pub use shape::{Harvest, RECORDS_CHARS, Shaper};
 pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks, TextFuture, capabilities};
 pub use tinycomputer_bus::DesktopResponse;
 use tinycomputer_desktop::Desktop;

@@ -138,6 +138,31 @@ pub struct StartTaskRequest {
     pub memory: Vec<GroundingHint>,
     /// Record every Jev exchange for `TaskReport`.
     pub trace: bool,
+    /// The shape the caller wants the answer in. When set, a finished task
+    /// hands what its steps read to one reasoning-model pass that returns
+    /// JSON in this shape, as `done.result`; absent, a task ends with its
+    /// records only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<TaskOutput>,
+}
+
+/// What a finished task returns, beyond its raw records.
+///
+/// The result is always a JSON object. `schema` is a JSON Schema it must
+/// satisfy, whose top-level `type`, if given, is `object`, from the subset
+/// `type`, `properties`, `required`, `additionalProperties` (a boolean),
+/// `items`, `enum`, `minItems`, `maxItems`, `description`, and `title`; a
+/// schema using any other keyword is refused when the task starts, so a
+/// result that comes back has been checked against every rule given.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TaskOutput {
+    /// What to return, in plain language: which records to keep, how many,
+    /// in what order, and how to name things.
+    pub instructions: String,
+    /// The JSON Schema of the result; absent means any JSON object.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schema: Option<Value>,
 }
 
 /// Where a task may act and what it may commit to.
@@ -360,6 +385,10 @@ pub enum TaskStatus {
         answer: String,
         /// What `extract` and `pick` steps collected, by variable name.
         records: BTreeMap<String, Vec<BTreeMap<String, String>>>,
+        /// The answer in the shape `StartTask.output` asked for, checked
+        /// against its schema; absent when no output was asked for.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        result: Option<Value>,
     },
     /// Could not finish.
     Failed {
@@ -486,6 +515,10 @@ pub enum RescueOutcome {
 }
 
 /// `Describe`: how to use this module, in one reply.
+// Each `*_configured` flag is an independent fact a model reads by name;
+// folding them into one enum or bitset would change the wire form, a major
+// bump, for a tidiness the reply's readers gain nothing from.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Capabilities {
     /// The contract version the module serves.
@@ -500,6 +533,9 @@ pub struct Capabilities {
     /// before the task fails.
     #[serde(default)]
     pub rescue_configured: bool,
+    /// Whether a task may ask for its answer in a shape (`output`).
+    #[serde(default)]
+    pub output_configured: bool,
     /// The flow step kinds.
     pub step_kinds: Vec<String>,
     /// The flow authoring guide.
