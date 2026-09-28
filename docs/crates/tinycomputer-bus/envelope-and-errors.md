@@ -29,7 +29,7 @@ in the envelope, never in that Rust error type.
 
 ```rust,ignore
 pub struct DesktopResponse {
-    pub version: String,        // always "2.4" right now (ENVELOPE_VERSION)
+    pub version: String,        // always "2.5" right now (ENVELOPE_VERSION)
     pub ok: bool,
     pub command: String,        // "click", "list-apps" — the engine's own spelling
     pub data: Option<Value>,    // present when ok
@@ -46,7 +46,7 @@ A successful reply, straight from the crate's test suite:
 
 ```json
 {
-  "version": "2.4",
+  "version": "2.5",
   "ok": true,
   "command": "list-apps",
   "data": { "apps": [] }
@@ -81,7 +81,7 @@ is what a host actually has to parse):
 
 ```json
 {
-  "version": "2.4",
+  "version": "2.5",
   "ok": false,
   "command": "click",
   "error": {
@@ -143,7 +143,7 @@ decodes with `disposition == { "delivery": "unknown", "retry": "unknown" }`.
 
 ## Two version numbers, on purpose
 
-`ENVELOPE_VERSION` (currently `"2.4"`, a string) describes the *shape* of
+`ENVELOPE_VERSION` (currently `"2.5"`, a string) describes the *shape* of
 `DesktopResponse` itself: the field names, what is optional, what
 `disposition` looks like. It tracks the underlying `agent-desktop` engine's
 own output format, because this crate's envelope is that format, byte for

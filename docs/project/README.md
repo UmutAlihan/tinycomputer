@@ -4,7 +4,7 @@ A map of every top-level folder and file in tinycomputer, and where to read
 more about each. If you are looking for how the system behaves rather than
 where its pieces live, start at
 [`docs/how-it-works.md`](../how-it-works.md) or
-[`docs/architecture.md`](../architecture.md) instead.
+[`docs/technical/architecture.md`](../technical/architecture.md) instead.
 
 ## What tinycomputer is
 
@@ -28,7 +28,7 @@ vendored engine, fixed there and picked up here as a pinned-commit bump.
 | [`scripts/`](scripts/README.md) | developer tools: the lab, the docker lab, the journal inspector |
 | [`docker/`](docker/README.md) | the Dockerfile the docker lab builds from |
 | [`.github/`](ci-and-tooling/README.md) | CI workflows, the release workflow, and issue/PR templates |
-| `.jev-journal/` | git-ignored; debug journals written by local runs (see [`docs/jev-journal.md`](../jev-journal.md)) |
+| `.jev-journal/` | git-ignored; debug journals written by local runs (see [`docs/technical/jev-journal.md`](../technical/jev-journal.md)) |
 | `worktrees/` | git-ignored; `git worktree` checkouts used for isolated feature work |
 
 ## Top-level files
@@ -75,18 +75,18 @@ host that only makes calls can depend on it alone; `tinycomputer-desktop` and
 builds the Jev loops on top of both; and `tinycomputer` serves everything
 over the bus and re-exports the contract types, so `tinycomputer::SnapshotRequest`
 and `tinycomputer_bus::SnapshotRequest` are the same type. See
-[`docs/architecture.md`](../architecture.md) for the full picture and "How a
-call travels."
+[`docs/technical/architecture.md`](../technical/architecture.md) for the full
+picture and "How a call travels."
 
 ## Where to go from here
 
 - New to the project: [`README.md`](../../README.md) at the repository root,
-  then [`docs/architecture.md`](../architecture.md)
+  then [`docs/technical/architecture.md`](../technical/architecture.md)
 - Giving the module a task to run: [`docs/giving-it-a-task.md`](../giving-it-a-task.md)
 - How the system decides what to do on screen: [`docs/how-it-decides.md`](../how-it-decides.md),
-  [`docs/decision-loops.md`](../decision-loops.md)
+  [`docs/technical/decision-loops.md`](../technical/decision-loops.md)
 - Writing or reviewing a flow: [`docs/writing-flows.md`](../writing-flows.md),
-  [`docs/flow-examples.md`](../flow-examples.md)
+  [`docs/technical/flow-examples.md`](../technical/flow-examples.md)
 - What happens when a run goes wrong: [`docs/catching-mistakes.md`](../catching-mistakes.md),
   [`docs/rescue.md`](../rescue.md)
 - What the module remembers between runs: [`docs/memory-and-saving.md`](../memory-and-saving.md)
@@ -95,7 +95,8 @@ call travels."
 - Watching a run happen live: [`docs/watching-a-run.md`](../watching-a-run.md)
 - Unfamiliar term: [`docs/glossary.md`](../glossary.md)
 - Running things on a real desktop or browser:
-  [`docs/lab.md`](../lab.md) and [`docs/docker-lab.md`](../docker-lab.md),
+  [`docs/technical/lab.md`](../technical/lab.md) and
+  [`docs/technical/docker-lab.md`](../technical/docker-lab.md),
   or the developer-tool detail in [`scripts/README.md`](scripts/README.md)
   and [`docker/README.md`](docker/README.md)
 - The vendored engines this all sits on:
