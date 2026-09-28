@@ -96,7 +96,7 @@ Each submodule is its own workspace with its own lockfile (`vendor/tinybus`
 notably so), which is why the root `Cargo.toml` excludes `vendor` from this
 workspace's members rather than folding these crates in directly.
 
-See also [`docs/architecture.md`](../../architecture.md) for how these
+See also [`docs/technical/architecture.md`](../../technical/architecture.md) for how these
 engines sit under the adapter crates, and the top-level "Vendored
 dependencies" section of the repository's `AGENTS.md`/`CLAUDE.md` for the
 same rule in the context of the whole contributor workflow.
