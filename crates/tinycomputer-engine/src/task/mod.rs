@@ -28,7 +28,6 @@
 //!
 //! How a flow actually runs is behind [`FlowRunner`], so this controller is
 //! tested with scripted runs and the module plugs in the real flow runtime.
-
 //!
 //! The controller's API is in `controller`; each task's cell and state in
 //! `store`; the background run in `drive`, capped by `budget` and briefed by
@@ -53,8 +52,7 @@ mod store;
 use std::future::Future;
 use std::pin::Pin;
 
-use tinycomputer_bus::agent::TaskId;
-use tinycomputer_bus::agent::TaskConstraints;
+use tinycomputer_bus::agent::{TaskConstraints, TaskId};
 use tinycomputer_bus::{DesktopResponse, RunFlowRequest};
 
 pub use controller::Tasks;
