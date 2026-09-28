@@ -47,15 +47,23 @@ pub fn result_families(screen: &Screen) -> Vec<Vec<Group>> {
     let nodes = ordered(screen);
     list_levels(&nodes)
         .into_iter()
-        .map(|(depth, parent)| cards(&nodes, depth, &parent))
+        .map(|(depth, parent)| cards(&nodes, depth, &parent, true))
         .filter(|groups| !groups.is_empty())
         .collect()
 }
 
 /// The cards of the list under `parent` whose containers sit at `depth`,
-/// in reading order.
-pub(super) fn cards_at(screen: &Screen, depth: usize, parent: &[String]) -> Vec<Group> {
-    cards(&ordered(screen), depth, parent)
+/// in reading order. `include_values` gates the same field content
+/// [`super::screen::element_line`] gates: an unnamed field's held text, and
+/// the ref-less text nodes that carry a rich-text area's body or a token
+/// field's attachments, are included only when it is set.
+pub(super) fn cards_at(
+    screen: &Screen,
+    depth: usize,
+    parent: &[String],
+    include_values: bool,
+) -> Vec<Group> {
+    cards(&ordered(screen), depth, parent, include_values)
 }
 
 /// Every node on `screen`, actionable or not, in document order.
