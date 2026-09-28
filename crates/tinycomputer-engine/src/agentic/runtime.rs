@@ -71,6 +71,7 @@ impl JevRuntime {
             JevProvider::TinyHumansOpenRouter => {
                 ClientConfig::tinyhumans_openrouter(request.api_key())
             }
+            // Sage returned above; it has a client of its own.
             JevProvider::OpenJev | JevProvider::Sage => ClientConfig::openjev(request.api_key()),
         };
         if let Some(endpoint) = &request.endpoint_url {
