@@ -1,8 +1,10 @@
 //! Live tests that read fixture pages by sight in a real browser, gated on
 //! `TINYCOMPUTER_LIVE_BROWSER=1`.
 
+#[cfg(feature = "agent-browser")]
 use serde_json::json;
 
+#[cfg(feature = "agent-browser")]
 use crate::surface::sight::script;
 
 /// Reads `html` by sight in a real browser: `None` unless
