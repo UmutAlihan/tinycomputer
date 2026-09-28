@@ -176,11 +176,11 @@ caller to answer a pause is not counted: the clock only runs while a flow is
 actually running.
 
 `votes` (how many independent framings each decision is asked, then
-averaged, see [`docs/technical/jev-harness.md`](../../technical/jev-harness.md))
+averaged; see [`docs/technical/jev-harness.md`](../../technical/jev-harness.md))
 defaults to 7 for a task, deliberately generous: Jev is cheap, so a task
 would rather ask several ways and average than risk one bad framing costing
 the whole run. `RunGoal` and `ResolveIntent`, called directly rather than
-through a task, do not get this default, it is specific to the task
+through a task, do not get this default: it is specific to the task
 controller's own defaults, not the flow runtime's.
 
 ## Constraints
