@@ -197,6 +197,7 @@ fn something_covering_what_the_step_needs_is_cleared_with_escape() {
     );
     assert_eq!(found.len(), 1);
     assert!(found[0].closer.is_none(), "Escape clears it");
+    assert!(found[0].shows[0].contains("Class") && found[0].shows[0].contains("covered"));
     assert!(found[0].shows.iter().any(|shown| shown.contains("18")));
     // A step about what is in front works in it; an Escape tried once is
     // not offered again.
