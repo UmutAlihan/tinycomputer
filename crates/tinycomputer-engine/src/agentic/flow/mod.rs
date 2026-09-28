@@ -714,7 +714,11 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         for (id, question) in &mut request.questions {
             let instructions = match question {
                 Question::Choice(choice) if id != PAGE_KIND => &mut choice.instructions,
-                Question::Noul(noul) if BRIEFED_NOULS.contains(&id.as_str()) => {
+                Question::Noul(noul)
+                    if BRIEFED_NOULS.contains(&id.as_str())
+                        || id.starts_with("is_")
+                        || id.starts_with("only_near_") =>
+                {
                     &mut noul.instructions
                 }
                 _ => continue,
