@@ -37,8 +37,11 @@ Non-goals:
 When a `choose` step ends `Done` and recorded at least one action, the
 runtime looks at the screen again. If a tab, radio, or option named exactly
 as the step's option is not selected while a sibling of its kind is (Emirates
-left "Return" selected after "One way" was pressed), the screen settles it:
-the choice did not take, and Jev is not asked. Otherwise it asks one voted
+left "Return" selected after "One way" was pressed), or if the step typed to
+filter a list and the option it pressed is still offered there unselected (a
+press that took closes the list or marks the option), the screen settles it:
+the choice did not take, and Jev is not asked. Field values are never shown
+for reflection: a task runs with `include_values` off. Otherwise it asks one voted
 decision:
 
 - `reflects` (yes/no): "Does the screen now show this step's choice made,
