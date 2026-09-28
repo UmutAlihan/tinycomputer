@@ -102,16 +102,7 @@ async fn main() -> Result<(), Failure> {
         PathBuf::from(std::env::var("TASK_OUT").unwrap_or_else(|_| "target/task-live".into()));
     std::fs::create_dir_all(&out)?;
 
-    let jev: JevConfig =
-        serde_json::from_value(json!({"api_key": key, "provider": "open_router"}))?;
-    let jev = if std::env::var("TINYCOMPUTER_DECISIONS").as_deref() == Ok("sage") {
-        let key = std::env::var("SAGE_API_KEY")
-            .map_err(|_| "TINYCOMPUTER_DECISIONS=sage needs SAGE_API_KEY")?;
-        let fast = std::env::var("SAGE_FAST").is_ok_and(|value| value == "1");
-        JevRuntime::sage(&key, fast).map_err(|error| error.message)?
-    } else {
-        JevRuntime::configure(&jev).map_err(|error| error.message)?
-    };
+    let jev = decisions(&key)?;
     let planner: PlannerConfig = serde_json::from_value(json!({
         "api_key": key,
         "model": std::env::var("TINYCOMPUTER_PLANNER_MODEL").ok(),
@@ -205,6 +196,20 @@ async fn main() -> Result<(), Failure> {
         }
         _ => Err("FAIL the task did not reach the payment checkpoint".into()),
     }
+}
+
+/// Who takes the flow's decisions: Levanto Sage when `TINYCOMPUTER_DECISIONS`
+/// is `sage`, else Jev on `OpenRouter` with `key`.
+fn decisions(key: &str) -> Result<JevRuntime, Failure> {
+    if std::env::var("TINYCOMPUTER_DECISIONS").as_deref() == Ok("sage") {
+        let sage = std::env::var("SAGE_API_KEY")
+            .map_err(|_| "TINYCOMPUTER_DECISIONS=sage needs SAGE_API_KEY")?;
+        let fast = std::env::var("SAGE_FAST").is_ok_and(|value| value == "1");
+        return Ok(JevRuntime::sage(&sage, fast).map_err(|error| error.message)?);
+    }
+    let jev: JevConfig =
+        serde_json::from_value(json!({"api_key": key, "provider": "open_router"}))?;
+    Ok(JevRuntime::configure(&jev).map_err(|error| error.message)?)
 }
 
 /// The facts file's values by name, and the names it marks secret.
