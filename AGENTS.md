@@ -179,11 +179,10 @@ for something the envelope can express.
   asked for, must never fail or alter a run, and must build nothing when off.
   A new timed operation in a loop gets a journal event, documented in the
   event table of `docs/jev-journal.md`.
-- **Contract versioning.** `CONTRACT_VERSION` in `tinycomputer-bus` is `(major,
-  minor)`: adding a member or an optional field is a minor bump; changing a
-  wire form, removing a member, or renaming one (including the interface) is
-  a major bump. Update the pinned tests and note the bump in
-  `docs/specs/desktop-module-contract.md`.
+- **Contract versioning.** `CONTRACT_VERSION` in `tinycomputer-bus` is `(major, minor)`:
+  adding a member or an optional field is a minor bump; changing a wire form, removing
+  a member, or renaming one (including the interface) is a major bump. Update the
+  pinned tests and note the bump in `docs/specs/desktop-module-contract.md`.
 - **The Jev client is upstream** (`tinyinference-decisions` in
   `vendor/tinyinference`): fix a client bug there, then bump the gitlink.
 
