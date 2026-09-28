@@ -32,8 +32,8 @@ constants turn a footgun into a compile error.
 
 `names::METHODS` is the full list, in the exact order the interface dispatches
 them, and `crates/tinycomputer` (the module itself) asserts its own dispatch
-table and its embedded manifest against that list. So the three copies — the
-constants here, the module's dispatch table, and the module's manifest —
+table and its embedded manifest against that list. So the three copies, the
+constants here, the module's dispatch table, and the module's manifest ,
 cannot drift apart without a test failing.
 
 ## Reading the observation-then-action pattern
@@ -46,7 +46,7 @@ there is no accessible element to name, but the ref is the normal path.
 
 Refs are tied to the snapshot that minted them. Act on a stale one (the
 screen changed since you looked) and you get `STALE_REF` back, with a
-suggestion to re-snapshot — see
+suggestion to re-snapshot, see
 [The envelope and errors](envelope-and-errors.md).
 
 ## The families
@@ -64,7 +64,7 @@ Source: [`observation/types.rs`](../../../crates/tinycomputer-bus/src/observatio
   pointed at the interesting container).
 - **`Find`** searches instead of walking: give it a role, a name, states to
   require, and get back matches. Its filter fields all combine with AND. Its
-  selection fields (`count`, `first`, `last`, `nth`) are mutually exclusive —
+  selection fields (`count`, `first`, `last`, `nth`) are mutually exclusive ,
   asking for two of them at once is an `INVALID_ARGS` error, not a silent
   pick of one.
 - **`Get`** reads one property (`text`, `value`, `title`, `bounds`, `role`,
@@ -77,7 +77,7 @@ Source: [`observation/types.rs`](../../../crates/tinycomputer-bus/src/observatio
 - **`Screenshot`** captures an application, a window, or a display. With
   `output_path` set, the image is written to disk and the reply carries the
   path; without it, the image comes back base64-encoded inline. Prefer the
-  path for anything bigger than a single control — inlining a full-screen PNG
+  path for anything bigger than a single control, inlining a full-screen PNG
   is megabytes of base64 in a bus frame.
 
 ### Interaction: the ref-addressed actions
@@ -86,7 +86,7 @@ Source: [`interaction/types.rs`](../../../crates/tinycomputer-bus/src/interactio
 
 `Click`, `DoubleClick`, `TripleClick`, `RightClick`, `Clear`, `Focus`,
 `Toggle`, `Check`, `Uncheck`, `Expand`, `Collapse`, and `ScrollTo` all take the
-same `RefRequest { ref_id, snapshot_id, timeout_ms }` — there is one struct
+same `RefRequest { ref_id, snapshot_id, timeout_ms }`, there is one struct
 because there is nothing more to say for any of them.
 
 A few members need more:

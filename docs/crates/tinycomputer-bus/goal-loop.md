@@ -79,7 +79,7 @@ original decision: the module re-observes the target first, and a stale or
 now-ambiguous target is refused rather than pressed anyway.
 
 For a host that manages its own approvals outside this loop, setting
-`require_confirmations: false` turns confirmation off — but only if `success`
+`require_confirmations: false` turns confirmation off, but only if `success`
 is populated with `VisiblePredicate`s. Without confirmations to fall back on,
 the loop needs some other way to know it actually got there, and that is
 what `success` is for: a deterministic condition, checked against a *fresh*
@@ -104,8 +104,8 @@ accessible name, underneath an ancestor whose name exactly matches `within`.
 
 `JevRunResult.verified` is `true` only when every requested predicate held on
 that fresh snapshot; `JevRunResult.final_observation` (a `JevObservation`)
-is the compact per-predicate evidence behind that verdict — which element was
-found, what value or state it actually had — so a caller does not have to
+is the compact per-predicate evidence behind that verdict, which element was
+found, what value or state it actually had, so a caller does not have to
 trust the boolean blindly.
 
 ### Why the loop stops, precisely
@@ -120,8 +120,8 @@ out of supplied text for a text action), `ActionBudget`, `ModelBudget`,
 `VerificationFailed` (Jev said done, but the success predicates disagreed),
 `TimeBudget`, `ScopeChanged` (the observed app or window left the caller's
 declared scope), and `ActionUncertain` (a mutation may have been delivered
-and must not be blindly replayed). Two of these — `StaleTarget` and
-`ActionUncertain` — exist specifically so a caller never has to guess whether
+and must not be blindly replayed). Two of these, `StaleTarget` and
+`ActionUncertain`, exist specifically so a caller never has to guess whether
 retrying is safe; contrast this with `DesktopError.disposition` in
 [The envelope and errors](envelope-and-errors.md), which answers the same
 question at the level of one desktop command rather than a whole loop.
@@ -160,7 +160,7 @@ default, `TypeSafe`'s own System One API), `OpenRouter`, or
 `JevConfiguration` is the non-secret summary of a retained client (provider,
 model, endpoint override) a caller can ask for without ever seeing the key
 back. The Jev client itself lives upstream in `vendor/tinyinference`, not in
-this crate — see the root `CLAUDE.md`'s "Read The Right Document First"
+this crate, see the root `CLAUDE.md`'s "Read The Right Document First"
 table.
 
 ## Where this fits next to flows and tasks
@@ -170,6 +170,6 @@ new email message" is turned, behind the scenes, into exactly this kind of
 bounded observe-decide-act loop. Most callers should reach for a `Flow`
 (see [Writing flows](flows.md)) or a task (see
 [The Agent and task types](agent-and-tasks.md)) rather than calling
-`RunGoal` directly — those two give you budgets, pausing, and a
+`RunGoal` directly, those two give you budgets, pausing, and a
 plain-language status for free. `RunGoal` and `ResolveIntent` are here for a
 caller that wants that single closed loop with nothing built on top of it.

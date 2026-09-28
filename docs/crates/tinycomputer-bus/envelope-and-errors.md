@@ -31,7 +31,7 @@ in the envelope, never in that Rust error type.
 pub struct DesktopResponse {
     pub version: String,        // always "2.5" right now (ENVELOPE_VERSION)
     pub ok: bool,
-    pub command: String,        // "click", "list-apps" — the engine's own spelling
+    pub command: String,        // "click", "list-apps", the engine's own spelling
     pub data: Option<Value>,    // present when ok
     pub error: Option<DesktopError>, // present when not ok
 }
@@ -147,7 +147,7 @@ decodes with `disposition == { "delivery": "unknown", "retry": "unknown" }`.
 `DesktopResponse` itself: the field names, what is optional, what
 `disposition` looks like. It tracks the underlying `agent-desktop` engine's
 own output format, because this crate's envelope is that format, byte for
-byte — a host that already parses that engine's CLI output needs no second
+byte, a host that already parses that engine's CLI output needs no second
 parser.
 
 `CONTRACT_VERSION` (a `(u32, u32)` tuple, see
@@ -167,9 +167,9 @@ DesktopResponse::err("click", DesktopError::new("STALE_REF", "ref expired"));
 DesktopError::new("INVALID_ARGS", "amount must be positive").with_suggestion("use a positive number");
 ```
 
-For the Agent (task) interface, the reply shape is different again —
+For the Agent (task) interface, the reply shape is different again ,
 `AgentResponse<T>` and `AgentError`, covered in
-[The Agent and task types](agent-and-tasks.md) — because a task-level failure
+[The Agent and task types](agent-and-tasks.md), because a task-level failure
 needs a different vocabulary (a `hint` in one sentence, a `recoverable`
 flag) than a desktop-level one does. The two envelopes are not meant to be
 confused: `DesktopResponse` answers a desktop member, `AgentResponse`

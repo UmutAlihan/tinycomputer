@@ -19,7 +19,7 @@ deliberately does not, and the reason is in the module's own doc comment:
 
 If `tinycomputer-bus` imported the engine's enum directly, a caller naming a
 surface would not need the engine at all until suddenly, transitively, it
-did — pulling a platform accessibility backend into every host that only
+did, pulling a platform accessibility backend into every host that only
 wanted to spell `Surface::Window`. Keeping a separate, hand-mirrored enum
 here means the contract crate stays down to its two dependencies (`serde`,
 `serde_json`), and it means a variant the engine adds cannot silently reach a
@@ -31,7 +31,7 @@ compile error, not a runtime surprise.
 ## `Surface`
 
 The region of an application's accessibility tree a command addresses.
-`Surface::Window` — the tree rooted at an application window — is the
+`Surface::Window`, the tree rooted at an application window, is the
 ordinary case and the default. The rest name transient or system-owned
 regions that are not children of any window and so cannot be reached by
 descending from one: `Focused`, `Menu`, `Menubar`, `Sheet`, `Popover`,

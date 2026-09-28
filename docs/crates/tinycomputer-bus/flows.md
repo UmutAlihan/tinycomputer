@@ -71,7 +71,7 @@ whole guide is written so that every JSON block in it parses.
 
 `STEP_KINDS` in the crate is this same list as a `&[&str]`, used to produce a
 readable "unknown step kind, expected one of…" error rather than a bare
-decode failure — flows are written by people and by language models, and
+decode failure, flows are written by people and by language models, and
 both need an error that tells them what to try instead.
 
 ### `Slots`: why key order does not survive the wire
@@ -87,7 +87,7 @@ a form's own tab order and autocomplete expectations anyway.
 
 ### Secrets: named everywhere except where it counts
 
-`RunFlowRequest.facts` names which of its `vars` are secret — a card number,
+`RunFlowRequest.facts` names which of its `vars` are secret, a card number,
 a password, a one-time code. A secret's *value* may only ever appear as an
 `enter` step's text. Its name, `${name}`, may appear anywhere else in a flow
 (an `open` app name, a `do`/`verify`/`wait_for`/`stop_before` text, a
@@ -97,7 +97,7 @@ learning what it stands for.
 `FlowValidation` rejects a flow that puts a secret's `${name}` anywhere but
 an `enter` value, the runtime never expands one there even if validation
 were somehow bypassed, and every question sent to the decision model has
-every secret's value masked back to `${name}` — including anywhere the
+every secret's value masked back to `${name}`, including anywhere the
 screen itself happens to display it. This is the same rule described more
 broadly in [Safety and privacy](../../safety-and-privacy.md); this crate is
 where it is enforced at the type level.
@@ -130,7 +130,7 @@ confidential bus delivery, because the texts a flow enters travel with it.
 decision is asked before the answers are averaged. Asking the decision model
 more than once is cheap, so accuracy here is bought with more calls rather
 than with a cleverer single question. `strategy` and `deliberation` tune the
-same trade-off at a coarser grain — see
+same trade-off at a coarser grain, see
 [docs/technical/decision-loops.md](../../technical/decision-loops.md) and
 [docs/technical/decision-thresholds.md](../../technical/decision-thresholds.md)
 for what each `FlowLoop` variant and each `Deliberation` level actually
@@ -146,7 +146,7 @@ one step in front of it.
 
 `ValidateFlowRequest` takes the candidate flow as raw JSON (a `Value`, not a
 typed `Flow`), specifically so a malformed flow comes back as a list of
-readable errors instead of a bus decode failure — which is what something
+readable errors instead of a bus decode failure, which is what something
 authoring flows programmatically actually needs in order to repair one:
 
 ```rust,ignore
@@ -180,7 +180,7 @@ decision turns and calls it spent, which desktop actions it took
 (`FlowActionRecord`), and which `FlowLoop`s contributed to it. `FlowLoop` is
 a long enum (`Completion`, `Progress`, `Moves`, `Narrowing`, `Corroboration`,
 `Slots`, `Obstacles`, `Undo`, `Memory`, `Vote`, `Evidence`, `Escalation`,
-`Duel`, and more) — each one names one distinct decision loop in the engine,
+`Duel`, and more), each one names one distinct decision loop in the engine,
 and `docs/technical/decision-thresholds.md` is where each loop's tunable
 thresholds are documented, kept in step with the loop's own code by
 convention.
@@ -194,8 +194,8 @@ hands that back as `RunFlowRequest.memory` next time the same flow runs.
 
 `FLOW_GUIDE` is the contents of `guide.md` embedded as a `&str` with
 `include_str!`, returned verbatim by the `FlowGuide` member. It exists to be
-pasted straight into whatever writes flows — most often a planning language
-model — and every JSON block inside it is a real, parseable `Flow`. If you
+pasted straight into whatever writes flows, most often a planning language
+model, and every JSON block inside it is a real, parseable `Flow`. If you
 are writing flows by hand, read
 [`crates/tinycomputer-bus/src/flow/guide.md`](../../../crates/tinycomputer-bus/src/flow/guide.md)
 directly; it is the same text, and it includes rules of thumb this page does

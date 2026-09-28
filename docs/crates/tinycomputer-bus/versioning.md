@@ -12,7 +12,7 @@ code, so this page exists mostly to keep them apart.
 pub const CONTRACT_VERSION: (u32, u32) = (2, 5);
 ```
 
-This describes the *vocabulary* — the member set and the payload shapes —
+This describes the *vocabulary*, the member set and the payload shapes ,
 not the crate's own package version (which the release workflow owns
 separately; see the root `CLAUDE.md`'s "Releases" section). It is a plain
 `(major, minor)` pair with no pre-release component, and the rule for
@@ -72,10 +72,10 @@ pub const ENVELOPE_VERSION: &str = "2.5";
 ```
 
 This is a different axis entirely: a string, not a tuple, and it describes
-the shape of `DesktopResponse` itself — its field names, what is optional,
+the shape of `DesktopResponse` itself, its field names, what is optional,
 the exact shape of `disposition`. It tracks the vendored `agent-desktop`
 engine's own output format, byte for byte, because `DesktopResponse` *is*
-that format — a host that already parses that engine's CLI JSON output needs
+that format, a host that already parses that engine's CLI JSON output needs
 no second parser to talk to this module. See
 [The envelope and errors](envelope-and-errors.md) for the full shape.
 
@@ -109,5 +109,5 @@ test coverage: it is where the wire form is actually pinned. A host and a
 module that disagree about a field's name fail at runtime with a decode
 error, so the shape is asserted in these tests rather than merely assumed to
 hold. If you are ever unsure whether a field is really optional, or really
-snake_case, or really named what the doc comment says — the test file next
+snake_case, or really named what the doc comment says, the test file next
 to its `types.rs` is the fastest way to find out for certain.

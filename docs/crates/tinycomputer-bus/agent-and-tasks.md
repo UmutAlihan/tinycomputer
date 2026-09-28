@@ -25,8 +25,8 @@ itself:
   carries an `AgentError` with a stable code, a one-sentence message, a
   one-sentence hint, and whether retrying could help.
 - **Self-describing state.** A `TaskView` says in one sentence what is
-  happening, which member calls make sense right now, and — inside
-  `TaskStatus` — exactly what the task needs from the caller.
+  happening, which member calls make sense right now, and, inside
+  `TaskStatus`, exactly what the task needs from the caller.
 - **No refs, selectors, or coordinates at this level.** Those stay private to
   the flow the task is running underneath.
 - **Shared facts are briefed by value; secret facts stay templates.** A
@@ -45,7 +45,7 @@ Source: [`crates/tinycomputer-bus/src/agent/names/mod.rs`](../../../crates/tinyc
 | `AwaitTask` | `AwaitTaskRequest` | `TaskView`, once something changes or the timeout passes |
 | `ContinueTask` | `ContinueTaskRequest` | `TaskView`, resumed |
 | `CancelTask` | `TaskRef` | `TaskView`; cancelling an already-finished task succeeds |
-| `TaskReport` | `TaskRef` | `TaskReport`: the full record — steps, records, artifacts, rescues |
+| `TaskReport` | `TaskRef` | `TaskReport`: the full record, steps, records, artifacts, rescues |
 | `ListTasks` | nothing | every `TaskView` this module holds, newest first |
 
 `StartTask`, `ContinueTask`, and `TaskReport` are listed in
@@ -62,7 +62,7 @@ travel with confidential bus delivery.
 }
 ```
 
-Give either `task` (plain language — needs the planner configured, or the
+Give either `task` (plain language, needs the planner configured, or the
 task immediately pauses with `needs_plan`) or `flow` (a `Flow` the caller
 wrote itself, from `Describe`'s guide). Giving both means "run this flow; the
 text explains what it is for."
@@ -75,7 +75,7 @@ the module already recognizes as sensitive by name (a field called
 `facts` is refused outright, so a typo can never leave a value shared by
 accident. A secret's value only ever reaches the decision model as
 `${name}`, exactly as described for flows in
-[Writing flows](flows.md#secrets-named-everywhere-except-where-it-counts) —
+[Writing flows](flows.md#secrets-named-everywhere-except-where-it-counts) ,
 this is the same rule, enforced by the same masking, one level up.
 
 ### Constraints: where a task may act, and how far it goes on payment
@@ -109,7 +109,7 @@ for the fuller picture of what does and does not get automated here.
 the module's own default rather than the crate baking one in twice:
 `max_actions`, `max_model_calls`, `votes`, `strategy`, `deliberation`,
 `max_elapsed_ms` (excludes time spent waiting on the caller), and
-`max_rescues` — how many times a failed step may be handed to a reasoning
+`max_rescues`, how many times a failed step may be handed to a reasoning
 model for guidance before the task gives up on it. Absent means the module's
 default, currently 5 (also the maximum); `0` turns rescues off. See
 [Rescue](../../rescue.md) for what a rescue actually does.
@@ -117,7 +117,7 @@ default, currently 5 (also the maximum); `0` turns rescues off. See
 ### Asking for a shaped answer
 
 `StartTaskRequest.output`, when set, changes what a finished task hands
-back. Without it, a task ends with only its raw `records` — whatever
+back. Without it, a task ends with only its raw `records`, whatever
 `extract` and `pick` steps collected along the way. With it:
 
 ```rust,ignore
@@ -130,9 +130,9 @@ pub struct TaskOutput {
 a finished task hands what its steps read to one extra reasoning-model pass,
 and that pass's answer comes back as `TaskStatus::Done.result`, checked
 against `schema` if one was given. The schema is deliberately restricted to a
-small, checkable subset of JSON Schema — `type`, `properties`, `required`,
+small, checkable subset of JSON Schema, `type`, `properties`, `required`,
 `additionalProperties` (must be a boolean), `items`, `enum`, `minItems`,
-`maxItems`, `description`, `title` — and a schema using any keyword outside
+`maxItems`, `description`, `title`, and a schema using any keyword outside
 that list is refused at `StartTask` time, before the task ever runs, rather
 than discovered as a broken result at the end. `Capabilities.output_configured`
 says whether this feature is available at all on the loaded module.
@@ -141,7 +141,7 @@ says whether this feature is available at all on the loaded module.
 
 `AwaitTaskRequest { id, timeout_ms }` (default 30 seconds, capped by the
 module) waits until the task's state changes or the timeout passes, whichever
-is first — so a caller polls without either hammering the module or blocking
+is first, so a caller polls without either hammering the module or blocking
 indefinitely.
 
 Every `TaskView` answers three questions:
@@ -181,15 +181,15 @@ pub enum TaskStatus {
 Each variant pairs with one clear response:
 
 - **`NeedsInput`** lists `InputField`s (`name`, `why`, `kind`, and `options`
-  for a choice) — answer with `ContinueTask.inputs`, keyed by `name`.
+  for a choice), answer with `ContinueTask.inputs`, keyed by `name`.
 - **`NeedsApproval`** describes one pending irreversible action and the
-  control that would trigger it — answer with `ContinueTask.approve`.
+  control that would trigger it, answer with `ContinueTask.approve`.
 - **`Checkpoint`** is where a task always stops on reaching a payment page,
   and `continuable` says whether `approve` can take it any further (a
   payment checkpoint cannot be). A screenshot lets a person check the state
   before deciding.
-- **`NeedsHuman`** is for anything only a person can do — a captcha, a
-  login, a one-time code — answered with `ContinueTask.answer = "done"` once
+- **`NeedsHuman`** is for anything only a person can do, a captcha, a
+  login, a one-time code, answered with `ContinueTask.answer = "done"` once
   it is handled.
 - **`NeedsPlan`** means a plain-language `task` arrived with no planner
   configured; it hands back the flow guide so the caller can write one and
@@ -201,7 +201,7 @@ Each variant pairs with one clear response:
   whether trying again with that change could succeed.
 
 `TaskStatus::is_final()` is `true` for `Done`, `Failed`, `Cancelled`, and a
-non-continuable `Checkpoint` — the states a caller should stop polling on.
+non-continuable `Checkpoint`, the states a caller should stop polling on.
 
 ## Answering a pause
 
@@ -217,8 +217,8 @@ pub struct ContinueTaskRequest {
 ## Planning without running
 
 `PlanTaskRequest { task, fact_names, secret_facts, surfaces }` drafts a
-`TaskPlan` — a `Flow` plus `questions` (facts the flow needs that the caller
-did not name) and `notes` (assumptions the planner made) — without acting on
+`TaskPlan`, a `Flow` plus `questions` (facts the flow needs that the caller
+did not name) and `notes` (assumptions the planner made), without acting on
 anything. `fact_names` alone is enough to plan; values are not needed until
 the task actually starts.
 
@@ -289,9 +289,9 @@ directly from which interface it is on.
 
 `Capabilities` is meant to be the only thing an agent reads before it starts
 using this interface: which `SurfaceKind`s are available right now (and why
-not, when one is missing — a permission, a browser), whether Jev and the
+not, when one is missing, a permission, a browser), whether Jev and the
 planner are configured, whether rescue is configured, whether shaped output
-is configured, the flow step kinds, the flow guide itself, and — per member —
+is configured, the flow step kinds, the flow guide itself, and, per member ,
 a `MemberDoc` with its JSON Schema for input and output plus a one-sentence
 summary and whether it needs confidential delivery. `examples` are worked
 requests ready to adapt rather than write from scratch.
