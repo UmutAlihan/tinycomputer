@@ -378,9 +378,8 @@ and minimal features unless a new module capability requires more.
 - A test that needs files makes a uniquely named directory under
   `std::env::temp_dir()` and removes it; a test never sets or reads process
   environment variables, which parallel tests share.
-- Tests must be deterministic and independent of network, wall-clock time, and
-  execution order. Gate any live/network test behind a feature or an env var and
-  name it `live_*` so it is easy to exclude.
+- Tests are deterministic, free of network, wall-clock, and order dependence;
+  gate a live test behind a feature or env var and name it `live_*`.
 - Maintain at least 90% line coverage in every source file. Add or update tests
   with every behavior change, and note any deliberately untested edge case in
   the pull request description.
