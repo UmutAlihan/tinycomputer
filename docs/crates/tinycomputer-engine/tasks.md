@@ -354,3 +354,5 @@ rather than silently dropping one that is still in progress.
   (note: check the code, not that document, for exact card-data and
   `PaymentMode` behavior, this page and the code are current).
 - [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md).
+- [`docs/technical/specs/task-output.md`](../../technical/specs/task-output.md),
+  the shaper and the run memory carried across a task's runs.
