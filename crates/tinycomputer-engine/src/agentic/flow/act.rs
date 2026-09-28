@@ -124,7 +124,7 @@ struct LastAction {
 struct DoState {
     /// The turn under way, when it began, and how many decisions the run
     /// had made by then: the journal's `turn` event.
-    turn: Option<(u32, Instant, u32)>,
+    turn: Option<(u32, Instant, u32, u32)>,
     last: Option<LastAction>,
     banned: BTreeSet<String>,
     unchanged: u32,
@@ -257,7 +257,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Journals the turn under way, if any: how many decisions it took and
     /// how long it ran.
     fn end_turn(&self, state: &mut DoState) {
-        let Some((turn, started, before)) = state.turn.take() else {
+        let Some((turn, started, before, rounds_before)) = state.turn.take() else {
             return;
         };
         self.runtime.journal.record("turn", || {
@@ -265,6 +265,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 "step": self.step,
                 "turn": turn,
                 "decisions": self.decisions.saturating_sub(before),
+                "rounds": self.rounds.saturating_sub(rounds_before),
                 "wall_ms": crate::agentic::journal::millis(started.elapsed()),
             })
         });
@@ -279,7 +280,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ) -> Result<Ended, Halt> {
         for turn in 0..max_turns {
             self.end_turn(state);
-            state.turn = Some((turn, Instant::now(), self.decisions));
+            state.turn = Some((turn, Instant::now(), self.decisions, self.rounds));
             log.turns = log.turns.saturating_add(1);
             let screen = self.look().await?;
             self.note_change(state, &screen)?;

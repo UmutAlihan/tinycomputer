@@ -270,7 +270,11 @@ pub fn summarize(events: &[Value]) -> Summary {
                 order.push(step);
             }
             "turn" => {
-                let decisions = number(event, "decisions");
+                // Decisions asked in one batch share a round trip; a turn
+                // waits for its rounds, not its decisions.
+                let decisions = event
+                    .get("rounds")
+                    .map_or_else(|| number(event, "decisions"), |_| number(event, "rounds"));
                 summary.turns += 1;
                 turn_decisions += decisions;
                 summary.max_turn_decisions = summary.max_turn_decisions.max(decisions);
