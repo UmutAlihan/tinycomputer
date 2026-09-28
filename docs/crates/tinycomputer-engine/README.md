@@ -133,7 +133,11 @@ from a less technical angle:
   formal contract.
 - [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md),
   the rescuer's spec.
+- [`docs/technical/specs/task-output.md`](../../technical/specs/task-output.md),
+  the shaper and the run memory's spec.
 - [`docs/technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md),
   where the browser joins the desktop.
 - [`docs/technical/jev-journal.md`](../../technical/jev-journal.md), reading
   and summarising a journal.
+- [`docs/technical/evals/2026-09-29-sage.md`](../../technical/evals/2026-09-29-sage.md),
+  Levanto Sage measured live against Jev behind the same loops.
