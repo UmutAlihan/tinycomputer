@@ -62,7 +62,7 @@ impl BrowserSurface {
 
     /// `reference`'s box on screen, in points.
     fn screen_bounds(&self, reference: &str) -> Option<Rect> {
-        let selector = format!("@{}", reference.trim_start_matches('@'));
+        let selector = super::sight::selector(reference);
         let data = self.command(json!({"action": "boundingbox", "selector": selector}))?;
         let field = |name: &str| data.get(name).and_then(Value::as_f64);
         let window = self.command(json!({"action": "evaluate", "script": VIEWPORT_JS}))?;

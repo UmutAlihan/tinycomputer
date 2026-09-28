@@ -12,6 +12,7 @@
 //! the actions are the same with or without it.
 
 mod cursor;
+mod sight;
 mod tree;
 
 use std::sync::{Arc, Mutex};
@@ -81,6 +82,21 @@ const SAME_CARD_JS: &str = r#"((x, y, name) => {
   return Boolean(card && card.contains(top) && !modal);
 })"#;
 
+/// How a [`BrowserSurface`] reads a page.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Perception {
+    /// As a person looks at it: what is drawn and on top, the words on and
+    /// beside each control, and which boxes take text, read from the
+    /// rendered page. Falls back to the accessibility tree when it cannot
+    /// reach what it sees (a shadow root, a frame in front) or the reading
+    /// fails.
+    #[default]
+    Sight,
+    /// Through the accessibility tree alone: roles and names as the page's
+    /// markup declares them.
+    Tree,
+}
+
 /// One browser session, lazily opened, as a [`Surface`].
 #[derive(Clone)]
 pub struct BrowserSurface {
@@ -90,6 +106,7 @@ pub struct BrowserSurface {
     handle: tokio::runtime::Handle,
     platform: Platform,
     cursor: Arc<ScreenCursor>,
+    perception: Perception,
 }
 
 impl std::fmt::Debug for BrowserSurface {
@@ -99,6 +116,7 @@ impl std::fmt::Debug for BrowserSurface {
             .field("session", &self.session)
             .field("platform", &self.platform)
             .field("cursor", &self.cursor)
+            .field("perception", &self.perception)
             .finish_non_exhaustive()
     }
 }
@@ -120,7 +138,16 @@ impl BrowserSurface {
             handle,
             platform: Platform::current(),
             cursor: Arc::new(ScreenCursor::off()),
+            perception: Perception::default(),
         }
+    }
+
+    /// The same surface, reading pages with `perception`
+    /// ([`Perception::Sight`] unless told otherwise).
+    #[must_use]
+    pub fn with_perception(mut self, perception: Perception) -> Self {
+        self.perception = perception;
+        self
     }
 
     /// The same surface, drawing on `cursor` — the screen's one agent
@@ -178,7 +205,7 @@ impl BrowserSurface {
     /// or dialog in front still blocks the click. `None` when it is not.
     fn click_through_own_card(&self, reference: &str, name: &str) -> Option<DesktopResponse> {
         let id = self.ensure_session().ok()?;
-        let selector = format!("@{}", reference.trim_start_matches('@'));
+        let selector = sight::selector(reference);
         let bounds = self
             .block(
                 self.browser
@@ -194,8 +221,15 @@ impl BrowserSurface {
         // short would make an exact match against the page's full text
         // impossible for any control with a longer name.
         let name = name.trim();
+        // A ref sight minted names its element exactly, by its mark; a
+        // tree ref is found by its name.
+        let exact = if sight::is_seen(reference) {
+            serde_json::to_string(&selector).ok()?
+        } else {
+            "null".to_owned()
+        };
         let script = format!(
-            "{SAME_CARD_JS}({x}, {y}, {})",
+            "{SAME_CARD_JS}({x}, {y}, {}, {exact})",
             serde_json::to_string(&name).ok()?
         );
         let same_card = self
@@ -269,10 +303,24 @@ impl BrowserSurface {
         self.perform(
             "focus",
             Action::Focus {
-                target: Target::reference(reference),
+                target: target(reference),
             },
         )
         .ok && self.focused_field_is_editable()
+    }
+
+    /// The page, or the part of it under `root`, read by sight; `None` when
+    /// the reading fails or sees what it cannot reach, and the tree is read
+    /// instead.
+    fn see(&self, root: Option<&str>) -> Option<Screen> {
+        let id = self.ensure_session().ok()?;
+        let reply = self
+            .block(self.browser.command(
+                &id,
+                json!({"action": "evaluate", "script": sight::script(root)}),
+            ))
+            .ok()?;
+        sight::screen(reply.get("result")?)
     }
 
     fn perform(&self, command: &str, action: Action) -> DesktopResponse {
@@ -291,8 +339,16 @@ impl Surface for BrowserSurface {
         root: Option<&str>,
         depth: Depth,
     ) -> std::result::Result<Screen, Box<DesktopResponse>> {
+        if self.perception == Perception::Sight
+            && let Some(mut screen) = self.see(root)
+        {
+            if !app.is_empty() {
+                app.clone_into(&mut screen.app);
+            }
+            return Ok(screen);
+        }
         let request = SnapshotRequest {
-            selector: root.map(|reference| format!("@{}", reference.trim_start_matches('@'))),
+            selector: root.map(sight::selector),
             depth: (depth == Depth::Skeleton && root.is_none()).then_some(SKELETON_DEPTH),
             ..SnapshotRequest::default()
         };
@@ -326,7 +382,7 @@ impl Surface for BrowserSurface {
                     )
                 },
                 |reference| {
-                    self.perform(command, action(Target::reference(reference), text.clone()))
+                    self.perform(command, action(target(&reference), text.clone()))
                 },
             )
         };
@@ -397,7 +453,7 @@ impl Surface for BrowserSurface {
                 Action::Scroll {
                     direction: ScrollDirection::Down,
                     pixels: None,
-                    target: reference.map(Target::reference),
+                    target: reference.as_deref().map(target),
                 },
             ),
             JevOperation::Wait => self.perform("wait", pause(500)),
@@ -415,7 +471,7 @@ impl Surface for BrowserSurface {
             return None;
         }
         let id = self.ensure_session().ok()?;
-        let selector = format!("@{}", target.ref_id);
+        let selector = sight::selector(&target.ref_id);
         ["inputvalue", "gettext"].into_iter().find_map(|action| {
             let data = self
                 .block(
@@ -443,7 +499,7 @@ impl Surface for BrowserSurface {
         let focused = self.perform(
             "focus",
             Action::Focus {
-                target: Target::reference(&target.ref_id),
+                target: self::target(&target.ref_id),
             },
         );
         if !focused.ok {
@@ -509,6 +565,18 @@ impl Surface for BrowserSurface {
             "navigate",
             page.map(|page| json!({"url": page.url, "title": page.title})),
         )
+    }
+}
+
+/// How the engine addresses `reference`: a ref sight minted by its mark's
+/// CSS selector, a tree ref as itself.
+fn target(reference: &str) -> Target {
+    if sight::is_seen(reference) {
+        Target::Selector {
+            value: sight::selector(reference),
+        }
+    } else {
+        Target::reference(reference)
     }
 }
 
