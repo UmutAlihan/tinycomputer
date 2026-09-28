@@ -12,8 +12,8 @@ use tinycomputer_core::{Key, Platform};
 use super::card::selects_on_click;
 use super::envelope::{covered, failure, not_a_text_field, reply};
 use super::sight;
-use super::{NETWORK_IDLE_MS, SETTLE_MS, SKELETON_DEPTH, tree};
 use super::{BrowserSurface, Perception};
+use super::{NETWORK_IDLE_MS, SETTLE_MS, SKELETON_DEPTH, tree};
 
 impl Surface for BrowserSurface {
     fn observe(

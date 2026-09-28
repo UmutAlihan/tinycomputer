@@ -5,8 +5,8 @@ use serde_json::{Value, json};
 use tinycomputer_bus::DesktopResponse;
 use tinycomputer_core::surface::Candidate;
 
-use super::sight;
 use super::BrowserSurface;
+use super::sight;
 
 /// Whether what covers a point belongs to the same result card as the
 /// element that was meant, so the click may go through it. Many result lists

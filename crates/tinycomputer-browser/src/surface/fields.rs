@@ -3,8 +3,8 @@
 use serde_json::{Value, json};
 use tinycomputer_bus::browser::Action;
 
-use super::operations::target;
 use super::BrowserSurface;
+use super::operations::target;
 
 impl BrowserSurface {
     /// Whether the page's currently focused element takes typed text: a
