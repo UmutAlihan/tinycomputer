@@ -62,7 +62,7 @@ fn no_desktop(command: &str) -> DesktopResponse {
 }
 ```
 
-The initial active side defaults to whichever one is actually present —
+The initial active side defaults to whichever one is actually present,
 desktop first, if both are available, so a browser-only workspace never
 starts pointed at a side it was never given.
 
