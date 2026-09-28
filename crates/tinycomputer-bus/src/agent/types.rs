@@ -191,6 +191,9 @@ pub struct TaskBudget {
     pub votes: Option<u32>,
     /// How each flow run asks its decisions; the narrow strategy when unset.
     pub strategy: Option<crate::FlowStrategy>,
+    /// How much each flow run deliberates before acting; the deep level
+    /// when unset.
+    pub deliberation: Option<crate::Deliberation>,
     /// Wall-clock time, excluding time spent waiting for the caller.
     pub max_elapsed_ms: Option<u64>,
 }
