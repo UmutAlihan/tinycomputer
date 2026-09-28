@@ -48,6 +48,24 @@ impl std::fmt::Debug for Host {
     }
 }
 
+/// The broker's task until the module has loaded: aborted if dropped first.
+struct AbortOnDrop(Option<tokio::task::JoinHandle<tinybus::Result<()>>>);
+
+impl AbortOnDrop {
+    /// The task, no longer aborted on drop, for a host that loaded.
+    fn disarm(mut self) -> tokio::task::JoinHandle<tinybus::Result<()>> {
+        self.0.take().expect("the broker task is held until disarmed")
+    }
+}
+
+impl Drop for AbortOnDrop {
+    fn drop(&mut self) {
+        if let Some(task) = self.0.take() {
+            task.abort();
+        }
+    }
+}
+
 /// The private `jev` configuration for `key` on `OpenRouter`: the module's
 /// default endpoint and model unless `model` names one, in which case the
 /// decisions endpoint that serves the aliases is used too.
@@ -89,7 +107,9 @@ impl Host {
         verify_allowlisted(module)?;
         let bus = MemoryBus::new();
         let broker = Broker::new();
-        let broker_task = broker.spawn(bus.clone());
+        // Stops the broker, and with it the loaded module, on any failure
+        // below; a load that fails part-way must not leave either running.
+        let broker_task = AbortOnDrop(Some(broker.spawn(bus.clone())));
         let module_host = ModuleHost::new(broker);
         let info = module_host.load_file(module)?;
         if info.name != "tinycomputer" {
@@ -113,7 +133,7 @@ impl Host {
         }
         Ok(Self {
             proxy,
-            broker: broker_task,
+            broker: broker_task.disarm(),
             _client: client,
         })
     }
@@ -339,6 +359,25 @@ impl Host {
     /// `OUTPUT_NOT_FOUND`), a chunk that is not base64, or an image whose
     /// length disagrees with its handle.
     pub async fn read_output(&self, output: &OutputRef) -> Result<Vec<u8>, LabError> {
+        let read = self.read_chunks(output).await;
+        // Released whether or not the read worked, so a failed read never
+        // leaves the output held in the module until it expires.
+        let request = OutputRequest {
+            output: output.id.clone(),
+        };
+        let released = self
+            .proxy
+            .call::<DesktopResponse>(
+                tinycomputer_bus::browser::names::methods::RELEASE_OUTPUT,
+                (request,),
+            )
+            .await;
+        let bytes = read?;
+        let _released: Value = data(released?)?;
+        Ok(bytes)
+    }
+
+    async fn read_chunks(&self, output: &OutputRef) -> Result<Vec<u8>, LabError> {
         use tinycomputer_bus::browser::names::methods;
         let mut bytes = Vec::new();
         loop {
@@ -353,10 +392,6 @@ impl Host {
                 break;
             }
         }
-        let request = OutputRequest {
-            output: output.id.clone(),
-        };
-        let _released: Value = data(self.proxy.call(methods::RELEASE_OUTPUT, (request,)).await?)?;
         if bytes.len() as u64 != output.total_bytes {
             return Err(io::Error::other("the screenshot came back short").into());
         }
