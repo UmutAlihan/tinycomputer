@@ -592,7 +592,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let batched = requests.len();
         let mut asked = Vec::with_capacity(batched);
         for request in requests {
-            let request = self.prepare(log, request);
+            let request = self.outgoing(log, request);
             let framings = vote::framings(&request, votes);
             let handles = self.spawn(&framings);
             asked.push((request, framings, handles));
@@ -661,7 +661,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 
     /// `request` as it leaves for Jev: with the page-kind question on a web
     /// page, briefed, masked, and fitted to size.
-    pub(super) fn prepare(
+    pub(super) fn outgoing(
         &self,
         log: &mut StepLog,
         mut request: EvaluationRequest,

@@ -170,7 +170,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if from >= to || !self.enabled(FlowLoop::Vote) {
             return Ok(None);
         }
-        let prepared = self.prepare(log, request.clone());
+        let prepared = self.outgoing(log, request.clone());
         let framings = vote::framings_between(&prepared, from, to);
         let handles = self.spawn(&framings);
         self.rounds = self.rounds.saturating_add(1);
