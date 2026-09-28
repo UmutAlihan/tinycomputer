@@ -14,10 +14,14 @@ pub const OBJECT_PATH: &str = "/ai/tinyhumans/tinycomputer/Desktop";
 ```
 
 A "member" here is one callable operation on that interface, the rough
-equivalent of a method name. There are 56 desktop members plus 8 Agent (task)
-members served on the same interface (their names never collide, since they
-were designed together). Every one of them is a named Rust constant, never a
-bare string written out at a call site:
+equivalent of a method name. There are 80 members in total, all on this one
+interface: 54 desktop members, 5 Jev-driven members (`ResolveIntent`,
+`RunGoal`, `RunFlow`, `ValidateFlow`, `FlowGuide`), 8 Agent (task) members,
+and 13 browser members, each carrying a `Browser` prefix (`BrowserSnapshot`,
+`BrowserScreenshot`, and so on) so they never collide with a desktop member of
+a different shape (see [Browser types](browser.md)). Their names never
+collide, since they were all designed together. Every one of them is a named
+Rust constant, never a bare string written out at a call site:
 
 ```rust,ignore
 use tinycomputer_bus::names;
