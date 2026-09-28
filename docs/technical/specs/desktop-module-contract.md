@@ -42,8 +42,11 @@ engine's argument types, the permission preflight, and the bus surface.
   share this interface because a TinyBus module exports one interface.
 - The thirteen browser members (2.6) close the list, each prefixed `Browser`
   (`tinycomputer_bus::browser::names`): sessions, navigate, snapshot,
-  perform, read, evaluate, screenshot, held outputs, and downloads. Each takes
-  one object — `{"session": …}` beside the member's own fields — and returns a
+  perform, read, evaluate, screenshot, held outputs, and downloads. A member
+  that acts on an open session takes one object, `{"session": …}` beside the
+  member's own fields; `BrowserOpenSession` takes `SessionOptions` (it makes
+  the session), `BrowserListSessions` takes nothing, and `BrowserReadOutput`
+  and `BrowserReleaseOutput` take `{"output": …}`. Every one returns a
   `DesktopResponse`. A failure's `code` is `browser::errors::code` of its
   wire name, which reuses the desktop's code where the meaning is the same
   (`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `POLICY_DENIED`,

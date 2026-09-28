@@ -116,8 +116,9 @@ Without `jev` configured, this comes back immediately as:
 
 ## Calling a browser member
 
-The 13 `Browser…` members take one object, the session beside the member's
-own fields, and answer in the same `DesktopResponse` envelope the desktop
+The 13 `Browser…` members take one object — for a member acting on an open
+session, the session beside the member's own fields; `BrowserListSessions`
+takes nothing — and answer in the same `DesktopResponse` envelope the desktop
 members use. `BrowserOpenSession` first, then act on the session it hands
 back:
 

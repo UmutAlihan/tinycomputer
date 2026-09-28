@@ -27,8 +27,10 @@ crate root, and that is deliberate: `SnapshotRequest` and `ScreenshotRequest`
 also exist for the desktop members, with different shapes. Namespacing the
 types means neither side ever shadows the other, and a caller cannot
 accidentally send a desktop `SnapshotRequest` where a browser one belongs,
-they are different Rust types. Every browser member takes one JSON object,
-with the session beside the member's own fields, and replies in the same
+they are different Rust types. A browser member that acts on an open session
+takes one JSON object, with the session beside the member's own fields;
+`BrowserOpenSession` takes the new session's options, `BrowserListSessions`
+nothing, and the output members an `output`. All reply in the same
 `DesktopResponse` envelope the desktop members use.
 
 These types were ported from a now-superseded `tinybrowser-bus` crate; a host
