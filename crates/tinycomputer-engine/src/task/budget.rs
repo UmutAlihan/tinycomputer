@@ -16,7 +16,10 @@ use super::{DEFAULT_MODEL_CALLS, DEFAULT_VOTES, FlowRunner};
 /// budget has not already spent, along with the constraints to run it under
 /// and how much of `max_elapsed_ms` remains (`None` when it is unbounded).
 /// `None` overall only when the task's state was poisoned by a panic.
-pub(super) fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraints, Option<u64>)> {
+pub(super) fn run_request(
+    cell: &Cell,
+    run: &Run,
+) -> Option<(RunFlowRequest, TaskConstraints, Option<u64>)> {
     let state = cell.state.lock().ok()?;
     // Only the caller's values: the flow's own definitions travel with the
     // flow, and the runtime expands them against these. The secret ones are

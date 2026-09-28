@@ -64,7 +64,9 @@ pub(super) fn needs_input(missing: &[String]) -> TaskStatus {
     }
 }
 
-pub(super) fn records(reads: &BTreeMap<String, String>) -> BTreeMap<String, Vec<BTreeMap<String, String>>> {
+pub(super) fn records(
+    reads: &BTreeMap<String, String>,
+) -> BTreeMap<String, Vec<BTreeMap<String, String>>> {
     reads
         .iter()
         .map(|(name, value)| {

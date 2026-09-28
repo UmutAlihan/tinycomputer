@@ -4,7 +4,9 @@
 
 use std::sync::Arc;
 
-use tinycomputer_bus::agent::{AgentError, AgentResponse, ContinueTaskRequest, TaskStatus, TaskView};
+use tinycomputer_bus::agent::{
+    AgentError, AgentResponse, ContinueTaskRequest, TaskStatus, TaskView,
+};
 use tinycomputer_bus::{Flow, FlowAction, FlowStep};
 use tinycomputer_core::Facts;
 
@@ -16,7 +18,11 @@ use super::publish::{needs_input, publish};
 use super::store::{Cell, Run};
 
 impl Tasks {
-    pub(super) fn supply(&self, cell: &Arc<Cell>, request: ContinueTaskRequest) -> AgentResponse<TaskView> {
+    pub(super) fn supply(
+        &self,
+        cell: &Arc<Cell>,
+        request: ContinueTaskRequest,
+    ) -> AgentResponse<TaskView> {
         let Ok(mut state) = cell.state.lock() else {
             return poisoned();
         };
@@ -63,7 +69,11 @@ impl Tasks {
         AgentResponse::ok(cell.view.borrow().clone())
     }
 
-    pub(super) fn decide(&self, cell: &Arc<Cell>, approve: Option<bool>) -> AgentResponse<TaskView> {
+    pub(super) fn decide(
+        &self,
+        cell: &Arc<Cell>,
+        approve: Option<bool>,
+    ) -> AgentResponse<TaskView> {
         let Some(approve) = approve else {
             return AgentResponse::err(AgentError::new(
                 "APPROVAL_REQUIRED",

@@ -9,7 +9,11 @@ use super::store::Cell;
 /// A recoverable failure in front of something only a person can pass — a
 /// captcha, a one-time code, a login wall — becomes `needs_human`, and the
 /// failed step runs again once they have. Anything else stays a failure.
-pub(super) async fn human_wall(cell: &Cell, runner: &dyn FlowRunner, status: TaskStatus) -> TaskStatus {
+pub(super) async fn human_wall(
+    cell: &Cell,
+    runner: &dyn FlowRunner,
+    status: TaskStatus,
+) -> TaskStatus {
     let retryable = matches!(
         status,
         TaskStatus::Failed {

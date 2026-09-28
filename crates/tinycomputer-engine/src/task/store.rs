@@ -6,8 +6,8 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use tinycomputer_bus::agent::{
-    Rescue, StartTaskRequest, TaskBudget, TaskConstraints, TaskId, TaskOutput, TaskStatus,
-    TaskView,
+    AgentResponse, Rescue, StartTaskRequest, TaskBudget, TaskConstraints, TaskId, TaskOutput,
+    TaskStatus, TaskView,
 };
 use tinycomputer_bus::{FLOW_GUIDE, Flow, GroundingHint, JevExchange, StepReport};
 use tinycomputer_core::Facts;
@@ -76,7 +76,12 @@ pub(super) struct Run {
 }
 
 impl Tasks {
-    pub(super) fn register(&self, flow: &Flow, facts: Facts, request: &StartTaskRequest) -> Option<Arc<Cell>> {
+    pub(super) fn register(
+        &self,
+        flow: &Flow,
+        facts: Facts,
+        request: &StartTaskRequest,
+    ) -> Option<Arc<Cell>> {
         let number = self.counter.fetch_add(1, Ordering::Relaxed) + 1;
         let id = TaskId::new(format!("t-{number}"));
         let view = TaskView {
