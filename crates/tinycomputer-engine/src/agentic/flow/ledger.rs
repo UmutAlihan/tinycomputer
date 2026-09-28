@@ -103,7 +103,7 @@ impl Ledger {
             memory["tried_and_failed"] = json!(self.tried);
         }
         if let Some(next) = context.next {
-            memory["next_step"] = json!(next);
+            memory["next_step"] = json!(clip(next));
         }
         if !context.variables.is_empty() {
             memory["variables_read"] = json!(context.variables);
