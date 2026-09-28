@@ -22,6 +22,57 @@ fn configuration_serializes_the_key_but_never_debug_prints_it() {
 }
 
 #[test]
+fn decision_model_selection_round_trips_and_stays_additive() {
+    use super::JevConfiguration;
+
+    // A 2.6 configuration decodes unchanged: TypeSafe Jev, no `fast`.
+    let legacy: JevConfig = serde_json::from_value(json!({"api_key": "k"})).unwrap();
+    assert_eq!(legacy.provider, JevProvider::TypeSafe);
+    assert_eq!(legacy.fast, None);
+
+    let sage: JevConfig =
+        serde_json::from_value(json!({"api_key": "k", "provider": "sage", "fast": true})).unwrap();
+    assert_eq!(sage.provider, JevProvider::Sage);
+    assert_eq!(sage.fast, Some(true));
+    let again: JevConfig = serde_json::from_value(serde_json::to_value(&sage).unwrap()).unwrap();
+    assert_eq!(again, sage);
+    assert!(format!("{sage:?}").contains("fast"));
+
+    let alias: JevConfig =
+        serde_json::from_value(json!({"api_key": "k", "provider": "openjev"})).unwrap();
+    assert_eq!(alias.provider, JevProvider::OpenJev);
+    assert!(serde_json::from_value::<JevConfig>(json!({"provider": "levanto"})).is_err());
+
+    assert_eq!(JevProvider::TypeSafe.default_model(), "jev-latest");
+    assert_eq!(JevProvider::OpenRouter.default_model(), "jev-latest");
+    assert_eq!(JevProvider::TinyHumansOpenRouter.default_model(), "jev-latest");
+    assert_eq!(JevProvider::OpenJev.default_model(), "openjev");
+    assert_eq!(JevProvider::Sage.default_model(), "levanto-sage");
+
+    // The summary leaves `fast` out when false, so a 2.6 reader sees the
+    // same object it always did.
+    let summary = JevConfiguration {
+        provider: JevProvider::OpenJev,
+        model: "openjev".into(),
+        endpoint_url: None,
+        fast: false,
+    };
+    let value = serde_json::to_value(&summary).unwrap();
+    assert_eq!(
+        value,
+        json!({"provider": "open_jev", "model": "openjev", "endpoint_url": null})
+    );
+    let decoded: JevConfiguration = serde_json::from_value(value).unwrap();
+    assert_eq!(decoded, summary);
+    let fast = JevConfiguration {
+        provider: JevProvider::Sage,
+        fast: true,
+        ..summary
+    };
+    assert_eq!(serde_json::to_value(&fast).unwrap()["fast"], json!(true));
+}
+
+#[test]
 fn every_agentic_enum_pins_its_wire_spelling() {
     assert_eq!(
         serde_json::to_value(JevProvider::TypeSafe).unwrap(),
@@ -35,6 +86,11 @@ fn every_agentic_enum_pins_its_wire_spelling() {
         serde_json::to_value(JevProvider::TinyHumansOpenRouter).unwrap(),
         json!("tiny_humans_open_router")
     );
+    assert_eq!(
+        serde_json::to_value(JevProvider::OpenJev).unwrap(),
+        json!("open_jev")
+    );
+    assert_eq!(serde_json::to_value(JevProvider::Sage).unwrap(), json!("sage"));
     for (operation, wire) in [
         (JevOperation::Click, "CLICK"),
         (JevOperation::TypeText, "TYPE_TEXT"),
