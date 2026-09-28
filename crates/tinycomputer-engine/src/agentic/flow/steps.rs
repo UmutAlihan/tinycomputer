@@ -1099,6 +1099,37 @@ pub(super) fn already_holds(
         .cloned()
 }
 
+/// Roles a page marks as the one chosen among its siblings.
+const SELECTABLE_ROLES: &[&str] = &["tab", "radio", "radiobutton", "option", "menuitemradio"];
+
+/// Why `screen` plainly shows `option` not chosen: the tab or radio named
+/// exactly `option` is not selected while a sibling of its kind is. `None`
+/// when no such control settles it, and Jev is asked instead.
+pub(super) fn left_unchosen(screen: &Screen, option: &str) -> Option<String> {
+    let wanted = plain(option);
+    if wanted.is_empty() {
+        return None;
+    }
+    let selectable = |candidate: &&Candidate| {
+        SELECTABLE_ROLES
+            .iter()
+            .any(|role| candidate.role.eq_ignore_ascii_case(role))
+    };
+    let asked = screen.candidates.iter().filter(selectable).find(|candidate| {
+        candidate
+            .name
+            .as_deref()
+            .is_some_and(|name| plain(name) == wanted)
+    })?;
+    if is_checked(asked) {
+        return None;
+    }
+    let other = screen.candidates.iter().filter(selectable).find(|candidate| {
+        candidate.role == asked.role && candidate.path == asked.path && is_checked(candidate)
+    })?;
+    Some(format!("{} is not selected; {} is", label(asked), label(other)))
+}
+
 /// Whether a label says far more than the option: a control whose name
 /// strings together a whole list (recent searches, every day of a month)
 /// mentions the option without being it. An option control is never such a

@@ -11,6 +11,8 @@ use tinycomputer_bus::{FlowAction, FlowLoop, StepOutcome};
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions},
+    steps::left_unchosen,
+    validate::substitute_safe,
 };
 
 /// Least calibrated belief that a choice was made as asked, below which the
@@ -30,23 +32,22 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         text: &str,
         result: Result<Ended, Halt>,
     ) -> Result<Ended, Halt> {
-        match result {
-            Ok(ended)
-                if matches!(action, FlowAction::Choose(_))
-                    && ended.outcome == StepOutcome::Done
-                    && !log.actions.is_empty() =>
+        match (action, result) {
+            (FlowAction::Choose(choose), Ok(ended))
+                if ended.outcome == StepOutcome::Done && !log.actions.is_empty() =>
             {
-                self.reflect(log, text).await.map(|()| ended)
+                let option = substitute_safe(&choose.option, &self.vars, &self.facts);
+                self.reflect(log, text, &option).await.map(|()| ended)
             }
-            other => other,
+            (_, other) => other,
         }
     }
 
     /// Reflects on the `choose` step `intent` that just pressed something:
     /// `Ok` when the screen shows its choice, first time or after one
     /// repair; the step fails otherwise.
-    async fn reflect(&mut self, log: &mut StepLog, intent: &str) -> Result<(), Halt> {
-        let held = self.reflection(log, intent, "first").await?;
+    async fn reflect(&mut self, log: &mut StepLog, intent: &str, option: &str) -> Result<(), Halt> {
+        let held = self.reflection(log, intent, option, "first").await?;
         if held >= REFLECT_FLOOR {
             return Ok(());
         }
@@ -62,7 +63,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             Ok(_) | Err(Halt::Failed(_)) => {}
             Err(other) => return Err(other),
         }
-        let held = self.reflection(log, intent, "after_repair").await?;
+        let held = self.reflection(log, intent, option, "after_repair").await?;
         if held >= REFLECT_FLOOR {
             return Ok(());
         }
@@ -71,17 +72,26 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         )))
     }
 
-    /// How strongly Jev believes the screen shows the choice `intent`
-    /// asked for; `1.0` when it gives no answer, so silence never fails a
-    /// step.
+    /// How strongly the screen shows the choice `intent` asked for: `0.0`
+    /// when a selected sibling plainly contradicts `option`
+    /// (`left_unchosen`), else Jev's belief — `1.0` when it gives no answer,
+    /// so silence never fails a step.
     async fn reflection(
         &mut self,
         log: &mut StepLog,
         intent: &str,
+        option: &str,
         attempt: &str,
     ) -> Result<f64, Halt> {
         log.used(FlowLoop::Reflection);
         let screen = self.look().await?;
+        if let Some(why) = left_unchosen(&screen, option) {
+            self.history.push(format!("reflection: {why}"));
+            self.runtime.journal.record("reflect", || {
+                json!({"step": self.step, "held": 0.0, "attempt": attempt, "contradicted": why})
+            });
+            return Ok(0.0);
+        }
         let answers = self
             .ask(
                 log,
