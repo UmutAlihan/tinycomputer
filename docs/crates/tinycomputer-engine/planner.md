@@ -22,7 +22,7 @@ and the flow runtime are what actually look at anything on screen.
    followed by the flow authoring guide (`FLOW_GUIDE`, shared with
    `Describe` and with flow authors generally).
 2. A user turn states the task, which surfaces are available, and which
-   facts the caller can supply, by name only, split into ordinary facts
+   facts the caller can supply, by name only: split into ordinary facts
    (`${first name}`, `${email}`) and secret ones (`${card number}`), never by
    value.
 3. The model replies with what should be exactly one JSON object: a flow.

@@ -61,7 +61,7 @@ Each task's `plan.json` is the actual flow its recorded evaluation runs
 replayed; see
 [`docs/technical/evals/2026-09-28-rescue.md`](../../technical/evals/2026-09-28-rescue.md)
 for what those runs found. Use `FLOW_FILE` when you are trying to isolate
-whether a change affected *running* a flow versus *planning* one — replay
+whether a change affected *running* a flow versus *planning* one. Replay
 the same flow before and after your change, and any difference in outcome
 is not the planner's doing.
 
@@ -83,7 +83,7 @@ TINYCOMPUTER_BROWSER_ENDPOINT=http://127.0.0.1:9222 \
 ```
 
 Because the browser here is your own, already-running Chrome, this runs on
-the host, not in the Docker lab — the container has no browser to attach to
+the host, not in the Docker lab: the container has no browser to attach to
 and nothing to display. Closing the run only disconnects from your browser;
 it does not close it.
 
