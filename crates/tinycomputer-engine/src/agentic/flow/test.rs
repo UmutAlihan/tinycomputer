@@ -1150,6 +1150,12 @@ async fn a_large_screen_is_narrowed_by_region_before_choosing() {
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert_eq!(run.app.sim().clicks, ["Message 7"]);
     assert!(run.result.steps[0].loops.contains(&FlowLoop::Narrowing));
+    assert_eq!(
+        asked(&run.requests, "region"),
+        1,
+        "one region question, asked alongside the knockout, not a round per level"
+    );
+    assert_eq!(asked(&run.requests, "group_0"), 1);
     assert!(
         choice_sizes(&run.requests)
             .iter()
@@ -3988,8 +3994,22 @@ async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
     let turns = of("turn");
     assert!(!turns.is_empty(), "every do turn is journaled");
     assert!(turns.iter().all(|turn| {
-        turn["step"] == "2" && turn["decisions"].is_u64() && turn["wall_ms"].is_u64()
+        turn["step"] == "2"
+            && turn["decisions"].is_u64()
+            && turn["rounds"].is_u64()
+            && turn["wall_ms"].is_u64()
     }));
+    assert_eq!(
+        (turns[0]["decisions"].as_u64(), turns[0]["rounds"].as_u64()),
+        (Some(2), Some(1)),
+        "a step's first turn asks the judge and the target in one round trip"
+    );
+    assert!(
+        of("decision")
+            .iter()
+            .any(|decision| decision["batched"] == 2),
+        "batched decisions say so"
+    );
     assert!(!of("observe").is_empty());
     let steps = of("step");
     assert_eq!(
