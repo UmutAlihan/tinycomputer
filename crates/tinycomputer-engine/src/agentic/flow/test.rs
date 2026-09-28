@@ -5105,8 +5105,10 @@ async fn a_repair_that_changes_nothing_fails_the_step_with_the_reflection() {
 
 #[test]
 fn a_selected_sibling_plainly_contradicts_the_option() {
+    // Emirates puts each tab in its own list item.
     let tab = |name: &str, selected: bool| {
-        let mut tab = node(name, "tab", &["Click"], &["main", "tablist \"Trip\""], 1.0);
+        let item = format!("listitem #{}", name.len());
+        let mut tab = node(name, "tab", &["Click"], &["main", "tablist 2", &item], 1.0);
         if selected {
             tab.states = vec!["selected".to_owned()];
         }

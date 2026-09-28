@@ -1133,13 +1133,27 @@ pub(super) fn left_unchosen(screen: &Screen, option: &str) -> Option<String> {
         .iter()
         .filter(selectable)
         .find(|candidate| {
-            candidate.role == asked.role && candidate.path == asked.path && is_checked(candidate)
+            candidate.role == asked.role
+                && container(&candidate.path) == container(&asked.path)
+                && is_checked(candidate)
         })?;
     Some(format!(
         "{} is not selected; {} is",
         label(asked),
         label(other)
     ))
+}
+
+/// The ancestors siblings share: `path` without the numbered items it ends
+/// in, since each tab of a strip sits in its own `listitem #n`.
+fn container(path: &[String]) -> &[String] {
+    let numbered = |segment: &&String| {
+        segment
+            .rsplit_once(" #")
+            .is_some_and(|(_, number)| number.parse::<u32>().is_ok())
+    };
+    let kept = path.len() - path.iter().rev().take_while(numbered).count();
+    &path[..kept]
 }
 
 /// Whether a label says far more than the option: a control whose name
