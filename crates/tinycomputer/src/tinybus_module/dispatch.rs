@@ -573,7 +573,10 @@ impl DesktopService {
     async fn browser_close_session(&self, request: SessionRef) -> TinyBusResult<DesktopResponse> {
         Ok(browser_reply(
             "browser-close-session",
-            self.browser.close_session(&request.session).await,
+            self.browser
+                .close_session(&request.session)
+                .await
+                .map(|()| serde_json::json!({"session": request.session, "closed": true})),
         ))
     }
 
@@ -685,7 +688,9 @@ impl DesktopService {
         self.on_outputs(move |browser| {
             browser_reply(
                 "browser-release-output",
-                browser.release_output(&request.output),
+                browser
+                    .release_output(&request.output)
+                    .map(|()| serde_json::json!({"output": request.output, "released": true})),
             )
         })
         .await

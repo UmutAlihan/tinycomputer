@@ -157,7 +157,7 @@ async fn a_session_runs_open_navigate_click_and_close_over_the_bus() -> tinybus:
     assert_eq!(data(&listed).as_array().map(Vec::len), Some(1));
 
     let closed = call(&proxy, methods::CLOSE_SESSION, json!({"session": session})).await?;
-    assert!(closed.ok);
+    assert_eq!(data(&closed)["closed"], true);
     let again = call(&proxy, methods::CLOSE_SESSION, json!({"session": session})).await?;
     assert!(again.ok, "closing a closed session succeeds");
     Ok(())
@@ -190,7 +190,7 @@ async fn a_screenshot_is_read_back_in_chunks_and_released() -> tinybus::Result<(
     assert_eq!(data(&rest)["eof"], true);
 
     let released = call(&proxy, methods::RELEASE_OUTPUT, json!({"output": output})).await?;
-    assert!(released.ok);
+    assert_eq!(data(&released)["released"], true);
     let gone = call(&proxy, methods::READ_OUTPUT, json!({"output": output})).await?;
     let error = gone.error.expect("a released output is gone");
     assert_eq!(error.code, "OUTPUT_NOT_FOUND");

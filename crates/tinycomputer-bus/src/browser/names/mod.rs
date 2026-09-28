@@ -34,7 +34,8 @@ pub mod methods {
 
     /// Closes a session and everything it owns.
     ///
-    /// Takes a [`crate::browser::SessionRef`]; its `data` is `null`. Closing a
+    /// Takes a [`crate::browser::SessionRef`]; its `data` is
+    /// `{"session": id, "closed": true}`. Closing a
     /// session that is already gone succeeds: a host retrying a close must
     /// not have to distinguish "never existed" from "already cleaned up".
     pub const CLOSE_SESSION: &str = "BrowserCloseSession";
@@ -99,7 +100,8 @@ pub mod methods {
 
     /// Releases a held output before it expires.
     ///
-    /// Takes an [`crate::browser::OutputRequest`]; its `data` is `null`.
+    /// Takes an [`crate::browser::OutputRequest`]; its `data` is
+    /// `{"output": id, "released": true}`.
     /// Releasing an output that is already gone succeeds, for the same reason
     /// [`CLOSE_SESSION`] does.
     pub const RELEASE_OUTPUT: &str = "BrowserReleaseOutput";
