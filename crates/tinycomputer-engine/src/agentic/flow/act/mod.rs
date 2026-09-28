@@ -19,6 +19,17 @@
 //! candidate grounding ranked is tried before grounding again. A judgement
 //! of "done" near its threshold is settled on its evidence (`escalate`), and
 //! a screen that returns to where it was two turns ago bans both presses.
+//!
+//! The loop's pieces: `turns` runs it, `judge` reads each turn's screen,
+//! `moves` makes the chosen move, and `recover` undoes a turn that went
+//! wrong. This root holds the thresholds and the state they share.
+
+mod judge;
+mod moves;
+mod recover;
+mod turns;
+
+pub(super) use judge::Judgement;
 
 use std::{
     collections::{BTreeMap, BTreeSet},
