@@ -4,14 +4,14 @@
 use std::sync::Arc;
 
 use tinybus::{Error as TinyBusError, Result as TinyBusResult};
-use tinycomputer_bus::{DesktopResponse, JevConfig};
 use tinycomputer_bus::agent::{SurfaceAvailability, SurfaceKind};
+use tinycomputer_bus::{DesktopResponse, JevConfig};
 use tinycomputer_engine as agentic;
 
-use crate::tinybus_module::runner::WorkspaceRunner;
-use crate::{Desktop, Result};
 use super::DesktopService;
 use crate::tinybus_module::config::{browser_executable, cursor_config};
+use crate::tinybus_module::runner::WorkspaceRunner;
+use crate::{Desktop, Result};
 
 impl DesktopService {
     /// Builds the service from the module configuration blob.
