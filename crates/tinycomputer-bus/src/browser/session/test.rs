@@ -6,7 +6,8 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{SessionId, SessionInfo, SessionOptions, Viewport};
+use super::{SessionId, SessionInfo, SessionOptions, SessionRef, SessionRequest, Viewport};
+use crate::browser::{Action, NavigateRequest, Target};
 use serde_json::json;
 
 #[test]
@@ -145,4 +146,47 @@ fn a_viewport_can_be_built_for_a_phone() {
 
     assert!(phone.mobile);
     assert_ne!(phone, Viewport::default());
+}
+
+#[test]
+fn a_session_ref_is_one_named_field() {
+    let wire = serde_json::to_value(SessionRef {
+        session: SessionId::new("s-1"),
+    })
+    .expect("serializes");
+    assert_eq!(wire, json!({"session": "s-1"}));
+}
+
+#[test]
+fn a_session_request_flattens_the_member_request_beside_the_session() {
+    let request: SessionRequest<NavigateRequest> =
+        serde_json::from_value(json!({"session": "s-1", "url": "https://example.com"}))
+            .expect("deserializes");
+    assert_eq!(request.session.as_str(), "s-1");
+    assert_eq!(request.request.url, "https://example.com");
+}
+
+#[test]
+fn a_session_request_carries_a_tagged_action_flat() {
+    let wire = serde_json::to_value(SessionRequest::new(
+        SessionId::new("s-1"),
+        Action::Click {
+            target: Target::parse("@e3"),
+            new_tab: false,
+        },
+    ))
+    .expect("serializes");
+    assert_eq!(wire["session"], "s-1");
+    assert_eq!(wire["action"], "click");
+
+    let back: SessionRequest<Action> = serde_json::from_value(wire).expect("round-trips");
+    assert!(matches!(back.request, Action::Click { .. }));
+}
+
+#[test]
+fn a_session_request_without_a_session_is_refused() {
+    let missing = serde_json::from_value::<SessionRequest<NavigateRequest>>(
+        json!({"url": "https://example.com"}),
+    );
+    assert!(missing.is_err());
 }
