@@ -1248,3 +1248,5 @@ async fn a_run_gets_the_callers_values_and_the_flow_keeps_its_own_definitions() 
     );
     assert_eq!(request.flow.vars["first_name"], "${first name}");
 }
+
+mod rescue;
