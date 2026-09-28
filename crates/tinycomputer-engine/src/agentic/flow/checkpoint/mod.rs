@@ -77,6 +77,15 @@ impl Checkpoint {
         }
     }
 
+    /// A checkpoint of an address alone, with nothing recorded of the
+    /// screen: restored whenever the surface is back at `location`.
+    pub(super) fn at(location: Option<&str>) -> Self {
+        Self {
+            marks: BTreeSet::new(),
+            location: location.map(str::to_owned),
+        }
+    }
+
     /// The share of this checkpoint's marks `screen` shows; 1 for an empty
     /// checkpoint, which nothing can contradict.
     pub(super) fn similarity(&self, screen: &Screen) -> f64 {

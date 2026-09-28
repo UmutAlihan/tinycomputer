@@ -286,6 +286,9 @@ pub(super) struct FlowRun<'r, B> {
     /// The last press and what it was meant to do, while the turn after it
     /// is judged: the judge then asks whether it did (`expect.rs`).
     pub(super) expecting: Option<(String, String)>,
+    /// The address the current step began at, to return to when the step
+    /// is found to have gone wrong.
+    pub(super) step_location: Option<String>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -394,6 +397,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             location: None,
             frontier: Vec::new(),
             expecting: None,
+            step_location: None,
         }
     }
 
@@ -429,6 +433,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         self.ledger.begin();
         self.refused.clear();
         self.frontier.clear();
+        self.step_location.clone_from(&self.location);
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let result = self.reflected(&mut log, &action, &text, result).await;
