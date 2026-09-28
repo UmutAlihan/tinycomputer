@@ -38,6 +38,7 @@ pub(crate) use dispatch::DesktopService;
 async fn setup(connection: Connection, config: Value) -> TinyBusResult<()> {
     let service = DesktopService::from_config(&config)
         .map_err(|error| tinybus::Error::failed(error.to_string()))?;
+    service.sweep_outputs();
 
     connection
         .serve_at(names::OBJECT_PATH.try_into()?, service)
