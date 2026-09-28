@@ -3,13 +3,12 @@
 
 use serde_json::{Value, json};
 use tinycomputer_bus::browser::{
-    Action, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat, ReadRequest,
-    ScreenshotRequest, ScrollDirection, SessionOptions, SnapshotRequest, Target, WaitState,
+    EvaluateRequest, NavigateRequest, ReadFormat, ReadRequest, ScreenshotRequest, SnapshotRequest,
     WaitUntil,
 };
 
+use super::interaction::selector;
 use crate::error::{Error, Result};
-use super::action;
 
 /// A navigation.
 ///

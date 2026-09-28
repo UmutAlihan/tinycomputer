@@ -1,14 +1,7 @@
 //! Starting a session: the explicit launch, the viewport, and the allowed domains.
 
 use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat, ReadRequest,
-    ScreenshotRequest, ScrollDirection, SessionOptions, SnapshotRequest, Target, WaitState,
-    WaitUntil,
-};
-
-use crate::error::{Error, Result};
-use super::action;
+use tinycomputer_bus::browser::SessionOptions;
 
 /// The explicit `launch` every session starts with.
 ///

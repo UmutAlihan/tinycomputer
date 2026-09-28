@@ -9,25 +9,16 @@
 //! function refuses with [`Error::InvalidInput`] naming the alternative, rather
 //! than approximating it silently.
 
-use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat, ReadRequest,
-    ScreenshotRequest, ScrollDirection, SessionOptions, SnapshotRequest, Target, WaitState,
-    WaitUntil,
-};
-
-use crate::error::{Error, Result};
-
 /// A distance that reaches either end of any page, for `top` and `bottom`.
 const TO_THE_END: u32 = 1_000_000;
 
-mod session;
-mod page;
 mod interaction;
+mod page;
+mod session;
 
-pub(crate) use session::{launch, viewport, allowed_domains};
-pub(crate) use page::{navigate, snapshot, read, evaluate, screenshot};
 pub(crate) use interaction::action;
+pub(crate) use page::{evaluate, navigate, read, screenshot, snapshot};
+pub(crate) use session::{launch, viewport};
 
 #[cfg(test)]
 mod convert_tests;

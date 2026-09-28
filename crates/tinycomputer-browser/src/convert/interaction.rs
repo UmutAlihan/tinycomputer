@@ -1,14 +1,10 @@
 //! One interaction on the page, through a ref, a selector, or a semantic locator.
 
 use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, EvaluateRequest, LocateBy, Locator, NavigateRequest, ReadFormat, ReadRequest,
-    ScreenshotRequest, ScrollDirection, SessionOptions, SnapshotRequest, Target, WaitState,
-    WaitUntil,
-};
+use tinycomputer_bus::browser::{Action, LocateBy, Locator, ScrollDirection, Target, WaitState};
 
+use super::TO_THE_END;
 use crate::error::{Error, Result};
-use super::snapshot;
 
 /// One interaction.
 ///
@@ -172,7 +168,7 @@ fn wait_for(
 ///
 /// [`Error::InvalidInput`] for a locator, which agent-browser only accepts on
 /// its semantic commands (click, fill, check, hover, text).
-fn selector(target: &Target, operation: &str) -> Result<String> {
+pub(super) fn selector(target: &Target, operation: &str) -> Result<String> {
     match target {
         Target::Ref { value } if !value.trim().is_empty() => {
             Ok(format!("@{}", value.trim_start_matches('@')))
