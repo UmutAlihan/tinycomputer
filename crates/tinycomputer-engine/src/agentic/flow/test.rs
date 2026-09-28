@@ -476,7 +476,6 @@ impl App {
         if let Some((selected, _)) = sim.trip {
             trip_tabs(selected, &root, &mut candidates);
         }
-        }
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
         }
