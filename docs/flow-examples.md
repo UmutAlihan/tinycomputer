@@ -15,7 +15,7 @@ Question ids, their types, and their thresholds are defined in
 ## What each step kind costs
 
 A rough guide to the decisions (Jev requests) each step makes when things go
-well. Each decision is `votes` calls (5 by default) running concurrently.
+well. Each decision is `votes` calls (7 by default) running concurrently.
 
 | Step | Decisions when all goes well | Where they come from |
 |---|---|---|

@@ -150,8 +150,8 @@ A step ends one of four ways:
 - A budget ran out: `ActionBudget` or `ModelBudget`.
 
 Two budgets bound every run. `max_actions` is capped at 120 and
-`max_model_calls` at 5000, whatever the request asks for (the defaults are 60
-and 1500). Every framing of a voted decision counts as one call; see
+`max_model_calls` at 10000, whatever the request asks for (the defaults are 60
+and 3000). Every framing of a voted decision counts as one call; see
 [`jev-harness.md`](jev-harness.md) for voting. Every action goes
 through `FlowRun::act` and every Jev request through `FlowRun::ask`, and both
 check the budget before doing anything, so no loop can overspend.
