@@ -20,6 +20,7 @@ impl FlowRunner for RunsOnly {
 async fn a_runner_that_only_runs_flows_reads_nothing_and_holds_nothing() {
     let task = TaskId::new("t-1");
     assert!(RunsOnly.visible_text(&task).await.is_empty());
+    assert!(RunsOnly.capture(&task).await.is_none());
     // Releasing a task the runner never held is a no-op, not a failure.
     RunsOnly.release(&task);
     assert!(RunsOnly.visible_text(&task).await.is_empty());
