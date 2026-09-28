@@ -23,6 +23,8 @@ Change a constant and its row together.
 | `LOCATE_FLOOR` | 0.50 | `steps.rs` | least probability for a `read`, `pick`, or `stop_before` target |
 | `CAP` | 20 | `ask.rs` | most options in one Choice |
 | `DO_TURNS` | 8 | `steps.rs` | turns a `do` step may spend |
+| `REFLECT_FLOOR` | 0.50 | `reflect.rs` | belief that a pressed `choose` left its choice, below which it is repaired, and failed if the repair does not take |
+| `REPAIR_TURNS` | 4 | `reflect.rs` | turns one reflection repair may spend |
 | `MAX_ACTIONS` / `MAX_CALLS` | 120 / 5000 | `mod.rs` | per-run caps on actions and Jev calls |
 | `MAX_VOTES` | 9 | `vote.rs` | most framings one decision is asked in |
 | `CROWDED` | 40 | `survey.rs` | actionable elements above which a wide turn surveys the screen first |

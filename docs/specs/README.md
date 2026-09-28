@@ -26,4 +26,5 @@ example, [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime, and
 [`jev-briefing.md`](jev-briefing.md) for briefs, secrets, and votes,
 [`jev-wide-turns.md`](jev-wide-turns.md) for the wide strategy,
 [`browser-sight.md`](browser-sight.md) for how the browser reads a page,
+[`flow-reflection.md`](flow-reflection.md) for checking what a `choose` left,
 and [`virtual-cursor.md`](virtual-cursor.md) for the agent's drawn cursor.

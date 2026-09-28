@@ -76,7 +76,9 @@ one request per turn over a digest of the screen, with a survey and a working
 memory — in [`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)
 ([`plans/jev-wide-turns.md`](plans/jev-wide-turns.md)). How the browser
 surface reads a page by what is drawn rather than by its ARIA markup is in
-[`specs/browser-sight.md`](specs/browser-sight.md).
+[`specs/browser-sight.md`](specs/browser-sight.md), and how a `choose` checks
+and repairs what its press left in
+[`specs/flow-reflection.md`](specs/flow-reflection.md).
 
 ## Conventions
 

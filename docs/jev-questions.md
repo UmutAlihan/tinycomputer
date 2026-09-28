@@ -144,6 +144,13 @@ Ids are the keys the runtime uses; the journal and the trace show them.
 | `shortcut` | Choice | the step; `new_item`, `new_folder`, `find`, `reply`, `settings`, `back`, `next_field`, `confirm`, `dismiss` | pressed when `move` is `shortcut` and this is at least 0.5 |
 | `page_kind` | Choice | 13 page kinds, from `search_form` to `captcha` | on the web only; briefs the next request |
 
+### Reflecting (`reflect.rs`)
+
+| Id | Type | Given | Answer used as |
+|---|---|---|---|
+| `reflects` | Noul | the `choose` step that just pressed | calibrated with `strays`: under 0.50 the step is repaired once, then failed |
+| `strays` | Noul | the same step | the negation: a different count, date, or name, or a change not asked for |
+
 ### Recovering (`act.rs`)
 
 | Id | Type | Given | Answer used as |
