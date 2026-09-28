@@ -89,9 +89,12 @@ A deliberated decision climbs until a rung settles it:
    `CONTRAST_LEAD`. Otherwise grounding abstains and nothing is pressed.
 4. **Views** (deep only, judgements). The yes/no is asked again over other
    renderings: the screen alone, without the history that can lead it, and
-   what changed since the step began. Views on the same side of the threshold
-   are averaged; views that straddle it keep the minimum, so the step stays
-   open or the condition does not hold.
+   what changed since the step began. The readings are combined by their
+   **median**, so one dissenting view neither passes nor vetoes. Live on
+   IndiGo, the screen-only view read "choose One Way" at 0.2 after the press,
+   because a radio already selected shows no sign of who selected it. Under a
+   minimum rule that one view failed the step; the median keeps it as one
+   voice of three.
 
 At `standard`, a target stops at the duel: the champion is taken, and no
 champion means abstaining.
