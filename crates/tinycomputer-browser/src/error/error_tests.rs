@@ -185,9 +185,8 @@ fn a_refused_navigation_says_not_to_retry() {
 
 #[test]
 fn only_local_lookups_claim_nothing_was_delivered() {
-    let not_delivered = |error: Error| {
-        error.envelope().disposition.delivery == DeliveryDisposition::NotDelivered
-    };
+    let not_delivered =
+        |error: Error| error.envelope().disposition.delivery == DeliveryDisposition::NotDelivered;
     assert!(not_delivered(Error::NoSuchSession { id: "s-1".into() }));
     assert!(not_delivered(Error::NoSuchOutput { id: "o-1".into() }));
     for error in every_variant().into_iter().filter(|error| {
@@ -196,7 +195,10 @@ fn only_local_lookups_claim_nothing_was_delivered() {
             Error::NoSuchSession { .. } | Error::NoSuchOutput { .. }
         )
     }) {
-        assert!(!not_delivered(error), "only a local lookup is provably undelivered");
+        assert!(
+            !not_delivered(error),
+            "only a local lookup is provably undelivered"
+        );
     }
 }
 

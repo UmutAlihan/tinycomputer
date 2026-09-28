@@ -143,7 +143,10 @@ fn a_failure_after_delivery_says_inspect_before_retrying() {
 fn every_recoverable_name_has_a_recovery_hint() {
     for name in NAMES {
         if is_agent_recoverable(name) {
-            assert!(recovery(name).is_some(), "{name} is recoverable without a hint");
+            assert!(
+                recovery(name).is_some(),
+                "{name} is recoverable without a hint"
+            );
         }
     }
 }

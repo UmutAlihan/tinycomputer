@@ -131,7 +131,10 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         match host.read_output(last).await {
             Ok(image) => {
                 std::fs::write(out.join("final.png"), image)?;
-                println!("screenshot: {} (taken as the task stopped)", out.join("final.png").display());
+                println!(
+                    "screenshot: {} (taken as the task stopped)",
+                    out.join("final.png").display()
+                );
             }
             Err(error) => println!("the task's screenshot could not be read: {error}"),
         }
@@ -143,7 +146,11 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         match host.browser_screenshot(&session.id).await {
             Ok(image) => {
                 std::fs::write(out.join(&name), image)?;
-                println!("screenshot: {} ({})", out.join(&name).display(), session.url);
+                println!(
+                    "screenshot: {} ({})",
+                    out.join(&name).display(),
+                    session.url
+                );
             }
             Err(error) => println!("screenshot of {} failed: {error}", session.id),
         }

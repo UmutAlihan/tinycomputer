@@ -129,9 +129,8 @@ async fn concurrent_opens_never_exceed_the_cap() {
 
 #[tokio::test]
 async fn a_failed_launch_gives_its_slot_back() {
-    let fake = Fake::scripted(|command| {
-        (command["action"] == "launch").then(|| failure("Chrome exited"))
-    });
+    let fake =
+        Fake::scripted(|command| (command["action"] == "launch").then(|| failure("Chrome exited")));
     let browser = Browser::with_scratch(Arc::new(fake), scratch("slot"));
     // Every launch fails; none may be refused for want of a slot, which is
     // what leaked reservations would cause after MAX_SESSIONS attempts.

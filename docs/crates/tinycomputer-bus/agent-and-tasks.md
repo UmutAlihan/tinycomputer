@@ -229,12 +229,18 @@ pub struct TaskReport {
     pub flow: Option<Flow>,
     pub steps: Vec<StepReport>,           // see Writing flows
     pub records: BTreeMap<String, Vec<BTreeMap<String, String>>>,
-    pub artifacts: Vec<OutputRef>,        // screenshots at checkpoints, approvals, failures
+    pub artifacts: Vec<OutputRef>,        // a screenshot each time a run stopped; read with BrowserReadOutput
     pub learned: Vec<GroundingHint>,      // pass back as StartTask.memory next time
     pub trace: Vec<JevExchange>,          // only when StartTask.trace was set
     pub rescues: Vec<Rescue>,
 }
 ```
+
+When a run stops — at a checkpoint, before an approval, at a person's turn,
+or at the end — the task takes a screenshot of its surface before letting it
+go. It lands in `artifacts` and, for a checkpoint, an approval, or a person's
+turn, on the status's own `screenshot`. Each is a held output: read it with
+`BrowserReadOutput` within five minutes, before it expires.
 
 Each `Rescue` records one time a failed step was handed to a reasoning model
 for a second opinion:

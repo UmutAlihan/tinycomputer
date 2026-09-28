@@ -225,10 +225,7 @@ impl Error {
     /// command it received — a stale ref, a refused origin, invalid input —
     /// so its delivery stays unknown rather than claimed.
     fn refused_before_delivery(&self) -> bool {
-        matches!(
-            self,
-            Self::NoSuchSession { .. } | Self::NoSuchOutput { .. }
-        )
+        matches!(self, Self::NoSuchSession { .. } | Self::NoSuchOutput { .. })
     }
 
     /// Builds an [`Error::InvalidInput`].

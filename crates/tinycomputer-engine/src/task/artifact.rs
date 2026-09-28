@@ -17,7 +17,11 @@ pub(super) const CAPTURE_TIMEOUT: Duration = Duration::from_secs(10);
 /// status is one a caller acts on — a checkpoint, an approval, a person's
 /// turn, or the end — and the runner can take one. Every screenshot taken
 /// is also kept for `TaskReport.artifacts`.
-pub(super) async fn captured(cell: &Cell, runner: &dyn FlowRunner, status: TaskStatus) -> TaskStatus {
+pub(super) async fn captured(
+    cell: &Cell,
+    runner: &dyn FlowRunner,
+    status: TaskStatus,
+) -> TaskStatus {
     if matches!(
         status,
         TaskStatus::Running | TaskStatus::NeedsInput { .. } | TaskStatus::NeedsPlan { .. }

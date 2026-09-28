@@ -121,7 +121,11 @@ impl FlowRunner for WorkspaceRunner {
             .workspaces
             .lock()
             .ok()
-            .and_then(|workspaces| workspaces.get(task).and_then(|(_, browser)| browser.clone()))
+            .and_then(|workspaces| {
+                workspaces
+                    .get(task)
+                    .and_then(|(_, browser)| browser.clone())
+            })
             .and_then(|browser| browser.session());
         let browser = self.browser.clone();
         Box::pin(async move {

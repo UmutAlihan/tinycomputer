@@ -39,7 +39,11 @@ fn every_browser_member_is_in_the_browser_family_and_nothing_else_is() {
 #[test]
 fn every_task_and_browser_name_has_a_catalogue_entry() {
     for name in crate::agent::names::METHODS {
-        assert_eq!(member(name).map(|entry| entry.family), Some(Family::Task), "{name}");
+        assert_eq!(
+            member(name).map(|entry| entry.family),
+            Some(Family::Task),
+            "{name}"
+        );
     }
     for name in crate::browser::names::METHODS {
         assert_eq!(
@@ -61,7 +65,11 @@ fn the_flow_family_is_exactly_the_flow_members() {
         methods::FLOW_GUIDE,
     ];
     for name in flow {
-        assert_eq!(member(name).map(|entry| entry.family), Some(Family::Flow), "{name}");
+        assert_eq!(
+            member(name).map(|entry| entry.family),
+            Some(Family::Flow),
+            "{name}"
+        );
     }
     let catalogued = MEMBERS
         .iter()

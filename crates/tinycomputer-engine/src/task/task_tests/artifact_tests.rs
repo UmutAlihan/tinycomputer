@@ -61,9 +61,17 @@ async fn a_finished_task_keeps_its_last_screen_after_release() {
         &[],
         None,
     )]);
-    let view = start(&tasks, json!({"app": "browser", "steps": ["search for flights"]}), &[]);
+    let view = start(
+        &tasks,
+        json!({"app": "browser", "steps": ["search for flights"]}),
+        &[],
+    );
     let done = settle(&tasks, &view.id).await;
-    assert!(matches!(done.status, TaskStatus::Done { .. }), "{:?}", done.status);
+    assert!(
+        matches!(done.status, TaskStatus::Done { .. }),
+        "{:?}",
+        done.status
+    );
     assert_eq!(*script.released.lock().unwrap(), [view.id.clone()]);
     assert_eq!(tasks.report(&view.id).data.unwrap().artifacts, [shot()]);
 }
@@ -77,7 +85,11 @@ async fn a_failed_task_keeps_its_last_screen() {
         &[],
     );
     let failed = settle(&tasks, &view.id).await;
-    assert!(matches!(failed.status, TaskStatus::Failed { .. }), "{:?}", failed.status);
+    assert!(
+        matches!(failed.status, TaskStatus::Failed { .. }),
+        "{:?}",
+        failed.status
+    );
     assert_eq!(tasks.report(&view.id).data.unwrap().artifacts, [shot()]);
 }
 
@@ -101,6 +113,10 @@ async fn a_task_waiting_for_input_takes_no_screenshot() {
         json!({"app": "browser", "steps": [{"enter": {"phone": "${phone}"}}]}),
         &[],
     );
-    assert!(matches!(view.status, TaskStatus::NeedsInput { .. }), "{:?}", view.status);
+    assert!(
+        matches!(view.status, TaskStatus::NeedsInput { .. }),
+        "{:?}",
+        view.status
+    );
     assert!(tasks.report(&view.id).data.unwrap().artifacts.is_empty());
 }
