@@ -284,7 +284,7 @@ fn screen(lines: &[String]) -> String {
             continue;
         }
         if text.len() + line.len() + 1 > SCREEN_CHARS {
-            text.push_str("…");
+            text.push('…');
             break;
         }
         text.push_str(line);
