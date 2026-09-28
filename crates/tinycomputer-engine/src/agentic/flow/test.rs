@@ -413,24 +413,7 @@ impl App {
         let mut surface = "window".to_owned();
         if sim.obstacle {
             surface = "sheet".to_owned();
-            candidates.push(node(
-                "Delete Draft",
-                "button",
-                &["Click"],
-                &["sheet"],
-                500.0,
-            ));
-            candidates.push(node(
-                "Keep Editing",
-                "button",
-                &["Click"],
-                &["sheet"],
-                500.0,
-            ));
-            candidates.push(Candidate {
-                value: Some(json!("unsaved-draft-42")),
-                ..node("Remember", "checkbox", &["Click"], &["sheet"], 500.0)
-            });
+            obstacle_sheet(&mut candidates);
         }
         Screen {
             app: "Mail".to_owned(),
