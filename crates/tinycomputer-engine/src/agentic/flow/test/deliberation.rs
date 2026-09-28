@@ -86,6 +86,17 @@ async fn lookalike_buttons_are_resolved_by_a_duel() {
             > 2,
         "the tied Choice was widened into more framings before the duel"
     );
+    // `widen` asks Jev outside `FlowRun::ask_batch`, so it must still trace:
+    // a widening exchange belongs in the trace beside every other one, or a
+    // caller reading `trace` back would see the pre-widening answer even
+    // though the widened tally is what actually decided the step.
+    assert!(
+        run.result
+            .trace
+            .iter()
+            .any(|exchange: &JevExchange| exchange.questions["target"].is_object()),
+        "widening a tied target Choice is traced like any other decision"
+    );
 }
 
 #[tokio::test]
