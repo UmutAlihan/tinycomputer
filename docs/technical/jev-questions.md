@@ -43,7 +43,7 @@ is why the runtime batches everything it wants to know about one screen.
 Jev never writes text. Every answer is a number or a key the runtime offered,
 so every answer can be thresholded and a malformed one fails closed.
 
-How the runtime reads them (`agentic/flow/ask.rs`):
+How the runtime reads them (`agentic/flow/ask/answers.rs`):
 
 | Reader | Returns | Used for |
 |---|---|---|
@@ -132,7 +132,7 @@ answers toward the whole task instead of the step.
 
 Ids are the keys the runtime uses; the journal and the trace show them.
 
-### Judging a `do` turn (`act.rs`, one request per turn)
+### Judging a `do` turn (`act/`, one request per turn)
 
 | Id | Type | Given | Answer used as |
 |---|---|---|---|
@@ -152,13 +152,13 @@ Ids are the keys the runtime uses; the journal and the trace show them.
 | `reflects` | Noul | the `choose` step that just pressed | calibrated with `strays`: under 0.50 the step is repaired once, then failed |
 | `strays` | Noul | the same step | the negation: a different count, date, or name, or a change not asked for |
 
-### Recovering (`act.rs`)
+### Recovering (`act/recover.rs`)
 
 | Id | Type | Given | Answer used as |
 |---|---|---|---|
 | `dismiss` | Choice | the visible non-destructive clickable elements, plus `escape` | the element to click, or Escape, to clear an obstacle |
 
-### Grounding one element (`ground.rs`)
+### Grounding one element (`ground/`)
 
 | Id | Type | Given | Answer used as |
 |---|---|---|---|
@@ -168,7 +168,7 @@ Ids are the keys the runtime uses; the journal and the trace show them.
 | `target` | Choice | up to 20 elements | used at 0.70, or at 0.45 when its name is in the purpose |
 | `again` | Choice | the same elements, reversed, lettered | agreeing with `target` plus `confirm` at 0.5 accepts it; `confirm` at 0.8 alone does too |
 
-### Deliberating (`escalate/`, `duel/`, `ground.rs`, `act.rs`, `steps.rs`)
+### Deliberating (`escalate/`, `duel/`, `ground/`, `act/`, `steps/`)
 
 Asked only when the evidence behind an answer is thin, or after a press, under
 [`specs/jev-deliberation.md`](specs/jev-deliberation.md). A deliberated
@@ -185,7 +185,7 @@ request is also re-asked in more framings, which changes no id.
 | `unintended` | Noul | the same | the negation: the wrong item opened, the page left, a choice cleared |
 | `done`, `not_done`, `holds`, `negated` with a `view` | Noul | the screen alone, or what changed since the step began | the judgement over another rendering; the readings are combined by their median |
 
-### Entering text (`enter.rs`)
+### Entering text (`enter/`)
 
 | Id | Type | Given | Answer used as |
 |---|---|---|---|
@@ -195,7 +195,7 @@ request is also re-asked in more framings, which changes no id.
 
 Slot names go to Jev. Slot values never do.
 
-### Conditions (`steps.rs::holds`, for `verify`, `wait_for`, `if`, `repeat_until`, and `stop_before`'s after-check)
+### Conditions (`steps/condition.rs::holds`, for `verify`, `wait_for`, `if`, `repeat_until`, and `stop_before`'s after-check)
 
 | Id | Type | Given | Answer used as |
 |---|---|---|---|
@@ -203,7 +203,7 @@ Slot names go to Jev. Slot values never do.
 | `negated` | Noul | the condition | …the negation… |
 | `coverage` | Score, 5 levels | the condition | …combined with the top level: the condition holds at 0.75 |
 
-### Reading and picking (`steps.rs`)
+### Reading and picking (`steps/read.rs`, `steps/list.rs`)
 
 | Id | Type | Given | Answer used as |
 |---|---|---|---|
@@ -214,7 +214,7 @@ Slot names go to Jev. Slot values never do.
 `extract` asks nothing when one list shows, and `pick` asks nothing when its
 `by` parses as a price, time, duration, or stop-count criterion.
 
-## The wide strategy (`wide.rs`, `survey.rs`)
+## The wide strategy (`wide/`, `survey.rs`)
 
 With `strategy: "wide"` the state keeps `app`, `window`, `surface`,
 `current_step`, `visible_text`, `field_contents`, and `already_collected`, and replaces
@@ -244,7 +244,7 @@ page shape per step:
 | `relevance_<region>` | Score, 5 levels | one region: where, how many elements, six examples, whether it held a remembered element | ranks regions: what is shown in full and offered first |
 | `distraction_<region>` | Noul | the same region | at 0.70 the region is collapsed and ranked last |
 
-## The goal loop's questions (`agentic/policy.rs`)
+## The goal loop's questions (`agentic/policy/`)
 
 `RunGoal` and `ResolveIntent` ask one larger request per decision. Their state
 is `goal`, `app`, `window`, `surface`, and the last eight `recent_actions`.
@@ -256,7 +256,7 @@ is `goal`, `app`, `window`, `surface`, and the last eight `recent_actions`.
 | `click_target`, `type_text_target`, … | Choice per operation | the elements that support it | the element for the chosen operation |
 | `target` (rerank) | Choice | a shortlist from a close first call | breaks a tie under 0.70 |
 
-The gate (`policy::gate_with_evidence`) turns the answers into one decision: `DONE` and
+The gate (`policy::gate_with_evidence`, in `policy/gate.rs`) turns the answers into one decision: `DONE` and
 `BLOCKED` need 0.70; any other operation abstains under 0.55 (0.45 when the
 target's name appears in the goal); a `destructive` of 0.50 or more asks for
 confirmation; and it acts at 0.70, or below that only on a named match.

@@ -17,4 +17,4 @@ mod types;
 pub use types::{SessionId, SessionInfo, SessionOptions, SessionRef, SessionRequest, Viewport};
 
 #[cfg(test)]
-mod test;
+mod session_tests;

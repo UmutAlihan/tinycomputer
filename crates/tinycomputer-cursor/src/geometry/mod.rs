@@ -99,4 +99,4 @@ impl Rect {
 }
 
 #[cfg(test)]
-mod test;
+mod geometry_tests;

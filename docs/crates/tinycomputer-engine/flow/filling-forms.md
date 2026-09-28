@@ -12,7 +12,7 @@ An `enter` step takes a map of slot names to text, for example:
 
 Its job is to match each slot to a field on screen and get the text into
 it, and to prove afterward that the text actually landed. All of this lives
-in `enter.rs`.
+in `enter/` (`assign.rs` matches, `fill.rs` delivers).
 
 ## The rounds
 

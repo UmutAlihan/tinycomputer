@@ -45,19 +45,19 @@ run afterward.
 
 | Part | What it is for | Read more |
 |---|---|---|
-| The step driver (`mod.rs`) | walks the flow's steps, holds the run's budgets and brief, is the one door to Jev and to acting | this page, [Budgets and switches](budgets-and-switches.md) |
-| Step kinds (`steps.rs`, `act.rs`, `enter.rs`) | `do`, `open`, `browse`, `enter`, `choose`, `read`, `extract`, `pick`, `verify`, `wait_for`, `if`, `repeat_until`, `stop_before` | [Step kinds](step-kinds.md), [The do loop](the-do-loop.md), [Filling in forms](filling-forms.md) |
-| Run memory and output (`wide.rs`'s `collected`, `steps.rs`'s `judge_list`) | what a run has already saved, shown back to Jev every turn, and choosing which list a step means | [`../output.md`](../output.md) |
-| Grounding (`ground.rs`, `memory.rs`) | turns "click to accomplish X" into one specific element | [Grounding](grounding.md) |
-| Voting and briefing (`vote.rs`, and briefing inside `mod.rs`) | asks each decision several ways at once, and tells Jev what the run is for | [Voting and briefing](voting-and-briefing.md) |
-| The wide strategy (`wide.rs`, `survey.rs`, `ledger.rs`) | one request per turn over a digest of the screen, with working memory | [The wide strategy](wide-strategy.md) |
+| The step driver (`mod.rs`, `run.rs`, `decide.rs`, `look.rs`, `action.rs`) | walks the flow's steps, holds the run's budgets and brief, is the one door to Jev and to acting | this page, [Budgets and switches](budgets-and-switches.md) |
+| Step kinds (`steps/`, `act/`, `enter/`) | `do`, `open`, `browse`, `enter`, `choose`, `read`, `extract`, `pick`, `verify`, `wait_for`, `if`, `repeat_until`, `stop_before` | [Step kinds](step-kinds.md), [The do loop](the-do-loop.md), [Filling in forms](filling-forms.md) |
+| Run memory and output (`wide/state.rs`'s `collected`, `steps/list.rs`'s `judge_list`) | what a run has already saved, shown back to Jev every turn, and choosing which list a step means | [`../output.md`](../output.md) |
+| Grounding (`ground/`, `memory.rs`) | turns "click to accomplish X" into one specific element | [Grounding](grounding.md) |
+| Voting and briefing (`vote.rs`, `brief.rs`) | asks each decision several ways at once, and tells Jev what the run is for | [Voting and briefing](voting-and-briefing.md) |
+| The wide strategy (`wide/`, `survey.rs`, `ledger.rs`) | one request per turn over a digest of the screen, with working memory | [The wide strategy](wide-strategy.md) |
 | Attention (`attention/`) | clears whatever is in the way before a step is judged or something is grounded | [Attention](attention.md) |
 | Deliberation (`evidence/`, `escalate/`, `duel/`, `denoise/`) | reads how strong an answer's evidence is, and asks more only when it is thin | [Deliberation](deliberation.md) |
-| Undo and backtracking (`expect/`, `checkpoint/`, and backtracking in `act.rs`) | predicts what a press should do, checks it, and puts a mistake back | [Undo and backtracking](undo-and-backtracking.md) |
+| Undo and backtracking (`expect/`, `checkpoint/`, and backtracking in `act/recover.rs`) | predicts what a press should do, checks it, and puts a mistake back | [Undo and backtracking](undo-and-backtracking.md) |
 | Reflection (`reflect.rs`) | after a `choose` step presses something, checks the screen actually shows the choice | [Reflection](reflection.md) |
 | The screen model (`view/`) | the shared `Screen`, `Candidate`, and the flow's own policy: what counts as irreversible | referenced throughout |
 | The backend (`backend/`) | the desktop and browser as one trait the flow runtime can call without knowing which it is talking to | [How it sees the screen](../../../seeing-the-screen.md) |
-| The test simulator (`test.rs`, `attention/test.rs`, etc.) | a scripted mail app, a scripted web shop, and an oracle Jev that answers from their true state | mentioned throughout |
+| The test simulator (`flow_tests.rs` with `flow_tests/simulator.rs`, `screens.rs`, `oracle.rs`; topic tests in `flow_tests/<topic>_tests.rs` and each folder's `<module>_tests.rs`) | a scripted mail app, a scripted web shop, and an oracle Jev that answers from their true state | mentioned throughout |
 
 ## How one step runs
 

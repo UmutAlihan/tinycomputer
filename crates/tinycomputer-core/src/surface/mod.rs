@@ -120,4 +120,4 @@ pub fn uses_pointer(operation: JevOperation) -> bool {
 }
 
 #[cfg(test)]
-mod test;
+mod surface_tests;

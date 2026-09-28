@@ -143,4 +143,4 @@ impl Animator {
 }
 
 #[cfg(test)]
-mod test;
+mod animate_tests;

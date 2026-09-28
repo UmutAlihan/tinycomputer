@@ -4,7 +4,7 @@
 //! A press can succeed and still leave the wrong thing: a stepper whose label
 //! names "1 Adult" adds a second adult. `docs/technical/specs/flow-reflection.md` is the
 //! contract. A deliberating run whose step left the page it began on goes
-//! back there, verified, before it repairs (`checkpoint.rs`).
+//! back there, verified, before it repairs (`checkpoint/`).
 
 use serde_json::json;
 use tinycomputer_bus::{FlowAction, FlowLoop, StepOutcome};

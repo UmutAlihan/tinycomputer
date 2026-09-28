@@ -1,7 +1,7 @@
 # Writing flows, the wire format
 
 Source: [`crates/tinycomputer-bus/src/flow/`](../../../crates/tinycomputer-bus/src/flow/)
-(`types.rs` for the Rust types, [`guide.md`](../../../crates/tinycomputer-bus/src/flow/guide.md)
+(`types/` for the Rust types: `request.rs`, `step.rs`, `result.rs`; [`guide.md`](../../../crates/tinycomputer-bus/src/flow/guide.md)
 for the authoring guide shipped as `FLOW_GUIDE`).
 
 This page documents the *types*: what a `Flow` looks like as JSON, what

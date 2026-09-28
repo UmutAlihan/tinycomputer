@@ -3,7 +3,7 @@
 Real flows traced through the decisions they cause: which step asks Jev what,
 what a typical answer looks like, and what the runtime does with it. The
 flows are the lab's scenarios (`crates/tinycomputer-examples/scenarios/`) and
-the simulator's mail flow (`agentic/flow/test.rs`). The answers shown are
+the simulator's mail flow (`agentic/flow/flow_tests/`). The answers shown are
 illustrative. Run a scenario with `TINYCOMPUTER_JEV_JOURNAL=1` and
 `jev_journal -- latest --transcript` to see a real run's answers.
 
@@ -21,17 +21,17 @@ well. Each decision is `votes` calls (7 by default) running concurrently.
 |---|---|---|
 | `open` | 0 | launch, then up to ten looks for a readable window |
 | `browse` | 0 | navigate |
-| `do` (plain string) | 2 per turn: judge + ground; usually 2–3 turns | `act.rs`, `ground.rs` |
+| `do` (plain string) | 2 per turn: judge + ground; usually 2–3 turns | `act/`, `ground/` |
 | `do` via a shortcut | 1 per turn: judge only | the `shortcut` answer |
-| `enter` | 1 (all slots at once) + 1 validation check | `enter.rs` |
-| `choose` | 1–2 to ground the option; more to reveal it | `steps.rs`, `ground.rs` |
+| `enter` | 1 (all slots at once) + 1 validation check | `enter/` |
+| `choose` | 1–2 to ground the option; more to reveal it | `steps/choose.rs`, `ground/` |
 | `read` | 1 per 60 pieces of text | `source` |
 | `extract` | 0 | `records/` parsers |
 | `pick` | 0 when `by` parses (price, time, duration, stops), else 1 | `record` |
 | `verify`, `if` | 1 | `holds` |
 | `wait_for` | 1 per check, up to 10 | `holds` |
 | `repeat_until` | 1 per round, plus the body | `holds` |
-| `stop_before` | 1–2 to ground the control | `ground.rs` |
+| `stop_before` | 1–2 to ground the control | `ground/` |
 
 Grounding memory turns most `do` and `enter` groundings on a second run into a
 single `confirm`, which is why a repeated scenario is cheaper.

@@ -21,7 +21,8 @@ adapter, so a decision loop does not need to know or care whether it is
 driving a desktop application or a web page.
 
 `crates/tinycomputer-desktop/src/surface/mod.rs` is where `Desktop`
-implements `Surface`. This page describes what that implementation actually
+implements `Surface`, with observation, acting, and pasting in
+`observation.rs`, `act.rs`, and `paste.rs` beside it. This page describes what that implementation actually
 does, since it is doing considerably more than forwarding calls.
 
 ## `observe`: turning a snapshot into a `Screen`
@@ -123,8 +124,10 @@ instead.
 ## Where this lives in the code
 
 All of the above is in
-[`crates/tinycomputer-desktop/src/surface/mod.rs`](../../../crates/tinycomputer-desktop/src/surface/mod.rs).
-It is the busiest file in the crate for a reason: it is where "a pile of
+[`crates/tinycomputer-desktop/src/surface/`](../../../crates/tinycomputer-desktop/src/surface/mod.rs):
+`mod.rs` holds the `Surface` implementation, `observation.rs` the snapshot
+parsing, `act.rs` the operations, and `paste.rs` the clipboard paste. It is the
+busiest module in the crate for a reason: it is where "a pile of
 accessibility nodes" becomes "the small, curated view a decision loop
 reasons over," and that translation carries real judgment calls, not just
 type conversion. See

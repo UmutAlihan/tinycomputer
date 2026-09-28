@@ -29,8 +29,9 @@ formal spec is
 
 Every state Jev is shown, whether the run asks narrow or wide, carries an
 `already_collected` field once anything has been saved. It is built by
-`collected()` in `agentic/flow/wide.rs` and wired into the shared state
-function in `agentic/flow/mod.rs`, so both strategies get it the same way:
+`collected()` in `agentic/flow/wide/state.rs` and wired into the shared
+state function (`FlowRun::state`, in `agentic/flow/ground/narrow.rs`), so
+both strategies get it the same way:
 
 - the last `MAX_COLLECTED` (12) variables read, most recent first;
 - each value clipped to `COLLECTED_CHARS` (120) characters;
@@ -48,7 +49,7 @@ against a bare list of action names.
 A task rarely finishes in one flow run: an approval, a missing value, or a
 rescue each split it into another one. `RunFlowRequest.collected` is how
 what an earlier run saved reaches the next one. The task controller fills
-it on every run it starts (`run_request` in `task/mod.rs`), so:
+it on every run it starts (`run_request` in `task/budget.rs`), so:
 
 - the new run's variables start with `collected`'s values, though the
   caller's own `vars` win any clash with the same name;
@@ -81,7 +82,7 @@ tree at all, not only on a web page's own list markup.
 
 When more than one list shows at once, such as a chat list beside the
 open chat's own messages, the runtime asks Jev which one the step means
-(the `list` question in `steps.rs`): each of the first `MAX_LISTS` (6)
+(the `list` question in `steps/list.rs`): each of the first `MAX_LISTS` (6)
 lists is shown by its first `LIST_PREVIEW` (3) items, and a clear winner
 at or above `LOCATE_FLOOR` (0.5) is used. Anything less clear falls back
 to the longest list, the one an `extract` or an unranked `pick` would have
@@ -194,17 +195,19 @@ the same setup as the rescuer.
   `judge`, the shaping protocol.
 - `crates/tinycomputer-engine/src/shape/schema.rs`, the schema subset,
   `supported`, `violations`.
-- `crates/tinycomputer-engine/src/agentic/flow/wide.rs`, `collected`,
-  `MAX_COLLECTED`, `COLLECTED_CHARS`.
-- `crates/tinycomputer-engine/src/agentic/flow/steps.rs`, `judge_list`,
-  `judge_pick`, `MAX_LISTS`, `LIST_PREVIEW`.
+- `crates/tinycomputer-engine/src/agentic/flow/wide/`, `collected`
+  (`state.rs`), `MAX_COLLECTED`, `COLLECTED_CHARS` (`mod.rs`).
+- `crates/tinycomputer-engine/src/agentic/flow/steps/`, `judge_list`,
+  `judge_pick` (`list.rs`), `MAX_LISTS`, `LIST_PREVIEW` (`mod.rs`).
 - `crates/tinycomputer-core/src/surface/groups.rs`, `result_families`,
   `flat_lists`, `MIN_FLAT_ITEMS`.
-- `crates/tinycomputer-engine/src/task/mod.rs`, `finish`, `run_request`,
-  where a task's `output` and `collected` are actually wired in.
-- `crates/tinycomputer-bus/src/agent/types.rs`, `TaskOutput`, the `result`
-  field on `TaskStatus::Done`.
-- `crates/tinycomputer-bus/src/flow/types.rs`, `RunFlowRequest::collected`.
+- `crates/tinycomputer-engine/src/task/`, `finish` (`drive.rs`) and
+  `run_request` (`budget.rs`), where a task's `output` and `collected` are
+  actually wired in.
+- `crates/tinycomputer-bus/src/agent/types/`, `TaskOutput` (`request.rs`),
+  the `result` field on `TaskStatus::Done` (`status.rs`).
+- `crates/tinycomputer-bus/src/flow/types/request.rs`,
+  `RunFlowRequest::collected`.
 - [`docs/technical/specs/task-output.md`](../../technical/specs/task-output.md),
   the formal spec this page follows.
 - [tasks.md](tasks.md) and [rescue.md](rescue.md), the task controller and

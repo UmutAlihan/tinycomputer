@@ -58,7 +58,7 @@ and so on down the list in `classify`.
 
 This is exactly as fragile as it sounds if agent-browser ever reworded one
 of those messages. That fragility is why every one of these mappings is
-pinned by a test in `reply/test.rs`, so a message change upstream that would
+pinned by a test in `reply/reply_tests.rs`, so a message change upstream that would
 silently break the classification instead breaks the build.
 
 ## Where errors surface for `BrowserSurface`

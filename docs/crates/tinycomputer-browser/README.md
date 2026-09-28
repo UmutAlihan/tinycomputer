@@ -49,7 +49,7 @@ the wire shapes those members carry.
 | `src/reply/` | Turns agent-browser's replies back into typed results, and classifies its failure messages into this crate's `Error` | [errors.md](errors.md) |
 | `src/surface/sight/` | `sight.js`: reads the rendered page the way a person looks at it | [sight.md](sight.md) |
 | `src/surface/tree.rs` | Parses agent-browser's accessibility snapshot text, as a fallback for sight | [sight.md](sight.md) |
-| `src/surface/mod.rs`, `cursor.rs` | `BrowserSurface`: one session as a `tinycomputer-core` `Surface`, plus the on-screen cursor | [surface.md](surface.md) |
+| `src/surface/mod.rs`, `operations.rs`, `card.rs`, `fields.rs`, `envelope.rs`, `cursor.rs` | `BrowserSurface`: one session as a `tinycomputer-core` `Surface` (the trait impl in `operations.rs`), plus the on-screen cursor | [surface.md](surface.md) |
 | `src/outputs/` | Held screenshots: bounded count, bounded size, expire on their own | [outputs-and-downloads.md](outputs-and-downloads.md) |
 | `src/error/` | The crate-wide `Error`, and the wire name each variant carries across the bus | [errors.md](errors.md) |
 

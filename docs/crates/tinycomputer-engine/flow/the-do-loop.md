@@ -2,7 +2,7 @@
 
 Most of a flow is plain strings: "start a new email message", "search for
 flights", "calculate 128 times 37". Each one runs the same loop, for up to
-eight turns (`DO_TURNS`), in `act.rs`. This is the loop people usually mean
+eight turns (`DO_TURNS`), in `act/`. This is the loop people usually mean
 when they talk about "the loop."
 
 ## One turn
@@ -115,7 +115,7 @@ action actually did rather than the moment right before it took effect.
 
 ### Shortcuts
 
-The shortcut list (`SHORTCUTS` in `act.rs`) is deliberately short and safe:
+The shortcut list (`SHORTCUTS` in `act/mod.rs`) is deliberately short and safe:
 new item, new folder, find, reply, settings, back, next field, confirm
 (Return), and dismiss (Escape). None of them sends, deletes, or quits.
 They are written in macOS spelling (`cmd+n`) and each surface translates

@@ -211,7 +211,7 @@ The `Screen` does not carry it.
   a scoped observation; `Perception::Tree` reading the tree alone.
   The `denoised` summary parsed, defaulted when absent, and kept by the
   surface.
-- Live fixture tests (`live_*` in `sight/test.rs`, with the `agent-browser`
+- Live fixture tests (`live_*` in `sight/sight_tests/live_tests.rs`, with the `agent-browser`
   feature and `TINYCOMPUTER_LIVE_BROWSER=1`, since CI has no browser): ad
   frames, ad-named and "Sponsored" blocks, ad links, and pixels are removed,
   while `header`, `shadow`, `download`, `adults`, and generated classes are

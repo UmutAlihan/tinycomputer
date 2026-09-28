@@ -323,4 +323,4 @@ fn is_card_number(value: &str) -> bool {
 }
 
 #[cfg(test)]
-mod test;
+mod facts_tests;

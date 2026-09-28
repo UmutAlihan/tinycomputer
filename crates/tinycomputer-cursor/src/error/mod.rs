@@ -16,4 +16,4 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(test)]
-mod test;
+mod error_tests;

@@ -6,7 +6,7 @@
 //! directory or asking a model to infer it from an unchanged page.
 
 #[cfg(test)]
-mod test;
+mod download_tests;
 
 mod types;
 

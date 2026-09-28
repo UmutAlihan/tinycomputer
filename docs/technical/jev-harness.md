@@ -23,31 +23,33 @@ same state, independently, in one round trip.
 caller (agent, host, lab)
   │  TinyBus member: RunFlow / RunGoal / ResolveIntent / StartTask …
   ▼
-crates/tinycomputer/src/tinybus_module/     dispatch.rs, runner.rs
+crates/tinycomputer/src/tinybus_module/     dispatch/, runner.rs
   │  holds the configured JevRuntime; tasks get a per-task Workspace
   ▼
 crates/tinycomputer-engine/src/
   task/                  the task controller: runs flows in the background,
   │                      pauses for input and approval, splits the budget
   ▼
-  agentic/flow/mod.rs    run_flow → FlowRun: the step driver, budgets,
-  │                      look / explore / act, and ask()
-  ├─ steps.rs            one function per step kind
-  ├─ act.rs              the `do` loop: judge, recover, move
-  ├─ ground.rs           one element for a purpose
-  ├─ enter.rs            slots to fields, verified delivery
-  ├─ wide.rs, survey.rs  the wide strategy: one request per turn, the survey
+  agentic/flow/          run_flow → FlowRun (mod.rs): the step driver
+  │                      (run.rs), budgets, look / explore (look.rs),
+  │                      act (action.rs), and ask() (decide.rs)
+  ├─ steps/              one function per step kind
+  ├─ act/                the `do` loop: judge, recover, move
+  ├─ ground/             one element for a purpose
+  ├─ enter/              slots to fields, verified delivery
+  ├─ wide/, survey.rs    the wide strategy: one request per turn, the survey
   ├─ ledger.rs           the working memory wide questions see
-  └─ ask.rs, vote.rs     question builders; framings and merging
+  └─ ask/, vote.rs       question builders; framings and merging
   ▼
-  agentic/mod.rs         JevRuntime::evaluate — the one door every call
+  agentic/runtime.rs     JevRuntime::evaluate — the one door every call
   │                      goes through; the debug journal hooks in here
   ▼
 vendor/tinyinference     tinyinference_decisions::Client: HTTP, retries,
                          timeout, response validation
 ```
 
-`RunGoal` and `ResolveIntent` (`agentic/mod.rs`, `agentic/task.rs`) sit beside
+`RunGoal` and `ResolveIntent` (`agentic/goal.rs`, `agentic/task/`,
+`agentic/resolve.rs`) sit beside
 the flow runtime rather than under it; they share only `JevRuntime` and its
 error mapping.
 
@@ -68,12 +70,12 @@ measures them against.
 ## The life of one flow decision
 
 Every flow question reaches Jev through `FlowRun::ask`
-(`agentic/flow/mod.rs`), or, for several independent requests at once,
+(`agentic/flow/decide.rs`), or, for several independent requests at once,
 `FlowRun::ask_batch`, which runs the steps below for each and sends every
 framing of every request together: one round trip. In order:
 
-1. **Build.** A step's code builds the questions (`ask.rs`) and the shared
-   state (`ask::state`: app, window, surface, current step, visible text,
+1. **Build.** A step's code builds the questions (`ask/questions.rs`) and the
+   shared state (`ask::state`, in `ask/screen_state.rs`: app, window, surface, current step, visible text,
    up to 120 elements, the last eight history lines, and field contents when
    `include_values` is set). Screen text is always wrapped as
    `untrusted_accessibility_data`.
@@ -169,9 +171,9 @@ the pending-confirmation table, and the journal are shared behind `Arc`s.
 
 | Harness | Where | What it is for |
 |---|---|---|
-| Flow simulator | `agentic/flow/test.rs` | a scripted mail app and booking widgets, plus an *oracle* Jev that answers from the simulator's true state; every loop behaviour and regression lands here first |
-| Mock evaluator | `agentic/test.rs` | queued, canned `EvaluationResult`s for the goal and intent loops; records every request for assertions |
-| Fake runners | `task/test.rs` | a `FlowRunner` that returns scripted replies, so the task controller is tested without a surface or Jev |
+| Flow simulator | `agentic/flow/flow_tests.rs`, fixtures `flow_tests/simulator.rs`, `oracle.rs`, `screens.rs` | a scripted mail app and booking widgets, plus an *oracle* Jev that answers from the simulator's true state; every loop behaviour and regression lands here first |
+| Mock evaluator | `agentic/agentic_tests.rs` | queued, canned `EvaluationResult`s for the goal and intent loops; records every request for assertions |
+| Fake runners | `task/task_tests.rs` | a `FlowRunner` that returns scripted replies, so the task controller is tested without a surface or Jev |
 | The lab | `crates/tinycomputer-examples`, `scripts/lab` | the built module, loaded like production, driving real applications with real Jev; see [`lab.md`](lab.md) |
 
 The simulator and the mock both implement the private `Evaluator` trait that

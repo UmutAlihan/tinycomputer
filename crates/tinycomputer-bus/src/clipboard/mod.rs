@@ -11,4 +11,4 @@ mod types;
 pub use types::{ClipboardGetRequest, ClipboardSetRequest};
 
 #[cfg(test)]
-mod test;
+mod clipboard_tests;

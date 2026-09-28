@@ -58,4 +58,4 @@ pub use types::{
 };
 
 #[cfg(test)]
-mod test;
+mod agent_tests;

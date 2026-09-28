@@ -289,4 +289,4 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
 }
 
 #[cfg(test)]
-mod test;
+mod workspace_tests;

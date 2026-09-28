@@ -1,6 +1,7 @@
 # Safety and payment detection
 
-Source: [`crates/tinycomputer-core/src/safety/mod.rs`](../../../crates/tinycomputer-core/src/safety/mod.rs).
+Source: [`crates/tinycomputer-core/src/safety/`](../../../crates/tinycomputer-core/src/safety/mod.rs)
+(`consequence.rs`, `payment.rs`, `gates.rs`).
 
 This module holds the checks that stop a run before something happens that
 cannot be undone, whatever a model decided along the way. It runs

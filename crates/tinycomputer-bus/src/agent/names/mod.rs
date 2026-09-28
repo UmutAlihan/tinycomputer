@@ -91,4 +91,4 @@ pub const CONFIDENTIAL: &[&str] = &[
 ];
 
 #[cfg(test)]
-mod test;
+mod names_tests;

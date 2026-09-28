@@ -82,4 +82,4 @@ impl Driver {
 }
 
 #[cfg(test)]
-mod test;
+mod driver_tests;

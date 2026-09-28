@@ -230,4 +230,4 @@ fn le24(bytes: &[u8]) -> u32 {
 }
 
 #[cfg(test)]
-mod test;
+mod reply_tests;

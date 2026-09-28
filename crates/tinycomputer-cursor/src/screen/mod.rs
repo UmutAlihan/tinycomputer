@@ -221,4 +221,4 @@ impl ScreenCursor {
 }
 
 #[cfg(test)]
-mod test;
+mod screen_tests;

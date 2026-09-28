@@ -138,4 +138,4 @@ pub const METHODS: &[&str] = &[
 ];
 
 #[cfg(test)]
-mod test;
+mod names_tests;

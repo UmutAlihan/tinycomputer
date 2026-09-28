@@ -69,4 +69,4 @@ impl Default for Rng {
 }
 
 #[cfg(test)]
-mod test;
+mod rng_tests;

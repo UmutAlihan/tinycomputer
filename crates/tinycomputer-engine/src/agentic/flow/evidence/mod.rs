@@ -250,4 +250,4 @@ fn deviation(values: &[f64]) -> f64 {
 }
 
 #[cfg(test)]
-mod test;
+mod evidence_tests;

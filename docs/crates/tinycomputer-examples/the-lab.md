@@ -141,4 +141,5 @@ Run `scripts/lab list` for the live list; as of this writing they are
 `brief.md` (what the `authored` mode is given) and a `flow.json` (the
 hand-written flow the `flow` mode runs); the goal string, the reset steps,
 and the checker that verifies the outcome live in code, in
-[`src/lab/scenario.rs`](../../../crates/tinycomputer-examples/src/lab/scenario.rs).
+[`src/lab/scenario/`](../../../crates/tinycomputer-examples/src/lab/scenario/mod.rs)
+(`ladder.rs`, `prepare.rs`, `check.rs`).

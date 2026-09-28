@@ -25,7 +25,7 @@
 //! git-ignored for that reason.
 
 #[cfg(test)]
-mod test;
+mod journal_tests;
 
 use std::{
     ffi::OsString,

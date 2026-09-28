@@ -85,4 +85,4 @@ impl FromStr for CursorPace {
 }
 
 #[cfg(test)]
-mod test;
+mod pace_tests;

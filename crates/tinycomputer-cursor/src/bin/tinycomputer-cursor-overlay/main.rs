@@ -50,5 +50,4 @@ fn forward_lines(input: impl Read, commands: &Sender<OverlayCommand>) {
 }
 
 #[cfg(test)]
-#[path = "test.rs"]
-mod test;
+mod main_tests;

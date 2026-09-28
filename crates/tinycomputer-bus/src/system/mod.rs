@@ -14,4 +14,4 @@ mod types;
 pub use types::PermissionsRequest;
 
 #[cfg(test)]
-mod test;
+mod system_tests;
