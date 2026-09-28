@@ -912,3 +912,48 @@ fn the_tree_is_read_when_sight_fails_or_is_turned_off() {
     assert!(!fake.actions().iter().any(|action| action == "evaluate"));
     assert!(format!("{surface:?}").contains("Tree"));
 }
+
+/// A page that takes every click, and says through `evaluate` whether the
+/// DOM click fallback had to press.
+fn selecting_fake() -> Fake {
+    Fake::scripted(|command| match command["action"].as_str().unwrap() {
+        "click" => Some(ok(&json!({}))),
+        "evaluate" => Some(ok(&json!({"result": true}))),
+        _ => None,
+    })
+}
+
+#[test]
+fn a_tab_click_the_page_ignored_is_pressed_again_through_the_dom() {
+    // Emirates' trip tabs ignore a trusted click on a freshly loaded page;
+    // the element's own `click()` selects them.
+    let Harness { fake, surface, .. } = harness("tab-ignored", selecting_fake());
+    let tab = Candidate {
+        role: "tab".to_owned(),
+        name: Some("One way".to_owned()),
+        ..node("seen:15", &["Click"])
+    };
+    assert!(surface.execute(JevOperation::Click, Some(tab), None).ok);
+    let script = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
+    assert!(script.contains(r#"[data-tc-seen=\"15\"]"#), "{script}");
+    assert!(script.contains(".click()"), "{script}");
+
+    // A button, a tree ref, and a tab already selected are left alone.
+    for (reference, role, states) in [
+        ("seen:16", "button", vec![]),
+        ("e5", "tab", vec![]),
+        ("seen:17", "tab", vec!["selected".to_owned()]),
+    ] {
+        let Harness { fake, surface, .. } = harness("tab-left-alone", selecting_fake());
+        let node = Candidate {
+            role: role.to_owned(),
+            states,
+            ..node(reference, &["Click"])
+        };
+        assert!(surface.execute(JevOperation::Click, Some(node), None).ok);
+        assert!(
+            !fake.actions().iter().any(|action| action == "evaluate"),
+            "{reference} {role}"
+        );
+    }
+}
