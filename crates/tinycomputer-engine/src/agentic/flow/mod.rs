@@ -65,7 +65,7 @@ mod wide;
 pub(crate) use validate::{check as check_flow, missing_inputs};
 
 #[cfg(test)]
-mod test;
+mod flow_tests;
 
 use std::{
     collections::{BTreeMap, BTreeSet},
