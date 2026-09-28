@@ -4720,4 +4720,9 @@ async fn a_row_that_refused_the_text_is_never_pressed_while_revealing_a_field() 
         .map(|action| action.action.clone())
         .collect::<Vec<_>>();
     assert_eq!(rows, ["fill destination search"], "{:?}", step.actions);
+    assert_eq!(step.outcome, StepOutcome::Failed);
+    assert_eq!(
+        step.note,
+        "no field that takes text was found for: destination search; 1 element(s) the page offered as fields refused the text"
+    );
 }
