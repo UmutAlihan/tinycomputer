@@ -323,4 +323,4 @@ fn text(value: &Value) -> String {
 }
 
 #[cfg(test)]
-mod test;
+mod sage_tests;

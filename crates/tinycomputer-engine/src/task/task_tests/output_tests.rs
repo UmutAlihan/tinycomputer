@@ -7,7 +7,7 @@ use serde_json::json;
 use tinycomputer_bus::agent::{StartTaskRequest, TaskOutput, TaskStatus};
 use tinycomputer_bus::{DesktopResponse, FlowStopReason};
 
-use super::rescue::Model;
+use super::rescue_tests::Model;
 use super::{controller, finished_run, flow, settle};
 use crate::shape::Shaper;
 use crate::task::Tasks;

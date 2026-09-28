@@ -358,5 +358,4 @@ fn hash_value(value: Option<&Value>, depth: usize, hash: &mut impl Hasher) {
 }
 
 #[cfg(test)]
-#[path = "screen_tests.rs"]
-mod tests;
+mod screen_tests;
