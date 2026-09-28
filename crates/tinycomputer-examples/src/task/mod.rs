@@ -129,10 +129,12 @@ pub fn passed(status: &TaskStatus) -> bool {
 }
 
 /// Collects what a stopped task did into `out`, all over the bus: the
-/// report (`TaskReport`); `final.png`, the screenshot the task took as it
-/// stopped (`BrowserReadOutput` on the report's last artifact); an
-/// `open-<n>.png` of each browser session still open, which is then closed;
-/// and, for a finished task, its records and any shaped result.
+/// report (`TaskReport`); when the task managed to take one as it stopped,
+/// `final.png` (`BrowserReadOutput` on the report's last artifact, which
+/// `read_output` releases); otherwise an `open-<n>.png` of each browser
+/// session still open; every open session is then closed; and, for a
+/// finished task, its records and any shaped result. Every screenshot is
+/// best effort: a task can stop without one.
 ///
 /// # Errors
 ///
@@ -171,9 +173,15 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         }
     }
     // Sessions still open — a task paused at a checkpoint keeps its own — are
-    // captured as they stand now, then closed. Every session belongs to this
-    // run: `Host::load` gives each run a private bus and its own module.
+    // captured as they stand now, unless the task's own screenshot already
+    // shows that state, then closed. Every session belongs to this run:
+    // `Host::load` gives each run a private bus and its own module.
+    let captured = !report.artifacts.is_empty();
     for (index, session) in host.browser_sessions().await?.iter().enumerate() {
+        if captured {
+            host.close_browser_session(&session.id).await?;
+            continue;
+        }
         let name = format!("open-{index}.png");
         match host.browser_screenshot(&session.id).await {
             Ok(image) => {

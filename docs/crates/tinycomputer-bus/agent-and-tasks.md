@@ -236,9 +236,11 @@ pub struct TaskReport {
 }
 ```
 
-When a run stops — at a checkpoint, before an approval, at a person's turn,
-or at the end — the task takes a screenshot of its surface before letting it
-go. It lands in `artifacts` and, for a checkpoint, an approval, or a person's
+When a run stops on its own — at a checkpoint, before an approval, at a
+person's turn, at the end, or cut off by its time budget — the task tries to
+take a screenshot of its surface before letting it go (best effort, within
+ten seconds). `CancelTask` releases at once without one; take a
+`BrowserScreenshot` first if you want the screen. It lands in `artifacts` and, for a checkpoint, an approval, or a person's
 turn, on the status's own `screenshot`. Each is a held output: read it with
 `BrowserReadOutput` within five minutes, before it expires.
 
