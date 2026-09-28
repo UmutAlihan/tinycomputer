@@ -137,13 +137,14 @@ async fn a_task_report_request_is_one_a_confidential_call_can_carry() -> tinybus
     assert!(bare.to_string().contains("stream handle"), "{bare}");
 
     // The report's own request always carries `trace`, so it gets past the
-    // client; this unattested test module then fails attestation instead.
+    // client and reaches the broker, which refuses it for exactly one
+    // reason: this in-memory module was never attested.
     let request = TaskReportRequest::new(TaskId::new("t-1"));
-    if let Err(error) = proxy
+    let refused = proxy
         .call_confidential::<serde_json::Value>(names::methods::TASK_REPORT, (request,))
         .await
-    {
-        assert!(!error.to_string().contains("stream handle"), "{error}");
-    }
+        .expect_err("an unattested module cannot take a confidential call");
+    eprintln!("DEBUG {refused:?}");
+    assert!(!refused.to_string().contains("stream handle"), "{refused}");
     Ok(())
 }
