@@ -79,7 +79,12 @@ fn ordered(screen: &Screen) -> Vec<(&Candidate, bool)> {
 }
 
 /// The cards under `parent`, one per ordinal container at `depth`.
-fn cards(nodes: &[(&Candidate, bool)], depth: usize, parent: &[String]) -> Vec<Group> {
+fn cards(
+    nodes: &[(&Candidate, bool)],
+    depth: usize,
+    parent: &[String],
+    include_values: bool,
+) -> Vec<Group> {
     let mut groups: Vec<Group> = Vec::new();
     for (node, actionable) in nodes {
         if node.path.len() <= depth || node.path[..depth] != parent[..] {
@@ -100,7 +105,9 @@ fn cards(nodes: &[(&Candidate, bool)], depth: usize, parent: &[String]) -> Vec<G
             groups.len() - 1
         };
         let group = &mut groups[index];
-        if let Some(text) = text_of(node).filter(|text| !group.fields.contains(text)) {
+        if let Some(text) =
+            text_of(node, *actionable, include_values).filter(|text| !group.fields.contains(text))
+        {
             group.fields.push(text);
         }
         if *actionable && prefers(node, group.primary.as_ref()) {
