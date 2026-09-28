@@ -94,10 +94,13 @@ is always treated as data, never as instructions.
 |---|---|---|
 | Tasks | a job in plain words | the plan, every click, when to stop and ask |
 | Flows | a short list of plain steps ("start a new email", "stop before sending") | which buttons and fields make each step happen |
-| Primitives | exact commands (`Snapshot`, `Click`, `SetValue`, ...) | nothing: you decide everything |
+| Primitives | exact commands on the desktop (`Snapshot`, `Click`, `SetValue`, ...) or in a browser session (`BrowserOpenSession`, `BrowserNavigate`, `BrowserPerform`, ...) | nothing: you decide everything |
 
-See [Writing flows](docs/writing-flows.md) for flows, and the
-[module docs](docs/crates/tinycomputer/members.md) for all 67 members.
+The module serves 80 members: 54 desktop primitives, 13 browser primitives,
+5 Jev-driven members for goals and flows, and 8 task members. `Describe`
+lists every one with a sentence on what it's for. See
+[Writing flows](docs/writing-flows.md) for flows, and the
+[module docs](docs/crates/tinycomputer/members.md) for the full list.
 
 ## Documentation
 
