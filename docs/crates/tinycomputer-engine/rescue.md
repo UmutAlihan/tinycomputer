@@ -109,7 +109,7 @@ not just described in the prompt:
 
 - Between 1 and 6 steps for a `retry`, or the model is asked to try again.
 - `covers` cannot exceed how many steps actually follow the failed one, and
-  cannot cover a step that holds a `stop_before` at any depth (`guards`) —
+  cannot cover a step that holds a `stop_before` at any depth (`guards`),
   never mind how confident the model is that it also did that step's
   job.
 - **A failed `stop_before` can never be skipped, and guidance replacing one

@@ -105,7 +105,7 @@ A `Candidate` is one node: its `ref_id`, `role` ("button", "textfield", …),
 `disabled`, the `available_actions` the engine will let you perform on it,
 and (when relevant) `children_count` and `bounds`. It also carries `path`,
 the labels of its ancestors outermost first, and `order`, its position in
-document order, both are computed locally (`#[serde(skip)]`) rather than
+document order. Both are computed locally (`#[serde(skip)]`) rather than
 sent over the wire, because they are cheaper to derive once the tree has
 already arrived than to duplicate in every node's JSON.
 
