@@ -15,6 +15,8 @@ mod cursor;
 mod sight;
 mod tree;
 
+pub use sight::Denoised;
+
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
@@ -132,6 +134,7 @@ pub struct BrowserSurface {
     platform: Platform,
     cursor: Arc<ScreenCursor>,
     perception: Perception,
+    denoised: Arc<Mutex<Denoised>>,
 }
 
 impl std::fmt::Debug for BrowserSurface {
@@ -164,6 +167,7 @@ impl BrowserSurface {
             platform: Platform::current(),
             cursor: Arc::new(ScreenCursor::off()),
             perception: Perception::default(),
+            denoised: Arc::new(Mutex::new(Denoised::default())),
         }
     }
 
@@ -189,6 +193,17 @@ impl BrowserSurface {
     #[must_use]
     pub fn session(&self) -> Option<SessionId> {
         self.session.lock().ok().and_then(|session| session.clone())
+    }
+
+    /// What the last observation left out as noise: ads, blank boxes, and
+    /// hidden content. Zero until a page is read, and when the last one was
+    /// read through the accessibility tree rather than by sight.
+    #[must_use]
+    pub fn denoised(&self) -> Denoised {
+        self.denoised
+            .lock()
+            .map(|denoised| *denoised)
+            .unwrap_or_default()
     }
 
     /// Closes the session, if one is open, without waiting for it: safe to
@@ -385,6 +400,7 @@ impl BrowserSurface {
     /// the reading fails or sees what it cannot reach, and the tree is read
     /// instead.
     fn see(&self, root: Option<&str>) -> Option<Screen> {
+        self.keep_denoised(Denoised::default());
         let id = self.ensure_session().ok()?;
         let reply = self
             .block(self.browser.command(
@@ -392,7 +408,16 @@ impl BrowserSurface {
                 json!({"action": "evaluate", "script": sight::script(root)}),
             ))
             .ok()?;
-        sight::screen(reply.get("result")?)
+        let result = reply.get("result")?;
+        let screen = sight::screen(result)?;
+        self.keep_denoised(sight::denoised(result));
+        Some(screen)
+    }
+
+    fn keep_denoised(&self, denoised: Denoised) {
+        if let Ok(mut kept) = self.denoised.lock() {
+            *kept = denoised;
+        }
     }
 
     fn perform(&self, command: &str, action: Action) -> DesktopResponse {
