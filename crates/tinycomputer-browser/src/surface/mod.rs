@@ -179,10 +179,10 @@ impl BrowserSurface {
         let selector = format!("@{}", target.ref_id.trim_start_matches('@'));
         let bbox = self.block(self.browser.command(&id, json!({"action": "boundingbox", "selector": selector})));
         let value = self.block(self.browser.command(&id, json!({"action": "inputvalue", "selector": selector})));
-        let script = r#"(() => JSON.stringify({active: document.activeElement && (document.activeElement.tagName+' '+String(document.activeElement.className).slice(0,40)+' val='+JSON.stringify(document.activeElement.value)), rows: [...document.querySelectorAll('.city-selection__list-item--info__left .body-medium-regular')].slice(0,6).map(e=>e.innerText), searchVal: (document.querySelector('input[role=searchbox]')||{}).value}))()"#;
+        let script = r#"(() => { const rows=[...document.querySelectorAll('.city-selection__list-item-wrapper')]; const groups=[...new Set(rows.map(r=>r.getAttribute('data-group')).filter(Boolean))]; const sx=rows.find(r=>r.innerText.includes('Srinagar')); const list=document.querySelector('.city-selection__list'); return JSON.stringify({rows: rows.length, groups, srinagar: sx? (sx.getAttribute('role')+' tab='+sx.getAttribute('tabindex')+' '+JSON.stringify(sx.innerText.slice(0,60))+' y='+Math.round(sx.getBoundingClientRect().y)) : null, listScroll: list? [list.scrollHeight, list.clientHeight]: null, pageHasSrinagar: document.body.innerText.includes('Srinagar')}); })()"#;
         let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
         eprintln!("TCDBG {label} {} bbox={:?} value={:?} page={:?}", selector, bbox.map(|v| v.to_string()), value.map(|v| v.to_string()), page.map(|v| v.get("result").cloned()));
-        if label == "paste-before" {
+        if label == "never" {
             let typed = self.perform("type", Action::Type { target: None, text: "Srin".to_owned(), delay_ms: Some(80) });
             std::thread::sleep(std::time::Duration::from_millis(800));
             let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
