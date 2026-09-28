@@ -96,6 +96,9 @@ struct Sim {
     hint: Option<&'static str>,
     /// A passengers box with adult steppers, holding this many adults.
     adults: Option<u8>,
+    /// Trip-type tabs: the selected one, and how many clicks on the others
+    /// the page ignores first, as a page still loading its scripts does.
+    trip: Option<(&'static str, u8)>,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -453,6 +456,21 @@ impl App {
         if let Some(adults) = sim.adults {
             passenger_steppers(adults, &root, &mut candidates);
         }
+        if let Some((selected, _)) = sim.trip {
+            for (index, tab) in ["Return", "One way", "Multi-city"].into_iter().enumerate() {
+                let mut node = node(
+                    tab,
+                    "tab",
+                    &["Click"],
+                    &[&root, "tablist \"Trip\""],
+                    280.0 + f64::from(u8::try_from(index).unwrap()),
+                );
+                if tab == selected {
+                    node.states = vec!["selected".to_owned()];
+                }
+                candidates.push(node);
+            }
+        }
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
         }
@@ -558,6 +576,19 @@ impl AgentBackend for App {
                     "Send" => sim.sent = true,
                     "Keep Editing" => sim.obstacle = false,
                     "Archive" => sim.compose_open = false,
+                    "Return" | "One way" | "Multi-city" => {
+                        if let Some((selected, ignored)) = sim.trip.as_mut() {
+                            if *ignored > 0 {
+                                *ignored -= 1;
+                            } else {
+                                *selected = match name.as_str() {
+                                    "Return" => "Return",
+                                    "One way" => "One way",
+                                    _ => "Multi-city",
+                                };
+                            }
+                        }
+                    }
                     _ if name.starts_with("Increase number of Adult") => {
                         sim.adults = sim.adults.map(|adults| adults + 1);
                     }
@@ -5065,4 +5096,88 @@ async fn a_repair_that_changes_nothing_fails_the_step_with_the_reflection() {
     let note = &run.result.steps[0].note;
     assert!(note.starts_with("reflection:"), "{note}");
     assert!(note.contains("1 Adult"), "{note}");
+}
+
+#[test]
+fn a_selected_sibling_plainly_contradicts_the_option() {
+    let tab = |name: &str, selected: bool| {
+        let mut tab = node(name, "tab", &["Click"], &["main", "tablist \"Trip\""], 1.0);
+        if selected {
+            tab.states = vec!["selected".to_owned()];
+        }
+        tab
+    };
+    let screen = |tabs: Vec<Candidate>| Screen {
+        app: "browser".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: tabs,
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    assert_eq!(
+        steps::left_unchosen(
+            &screen(vec![tab("Return", true), tab("One way", false)]),
+            "One way"
+        )
+        .as_deref(),
+        Some("tab \"One way\" is not selected; tab \"Return\" is")
+    );
+    assert!(
+        steps::left_unchosen(
+            &screen(vec![tab("Return", false), tab("One way", true)]),
+            "One way"
+        )
+        .is_none()
+    );
+    assert!(
+        steps::left_unchosen(
+            &screen(vec![tab("Return", false), tab("One way", false)]),
+            "One way"
+        )
+        .is_none(),
+        "nothing selected settles nothing: Jev is asked"
+    );
+    assert!(
+        steps::left_unchosen(&screen(vec![tab("Return", true)]), "Srinagar").is_none(),
+        "an option no tab names is not settled here"
+    );
+}
+
+#[tokio::test]
+async fn a_tab_click_the_page_ignored_is_caught_even_when_jev_says_it_took() {
+    let run = run_with(
+        App::with(|sim| sim.trip = Some(("Return", 1))),
+        json!({"app": "browser", "steps": [
+            {"choose": {"what": "the trip type", "option": "One way"}}
+        ]}),
+        |_| {},
+        |id, question, sim| match id {
+            // A lenient Jev: it believes the choice took either way.
+            "reflects" => Some(noul(0.9)),
+            "strays" => Some(noul(0.05)),
+            "target" => Some(pick(question, "One way", 0.9)),
+            "move" => Some(pick(question, "activate", 0.9)),
+            "done" => Some(noul(if sim.trip.is_some_and(|(tab, _)| tab == "One way") {
+                0.95
+            } else {
+                0.05
+            })),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    assert_eq!(run.app.sim().trip.map(|(tab, _)| tab), Some("One way"));
+    assert_eq!(
+        run.app.sim().clicks,
+        ["One way", "One way"],
+        "pressed again by the repair"
+    );
 }

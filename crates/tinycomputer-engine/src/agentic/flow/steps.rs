@@ -1115,19 +1115,31 @@ pub(super) fn left_unchosen(screen: &Screen, option: &str) -> Option<String> {
             .iter()
             .any(|role| candidate.role.eq_ignore_ascii_case(role))
     };
-    let asked = screen.candidates.iter().filter(selectable).find(|candidate| {
-        candidate
-            .name
-            .as_deref()
-            .is_some_and(|name| plain(name) == wanted)
-    })?;
+    let asked = screen
+        .candidates
+        .iter()
+        .filter(selectable)
+        .find(|candidate| {
+            candidate
+                .name
+                .as_deref()
+                .is_some_and(|name| plain(name) == wanted)
+        })?;
     if is_checked(asked) {
         return None;
     }
-    let other = screen.candidates.iter().filter(selectable).find(|candidate| {
-        candidate.role == asked.role && candidate.path == asked.path && is_checked(candidate)
-    })?;
-    Some(format!("{} is not selected; {} is", label(asked), label(other)))
+    let other = screen
+        .candidates
+        .iter()
+        .filter(selectable)
+        .find(|candidate| {
+            candidate.role == asked.role && candidate.path == asked.path && is_checked(candidate)
+        })?;
+    Some(format!(
+        "{} is not selected; {} is",
+        label(asked),
+        label(other)
+    ))
 }
 
 /// Whether a label says far more than the option: a control whose name

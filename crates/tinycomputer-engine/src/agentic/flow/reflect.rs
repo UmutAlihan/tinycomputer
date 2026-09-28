@@ -87,9 +87,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let screen = self.look().await?;
         if let Some(why) = left_unchosen(&screen, option) {
             self.history.push(format!("reflection: {why}"));
-            self.runtime.journal.record("reflect", || {
-                json!({"step": self.step, "held": 0.0, "attempt": attempt, "contradicted": why})
-            });
+            self.runtime.journal.record(
+                "reflect",
+                || json!({"step": self.step, "held": 0.0, "attempt": attempt, "contradicted": why}),
+            );
             return Ok(0.0);
         }
         let answers = self
