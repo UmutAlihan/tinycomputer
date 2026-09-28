@@ -32,23 +32,14 @@ mod judge;
 mod resolve;
 mod state;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-use serde_json::{Value, json};
-use tinycomputer_bus::{FlowLoop, FlowStrategy, JevOperation};
 use tinyinference_decisions::Answer;
 
 use super::{
-    AgentBackend, FlowRun, Halt, StepLog,
-    act::Judgement,
-    ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
-    ground::{AGREED, CORROBORATED, Grounded, NAMED_FLOOR},
-    ledger::Context,
-    memory::{learn, recall, remember},
-    view::{
-        ACT, Candidate, Digest, Rendering, Screen, digest, distinct, element_kind,
-        exact_named_match, is_destructive, label, named_first, signature,
-    },
+    ask::{CAP, chosen, probability},
+    ground::{AGREED, Grounded},
+    view::Candidate,
 };
 
 /// Bytes of screen a wide request shows before regions are collapsed.

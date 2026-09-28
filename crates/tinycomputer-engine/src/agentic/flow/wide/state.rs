@@ -4,26 +4,18 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::{Value, json};
-use tinycomputer_bus::{FlowLoop, FlowStrategy, JevOperation};
-use tinyinference_decisions::Answer;
+use tinycomputer_bus::{FlowLoop, FlowStrategy};
 
 use crate::agentic::flow::{
-    AgentBackend, FlowRun, Halt, StepLog,
-    act::Judgement,
-    ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
-    ground::{AGREED, CORROBORATED, Grounded, NAMED_FLOOR},
+    AgentBackend, FlowRun,
+    ask::{self},
     ledger::Context,
-    memory::{learn, recall, remember},
-    view::{
-        ACT, Candidate, Digest, Rendering, Screen, digest, distinct, element_kind,
-        exact_named_match, is_destructive, label, named_first, signature,
-    },
+    view::{Digest, Rendering, Screen, digest},
 };
 
-use super::{DIGEST_BUDGET, MAX_COLLECTED, COLLECTED_CHARS, WIDE_POOL, TARGETED, DISMISS_PURPOSE, Prepared, Dismissal, TargetPlan, obstacle_key, pressed_last, same_element, supports, pick, dismissal};
+use super::{COLLECTED_CHARS, DIGEST_BUDGET, MAX_COLLECTED};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Whether the run asks wide requests.
     pub(in crate::agentic::flow) fn wide(&self) -> bool {
         self.strategy == FlowStrategy::Wide
@@ -144,5 +136,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             self.read.push(name.to_owned());
         }
     }
-
 }

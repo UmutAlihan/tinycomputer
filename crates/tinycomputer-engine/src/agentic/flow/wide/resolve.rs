@@ -1,29 +1,19 @@
 //! Settling what a wide request prepared: confirming a hesitant target,
 //! choosing among a knockout's winners, and dismissing an obstacle.
 
-use std::collections::{BTreeMap, BTreeSet};
-
-use serde_json::{Value, json};
-use tinycomputer_bus::{FlowLoop, FlowStrategy, JevOperation};
-use tinyinference_decisions::Answer;
+use tinycomputer_bus::{FlowLoop, JevOperation};
 
 use crate::agentic::flow::{
     AgentBackend, FlowRun, Halt, StepLog,
-    act::Judgement,
-    ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
-    ground::{AGREED, CORROBORATED, Grounded, NAMED_FLOOR},
-    ledger::Context,
-    memory::{learn, recall, remember},
-    view::{
-        ACT, Candidate, Digest, Rendering, Screen, digest, distinct, element_kind,
-        exact_named_match, is_destructive, label, named_first, signature,
-    },
+    ask::{self, Questions, corroborate, probability},
+    ground::{AGREED, CORROBORATED, Grounded},
+    memory::{learn, remember},
+    view::{Screen, label},
 };
 
-use super::{DIGEST_BUDGET, MAX_COLLECTED, COLLECTED_CHARS, WIDE_POOL, TARGETED, DISMISS_PURPOSE, Prepared, Dismissal, TargetPlan, obstacle_key, pressed_last, same_element, supports, pick, dismissal};
+use super::{Dismissal, Prepared, obstacle_key};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Settles a prepared target: used as it is, confirmed first, or chosen
     /// among a knockout's winners.
     pub(in crate::agentic::flow) async fn resolve(
@@ -128,5 +118,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         Ok(())
     }
-
 }

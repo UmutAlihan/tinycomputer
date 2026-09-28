@@ -3,27 +3,28 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde_json::{Value, json};
-use tinycomputer_bus::{FlowLoop, FlowStrategy, JevOperation};
+use serde_json::json;
+use tinycomputer_bus::FlowLoop;
 use tinyinference_decisions::Answer;
 
 use crate::agentic::flow::{
     AgentBackend, FlowRun, Halt, StepLog,
     act::Judgement,
     ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
-    ground::{AGREED, CORROBORATED, Grounded, NAMED_FLOOR},
-    ledger::Context,
-    memory::{learn, recall, remember},
+    ground::{AGREED, Grounded, NAMED_FLOOR},
+    memory::recall,
     view::{
-        ACT, Candidate, Digest, Rendering, Screen, digest, distinct, element_kind,
-        exact_named_match, is_destructive, label, named_first, signature,
+        ACT, Candidate, Screen, digest, distinct, element_kind, exact_named_match, is_destructive,
+        label, named_first, signature,
     },
 };
 
-use super::{DIGEST_BUDGET, MAX_COLLECTED, COLLECTED_CHARS, WIDE_POOL, TARGETED, DISMISS_PURPOSE, Prepared, Dismissal, TargetPlan, obstacle_key, pressed_last, same_element, supports, pick, dismissal};
+use super::{
+    DISMISS_PURPOSE, Prepared, TARGETED, TargetPlan, WIDE_POOL, dismissal, obstacle_key, pick,
+    pressed_last, supports,
+};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// One wide request for a `do` turn: the judgement, the obstacle, and
     /// every move's candidate target at once.
     pub(in crate::agentic::flow) async fn judge_wide(
@@ -302,5 +303,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             consistency,
         })
     }
-
 }
