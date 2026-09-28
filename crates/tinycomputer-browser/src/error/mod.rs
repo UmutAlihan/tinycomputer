@@ -291,4 +291,4 @@ impl Error {
 }
 
 #[cfg(test)]
-mod test;
+mod error_tests;

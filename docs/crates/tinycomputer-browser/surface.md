@@ -1,6 +1,7 @@
 # The browser as a Surface
 
-Code: `crates/tinycomputer-browser/src/surface/mod.rs`,
+Code: `crates/tinycomputer-browser/src/surface/` (`mod.rs` holds
+`BrowserSurface`, `operations.rs` its `Surface` implementation),
 `crates/tinycomputer-browser/src/surface/cursor.rs`.
 
 ## What a Surface is, briefly

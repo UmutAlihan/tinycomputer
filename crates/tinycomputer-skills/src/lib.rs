@@ -47,4 +47,4 @@ pub const fn skill_assets() -> &'static [SkillAsset] {
 }
 
 #[cfg(test)]
-mod test;
+mod lib_tests;

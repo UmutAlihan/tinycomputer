@@ -155,9 +155,10 @@ An attached session (below) launches nothing, so it takes no `executable`
 and no `args`; it still sends the `user_agent`.
 
 This is independent of `constraints.browser_endpoint` on an individual
-`StartTask` request, which instead attaches to an *already-running* Chrome
-over its DevTools endpoint (for example the user's own signed-in browser)
-rather than launching a fresh one.
+`StartTask` request, and of `endpoint` on a `BrowserOpenSession` request,
+either of which instead attaches to an *already-running* Chrome over its
+DevTools endpoint (for example the user's own signed-in browser) rather than
+launching a fresh one.
 
 ## `cursor`
 

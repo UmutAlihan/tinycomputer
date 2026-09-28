@@ -101,7 +101,7 @@ the fairer comparison still to run.
 
 - `crates/tinycomputer-engine/src/agentic/sage/mod.rs`, `SageEvaluator`,
   `batch`, `sage_question`, `answer_for`.
-- `crates/tinycomputer-engine/src/agentic/mod.rs`, `JevRuntime::sage`.
+- `crates/tinycomputer-engine/src/agentic/runtime.rs`, `JevRuntime::sage`.
 - [jev-runtime.md](jev-runtime.md), the one door every decision, Jev's or
   Sage's, goes through.
 - [`docs/technical/evals/2026-09-29-sage.md`](../../technical/evals/2026-09-29-sage.md),

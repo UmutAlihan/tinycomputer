@@ -1,6 +1,6 @@
 # Tasks
 
-`Tasks`, in `crates/tinycomputer-engine/src/task/mod.rs`, is the controller
+`Tasks`, in `crates/tinycomputer-engine/src/task/controller.rs`, is the controller
 behind the Agent interface: the thing most callers should actually use
 instead of `RunGoal` or `ResolveIntent` directly. Give it a flow (or a
 plain-language task, with a planner configured) and it runs that flow in the
@@ -85,7 +85,7 @@ supplies, the task starts in `NeedsInput` rather than failing:
 }
 ```
 
-`kind` is a best guess from the field's name (`input_kind` in `task/mod.rs`):
+`kind` is a best guess from the field's name (`input_kind` in `task/names.rs`):
 a name containing "email" becomes `email`, "phone" or "mobile" becomes
 `phone`, "date"/"birth"/"dob" becomes `date`, "count"/"number of"/"travellers"
 becomes `number`, and anything else is plain `text`. Answer with
@@ -96,7 +96,7 @@ running.
 ## Task statuses
 
 Every `TaskView.status` is one of nine states (`TaskStatus` in
-`tinycomputer-bus/src/agent/types.rs`):
+`tinycomputer-bus/src/agent/types/status.rs`):
 
 | State | What it means | Answer with |
 |---|---|---|
@@ -111,7 +111,7 @@ Every `TaskView.status` is one of nine states (`TaskStatus` in
 | `Cancelled` | Stopped by `CancelTask`. | (final) |
 
 `TaskStatus::is_final()` is true for `Done`, `Failed`, `Cancelled`, and a
-non-continuable `Checkpoint`. `next_calls` (in `task/mod.rs`) computes which
+non-continuable `Checkpoint`. `next_calls` (in `task/publish.rs`) computes which
 member calls make sense for the current state and is echoed back as
 `TaskView.next`, so a caller does not have to hardcode the state machine:
 it can just try one of the calls the last view offered.
@@ -120,7 +120,7 @@ it can just try one of the calls the last view offered.
 
 Every run of a task, whichever kind of pause split it from the last one,
 starts with what earlier runs already saved: `run_request` (in
-`task/mod.rs`) fills `RunFlowRequest.collected` from the task's own state
+`task/budget.rs`) fills `RunFlowRequest.collected` from the task's own state
 before each new run, so a step such as "open the next chat not yet read"
 still knows what earlier runs already read. See [output.md](output.md)
 for the whole run-memory picture, including what the rescuer is shown.
@@ -149,7 +149,7 @@ Three kinds of pause exist, and each resumes differently:
 
 A step failure only becomes `NeedsHuman` when it looks recoverable *and* the
 run has something to retry (a `Resume::Retry` was captured; see
-`human_wall` in `task/mod.rs`). Whether a person, not a rescue, is actually
+`human_wall` in `task/human.rs`). Whether a person, not a rescue, is actually
 needed is decided by reading the screen's visible text for the signs of a
 wall only a person can pass (`tinycomputer_core::human_needed`: a captcha, a
 login form, a one-time-code prompt). If no such wall is detected, the
@@ -178,7 +178,7 @@ pub struct TaskBudget {
 ```
 
 The controller tracks cumulative `Spent { actions, model_calls, elapsed_ms }`
-on the task's `State`, and `run_request` (in `task/mod.rs`) computes each new
+on the task's `State`, and `run_request` (in `task/budget.rs`) computes each new
 run's request with what remains: `max_actions - spent.actions`,
 `max_model_calls - spent.model_calls`, and so on. `max_elapsed_ms` has no
 equivalent inside a single `RunFlowRequest` (a flow run cannot police its
@@ -285,7 +285,7 @@ shaped answer built from them (see [output.md](output.md)), alongside
 ### Example: a `Done` task's records
 
 An `extract` step that pulled rows of text ends up here as parsed JSON rows,
-one map per row (`records`, built in `task/mod.rs`); anything else that was
+one map per row (`records`, built in `task/publish.rs`); anything else that was
 read (a `pick` step's chosen item, say) is a single-field map:
 
 ```json
@@ -340,13 +340,14 @@ rather than silently dropping one that is still in progress.
 
 ## Source
 
-- `crates/tinycomputer-engine/src/task/mod.rs`, `Tasks`, `Cell`, `State`,
-  `drive`, `rescued`, `human_wall`, budgets.
+- `crates/tinycomputer-engine/src/task/`, `Tasks` (`controller.rs`), `Cell`
+  and `State` (`store.rs`), `drive` (`drive.rs`), `rescued` (`recovery.rs`),
+  `human_wall` (`human.rs`), budgets (`budget.rs`).
 - `crates/tinycomputer-engine/src/task/interpret.rs`, turning a flow run's
   result into `Next` (continue or stop-with-status) and `Resume`.
 - `crates/tinycomputer-engine/src/task/describe.rs`, `Describe`'s
   capabilities reply: members, schemas, worked examples.
-- `crates/tinycomputer-bus/src/agent/types.rs`, every payload type named on
+- `crates/tinycomputer-bus/src/agent/types/`, every payload type named on
   this page.
 - `crates/tinycomputer-core/src/facts/mod.rs`, `Facts`, `is_sensitive_name`,
   `redact`, `mask`.

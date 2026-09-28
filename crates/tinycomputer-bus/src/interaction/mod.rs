@@ -21,4 +21,4 @@ mod types;
 pub use types::{RefRequest, ScrollRequest, SelectRequest, SetValueRequest, TypeRequest};
 
 #[cfg(test)]
-mod test;
+mod interaction_tests;

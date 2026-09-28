@@ -44,4 +44,4 @@ fn binds(host: (u32, u32), module: (u32, u32)) -> bool {
 }
 
 #[cfg(test)]
-mod test;
+mod version_tests;

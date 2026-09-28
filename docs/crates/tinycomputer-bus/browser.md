@@ -2,30 +2,39 @@
 
 Source: [`crates/tinycomputer-bus/src/browser/`](../../../crates/tinycomputer-bus/src/browser/)
 
-The browser interface is served beside the desktop interface, by the same
-loaded module, and it has its own vocabulary: open a session, navigate,
-snapshot the page's accessibility tree, act on a ref, read the page as text,
-screenshot it, close. The engine behind it is
-[agent-browser](https://github.com/vercel-labs/agent-browser), linked in
-directly as a library.
+The 13 browser members are served on the same bus interface and object path
+as the desktop members, by the same loaded module, and they have their own
+vocabulary: open a session, navigate, snapshot the page's accessibility tree,
+act on a ref, read the page as text, screenshot it, close. The engine behind
+it is [agent-browser](https://github.com/vercel-labs/agent-browser), linked
+in directly as a library. The module holds one `Browser`, shared with the
+task runner, so a task's session and screenshots are reachable through these
+same members.
 
-## Its own interface, its own namespace
+## One interface, a `Browser` prefix
 
 ```rust,ignore
-pub const INTERFACE: &str = "ai.tinyhumans.tinycomputer.Browser";
-pub const OBJECT_PATH: &str = "/ai/tinyhumans/tinycomputer/Browser";
+pub const INTERFACE: &str = crate::names::INTERFACE;     // "ai.tinyhumans.tinycomputer.Desktop"
+pub const OBJECT_PATH: &str = crate::names::OBJECT_PATH;  // "/ai/tinyhumans/tinycomputer/Desktop"
 ```
 
-Everything here lives under `tinycomputer_bus::browser`, not at the crate
-root, and that is deliberate: `SnapshotRequest` and `ScreenshotRequest` also
-exist for the desktop interface, with different shapes. Namespacing means
-neither side ever shadows the other, and a caller cannot accidentally send a
-desktop `SnapshotRequest` where a browser one belongs, they are different
-Rust types.
+Each browser member's name carries a `Browser` prefix (`BrowserSnapshot`,
+`BrowserScreenshot`, `BrowserPerform`, and so on): a few of them would
+otherwise collide with a desktop member of a different shape, and the prefix
+keeps the whole family obvious to a model reading a member list. The payload
+*types*, though, still live under `tinycomputer_bus::browser`, not at the
+crate root, and that is deliberate: `SnapshotRequest` and `ScreenshotRequest`
+also exist for the desktop members, with different shapes. Namespacing the
+types means neither side ever shadows the other, and a caller cannot
+accidentally send a desktop `SnapshotRequest` where a browser one belongs,
+they are different Rust types. Every browser member takes one JSON object,
+with the session beside the member's own fields, and replies in the same
+`DesktopResponse` envelope the desktop members use.
 
 These types were ported from a now-superseded `tinybrowser-bus` crate; a host
-still written against that name only needs to switch to this interface's
-name (see [docs/technical/specs/unified-agent.md](../../technical/specs/unified-agent.md)).
+still written against that crate's separate interface only needs to call the
+`Browser…`-prefixed members on this module's one interface instead (see
+[docs/technical/specs/unified-agent.md](../../technical/specs/unified-agent.md)).
 
 ## Sessions: `SessionId`, `Viewport`, `SessionOptions`
 
@@ -193,12 +202,18 @@ notice when one finishes.
 
 Source: [`crates/tinycomputer-bus/src/browser/errors/mod.rs`](../../../crates/tinycomputer-bus/src/browser/errors/mod.rs)
 
-The browser interface answers failures with a stable *name* (a constant
-string with the prefix `ai.tinyhumans.tinycomputer.Browser.Error`), not a
-`DesktopError`-shaped structure. The reasoning is the same as everywhere else
-in this crate: a host does not hand a model a raw failure string, it decides
-what *kind* of failure happened and shapes its tool result accordingly, and
-matching on prose breaks the moment a message is reworded.
+A browser member fails with the same `DesktopResponse`/`DesktopError`
+envelope a desktop member does, reusing the desktop's own error code wherever
+the meaning is shared (`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`,
+`POLICY_DENIED`, `INVALID_ARGS`), so one handler serves both surfaces. This
+crate additionally defines a stable, more specific *name* for each browser
+failure (a constant string with the prefix
+`ai.tinyhumans.tinycomputer.Browser.Error`), carried in `details.name`, with
+`errors::code(name)` giving the shared envelope code it maps to. The
+reasoning is the same as everywhere else in this crate: a host does not hand
+a model a raw failure string, it decides what *kind* of failure happened and
+shapes its tool result accordingly, and matching on prose breaks the moment a
+message is reworded.
 
 | Name | Meaning | An agent can act on this |
 |---|---|---|
@@ -224,13 +239,48 @@ assert!(errors::is_agent_recoverable(errors::NO_SUCH_ELEMENT));
 assert!(!errors::is_agent_recoverable(errors::BROWSER_UNAVAILABLE));
 ```
 
+## Calling a browser member directly
+
+A caller that wants to drive a page itself, rather than through a task, can
+call these members directly. Open a session, act on it, then read a
+screenshot back in chunks:
+
+```rust,ignore
+use tinycomputer_bus::{DesktopResponse, browser::names::methods};
+
+let opened: DesktopResponse = proxy.call(methods::OPEN_SESSION, (json!({}),)).await?;
+let session = opened.data.as_ref().unwrap()["id"].clone();
+
+proxy
+    .call(methods::NAVIGATE, (json!({"session": session, "url": "https://example.com/"}),))
+    .await?;
+
+let clicked: DesktopResponse = proxy
+    .call(
+        methods::PERFORM,
+        (json!({"session": session, "action": "click", "target": {"kind": "ref", "value": "e3"}}),),
+    )
+    .await?;
+
+let shot: DesktopResponse = proxy.call(methods::SCREENSHOT, (json!({"session": session}),)).await?;
+let output = shot.data.as_ref().unwrap()["id"].clone();
+let chunk: DesktopResponse = proxy
+    .call(methods::READ_OUTPUT, (json!({"output": output}),))
+    .await?;
+```
+
+(`crates/tinycomputer/src/tinybus_module/tinybus_module_tests/browser_tests.rs` runs this same
+sequence against the in-memory bus.)
+
 ## Where the browser fits into flows and tasks
 
 A `Flow` step's `browse` action and a `StartTask`'s browser surface are both
-built on exactly this interface underneath. Most callers reach `Snapshot`,
-`Action`, and `ReadPage` indirectly, through a flow or a task, rather than
-calling this interface's members directly, see [Writing flows](flows.md)
-and [The Agent and task types](agent-and-tasks.md). This interface's own
-contract version is `crate::CONTRACT_VERSION`, the same one the desktop
-interface uses: the two ship in one module and version together (see
+built on exactly these members underneath, and `BrowserListSessions` shows a
+running task's session beside any a caller opened directly. Most callers
+still reach a page through a flow or a task rather than calling these members
+directly, since a flow's `browse`/`extract`/`read` steps already cover
+picking, reading, and choosing without naming a ref by hand, see
+[Writing flows](flows.md) and [The Agent and task types](agent-and-tasks.md).
+These members' contract version is `crate::CONTRACT_VERSION`, the same one
+the desktop members use: the whole module ships and versions as one (see
 [Versioning and compatibility](versioning.md)).

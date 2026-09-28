@@ -4,9 +4,12 @@ Source: [`crates/tinycomputer-bus/src/envelope/`](../../../crates/tinycomputer-b
 
 Every desktop member, whether it clicks a button or lists open windows,
 answers with the same shape: a `DesktopResponse`. Not a Rust `Result`, not a
-raw value, always this one envelope. That choice is deliberate, and worth
-explaining before the fields, because it shapes everything else in this
-crate.
+raw value, always this one envelope. The 13 `Browser…` members answer in the
+exact same envelope, reusing the desktop's own error codes wherever the
+meaning is shared (`STALE_REF`, and so on), so a caller handles one shape for
+both surfaces; see [Browser types](browser.md). That choice is deliberate,
+and worth explaining before the fields, because it shapes everything else in
+this crate.
 
 ## Why one envelope, not a `Result`
 

@@ -1,7 +1,7 @@
 # Clicking, typing, keys, and going back
 
-Code: `crates/tinycomputer-browser/src/convert/mod.rs` (contract to engine
-commands), `crates/tinycomputer-browser/src/surface/mod.rs` (the `Surface`
+Code: `crates/tinycomputer-browser/src/convert/` (contract to engine
+commands), `crates/tinycomputer-browser/src/surface/operations.rs` (the `Surface`
 implementation a decision loop actually calls). Action definitions:
 `crates/tinycomputer-bus/src/browser/action/types.rs`.
 
@@ -21,7 +21,7 @@ the same `convert` functions and the same agent-browser engine:
 
 This page is mostly about the second path, because it is where the
 interesting behavior lives. The direct path is a straightforward
-`Action → JSON command` mapping in `convert.rs`, with no logic of its own.
+`Action → JSON command` mapping in `convert/interaction.rs`, with no logic of its own.
 
 ## Targets: ref, selector, or locator
 
@@ -40,7 +40,7 @@ Every action that touches an element names a `Target`:
   ones that do.
 
 `BrowserSurface` never builds a `Target::Selector` from a plain ref by hand.
-`target()` in `surface/mod.rs` decides, per reference, whether it is a sight
+`target()` in `surface/operations.rs` decides, per reference, whether it is a sight
 mark (routed through `sight::selector`, which turns `seen:12` into
 `[data-tc-seen="12"]`) or a tree ref (routed through `Target::reference`,
 which becomes agent-browser's own `@e12` form).
@@ -63,7 +63,7 @@ text, directly over the exact link or button you meant to click. From a
 pixel's point of view, the card's own content is "covering" its own
 control.
 
-`BrowserSurface::click_through_own_card` (in `surface/mod.rs`) handles this
+`BrowserSurface::click_through_own_card` (in `surface/card.rs`) handles this
 case specifically, and only this case. When a click comes back covered, and
 the target has either a name or a sight mark, it:
 
@@ -149,7 +149,7 @@ the same `NOT_A_TEXT_FIELD` case as typing.
 `Action::Press` sends one key or chord (`Enter`, `Tab`, `Control+a`).
 `BrowserSurface::press` takes a logical combo string like `cmd+a` or
 `return` and spells it the way agent-browser expects (`browser_key` in
-`surface/mod.rs`): the logical `cmd` becomes whichever platform key
+`surface/operations.rs`): the logical `cmd` becomes whichever platform key
 `tinycomputer-core`'s keymap says is "select all" on this OS, arrow names
 become `ArrowUp`/`ArrowDown`/etc., and anything else is capitalized to
 match agent-browser's naming (`return`/`enter` → `Enter`,

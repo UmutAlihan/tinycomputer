@@ -245,4 +245,4 @@ pub(crate) fn json_object(text: &str) -> Result<Value, String> {
 }
 
 #[cfg(test)]
-mod test;
+mod planner_tests;

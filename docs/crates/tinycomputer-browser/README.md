@@ -31,7 +31,12 @@ This crate has no bus, no agent loop, and no model. It does not decide what
 to click; that is `tinycomputer-engine`'s job, driving this crate through the
 `Surface` trait it implements. It does not run a daemon or a sidecar either:
 agent-browser is linked in-process as a library, so there is one process,
-not two talking over a socket.
+not two talking over a socket. Putting `Browser` on the bus at all is
+`crates/tinycomputer`'s job: its `DesktopService` holds one `Browser`, shared
+with the task runner, and answers the 13 `Browser…` bus members by calling
+straight into it. See
+[docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md) for
+the wire shapes those members carry.
 
 ## The pieces, in one pass
 
@@ -44,20 +49,27 @@ not two talking over a socket.
 | `src/reply/` | Turns agent-browser's replies back into typed results, and classifies its failure messages into this crate's `Error` | [errors.md](errors.md) |
 | `src/surface/sight/` | `sight.js`: reads the rendered page the way a person looks at it | [sight.md](sight.md) |
 | `src/surface/tree.rs` | Parses agent-browser's accessibility snapshot text, as a fallback for sight | [sight.md](sight.md) |
-| `src/surface/mod.rs`, `cursor.rs` | `BrowserSurface`: one session as a `tinycomputer-core` `Surface`, plus the on-screen cursor | [surface.md](surface.md) |
+| `src/surface/mod.rs`, `operations.rs`, `card.rs`, `fields.rs`, `envelope.rs`, `cursor.rs` | `BrowserSurface`: one session as a `tinycomputer-core` `Surface` (the trait impl in `operations.rs`), plus the on-screen cursor | [surface.md](surface.md) |
 | `src/outputs/` | Held screenshots: bounded count, bounded size, expire on their own | [outputs-and-downloads.md](outputs-and-downloads.md) |
 | `src/error/` | The crate-wide `Error`, and the wire name each variant carries across the bus | [errors.md](errors.md) |
 
 ## A tour, start to finish
 
-1. A caller opens a session (`Browser::open_session`). That either launches a
-   fresh Chrome or attaches to one already running, depending on the
-   options given. See [sessions.md](sessions.md).
+1. A caller opens a session (`Browser::open_session`), or, over the bus,
+   calls `BrowserOpenSession`. That either launches a fresh Chrome or
+   attaches to one already running, depending on the options given. See
+   [sessions.md](sessions.md).
 2. The caller drives the session directly (navigate, click, read, screenshot)
-   through `Browser`'s methods, or hands the session to
-   `tinycomputer-engine` as a `BrowserSurface`, which drives it the same way
-   a decision loop drives a desktop application. See
+   through `Browser`'s methods, or the `BrowserNavigate` / `BrowserPerform` /
+   `BrowserReadPage` / `BrowserScreenshot` bus members that wrap them, or
+   hands the session to `tinycomputer-engine` as a `BrowserSurface`, which
+   drives it the same way a decision loop drives a desktop application. See
    [surface.md](surface.md).
+
+   ```json
+   // BrowserPerform request, over the bus, clicking a snapshot ref
+   {"session": "s-1", "action": "click", "target": {"kind": "ref", "value": "e3"}}
+   ```
 3. Every "what's on the page" question is answered by *sight*: a script run
    in the page that reads it the way a person would, rather than trusting
    whatever roles and labels the page's own markup claims. When sight can't

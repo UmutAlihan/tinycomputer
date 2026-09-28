@@ -9,4 +9,4 @@ pub use types::{
 };
 
 #[cfg(test)]
-mod test;
+mod agentic_tests;

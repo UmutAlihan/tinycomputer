@@ -135,7 +135,7 @@ removed.
 ## Keeping it honest
 
 Two tests worth knowing about, both in
-[`src/test.rs`](../../../crates/tinycomputer-skills/src/test.rs):
+[`src/lib_tests.rs`](../../../crates/tinycomputer-skills/src/lib_tests.rs):
 
 - one parses the schema and checks that every field on the real
   `StartTaskRequest` type (aside from an internal `memory` field) is

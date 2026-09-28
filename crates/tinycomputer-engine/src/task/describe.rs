@@ -3,8 +3,9 @@
 //! worked requests to adapt, and a catalogue of every other member.
 //!
 //! The schemas here are written by hand, so each field of a request type
-//! must be added here when it is added to the contract; `test.rs` checks the
-//! `StartTask` and `PlanTask` schemas name every field their types serialize.
+//! must be added here when it is added to the contract;
+//! `task_tests/describe_tests.rs` checks the `StartTask` and `PlanTask`
+//! schemas name every field their types serialize.
 
 use serde_json::{Value, json};
 use tinycomputer_bus::agent::names::{CONFIDENTIAL, methods};

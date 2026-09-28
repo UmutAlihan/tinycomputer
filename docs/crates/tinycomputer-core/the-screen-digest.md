@@ -53,7 +53,7 @@ naming the region, how many elements it holds, and a few examples, unless a
 relevance score explicitly rescues it (see below).
 
 ```rust
-// digest/test.rs builds a results page with a search toolbar, a cookie
+// digest_tests/parse_tests.rs builds a results page with a search toolbar, a cookie
 // banner, 30 footer links, and a list of flight cards, and asserts:
 digest(&screen).regions.iter().find(|r| r.name.contains("Cookie consent")).kind == RegionKind::Front;
 digest(&screen).regions.iter().find(|r| r.name.contains("contentinfo")).kind == RegionKind::Noise;

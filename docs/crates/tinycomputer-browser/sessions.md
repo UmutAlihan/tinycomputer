@@ -5,7 +5,8 @@ A session is one browser tab (technically one `DaemonState`) that
 crate, navigating, reading, clicking, screenshotting, happens on a session.
 This page covers how one starts, what it costs, and how it ends.
 
-Code: `crates/tinycomputer-browser/src/sessions/mod.rs`. The wire shape of the
+Code: `crates/tinycomputer-browser/src/sessions/` (`mod.rs` opens and closes
+sessions; `page.rs` and `artifacts.rs` hold the calls on them). The wire shape of the
 options below lives in `crates/tinycomputer-bus/src/browser/session/types.rs`.
 
 ## Opening a session

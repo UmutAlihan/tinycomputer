@@ -244,4 +244,4 @@ pub(crate) fn screen(result: &Value) -> Option<Screen> {
 }
 
 #[cfg(test)]
-mod test;
+mod sight_tests;

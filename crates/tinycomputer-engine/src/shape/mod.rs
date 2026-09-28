@@ -174,4 +174,4 @@ fn render(harvest: &Harvest) -> String {
 }
 
 #[cfg(test)]
-mod test;
+mod shape_tests;

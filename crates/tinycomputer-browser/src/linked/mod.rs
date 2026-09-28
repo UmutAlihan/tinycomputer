@@ -49,4 +49,4 @@ impl Engine for Linked {
 }
 
 #[cfg(test)]
-mod test;
+mod linked_tests;

@@ -19,7 +19,7 @@
 //! call — nothing platform-specific has to cross a thread boundary or survive
 //! an `await`.
 
-mod browser_defaults;
+mod config;
 mod dispatch;
 mod runner;
 
@@ -83,4 +83,4 @@ tinybus_module::module_export! {
 }
 
 #[cfg(test)]
-mod test;
+mod tinybus_module_tests;

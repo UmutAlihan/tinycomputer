@@ -99,7 +99,9 @@ returns an empty list rather than failing.
   `side_for`, `visible_text`.
 - `crates/tinycomputer-core/src/surface/`, the `Surface` trait both sides
   implement.
-- `crates/tinycomputer-engine/src/task/mod.rs`, `TaskConstraints.surfaces`,
-  which decides which side (or sides) a task's workspace is built with.
+- `crates/tinycomputer-engine/src/task/store.rs`, where a task keeps its
+  `TaskConstraints.surfaces`, and
+  `crates/tinycomputer/src/tinybus_module/runner.rs`, which builds the
+  task's workspace with that side (or sides).
 - [`docs/technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md),
   the spec for joining the desktop and the browser.

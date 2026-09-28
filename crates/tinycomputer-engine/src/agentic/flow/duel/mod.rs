@@ -177,4 +177,4 @@ pub(super) fn finalists(answer: &Answer) -> Vec<String> {
 }
 
 #[cfg(test)]
-mod test;
+mod duel_tests;

@@ -132,7 +132,7 @@ Mail, and `enter` the price it read into a draft.
 Take `StartTask` with a planned booking flow.
 
 1. The host calls the module. TinyBus delivers the call to
-   `DesktopService::start_task` in `crates/tinycomputer/src/tinybus_module/dispatch.rs`.
+   `DesktopService::start_task` in `crates/tinycomputer/src/tinybus_module/dispatch/mod.rs`.
    `StartTask`, `ContinueTask`, `TaskReport`, `RunGoal`, `ResolveIntent`, and
    `RunFlow` are confidential members: they carry the caller's values and page
    data, so the bus requires an attested module and keeps them away from
@@ -261,7 +261,7 @@ Every layer is testable without a display, a browser, or a network:
 
 - the contract pins the serde form of every payload;
 - the browser crate runs against a scripted `Engine` (`src/fake/`);
-- the flow runtime runs against a simulator in `agentic/flow/test.rs`: a mail
+- the flow runtime runs against a simulator in `agentic/flow/flow_tests/`: a mail
   app and booking widgets whose state an oracle Jev reads its answers from;
 - the task controller runs against scripted `FlowRunner`s;
 - the module is exercised over TinyBus's in-memory transport, and

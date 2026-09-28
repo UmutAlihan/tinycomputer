@@ -114,6 +114,48 @@ Without `jev` configured, this comes back immediately as:
 }
 ```
 
+## Calling a browser member
+
+The 13 `Browser…` members take one object, the session beside the member's
+own fields, and answer in the same `DesktopResponse` envelope the desktop
+members use. `BrowserOpenSession` first, then act on the session it hands
+back:
+
+```json
+// BrowserOpenSession request
+{}
+```
+
+```json
+// BrowserOpenSession response
+{
+  "ok": true,
+  "command": "browser-open-session",
+  "data": { "id": "s-1", "launched": true, "headless": true }
+}
+```
+
+```json
+// BrowserNavigate request
+{ "session": "s-1", "url": "https://example.com/next" }
+```
+
+```json
+// BrowserPerform request, clicking a ref BrowserSnapshot named
+{
+  "session": "s-1",
+  "action": "click",
+  "target": { "kind": "ref", "value": "e3" }
+}
+```
+
+`BrowserScreenshot` hands back an output id rather than an inline image;
+read it back in chunks with `BrowserReadOutput` until `eof`, then
+`BrowserReleaseOutput`. `crates/tinycomputer/src/tinybus_module/tinybus_module_tests/browser_tests.rs`
+runs this exact open-navigate-click-close sequence over the in-memory bus.
+See [docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md)
+for every field and error code.
+
 ## Calling a task member
 
 Task members answer `AgentResponse<T>` instead of `DesktopResponse`: same
@@ -203,11 +245,14 @@ the whole history once you are done:
 Rather than hard-coding this page's examples, call `Describe` first. It takes
 no argument and needs no permission, and returns `Capabilities`: whether Jev,
 the planner, and rescues are configured, which surfaces are usable right now,
-every task member's JSON Schema, and worked examples of its own. Building a
-host against `Describe`'s output rather than against fixed assumptions means
-your integration keeps working if a future contract version adds a member or
-a field, since `Capabilities.members` is generated from the same source this
-page's `members.md` was written from.
+every task member's JSON Schema, worked examples of its own, and a
+`catalogue` listing every one of the module's 80 members (task, flow,
+desktop, and browser alike) with its family and a one-sentence summary.
+Building a host against `Describe`'s output rather than against fixed
+assumptions means your integration keeps working if a future contract
+version adds a member or a field, since `Capabilities.members` and
+`Capabilities.catalogue` are generated from the same source this page's
+`members.md` was written from.
 
 ## Next
 

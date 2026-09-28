@@ -18,4 +18,4 @@ mod types;
 pub use types::{FindRequest, GetRequest, IsRequest, ScreenshotRequest, SnapshotRequest};
 
 #[cfg(test)]
-mod test;
+mod observation_tests;

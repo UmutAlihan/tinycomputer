@@ -64,4 +64,4 @@ impl OverlayCommand {
 }
 
 #[cfg(test)]
-mod test;
+mod protocol_tests;

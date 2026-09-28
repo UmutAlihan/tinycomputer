@@ -96,7 +96,7 @@ a commit, an issue, or a pull request.
 
 - `crates/tinycomputer-engine/src/agentic/journal/mod.rs`, `Journal`,
   `RunJournal`, `record`, `exchange`, `fresh_id`, `sanitize`.
-- `crates/tinycomputer-engine/src/agentic/mod.rs`, `JevRuntime::begin_run`,
+- `crates/tinycomputer-engine/src/agentic/runtime.rs`, `JevRuntime::begin_run`,
   `with_journal`, `journaled_as`, `journal_dir`.
 - [`docs/technical/jev-journal.md`](../../technical/jev-journal.md), every
   event kind's fields, the CLI reader, and how to read a summary.

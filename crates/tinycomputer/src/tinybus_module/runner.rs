@@ -9,7 +9,7 @@ use tinycomputer_bus::DesktopResponse;
 use tinycomputer_bus::agent::{SurfaceKind, TaskConstraints, TaskId};
 use tinycomputer_engine::{FlowFuture, FlowRunner, JevRuntime, TextFuture, Workspace};
 
-use super::browser_defaults::BrowserDefaults;
+use super::config::BrowserDefaults;
 use crate::Desktop;
 
 type TaskWorkspace = Workspace<Desktop, BrowserSurface>;

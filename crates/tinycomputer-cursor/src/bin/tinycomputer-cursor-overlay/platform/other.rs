@@ -22,5 +22,5 @@ fn run_with_sleep(
 }
 
 #[cfg(test)]
-#[path = "test.rs"]
-mod test;
+#[path = "other_tests.rs"]
+mod other_tests;

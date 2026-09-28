@@ -227,4 +227,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 }
 
 #[cfg(test)]
-mod test;
+mod checkpoint_tests;

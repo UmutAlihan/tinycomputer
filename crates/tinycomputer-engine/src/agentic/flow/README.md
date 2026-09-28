@@ -14,16 +14,20 @@ evidence, checked after acting, and undone and retried when wrong.
 
 | File | Responsibility |
 |---|---|
-| `mod.rs` | `run_flow`, `validate_flow`, `flow_guide`; `FlowRun` state, budgets, the step driver, the Jev and action wrappers, `look` and `explore` |
-| `validate.rs` | parsing and per-step validation; `${name}` substitution |
-| `ask.rs` | question builders (completion, negation, progress, coverage, obstacle, element choices) and answer readers; the shared state, including `field_contents` |
-| `ground.rs` | one element for a purpose: memory, region narrowing, knockout, relabelled re-ask, corroboration |
-| `act.rs` | the `do` loop: judge, move, act, observe; obstacles, undo, stall, creation intents |
-| `enter.rs` | slot matching and verified delivery, top to bottom |
-| `steps.rs` | `open`, `choose`, `read`, `verify`, `wait_for`, `stop_before`, `if`, `repeat_until` |
+| `mod.rs` | `run_flow`, `validate_flow`, `flow_guide`; `FlowRun` state and budgets |
+| `run.rs` | starting a run, the step driver, and the run's result |
+| `decide.rs` | `FlowRun::ask`, the one door to Jev: brief, mask, fit to size, vote |
+| `brief.rs` | the run's brief added to every choosing question |
+| `action.rs`, `look.rs` | one budgeted desktop action; one budgeted look and `explore` |
+| `validate/` | parsing and per-step validation (`rules.rs`); `${name}` substitution (`substitution.rs`) |
+| `ask/` | question builders (`questions.rs`: completion, negation, progress, coverage, obstacle, element choices), answer readers (`answers.rs`), and the shared state, including `field_contents` (`screen_state.rs`) |
+| `ground/` | one element for a purpose: memory, region narrowing, and the knockout (`narrow.rs`); relabelled re-ask and corroboration (`decide.rs`) |
+| `act/` | the `do` loop: judge (`judge.rs`), move and clear obstacles (`moves.rs`), the turn loop and stall (`turns.rs`), undo and backtracking (`recover.rs`) |
+| `enter/` | slot matching (`assign.rs`) and verified delivery, top to bottom (`fill.rs`) |
+| `steps/` | one file per step kind: `launch.rs` (`open`, `browse`), `choose.rs`, `reveal.rs`, `read.rs`, `list.rs` (`pick`, `extract`), `condition.rs` (`verify`, `wait_for`, `if`, `repeat_until`), `stop.rs` (`stop_before`); option matching in `matching.rs`, dates in `date.rs` |
 | `memory.rs` | grounding hints: remember, recall, learn |
 | `reflect.rs` | after a `choose` presses something: does the screen show its choice? repair once, else fail |
-| `wide.rs` | the wide strategy: one request per `do` turn over the screen digest (judgement, `dismiss`, every move's target), the wide state, resolving prepared targets |
+| `wide/` | the wide strategy: one request per `do` turn over the screen digest (judgement, `dismiss`, every move's target) in `judge.rs`; the wide state (`state.rs`); resolving prepared targets (`resolve.rs`) |
 | `survey.rs` | the wide strategy's attention pass: which regions of a crowded screen matter, which distract |
 | `ledger.rs` | the working memory wide questions see: finished steps, recent actions across steps, tried and failed, next step |
 | `attention/` | the root of every turn: what needs attention first, the step or a distraction; clears one with its least-committal control |
@@ -36,7 +40,7 @@ evidence, checked after acting, and undone and retried when wrong.
 | `view/` | re-exports the screen model and digest from `tinycomputer-core::surface`; keeps the flow's policy: the act threshold, which controls it must not press, and `named_first` |
 | `backend/` | `AgentBackend` (the core `Surface` trait, which `Desktop` implements in `tinycomputer-desktop/src/surface/`) and the async wrappers that call it off the executor |
 | `vote.rs` | framings, ballots, and their tally |
-| `test.rs` | a simulated mail app and web shop, and an oracle Jev that answers from their state; `test/deliberation.rs` holds deliberation's scenarios |
+| `flow_tests.rs` | the harness every flow test runs through; `flow_tests/` holds a simulated mail app and web shop (`simulator.rs`, `screens.rs`), an oracle Jev that answers from their state (`oracle.rs`), and each topic's tests in `<topic>_tests.rs`, deliberation's scenarios in `deliberation_tests.rs` |
 
 ## Operational constraints
 

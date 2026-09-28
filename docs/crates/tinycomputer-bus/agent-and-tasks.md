@@ -38,7 +38,7 @@ Source: [`crates/tinycomputer-bus/src/agent/names/mod.rs`](../../../crates/tinyc
 
 | Member | Takes | Returns |
 |---|---|---|
-| `Describe` | nothing | `Capabilities`: surfaces available, whether Jev and the planner are configured, the flow guide, every member's JSON Schema, worked examples |
+| `Describe` | nothing | `Capabilities`: surfaces available, whether Jev and the planner are configured, the flow guide, every task member's JSON Schema, worked examples, and a `catalogue` of all 80 members |
 | `PlanTask` | `PlanTaskRequest` | `TaskPlan`: a drafted flow, without touching anything |
 | `StartTask` | `StartTaskRequest` | `TaskView`, at once |
 | `AwaitTask` | `AwaitTaskRequest` | `TaskView`, once something changes or the timeout passes |
@@ -294,3 +294,13 @@ is configured, the flow step kinds, the flow guide itself, and, per member,
 a `MemberDoc` with its JSON Schema for input and output plus a one-sentence
 summary and whether it needs confidential delivery. `examples` are worked
 requests ready to adapt rather than write from scratch.
+
+`Capabilities.catalogue` is a `Vec<MemberSummary>` (source:
+[`crates/tinycomputer-bus/src/catalogue/`](../../../crates/tinycomputer-bus/src/catalogue/)):
+every one of the module's 80 members, task, flow, desktop, and browser alike,
+each with its `Family`, a one-line summary of what it is for, and whether it
+needs confidential delivery, in `names::METHODS` dispatch order. `members`
+above already has the task members' full schemas; `catalogue` is the
+lightweight map over everything else too, so a caller that has only ever
+called `Describe` knows the desktop and browser primitives exist, and which
+family to reach for, without a second round trip.

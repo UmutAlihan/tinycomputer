@@ -58,7 +58,7 @@ These two are the exception to the snake_case rule above: they carry no
 `#[serde(rename_all = ...)]`, so the wire form is the plain Rust variant
 name, PascalCase: `"Down"`, `"Middle"`. This is one of the small,
 individually-tested facts a host has to get right (see
-`crates/tinycomputer-bus/src/vocabulary/test.rs`), so a caller building
+`crates/tinycomputer-bus/src/vocabulary/vocabulary_tests.rs`), so a caller building
 these by hand should double check rather than assume every enum here follows
 the same casing.
 

@@ -11,7 +11,7 @@ review page, or not at all.
 This page covers the three pieces that catch and fix this: predicting
 what a press should do (`expect/`), recording where the screen was before
 it happened and undoing back to it when needed (`checkpoint/`), and
-retrying a different candidate afterward (backtracking, in `act.rs`).
+retrying a different candidate afterward (backtracking, in `act/recover.rs`).
 
 ## Expectations: predicting an effect before it happens
 

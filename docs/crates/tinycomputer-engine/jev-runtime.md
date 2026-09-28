@@ -7,7 +7,7 @@ click, if any"), and it answers with a choice and a confidence. Nothing here
 guesses on its own: every click, every field, every "this is done" comes from
 Jev's answer.
 
-`JevRuntime`, in `src/agentic/mod.rs`, is the one place in this crate that
+`JevRuntime`, in `src/agentic/runtime.rs`, is the one place in this crate that
 talks to Jev. The doc comment on the crate calls it "the one door to Jev",
 and the code backs that up: every other module (the flow runtime, the task
 controller, `RunGoal`, `ResolveIntent`) asks Jev by calling
@@ -95,7 +95,7 @@ a screen into candidates, turning candidates into a question, gating the
 answer against a confidence threshold) lives in the modules that call it
 (`agentic::screen`, `agentic::policy`, and, for whole flows, `agentic::flow`;
 see [goals-and-intents.md](goals-and-intents.md) for the two loops that live
-directly in `agentic/mod.rs`, and the flow module's own docs for the rest).
+directly in `agentic/` (`resolve.rs`, `goal.rs`), and the flow module's own docs for the rest).
 `evaluate` itself does exactly two things: call the client, and hand the
 request and outcome to the journal, win or lose.
 
@@ -148,8 +148,8 @@ confirmation id.
 
 ## Source
 
-- `crates/tinycomputer-engine/src/agentic/mod.rs`, `JevRuntime`, `evaluate`,
-  provider configuration, confirmation handles.
+- `crates/tinycomputer-engine/src/agentic/runtime.rs`, `JevRuntime`,
+  `evaluate`, provider configuration; `pending.rs`, confirmation handles.
 - `crates/tinycomputer-bus/src/agentic/`, `JevConfig`, `JevProvider`, and the
   other payload types that cross the bus.
 - [`docs/technical/jev-harness.md`](../../technical/jev-harness.md), the

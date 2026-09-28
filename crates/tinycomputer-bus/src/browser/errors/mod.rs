@@ -186,4 +186,4 @@ pub fn recovery(name: &str) -> Option<crate::RecoveryHint> {
 }
 
 #[cfg(test)]
-mod test;
+mod errors_tests;

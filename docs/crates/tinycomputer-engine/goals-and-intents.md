@@ -3,9 +3,9 @@
 Before the flow runtime existed, these two functions were the whole agentic
 surface. They still exist, still work, and are still the right tool when a
 caller wants direct, low-level control over one screen rather than a
-multi-step plan. Both live in `crates/tinycomputer-engine/src/agentic/mod.rs`,
-alongside `JevRuntime` itself, and both share its policy module
-(`agentic/policy.rs`) with the flow runtime.
+multi-step plan. Both live in `crates/tinycomputer-engine/src/agentic/`
+(`resolve.rs` and `goal.rs`), beside `JevRuntime` itself (`runtime.rs`), and
+both share its policy module (`agentic/policy/`) with the flow runtime.
 
 The difference between them is scope: `ResolveIntent` finds and optionally
 acts on **one** element; `RunGoal` keeps going, observing and deciding again
@@ -110,7 +110,7 @@ The gate (`agentic::policy::gate_with_evidence`) is the same threshold logic
 Destructiveness itself comes from two sources, taken as the higher of the
 two: Jev's own answer to a yes/no "would this be hard to undo" question, and
 a small deterministic word list (`deterministic_destructive` in
-`policy.rs`): "delete", "send", "purchase", "buy", "pay", "submit",
+`policy/gate.rs`): "delete", "send", "purchase", "buy", "pay", "submit",
 "confirm", "overwrite", "quit without saving", "empty trash", "sign out",
 checked against the goal text and the target's own label. The word list
 exists so that an action that is obviously irreversible is never left to a
@@ -163,9 +163,10 @@ state machine and just needs one desktop loop inside it.
 
 ## Source
 
-- `crates/tinycomputer-engine/src/agentic/mod.rs`, `resolve_intent`,
-  `run_goal`, `continue_goal`, the confirmation table.
-- `crates/tinycomputer-engine/src/agentic/policy.rs`, the gate, the action
-  space, and the destructive word list.
+- `crates/tinycomputer-engine/src/agentic/resolve.rs`, `resolve_intent`;
+  `goal.rs` and `task/`, `run_goal` and its loop; `continuation.rs`,
+  `continue_goal`; `pending.rs`, the confirmation table.
+- `crates/tinycomputer-engine/src/agentic/policy/`, the gate (`gate.rs`), the
+  action space (`request.rs`), and the destructive word list (`gate.rs`).
 - `crates/tinycomputer-bus/src/agentic/`, `ResolveIntentRequest`,
   `RunGoalRequest`, `GoalContinuation`, `JevRunResult`, `JevStopReason`.

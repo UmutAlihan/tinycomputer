@@ -15,4 +15,4 @@ mod types;
 pub use types::{ElementRef, Snapshot, SnapshotRequest};
 
 #[cfg(test)]
-mod test;
+mod snapshot_tests;

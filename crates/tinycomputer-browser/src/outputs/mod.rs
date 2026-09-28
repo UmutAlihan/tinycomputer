@@ -254,4 +254,4 @@ pub(crate) fn within_cap(encoded_len: usize) -> Result<()> {
 }
 
 #[cfg(test)]
-mod test;
+mod outputs_tests;

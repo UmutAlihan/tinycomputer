@@ -1,6 +1,6 @@
 # The goal loop
 
-Source: [`crates/tinycomputer-bus/src/agentic/types.rs`](../../../crates/tinycomputer-bus/src/agentic/types.rs)
+Source: [`crates/tinycomputer-bus/src/agentic/types/`](../../../crates/tinycomputer-bus/src/agentic/types/mod.rs)
 
 `RunGoal` and `ResolveIntent` are the desktop interface's own bounded
 decide-and-act loop: older, lower-level, and more tightly closed than a

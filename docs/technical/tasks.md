@@ -113,7 +113,7 @@ share that workspace, so a resumed task picks up on the page the last run left.
 
 ### Stopping and resuming
 
-`interpret.rs` maps how a run stopped to what the task does next:
+`task/interpret.rs` maps how a run stopped to what the task does next:
 
 - **Completed.** On to the next run, or `done` if there is none. The answer
   lists what was read, for example `Finished all 9 steps. cheapest: IndiGo ·
@@ -320,12 +320,22 @@ model is the planner configuration's `output_model` (default
 
 | File | Holds |
 |---|---|
-| `task/mod.rs` | `Tasks`, the `FlowRunner` trait, the task store, `drive`, budgets, `human_wall`, publishing views |
+| `task/mod.rs` | the `FlowRunner` trait and the controller's limits |
+| `task/controller.rs` | `Tasks` and the calls it answers: plan, start, await, continue, cancel, report |
+| `task/store.rs` | the task store: each task's cell and working state |
+| `task/drive.rs` | `drive`: running a task's flows in the background and finishing it |
 | `task/interpret.rs` | what a finished run means: continue, pause, or stop, and how to resume |
+| `task/resume.rs` | answering a paused task: values, approval, a person past a wall |
+| `task/budget.rs` | a task's budget across its runs |
+| `task/human.rs` | `human_wall`: a wall only a person can pass |
+| `task/recovery.rs` | handing a failed step to the rescuer and running its guidance |
+| `task/publish.rs` | publishing views, summaries, next calls, and records |
+| `task/brief.rs`, `task/names.rs`, `task/errors.rs` | the task's brief, the names its flow may use, the call errors |
 | `task/describe.rs` | `Describe`: capabilities, schemas, and examples |
 | `planner/mod.rs` | the planning protocol, validation, and repairs |
 | `planner/openrouter.rs` | the OpenRouter `LanguageModel`s for the planner, the rescuer, and the shaper (feature `planner`) |
-| `rescue/mod.rs` | the rescue protocol, the briefing, validation, and repairs |
+| `rescue/mod.rs` | the rescue protocol and the briefing |
+| `rescue/render.rs`, `rescue/judge.rs` | the briefing as the model reads it; judging its answer and building the resumed flow |
 | `shape/mod.rs`, `shape/schema.rs` | the output pass: its protocol, repairs, and the JSON Schema subset it checks |
 | `workspace/mod.rs` | the desktop and the browser as one surface |
 | `tinycomputer/src/tinybus_module/runner.rs` | the module's `FlowRunner`: one workspace and browser session per task |

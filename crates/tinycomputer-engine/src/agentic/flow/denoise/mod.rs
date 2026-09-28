@@ -125,4 +125,4 @@ pub(super) fn compact(history: &[String]) -> Vec<String> {
 }
 
 #[cfg(test)]
-mod test;
+mod denoise_tests;

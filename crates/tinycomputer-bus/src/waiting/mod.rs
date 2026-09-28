@@ -15,4 +15,4 @@ mod types;
 pub use types::WaitRequest;
 
 #[cfg(test)]
-mod test;
+mod waiting_tests;

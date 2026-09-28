@@ -1,6 +1,7 @@
 # Prices, times, and dates
 
-Source: [`crates/tinycomputer-core/src/records/mod.rs`](../../../crates/tinycomputer-core/src/records/mod.rs),
+Source: [`crates/tinycomputer-core/src/records/`](../../../crates/tinycomputer-core/src/records/mod.rs)
+(`price.rs`, `schedule.rs`, `rank.rs`),
 [`src/dates/mod.rs`](../../../crates/tinycomputer-core/src/dates/mod.rs).
 
 Two related jobs live here: reading values off a results page well enough to

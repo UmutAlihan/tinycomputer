@@ -177,4 +177,4 @@ pub fn state(status: &TaskStatus) -> String {
 }
 
 #[cfg(test)]
-mod test;
+mod task_tests;

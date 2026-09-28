@@ -21,7 +21,7 @@
 //!
 //! Each framing's own answer is kept too, under the original keys, as the
 //! question's ballot: how many framings agreed with the winner, and by how
-//! much, is the evidence deliberation (`evidence.rs`) decides on. A
+//! much, is the evidence deliberation (`evidence/`) decides on. A
 //! deliberating decision may later be asked in further framings (`widen`),
 //! whose answers join the same ballot.
 
