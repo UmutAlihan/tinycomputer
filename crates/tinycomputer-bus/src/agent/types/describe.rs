@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::browser::OutputRef;
 use crate::flow::{Flow, FlowStep, GroundingHint, JevExchange, StepReport};
+use super::SurfaceKind;
 
 /// `Describe`: how to use this module, in one reply.
 // Each `*_configured` flag is an independent fact a model reads by name;

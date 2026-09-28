@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::browser::OutputRef;
 use crate::flow::{Flow, FlowStep, GroundingHint, JevExchange, StepReport};
+use super::TaskView;
 
 /// `TaskReport`: everything a task did.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
