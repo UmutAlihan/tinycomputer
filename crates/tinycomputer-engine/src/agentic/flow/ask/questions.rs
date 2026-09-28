@@ -1,187 +1,17 @@
-//! Jev question builders and answer readers shared by every decision loop.
-//!
-//! Each loop asks small questions: one Noul, one Score, or one Choice over at
-//! most [`CAP`] options. Independent questions about the same screen share one
-//! request, because they share one `state`.
+//! The question builders: every Noul, Score, and Choice a decision loop
+//! asks, each keeping screen text as data, never instructions.
 
 use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
 use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
 
-use super::view::{Candidate, Screen, describe, element_line, label, untrusted_context};
+use crate::agentic::flow::view::{Candidate, Screen, describe, element_line, label, untrusted_context};
 
-/// Most options one Choice offers before narrowing takes over.
-pub(super) const CAP: usize = 20;
-/// Most pieces of text a `read` step chooses among.
-pub(super) const MAX_READ_SOURCES: usize = 60;
-/// Most element labels described in the shared state.
-const MAX_STATE_ELEMENTS: usize = 120;
-/// Recent history lines shared with Jev.
-const MAX_HISTORY: usize = 20;
-/// Most fields shown in `field_contents`.
-const MAX_FIELDS: usize = 12;
-
-/// The shared state every question about `screen` is asked against.
-pub(super) fn state(
-    screen: &Screen,
-    goal: &str,
-    history: &[String],
-    include_values: bool,
-) -> Value {
-    let elements = screen
-        .candidates
-        .iter()
-        .take(MAX_STATE_ELEMENTS)
-        .map(|node| element_line(node, include_values))
-        .collect::<Vec<_>>();
-    let mut state = json!({
-        "app": screen.app,
-        "window": screen.window,
-        "surface": screen.surface,
-        "current_step": goal,
-        "visible_text": untrusted_context(screen),
-        "elements": {"untrusted_accessibility_data": elements},
-        "recent_actions": history.iter().rev().take(MAX_HISTORY).rev().collect::<Vec<_>>(),
-    });
-    if include_values {
-        state["field_contents"] = json!({"untrusted_accessibility_data": field_contents(screen)});
-    }
-    state
-}
-
-/// What each text-holding element shows, at more length than the element
-/// list allows: whether a draft "shows the body" is decided here.
-///
-/// A plain field holds its text as its value. A rich-text area (a mail body,
-/// a web view) holds none; its text is spread over the static text inside it
-/// — ref-less, so it never appears in `screen.candidates` — which is why this
-/// reads the merged, document-ordered view over `candidates` and
-/// `text_nodes` instead.
-fn field_contents(screen: &Screen) -> Vec<Value> {
-    let ordered = ordered_nodes(screen);
-    let mut fields = Vec::new();
-    for node in &screen.candidates {
-        let holds_text = node
-            .available_actions
-            .iter()
-            .any(|action| action == "SetValue" || action == "TypeText");
-        let own = node
-            .value
-            .as_ref()
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|value| holds_text && !value.is_empty())
-            .map(|value| detokenize(value, following(&ordered, node.order)));
-        let text = own.or_else(|| rich_text(&ordered, node));
-        if let Some(text) = text {
-            // Not clipped to `MAX_FIELD_CHARS` here: `FlowRun::mask` needs
-            // the whole value to find a secret by its exact text, and the
-            // runtime clips the masked result afterward instead.
-            fields.push(json!({
-                "field": label(node),
-                "holds": text,
-            }));
-        }
-        if fields.len() >= MAX_FIELDS {
-            break;
-        }
-    }
-    fields
-}
-
-/// The nodes in `ordered` (candidates and text nodes merged and sorted by
-/// [`Candidate::order`]) that follow the node at `order`, in document order.
-fn following<'a>(ordered: &'a [&'a Candidate], order: usize) -> &'a [&'a Candidate] {
-    let start = ordered.partition_point(|node| node.order <= order);
-    &ordered[start..]
-}
-
-/// A token field's value with each U+FFFC attachment replaced by the static
-/// text that follows the field in document order, which is how the tokens
-/// are exposed.
-fn detokenize(value: &str, following: &[&Candidate]) -> String {
-    if !value.contains('\u{fffc}') {
-        return value.to_owned();
-    }
-    let tokens = following
-        .iter()
-        .take_while(|node| node.role.eq_ignore_ascii_case("statictext"))
-        .filter_map(|node| {
-            node.name
-                .as_deref()
-                .or(node.value.as_ref().and_then(Value::as_str))
-        })
-        .collect::<Vec<_>>();
-    if tokens.is_empty() {
-        return value.replace('\u{fffc}', "[token]");
-    }
-    tokens.join(", ")
-}
-
-/// The document-ordered merge of `screen`'s candidates and the ref-less text
-/// nodes `collect` set aside, which [`rich_text`] and [`detokenize`] both
-/// walk to find a field's held text.
-pub(super) fn ordered_nodes(screen: &Screen) -> Vec<&Candidate> {
-    let mut ordered = screen
-        .candidates
-        .iter()
-        .chain(screen.text_nodes.iter())
-        .collect::<Vec<_>>();
-    ordered.sort_by_key(|node| node.order);
-    ordered
-}
-
-/// The text inside a rich-text area, joined in reading order.
-pub(super) fn rich_text(ordered: &[&Candidate], area: &Candidate) -> Option<String> {
-    if !["webarea", "document"]
-        .iter()
-        .any(|role| area.role.eq_ignore_ascii_case(role))
-    {
-        return None;
-    }
-    let area_label = label(area);
-    let text = ordered
-        .iter()
-        .filter(|node| node.path.contains(&area_label))
-        .filter_map(|node| {
-            node.value
-                .as_ref()
-                .and_then(Value::as_str)
-                .or(node.name.as_deref())
-        })
-        .map(str::trim)
-        .filter(|text| !text.is_empty())
-        .collect::<Vec<_>>()
-        .join("\n");
-    (!text.is_empty()).then_some(text)
-}
-
-pub(super) fn request(model: &str, state: Value, questions: Questions) -> EvaluationRequest {
-    EvaluationRequest {
-        state,
-        model: model.to_owned(),
-        questions: questions.0,
-    }
-}
-
-/// Named questions for one request.
-#[derive(Debug, Default)]
-pub(super) struct Questions(pub(super) BTreeMap<String, Question>);
-
-impl Questions {
-    pub(super) fn with(mut self, id: &str, question: Question) -> Self {
-        self.0.insert(id.to_owned(), question);
-        self
-    }
-
-    pub(super) fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
+use super::{CAP, MAX_READ_SOURCES, MAX_STATE_ELEMENTS, MAX_HISTORY, MAX_FIELDS, request, Questions, numbered, lettered, screen_state::{state, field_contents, ordered_nodes, rich_text}, answers::{calibrated, top_level, combined, chosen, probability, level}};
 
 /// "Is `condition` true on this screen right now?"
-pub(super) fn condition(condition: &str) -> Question {
+pub(in crate::agentic::flow) fn condition(condition: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Judging only by the current screen, is this condition true right now?",
@@ -194,7 +24,7 @@ pub(super) fn condition(condition: &str) -> Question {
 
 /// "Is `condition` false on this screen right now?" — asked beside
 /// [`condition`] so the two answers can be averaged.
-pub(super) fn negated(condition: &str) -> Question {
+pub(in crate::agentic::flow) fn negated(condition: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Judging only by the current screen, is this condition FALSE right now?",
@@ -207,7 +37,7 @@ pub(super) fn negated(condition: &str) -> Question {
 
 /// "Does the screen show exactly the choice the step `intent` asked for?" —
 /// asked after a `choose` pressed something (`reflect.rs`).
-pub(super) fn reflects(intent: &str) -> Question {
+pub(in crate::agentic::flow) fn reflects(intent: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "The step below has just run. Does the current screen now show its choice made, exactly as the step asked?",
@@ -220,7 +50,7 @@ pub(super) fn reflects(intent: &str) -> Question {
 
 /// "Did the step `intent` leave a different choice, or change something it
 /// did not ask for?" — the negation of [`reflects`].
-pub(super) fn strays(intent: &str) -> Question {
+pub(in crate::agentic::flow) fn strays(intent: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "The step below has just run. Does the current screen show a different choice than the step asked for, or a change the step did not ask for, such as a different count, date, or name?",
@@ -232,7 +62,7 @@ pub(super) fn strays(intent: &str) -> Question {
 }
 
 /// "Is the step `intent` still unfinished?" — the negation of [`completion`].
-pub(super) fn unfinished(intent: &str) -> Question {
+pub(in crate::agentic::flow) fn unfinished(intent: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Is this step still NOT fully accomplished, judging by the current screen and the recent actions?",
@@ -243,19 +73,8 @@ pub(super) fn unfinished(intent: &str) -> Question {
     })
 }
 
-/// A yes/no probability calibrated against its negation: the mean of
-/// `P(yes)` and `1 - P(no)`, or whichever of the two was answered.
-pub(super) fn calibrated(answers: &BTreeMap<String, Answer>, yes: &str, no: &str) -> Option<f64> {
-    match (probability(answers, yes), probability(answers, no)) {
-        (Some(yes), Some(no)) => Some(f64::midpoint(yes, 1.0 - no)),
-        (Some(yes), None) => Some(yes),
-        (None, Some(no)) => Some(1.0 - no),
-        (None, None) => None,
-    }
-}
-
 /// "Has the step `intent` been accomplished?"
-pub(super) fn completion(intent: &str) -> Question {
+pub(in crate::agentic::flow) fn completion(intent: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Has this step been fully accomplished, judging by the current screen and the recent actions?",
@@ -276,7 +95,7 @@ const PROGRESS_LEVELS: [&str; 5] = [
 ];
 
 /// "How far along is the screen toward `intent`?"
-pub(super) fn progress(intent: &str) -> Question {
+pub(in crate::agentic::flow) fn progress(intent: &str) -> Question {
     Question::Score(Score {
         instructions: json!({
             "dimension": "How far the current screen has progressed toward accomplishing this step",
@@ -298,7 +117,7 @@ const COVERAGE_LEVELS: [&str; 5] = [
 /// "How much of `condition` holds?" — asked beside [`condition`] because a
 /// condition listing several things ("the recipient, the subject, and the
 /// body") is hedged as a yes/no but answered crisply as coverage.
-pub(super) fn coverage(condition: &str) -> Question {
+pub(in crate::agentic::flow) fn coverage(condition: &str) -> Question {
     Question::Score(Score {
         instructions: json!({
             "dimension": "How much of this condition is true on the current screen",
@@ -306,24 +125,6 @@ pub(super) fn coverage(condition: &str) -> Question {
         }),
         criteria: COVERAGE_LEVELS.iter().map(|level| json!(level)).collect(),
     })
-}
-
-/// The probability a Score answer puts on its highest level: "fully
-/// accomplished", "all of it holds".
-pub(super) fn top_level(answers: &BTreeMap<String, Answer>, id: &str) -> Option<f64> {
-    let Some(Answer::Score(answer)) = answers.get(id) else {
-        return None;
-    };
-    let top = answer.probabilities.len().checked_sub(1)?;
-    answer.probabilities.get(&top.to_string()).copied()
-}
-
-/// Combines a calibrated yes/no with a scale's top-level probability.
-pub(super) fn combined(yes_no: Option<f64>, top: Option<f64>) -> Option<f64> {
-    match (yes_no, top) {
-        (Some(yes_no), Some(top)) => Some(f64::midpoint(yes_no, top)),
-        (one, other) => one.or(other),
-    }
 }
 
 /// The kinds of page a web task passes through, with what each looks like.
@@ -372,7 +173,7 @@ const PAGE_KINDS: &[(&str, &str)] = &[
 
 /// "What kind of page is this?" — asked beside a web page's other questions
 /// and fed back into the brief of the next request.
-pub(super) fn page_kind() -> Question {
+pub(in crate::agentic::flow) fn page_kind() -> Question {
     options(
         json!({
             "task": "Which kind of page is showing right now?",
@@ -387,7 +188,7 @@ pub(super) fn page_kind() -> Question {
 /// "Did the last action help?" — asked on the turn after an action, beside
 /// the progress Score, so a wrong click is undone even when progress, read
 /// on its own, barely moved.
-pub(super) fn helped(intent: &str, action: &str) -> Question {
+pub(in crate::agentic::flow) fn helped(intent: &str, action: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Did the last action move toward accomplishing this step, or at least keep things on track, judging by the current screen?",
@@ -401,7 +202,7 @@ pub(super) fn helped(intent: &str, action: &str) -> Question {
 
 /// "Does this form ask for the `slot`?" — asked before failing an `enter`
 /// slot that has no field.
-pub(super) fn asks_for(slot: &str) -> Question {
+pub(in crate::agentic::flow) fn asks_for(slot: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Does the form on screen ask for this detail anywhere, under any wording or as a choice?",
@@ -413,7 +214,7 @@ pub(super) fn asks_for(slot: &str) -> Question {
 }
 
 /// "Is an error shown about the `slot` field?"
-pub(super) fn field_error(slot: &str) -> Question {
+pub(in crate::agentic::flow) fn field_error(slot: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Does the screen show an error or warning about this field, such as \"required\" or \"invalid\"?",
@@ -425,7 +226,7 @@ pub(super) fn field_error(slot: &str) -> Question {
 }
 
 /// "Is something unrelated blocking the step?"
-pub(super) fn obstacle(intent: &str) -> Question {
+pub(in crate::agentic::flow) fn obstacle(intent: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Is a dialog, alert, sheet, popup, or prompt that is NOT part of this step covering the application and in the way?",
@@ -436,7 +237,7 @@ pub(super) fn obstacle(intent: &str) -> Question {
 }
 
 /// A Choice among described options plus `none`.
-pub(super) fn options(
+pub(in crate::agentic::flow) fn options(
     instructions: Value,
     options: impl IntoIterator<Item = (String, Value)>,
 ) -> Question {
@@ -452,7 +253,7 @@ pub(super) fn options(
 }
 
 /// A Choice among candidate elements, keyed by `keys`.
-pub(super) fn elements(
+pub(in crate::agentic::flow) fn elements(
     purpose: &str,
     candidates: &[Candidate],
     keys: &[String],
@@ -471,7 +272,7 @@ pub(super) fn elements(
 }
 
 /// "Is this element the one to use for `purpose`?"
-pub(super) fn corroborate(purpose: &str, candidate: &Candidate, include_values: bool) -> Question {
+pub(in crate::agentic::flow) fn corroborate(purpose: &str, candidate: &Candidate, include_values: bool) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Is this element the right one to use for the purpose?",
@@ -486,7 +287,7 @@ pub(super) fn corroborate(purpose: &str, candidate: &Candidate, include_values: 
 /// — asked beside [`corroborate`] when grounding contrasts its finalists,
 /// so a lookalike in the wrong row or a label beside the control reads as
 /// what it is.
-pub(super) fn only_near(purpose: &str, candidate: &Candidate, include_values: bool) -> Question {
+pub(in crate::agentic::flow) fn only_near(purpose: &str, candidate: &Candidate, include_values: bool) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Is this element only similar to, or next to, the element the purpose needs, rather than that element itself?",
@@ -501,7 +302,7 @@ pub(super) fn only_near(purpose: &str, candidate: &Candidate, include_values: bo
 /// "Did the last action do what it was meant to?" — asked on the turn
 /// after a press whose effect `expected` names (`expect.rs`), beside
 /// [`unintended`].
-pub(super) fn intended(intent: &str, action: &str, expected: &str) -> Question {
+pub(in crate::agentic::flow) fn intended(intent: &str, action: &str, expected: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Did the last action do what it was meant to, judging by how the screen changed?",
@@ -516,7 +317,7 @@ pub(super) fn intended(intent: &str, action: &str, expected: &str) -> Question {
 
 /// "Did the last action do something it was not meant to?" — the negation
 /// of [`intended`].
-pub(super) fn unintended(intent: &str, action: &str, expected: &str) -> Question {
+pub(in crate::agentic::flow) fn unintended(intent: &str, action: &str, expected: &str) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Did the last action do something it was not meant to, such as opening the wrong item, leaving the page, or clearing or changing a choice?",
@@ -531,7 +332,7 @@ pub(super) fn unintended(intent: &str, action: &str, expected: &str) -> Question
 
 /// `question` asked over another rendering of the screen, named by `view`,
 /// so it is judged from what that rendering shows (`escalate`'s views).
-pub(super) fn viewed(mut question: Question, view: &str) -> Question {
+pub(in crate::agentic::flow) fn viewed(mut question: Question, view: &str) -> Question {
     let instructions = match &mut question {
         Question::Choice(choice) => &mut choice.instructions,
         Question::Noul(noul) => &mut noul.instructions,
@@ -541,70 +342,4 @@ pub(super) fn viewed(mut question: Question, view: &str) -> Question {
         fields.insert("view".to_owned(), Value::from(view));
     }
     question
-}
-
-/// `1`..=`n`: the keys a first Choice uses.
-pub(super) fn numbered(count: usize) -> Vec<String> {
-    (1..=count).map(|index| index.to_string()).collect()
-}
-
-/// `A`, `B`, …, `AA`: distinct keys for a relabelled re-ask.
-pub(super) fn lettered(count: usize) -> Vec<String> {
-    (0..count)
-        .map(|mut index| {
-            let mut key = String::new();
-            loop {
-                key.insert(0, char::from(b'A' + u8::try_from(index % 26).unwrap_or(0)));
-                if index < 26 {
-                    break key;
-                }
-                index = index / 26 - 1;
-            }
-        })
-        .collect()
-}
-
-/// The chosen key and its probability, or `None` for `none` or a missing answer.
-pub(super) fn chosen(answers: &BTreeMap<String, Answer>, id: &str) -> Option<(String, f64)> {
-    match answers.get(id) {
-        Some(Answer::Choice(answer)) if answer.choice != "none" => Some((
-            answer.choice.clone(),
-            answer
-                .probabilities
-                .get(&answer.choice)
-                .copied()
-                .unwrap_or_default(),
-        )),
-        _ => None,
-    }
-}
-
-/// A Noul's probability, or `None` when it was not asked or not answered.
-pub(super) fn probability(answers: &BTreeMap<String, Answer>, id: &str) -> Option<f64> {
-    match answers.get(id) {
-        Some(Answer::Noul(answer)) => Some(answer.noul),
-        _ => None,
-    }
-}
-
-/// A Score's position as a fraction of the scale, from its level probabilities.
-pub(super) fn level(answers: &BTreeMap<String, Answer>, id: &str) -> Option<f64> {
-    let Some(Answer::Score(answer)) = answers.get(id) else {
-        return None;
-    };
-    let top = answer.probabilities.len().saturating_sub(1);
-    if top == 0 {
-        return None;
-    }
-    let expected = answer
-        .probabilities
-        .iter()
-        .filter_map(|(level, probability)| {
-            level
-                .parse::<u32>()
-                .ok()
-                .map(|level| f64::from(level) * probability)
-        })
-        .sum::<f64>();
-    Some(expected / f64::from(u32::try_from(top).unwrap_or(u32::MAX)))
 }
