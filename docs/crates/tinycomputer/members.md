@@ -162,6 +162,37 @@ family from a caller's point of view, including facts, secrets, budgets, and
 payment handling; [calling-it.md](calling-it.md) here shows the raw request
 and response shapes.
 
+## Browser (13)
+
+`BrowserOpenSession`, `BrowserCloseSession`, `BrowserListSessions`,
+`BrowserNavigate`, `BrowserSnapshot`, `BrowserPerform`, `BrowserReadPage`,
+`BrowserEvaluate`, `BrowserScreenshot`, `BrowserReadOutput`,
+`BrowserReleaseOutput`, `BrowserListDownloads`, `BrowserWaitDownload`
+
+The primitives for driving a Chrome session directly, on the same interface
+and object path as the desktop members, each carrying a `Browser` prefix so
+none collides with a desktop member of a different shape (`Snapshot` and
+`Screenshot` exist on both sides). `BrowserOpenSession` launches or attaches
+to a browser and returns a `SessionId`; every other member except
+`BrowserListSessions` takes that session beside its own fields.
+`BrowserNavigate`, `BrowserSnapshot`, and `BrowserReadPage` observe the active
+page; `BrowserPerform` acts on a ref, selector, or semantic locator the same
+way the desktop's ref-addressed members act on an accessibility ref, and
+fails loudly rather than reporting success when the target is covered.
+`BrowserScreenshot` hands back an output id rather than an inline image;
+`BrowserReadOutput` pulls it in chunks and `BrowserReleaseOutput` frees it
+early. `BrowserListDownloads` and `BrowserWaitDownload` track files a page
+downloads.
+
+The module holds one `Browser`, shared with the task runner, so a task's own
+browser session shows up in `BrowserListSessions` and a screenshot a task
+view names can be read back with `BrowserReadOutput`, without having to go
+through the task API to see it. See
+[docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md) for
+the full payload shapes and error codes, and
+[docs/crates/tinycomputer-browser/README.md](../tinycomputer-browser/README.md)
+for the engine underneath.
+
 ## Confidential members
 
 Six members are marked `#[tinybus(confidential)]` in
