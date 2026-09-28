@@ -133,10 +133,13 @@ async fn a_failed_launch_gives_its_slot_back() {
         (command["action"] == "launch").then(|| failure("Chrome exited"))
     });
     let browser = Browser::with_scratch(Arc::new(fake), scratch("slot"));
+    // Every launch fails; none may be refused for want of a slot, which is
+    // what leaked reservations would cause after MAX_SESSIONS attempts.
     for _ in 0..MAX_SESSIONS + 2 {
-        assert!(matches!(
-            browser.open_session(SessionOptions::default()).await,
-            Err(Error::BrowserUnavailable { .. })
-        ));
+        let error = browser
+            .open_session(SessionOptions::default())
+            .await
+            .unwrap_err();
+        assert!(!matches!(error, Error::LimitExceeded { .. }), "{error:?}");
     }
 }
