@@ -21,7 +21,7 @@ evidence, checked after acting, and undone and retried when wrong.
 | `action.rs`, `look.rs` | one budgeted desktop action; one budgeted look and `explore` |
 | `validate/` | parsing and per-step validation (`rules.rs`); `${name}` substitution (`substitution.rs`) |
 | `ask/` | question builders (`questions.rs`: completion, negation, progress, coverage, obstacle, element choices), answer readers (`answers.rs`), and the shared state, including `field_contents` (`screen_state.rs`) |
-| `ground/` | one element for a purpose: memory and region narrowing (`narrow.rs`), knockout, relabelled re-ask, corroboration (`decide.rs`) |
+| `ground/` | one element for a purpose: memory, region narrowing, and the knockout (`narrow.rs`); relabelled re-ask and corroboration (`decide.rs`) |
 | `act/` | the `do` loop: judge (`judge.rs`), move and clear obstacles (`moves.rs`), the turn loop and stall (`turns.rs`), undo and backtracking (`recover.rs`) |
 | `enter/` | slot matching (`assign.rs`) and verified delivery, top to bottom (`fill.rs`) |
 | `steps/` | one file per step kind: `launch.rs` (`open`, `browse`), `choose.rs`, `reveal.rs`, `read.rs`, `list.rs` (`pick`, `extract`), `condition.rs` (`verify`, `wait_for`, `if`, `repeat_until`), `stop.rs` (`stop_before`); option matching in `matching.rs`, dates in `date.rs` |
