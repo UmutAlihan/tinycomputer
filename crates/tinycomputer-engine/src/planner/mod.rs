@@ -87,7 +87,9 @@ Enter payment details only from secret facts you are given, and end any purchase
 booking with a stop_before step for paying. Write a variable a step reads as ${name}, \
 never bare, so its value is shown. A `verify` or `wait_for` must be checkable on the \
 current screen alone: never compare with another site or an earlier page, since `pick` \
-already ranks. A `choose` option is the label the page shows for it (\"Saver\"), never \
+already ranks, and never name a `pick` variable in a `verify`, `wait_for`, `repeat_until`, \
+or `if` condition: it holds the whole item's text, and a pick already fails when nothing \
+fits. A `choose` option is the label the page shows for it (\"Saver\"), never \
 a description (\"the cheapest fare\"): choosing by a criterion is `pick`. Guard \
 sending, deleting, publishing, or submitting with a stop_before step.";
 
