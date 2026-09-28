@@ -107,8 +107,8 @@ to do something outside that list.
 
 | | `Desktop` | `BrowserSurface` |
 |---|---|---|
-| observe | agent-desktop snapshot of the app's front window, parsed into candidates and context | agent-browser snapshot text (`- role "name" [ref=eN]: value`), parsed the same way |
-| a ref | `@s8f3k2p9:e1`, bound to one snapshot | `e12`, bound to one snapshot |
+| observe | agent-desktop snapshot of the app's front window, parsed into candidates and context | sight: one script over the rendered page — what is drawn and on top, the words on and beside each control ([`specs/browser-sight.md`](specs/browser-sight.md)); the agent-browser snapshot (`- role "name" [ref=eN]: value`), parsed the same way as the desktop's, when sight cannot reach the page |
+| a ref | `@s8f3k2p9:e1`, bound to one snapshot | `seen:12`, the element's lifelong `data-tc-seen` mark, or `e12` from a snapshot |
 | click, check, expand | accessibility actions, headless by default | agent-browser `click`, `check` |
 | type text | set value through accessibility | `fill` |
 | paste | select-all and paste through the clipboard, then restore the clipboard | focus, select, and type at the caret; no clipboard |
