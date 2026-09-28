@@ -144,7 +144,13 @@ async fn a_task_report_request_is_one_a_confidential_call_can_carry() -> tinybus
         .call_confidential::<serde_json::Value>(names::methods::TASK_REPORT, (request,))
         .await
         .expect_err("an unattested module cannot take a confidential call");
-    eprintln!("DEBUG {refused:?}");
-    assert!(!refused.to_string().contains("stream handle"), "{refused}");
+    assert!(
+        matches!(
+            &refused,
+            tinybus::Error::MethodFailed { name, .. }
+                if name.as_str() == "ai.tinyhumans.tinybus.Error.NotAttested"
+        ),
+        "{refused:?}"
+    );
     Ok(())
 }
