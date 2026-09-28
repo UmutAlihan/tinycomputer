@@ -21,7 +21,7 @@ use tinycomputer_examples::lab::{
 };
 use super::{MEMORY, Options, RUNS, authored, run_id};
 
-async fn run_once(
+pub(crate) async fn run_once(
     host: &Host,
     scenario: &Scenario,
     mode: &str,
@@ -98,7 +98,7 @@ async fn run_once(
     Ok(record)
 }
 
-async fn run_flow(
+pub(crate) async fn run_flow(
     host: &Host,
     flow: serde_json::Value,
     options: &Options,

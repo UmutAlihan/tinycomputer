@@ -22,7 +22,7 @@ use tinycomputer_examples::lab::{
 use super::{Options, run_flow};
 
 #[cfg(feature = "inference")]
-async fn authored(
+pub(crate) async fn authored(
     host: &Host,
     scenario: &Scenario,
     options: &Options,
@@ -76,7 +76,7 @@ async fn authored(
 }
 
 #[cfg(not(feature = "inference"))]
-async fn authored(
+pub(crate) async fn authored(
     _host: &Host,
     _scenario: &Scenario,
     _options: &Options,
