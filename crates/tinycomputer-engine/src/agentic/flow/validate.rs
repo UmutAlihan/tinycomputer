@@ -228,6 +228,56 @@ fn check_step(
     }
 }
 
+/// Every variable a `pick` step stores its item in, at any depth.
+fn picks(steps: &[FlowStep], picked: &mut BTreeSet<String>) {
+    for step in steps {
+        match step.action() {
+            FlowAction::Pick(pick) => picked.extend(pick.into.clone()),
+            FlowAction::RepeatUntil(repeat) => picks(&repeat.steps, picked),
+            FlowAction::If(branch) => {
+                picks(&branch.then, picked);
+                picks(&branch.otherwise, picked);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Rejects a condition that names a picked item: the variable holds the
+/// whole card's text, clipped, and the opened item seldom shows all of it,
+/// so the condition fails on a pick that worked. The pick already fails when
+/// nothing fits, so there is nothing left for such a check to prove.
+fn conditions_on_picks(
+    steps: &[FlowStep],
+    prefix: &str,
+    picked: &BTreeSet<String>,
+    errors: &mut Vec<String>,
+) {
+    for (index, step) in steps.iter().enumerate() {
+        let path = step_path(prefix, index);
+        let condition = match step.action() {
+            FlowAction::Verify(value) | FlowAction::WaitFor(value) => Some(value),
+            FlowAction::RepeatUntil(repeat) => {
+                conditions_on_picks(&repeat.steps, &path, picked, errors);
+                Some(repeat.condition)
+            }
+            FlowAction::If(branch) => {
+                conditions_on_picks(&branch.then, &path, picked, errors);
+                conditions_on_picks(&branch.otherwise, &path, picked, errors);
+                Some(branch.condition)
+            }
+            _ => None,
+        };
+        for name in condition.as_deref().map(references).unwrap_or_default() {
+            if picked.contains(&name) {
+                errors.push(format!(
+                    "step {path}: `${{{name}}}` holds a picked item's whole text, which the screen seldom shows again; a condition must describe what the screen shows, not name a picked item"
+                ));
+            }
+        }
+    }
+}
+
 /// Rejects every `${name}` in `value` that names a fact: that text is what
 /// Jev is asked to reason about, or state it is later shown, and a fact
 /// belongs only where an `enter` step types it.
