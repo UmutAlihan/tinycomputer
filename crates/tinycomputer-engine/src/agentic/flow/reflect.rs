@@ -6,10 +6,10 @@
 //! contract.
 
 use serde_json::json;
-use tinycomputer_bus::FlowLoop;
+use tinycomputer_bus::{FlowAction, FlowLoop, StepOutcome};
 
 use super::{
-    AgentBackend, FlowRun, Halt, StepLog,
+    AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions},
 };
 
@@ -20,10 +20,32 @@ pub(super) const REFLECT_FLOOR: f64 = 0.5;
 pub(super) const REPAIR_TURNS: u32 = 4;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
+    /// `result` of the step `action`, reflected on when it is a `choose`
+    /// that ended `Done` after pressing something: a press can succeed and
+    /// leave the wrong choice.
+    pub(super) async fn reflected(
+        &mut self,
+        log: &mut StepLog,
+        action: &FlowAction,
+        text: &str,
+        result: Result<Ended, Halt>,
+    ) -> Result<Ended, Halt> {
+        match result {
+            Ok(ended)
+                if matches!(action, FlowAction::Choose(_))
+                    && ended.outcome == StepOutcome::Done
+                    && !log.actions.is_empty() =>
+            {
+                self.reflect(log, text).await.map(|()| ended)
+            }
+            other => other,
+        }
+    }
+
     /// Reflects on the `choose` step `intent` that just pressed something:
     /// `Ok` when the screen shows its choice, first time or after one
     /// repair; the step fails otherwise.
-    pub(super) async fn reflect(&mut self, log: &mut StepLog, intent: &str) -> Result<(), Halt> {
+    async fn reflect(&mut self, log: &mut StepLog, intent: &str) -> Result<(), Halt> {
         let held = self.reflection(log, intent, "first").await?;
         if held >= REFLECT_FLOOR {
             return Ok(());
@@ -73,9 +95,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             )
             .await?;
         let held = ask::calibrated(&answers, "reflects", "strays").unwrap_or(1.0);
-        self.runtime.journal.record("reflect", || {
-            json!({"step": self.step, "held": held, "attempt": attempt})
-        });
+        self.runtime.journal.record(
+            "reflect",
+            || json!({"step": self.step, "held": held, "attempt": attempt}),
+        );
         Ok(held)
     }
 }

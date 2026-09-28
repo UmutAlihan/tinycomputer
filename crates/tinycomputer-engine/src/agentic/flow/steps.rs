@@ -263,28 +263,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         };
         for attempt in 0..4 {
             let screen = self.look().await?;
-            if !private && let Some(chosen) = already_chosen(&screen, option) {
-                self.history
-                    .push(format!("{} is already chosen", label(&chosen)));
-                self.remember_choice(&format!("chose {option:?} in {what}"));
-                return Ok(Ended::new(
-                    StepOutcome::AlreadyDone,
-                    format!("{option:?} was already chosen"),
-                ));
-            }
-            // Only before this step acts: what it types to filter a list
-            // would otherwise read back as the choice.
-            if attempt == 0
-                && !private
-                && let Some(holder) = already_holds(&screen, option, &self.typed)
-            {
-                self.history
-                    .push(format!("{} already shows {option:?}", label(&holder)));
-                self.remember_choice(&format!("chose {option:?} in {what}"));
-                return Ok(Ended::new(
-                    StepOutcome::AlreadyDone,
-                    format!("{option:?} was already chosen"),
-                ));
+            if !private && let Some(ended) = self.made_already(&screen, what, option, attempt) {
+                return Ok(ended);
             }
             let pool = clickable(&screen.candidates)
                 .into_iter()
@@ -377,6 +357,32 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         } else {
             format!("{option:?} was not found in {what}")
         }))
+    }
+
+    /// `AlreadyDone` when `screen` shows `option` chosen already: a checked
+    /// option control, or — before this step acts, since what it types to
+    /// filter a list would read back as the choice — a field holding it.
+    fn made_already(
+        &mut self,
+        screen: &Screen,
+        what: &str,
+        option: &str,
+        attempt: usize,
+    ) -> Option<Ended> {
+        let shown = already_chosen(screen, option)
+            .map(|chosen| format!("{} is already chosen", label(&chosen)))
+            .or_else(|| {
+                (attempt == 0)
+                    .then(|| already_holds(screen, option, &self.typed))
+                    .flatten()
+                    .map(|holder| format!("{} already shows {option:?}", label(&holder)))
+            })?;
+        self.history.push(shown);
+        self.remember_choice(&format!("chose {option:?} in {what}"));
+        Some(Ended::new(
+            StepOutcome::AlreadyDone,
+            format!("{option:?} was already chosen"),
+        ))
     }
 
     /// The next way to make `option` show after attempt `attempt` found

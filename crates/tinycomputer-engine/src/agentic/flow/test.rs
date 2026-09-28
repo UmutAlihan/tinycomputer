@@ -848,14 +848,12 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
             noul(if held { 0.9 } else { 0.1 })
         }
         "progress" => level(2),
-        // A step's press left what it asked for, unless a test says.
-        "reflects" => noul(0.9),
-        "strays" => noul(0.05),
         "blocked" => noul(if sim.obstacle { 0.9 } else { 0.05 }),
         "move" => pick(question, "shortcut", 0.9),
         "shortcut" => pick(question, "new_item", 0.9),
         // Every action helps and no field shows an error, unless a test says.
-        "confirm" | "helped" | "dismiss_known" => noul(0.9),
+        // A press left what the step asked for, unless a test says.
+        "confirm" | "helped" | "dismiss_known" | "reflects" => noul(0.9),
         _ if id.starts_with("known_") => noul(0.9),
         // A survey finds the step in "Region 1" and nothing distracting.
         _ if id.starts_with("relevance_") => {
@@ -866,7 +864,7 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
             })
         }
         _ if id.starts_with("distraction_") => noul(0.05),
-        _ if id.starts_with("error_") => noul(0.05),
+        _ if id.starts_with("error_") || id == "strays" => noul(0.05),
         _ if id.starts_with("asks_") => noul(0.9),
         "dismiss" => pick(question, "Keep Editing", 0.9),
         "region" => pick(question, "Region 1", 0.9),
@@ -4998,11 +4996,23 @@ async fn a_choice_that_left_the_wrong_count_is_reflected_on_and_repaired() {
         },
     )
     .await;
-    assert_eq!(run.result.stop, FlowStopReason::Completed, "{:?}", run.result.steps);
-    assert_eq!(run.app.sim().adults, Some(1), "the repair undid the extra adult");
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    assert_eq!(
+        run.app.sim().adults,
+        Some(1),
+        "the repair undid the extra adult"
+    );
     let clicks = run.app.sim().clicks.clone();
     assert!(clicks[0].starts_with("Increase"), "{clicks:?}");
-    assert!(clicks.iter().any(|click| click.starts_with("Decrease")), "{clicks:?}");
+    assert!(
+        clicks.iter().any(|click| click.starts_with("Decrease")),
+        "{clicks:?}"
+    );
     let step = &run.result.steps[0];
     assert_eq!(step.outcome, StepOutcome::Done);
     assert!(step.loops.contains(&FlowLoop::Reflection));
@@ -5018,7 +5028,11 @@ async fn a_choice_that_left_the_right_option_is_reflected_on_once() {
     )
     .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
-    assert_eq!(run.app.sim().clicks, ["Message 7"], "no repair pressed anything");
+    assert_eq!(
+        run.app.sim().clicks,
+        ["Message 7"],
+        "no repair pressed anything"
+    );
     assert!(run.result.steps[0].loops.contains(&FlowLoop::Reflection));
     let reflections = run
         .requests
