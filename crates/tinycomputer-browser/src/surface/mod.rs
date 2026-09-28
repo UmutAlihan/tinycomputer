@@ -173,24 +173,6 @@ impl BrowserSurface {
         Ok(info.id)
     }
 
-    fn debug_field(&self, label: &str, target: &Candidate) {
-        if std::env::var("TC_DEBUG_FIELD").is_err() { return; }
-        let Ok(id) = self.ensure_session() else { return; };
-        let selector = format!("@{}", target.ref_id.trim_start_matches('@'));
-        let bbox = self.block(self.browser.command(&id, json!({"action": "boundingbox", "selector": selector})));
-        let value = self.block(self.browser.command(&id, json!({"action": "inputvalue", "selector": selector})));
-        let script = r#"(() => { const rows=[...document.querySelectorAll('.city-selection__list-item-wrapper')].map(r=>r.innerText.split('\n')[0]); const sb=document.querySelector('input[role=searchbox]'); return JSON.stringify({rows: rows.slice(0,5), n: rows.length, search: sb && sb.value, active: document.activeElement && (document.activeElement.tagName+' '+String(document.activeElement.className).slice(0,30))}); })()"#;
-        let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
-        eprintln!("TCDBG {label} {} bbox={:?} value={:?} page={:?}", selector, bbox.map(|v| v.to_string()), value.map(|v| v.to_string()), page.map(|v| v.get("result").cloned()));
-        if label == "paste-before" {
-            let mut typed = DesktopResponse::ok("x", json!({}));
-            for key in ["s", "r", "i", "n"] { typed = self.press("", key); std::thread::sleep(std::time::Duration::from_millis(150)); }
-            std::thread::sleep(std::time::Duration::from_millis(800));
-            let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
-            eprintln!("TCDBG after-type ok={} {:?} page={:?}", typed.ok, typed.error.map(|e| e.message), page.map(|v| v.get("result").cloned()));
-        }
-    }
-
     /// Clicks the middle of `reference` even though something covers it,
     /// but only when the cover is part of the same result card, so a banner
     /// or dialog in front still blocks the click. `None` when it is not.
@@ -403,7 +385,6 @@ impl Surface for BrowserSurface {
     }
 
     fn read_value(&self, target: &Candidate) -> Option<String> {
-        self.debug_field("read", target);
         if target.ref_id.is_empty() {
             return None;
         }
@@ -433,7 +414,6 @@ impl Surface for BrowserSurface {
                 DesktopError::new("INVALID_TARGET", "paste needs a target"),
             );
         }
-        self.debug_field("paste-before", target);
         let focused = self.perform(
             "focus",
             Action::Focus {
