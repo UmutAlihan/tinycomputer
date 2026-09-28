@@ -83,9 +83,9 @@ way it builds any other: state (the goal, the screen's app and window, recent
 actions), and one or more `Question`s, each a closed choice with named
 criteria.
 
-The function itself is short, because most of the interesting work, turning
+The function itself is short, because most of the interesting work (turning
 a screen into candidates, turning candidates into a question, gating the
-answer against a confidence threshold, lives in the modules that call it
+answer against a confidence threshold) lives in the modules that call it
 (`agentic::screen`, `agentic::policy`, and, for whole flows, `agentic::flow`;
 see [goals-and-intents.md](goals-and-intents.md) for the two loops that live
 directly in `agentic/mod.rs`, and the flow module's own docs for the rest).
@@ -113,12 +113,13 @@ always logs.
 ## Run identity and the journal
 
 A `JevRuntime` carries a journal handle (see [journal.md](journal.md)) that
-starts a new run each time one of the top-level entry points, `resolve_intent`,
-`run_goal`, `run_flow`, begins. `JevRuntime::begin_run(kind, label)` opens (or
-continues) a run in the journal and returns a new runtime pointed at it;
-`JevRuntime::journaled_as(run_id)` lets a caller, the task controller, which
-runs one task across several separate flow runs, keep every run of one task
-in the same journal file, by giving them all the same run id.
+starts a new run each time one of the top-level entry points
+(`resolve_intent`, `run_goal`, `run_flow`) begins. `JevRuntime::begin_run(kind,
+label)` opens (or continues) a run in the journal and returns a new runtime
+pointed at it. `JevRuntime::journaled_as(run_id)` lets a caller, such as the
+task controller, which runs one task across several separate flow runs, keep
+every run of one task in the same journal file, by giving them all the same
+run id.
 
 `JevRuntime::with_journal(dir)` switches the journal on unconditionally,
 overriding the `TINYCOMPUTER_JEV_JOURNAL` environment variable that
