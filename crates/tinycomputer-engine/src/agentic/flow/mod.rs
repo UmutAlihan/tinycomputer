@@ -290,9 +290,10 @@ pub(super) struct FlowRun<'r, B> {
     /// The address the current step began at, to return to when the step
     /// is found to have gone wrong.
     pub(super) step_location: Option<String>,
-    /// Whether the current step already pressed Escape at something
-    /// covering the page: an Escape that did not close it will not.
-    pub(super) escaped: bool,
+    /// What the current step cleared out of the way (`attention.rs`), by
+    /// control signature, across every loop that attends within it: an
+    /// Escape or a close that did not clear it once will not the next time.
+    pub(super) step_cleared: BTreeSet<String>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -402,7 +403,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             frontier: Vec::new(),
             expecting: None,
             step_location: None,
-            escaped: false,
+            step_cleared: BTreeSet::new(),
         }
     }
 
@@ -559,7 +560,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         self.refused.clear();
         self.frontier.clear();
         self.step_location.clone_from(&self.location);
-        self.escaped = false;
+        self.step_cleared.clear();
     }
 
     pub(super) fn enabled(&self, flow_loop: FlowLoop) -> bool {

@@ -348,12 +348,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if !self.deliberates(FlowLoop::Attention) || cleared.count >= MAX_CLEARED {
             return Ok(false);
         }
-        // One Escape at a covering per step, however many loops attend: the
-        // reveal loop inside a `choose` keeps its own `cleared`.
-        let mut pressed = cleared.pressed.clone();
-        if self.escaped {
-            pressed.insert(ESCAPED.to_owned());
-        }
+        // What the step cleared in any loop is not offered again: the reveal
+        // loop inside a `choose` keeps its own `cleared`.
+        let pressed = cleared
+            .pressed
+            .union(&self.step_cleared)
+            .cloned()
+            .collect::<BTreeSet<_>>();
         let found = distractions(screen, intent, &self.stop_before, &pressed);
         if found.is_empty() || self.room() == 0 {
             return Ok(false);
@@ -412,9 +413,24 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let Some(distraction) = chosen.filter(|_| verdict == Verdict::Accept).cloned() else {
             return Ok(false);
         };
+        self.clear(log, &distraction, cleared).await?;
+        Ok(true)
+    }
+}
+
+impl<B: AgentBackend + Sync> FlowRun<'_, B> {
+    /// Clears `distraction` with its control, or Escape, and remembers it
+    /// for the step.
+    async fn clear(
+        &mut self,
+        log: &mut StepLog,
+        distraction: &Distraction,
+        cleared: &mut Cleared,
+    ) -> Result<(), Halt> {
         cleared.count += 1;
         let (reply, how) = if let Some(target) = distraction.closer.clone() {
             cleared.pressed.insert(signature(&target));
+            self.step_cleared.insert(signature(&target));
             let pressed = target.clone();
             let reply = self
                 .act(
@@ -427,7 +443,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             (reply, label(&target))
         } else {
             cleared.pressed.insert(ESCAPED.to_owned());
-            self.escaped = true;
+            self.step_cleared.insert(ESCAPED.to_owned());
             let app = self.app.clone();
             let reply = self
                 .act(
@@ -445,7 +461,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         ));
         self.ledger
             .tried(format!("cleared {} with {how}", distraction.name));
-        Ok(true)
+        Ok(())
     }
 }
 
