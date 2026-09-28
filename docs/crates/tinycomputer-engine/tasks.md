@@ -51,6 +51,12 @@ flow you wrote yourself). It also takes:
 - `memory`: grounding hints from an earlier run, so this one reads less of
   the screen to find the same elements again.
 - `trace`: record every Jev exchange for `TaskReport`.
+- `output`: instructions and an optional JSON Schema for the answer the
+  caller wants back, instead of reading raw `done.records` by hand. Needs
+  the planner configured (the shaper it builds alongside the planner and
+  the rescuer), or `StartTask` fails with `OUTPUT_UNAVAILABLE`; a schema
+  outside the supported subset fails with `INVALID_OUTPUT`. See
+  [output.md](output.md).
 
 Before anything runs, the flow is validated with the same checker a flow
 author's `Describe` call uses. A flow that references an undefined
