@@ -96,7 +96,7 @@ Each criterion looks for a field whose *name* hints at what it needs
 (`price`/`fare`/`cost`/`total` for price criteria, `depart`/`time`/`start`
 for time criteria, and so on), and falls back to scanning every field's text
 if no name matches. For price specifically, the fallback scan only accepts a
-value that actually showed a currency, so a flight number like `6E-2135`
+value that actually showed a currency: a flight number like `6E-2135`
 never gets mistaken for a price just because it contains digits. A record
 whose value cannot be read at all is not dropped from the ranking; it is
 placed after every readable one, in its original order, so a caller always
