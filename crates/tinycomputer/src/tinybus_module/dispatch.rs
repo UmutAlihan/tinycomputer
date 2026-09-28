@@ -74,27 +74,29 @@ impl DesktopService {
                 })
             })
             .transpose()?;
+        // The planner's configuration also brings the rescuer, on the same
+        // key: a failed step is handed to it before a task fails.
         let planner = config
             .as_object()
             .and_then(|object| object.get("planner"))
             .map(|value| {
-                let config: agentic::PlannerConfig = serde_json::from_value(value.clone())
-                    .map_err(|_| crate::Error::ConfigFieldType {
-                        field: "planner",
-                        expected: "a planner configuration object with an api_key",
-                    })?;
-                agentic::open_router(&config).map_err(|_| crate::Error::ConfigFieldType {
+                let invalid = || crate::Error::ConfigFieldType {
                     field: "planner",
                     expected: "a planner configuration object with an api_key",
-                })
+                };
+                let config: agentic::PlannerConfig =
+                    serde_json::from_value(value.clone()).map_err(|_| invalid())?;
+                let planner = agentic::open_router(&config).map_err(|_| invalid())?;
+                let rescuer = agentic::open_router_rescuer(&config).map_err(|_| invalid())?;
+                Ok::<_, crate::Error>((planner, rescuer))
             })
             .transpose()?;
         let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone());
         runner.executable = browser_executable(config)?;
         runner.cursor = cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
-        if let Some(planner) = planner {
-            tasks = tasks.with_planner(planner);
+        if let Some((planner, rescuer)) = planner {
+            tasks = tasks.with_planner(planner).with_rescuer(rescuer);
         }
         let tasks = Arc::new(tasks);
         Ok(Self {
@@ -179,6 +181,7 @@ impl DesktopService {
             ],
             self.jev.is_some(),
             self.tasks.planner_configured(),
+            self.tasks.rescue_configured(),
         ))
     }
 
