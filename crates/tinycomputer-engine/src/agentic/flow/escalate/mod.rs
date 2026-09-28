@@ -511,6 +511,41 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 }
 
+impl<B: AgentBackend + Sync> FlowRun<'_, B> {
+    /// How strongly `candidate` is the element for `purpose`: "is it?"
+    /// calibrated against "is it only similar or next to it?", asked in
+    /// every framing the run can afford.
+    pub(super) async fn vouch(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        purpose: &str,
+        candidate: &Candidate,
+    ) -> Result<f64, Halt> {
+        let request = ask::request(
+            self.model(),
+            self.state(screen, purpose),
+            Questions::default()
+                .with(
+                    "is_0",
+                    ask::corroborate(purpose, candidate, self.include_values),
+                )
+                .with(
+                    "only_near_0",
+                    ask::only_near(purpose, candidate, self.include_values),
+                ),
+        );
+        let mut answers = self.ask(log, request.clone()).await?;
+        if self.enabled(FlowLoop::Escalation)
+            && let Some(widened) = self.widen(log, &request).await?
+        {
+            self.climbed(log, "irreversible", "framings", None);
+            answers.extend(widened);
+        }
+        Ok(ask::calibrated(&answers, "is_0", "only_near_0").unwrap_or_default())
+    }
+}
+
 /// The candidate `merged` picked among `offer`'s, with its probability.
 fn picked(offer: &Offer<'_>, merged: &Answer) -> Option<(Candidate, f64)> {
     let Answer::Choice(choice) = merged else {

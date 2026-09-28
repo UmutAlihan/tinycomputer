@@ -17,6 +17,7 @@ use super::{
     act::DONE,
     ask::{self, Questions, chosen, condition, numbered},
     backend::deliver_text,
+    escalate::Belief,
     ground::Grounded,
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute_safe},
@@ -33,6 +34,9 @@ const WINDOW_CHECKS: u32 = 10;
 const WAIT_CHECKS: u32 = 10;
 /// Most characters of a picked item's text kept in its variable.
 const MAX_PICK_SUMMARY: usize = 400;
+/// Least belief a deep run needs that a control is the one a `stop_before`
+/// names before it presses it irreversibly.
+pub(super) const IRREVERSIBLE_FLOOR: f64 = 0.85;
 /// Least probability a `read` or `stop_before` target needs.
 const LOCATE_FLOOR: f64 = 0.5;
 
@@ -834,6 +838,21 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 label(&target)
             ));
             return Err(Halt::Stop(FlowStopReason::StoppedBeforeDestructive));
+        }
+        if self.deep()
+            && self.deliberates(FlowLoop::Evidence)
+            && grounded.confidence < IRREVERSIBLE_FLOOR
+        {
+            // Nothing undoes this press: the bar is higher than for any
+            // other, and a pick short of it is vouched for once more.
+            let vouched = self.vouch(log, &screen, &purpose, &target).await?;
+            log.confidence = Some(vouched);
+            if vouched < IRREVERSIBLE_FLOOR {
+                return Err(Halt::Failed(format!(
+                    "will not press {} irreversibly on uncertain evidence (confidence {vouched:.2})",
+                    label(&target)
+                )));
+            }
         }
         let clicked = target.clone();
         let reply = self
