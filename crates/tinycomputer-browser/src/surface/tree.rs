@@ -30,7 +30,8 @@ const TEXT_ENTRY_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbut
 /// still be describable by what it shows; it is only the role's *value*,
 /// once it holds one, that is never safe to show as someone else's
 /// description.
-const VALUE_BEARING_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbutton", "combobox"];
+const VALUE_BEARING_ROLES: &[&str] =
+    &["textbox", "searchbox", "textarea", "spinbutton", "combobox"];
 
 /// Longest description an unnamed control takes from the text inside it.
 const MAX_CONTENT_NAME: usize = 120;
