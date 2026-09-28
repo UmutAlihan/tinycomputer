@@ -264,6 +264,18 @@ fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Cand
     }
 }
 
+/// The obstacle sheet's controls: two buttons, and a checkbox holding a
+/// value, to check that value-visibility policy is honored when it is
+/// offered as a dismissal option.
+fn obstacle_sheet(candidates: &mut Vec<Candidate>) {
+    candidates.push(node("Delete Draft", "button", &["Click"], &["sheet"], 500.0));
+    candidates.push(node("Keep Editing", "button", &["Click"], &["sheet"], 500.0));
+    candidates.push(Candidate {
+        value: Some(json!("unsaved-draft-42")),
+        ..node("Remember", "checkbox", &["Click"], &["sheet"], 500.0)
+    });
+}
+
 /// A city list whose unnamed rows each hold their city as a value and take
 /// no text, above the one real search field.
 fn city_rows(root: &str, candidates: &mut Vec<Candidate>) {
