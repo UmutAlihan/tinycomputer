@@ -203,13 +203,13 @@ matching on prose breaks the moment a message is reworded.
 | Name | Meaning | An agent can act on this |
 |---|---|---|
 | `InvalidInput` | malformed or self-contradictory request | yes |
-| `NoSuchSession` | the session does not exist or is closed | no, open a new one, do not retry |
-| `NoSuchElement` | no element matched the target | yes, re-snapshot and choose again |
-| `StaleRef` | the ref belongs to an earlier snapshot | yes, same remedy as above, and the name says so directly |
+| `NoSuchSession` | the session does not exist or is closed | no: open a new one, do not retry |
+| `NoSuchElement` | no element matched the target | yes: re-snapshot and choose again |
+| `StaleRef` | the ref belongs to an earlier snapshot | yes: same remedy as above, and the name says so directly |
 | `NotActionable` | found, but covered, disabled, or off-document | yes |
 | `Timeout` | ran out of time | yes |
-| `BlockedByPolicy` | outside `SessionOptions.allowed_origins` | no, never retry, the answer will not change |
-| `BrowserUnavailable` | no browser could be launched or reached | no, a host or deployment problem |
+| `BlockedByPolicy` | outside `SessionOptions.allowed_origins` | no: never retry, the answer will not change |
+| `BrowserUnavailable` | no browser could be launched or reached | no: a host or deployment problem |
 | `PageError` | a JavaScript exception, or the browser rejected a command | yes |
 | `NoSuchOutput` | the held output does not exist or expired | no |
 | `LimitExceeded` | too many sessions, too many held outputs, or an output too large to hold | no |

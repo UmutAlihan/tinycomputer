@@ -26,11 +26,11 @@ A fact becomes secret in one of three ways, and only one of them is up to
 the caller:
 
 1. the caller explicitly marks it secret (`Facts::with_secrets`)
-2. its *name* labels something sensitive, see `is_sensitive_name` below
+2. its *name* labels something sensitive (see `is_sensitive_name` below)
 3. its *value* looks like a real card number (passes the Luhn checksum)
 
 A caller can make any fact secret. A caller cannot make a fact that matches
-rule 2 or 3 shared, even by trying, `Facts::new` computes secrecy from the
+rule 2 or 3 shared, even by trying: `Facts::new` computes secrecy from the
 name and value themselves, and there is no method that removes an entry from
 that set once it is in.
 
