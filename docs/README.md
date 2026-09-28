@@ -1,5 +1,10 @@
 # tinycomputer documentation
 
+tinycomputer is a decision model (Jev) based harness for desktop and browser
+automation, written in Rust. Jev makes every choice about what to press; the
+Rust harness around it reads the screen, asks, checks, acts, verifies, and
+keeps it safe.
+
 Pick a starting point by what you want to do.
 
 ## New here

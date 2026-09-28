@@ -1,15 +1,21 @@
 # tinycomputer
 
-tinycomputer lets an AI agent use a computer. It can work in desktop apps
-like Mail and Notes, and on websites in a real Chrome browser. Give it a job
-like "find the cheapest flight from Delhi to Srinagar on 14 October and fill
-in my details up to payment". It works out the clicks itself, asks you when
-it needs something, and always stops before money moves.
+**A decision model (Jev) based harness for desktop and browser automation,
+written in Rust.**
 
-It doesn't use screenshots or pixel matching, and nobody has to tell it where
-the buttons are. It reads the screen the way a screen reader does, as a list
-of named buttons and fields, and a small decision model called Jev picks what
-to press, one small question at a time.
+tinycomputer drives desktop apps like Mail and Notes, and websites in a real
+Chrome browser. Every choice about what to press comes from Jev, a decision
+model that answers small, closed questions about the screen. Everything else
+is the harness: plain Rust code that reads the screen, asks the questions,
+checks the answers, acts, verifies what happened, and enforces the safety
+rules.
+
+Give it a job like "find the cheapest flight from Delhi to Srinagar on 14
+October and fill in my details up to payment". It works out the clicks
+itself, asks you when it needs something, and always stops before money
+moves. It doesn't use screenshots or pixel matching, and nobody has to tell
+it where the buttons are. It reads the screen the way a screen reader does,
+as a list of named buttons and fields.
 
 tinycomputer ships as a TinyBus module: one library that a host program
 loads, which an agent then calls.
