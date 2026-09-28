@@ -19,8 +19,10 @@ const FIELD_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "textarea", "
 /// Roles a value is typed into.
 const TYPED_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "spinbutton", "textarea"];
 
-/// Roles whose inner text is what was typed into them.
-const TEXT_ENTRY_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbutton"];
+/// Roles whose own value is what was typed or selected into them, so it
+/// must never be propagated as an enclosing unnamed container's
+/// content-derived description.
+const TEXT_ENTRY_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbutton", "combobox"];
 
 /// Longest description an unnamed control takes from the text inside it.
 const MAX_CONTENT_NAME: usize = 120;
