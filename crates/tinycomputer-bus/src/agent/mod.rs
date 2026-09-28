@@ -54,7 +54,7 @@ pub use types::{
     AgentError, AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, Example,
     InputField, InputKind, MemberDoc, PaymentMode, PlanTaskRequest, Rescue, RescueOutcome,
     StartTaskRequest, StepView, SurfaceAvailability, SurfaceKind, TaskBudget, TaskConstraints,
-    TaskId, TaskPlan, TaskRef, TaskReport, TaskStatus, TaskView,
+    TaskId, TaskOutput, TaskPlan, TaskRef, TaskReport, TaskStatus, TaskView,
 };
 
 #[cfg(test)]

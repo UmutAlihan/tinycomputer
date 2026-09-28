@@ -56,9 +56,15 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
     }
 
     /// The visible text of whatever was last observed or opened: its
-    /// context lines, control labels, and what each field holds (`label =
-    /// "value"`, up to 80 characters). Empty when nothing has been, or it
-    /// can no longer be read. Blocks, like every surface call.
+    /// context lines, control labels, and what each field holds in full
+    /// (`label = "value"`). Empty when nothing has been, or it can no
+    /// longer be read. Blocks, like every surface call.
+    ///
+    /// A field's value is never clipped here: every caller masks secrets
+    /// out of this text afterward by their exact value, and a value cut
+    /// short first would leave its uncut prefix unmasked. Callers that also
+    /// bound the total text they send on (the rescuer's briefing, capped at
+    /// [`crate::rescue::SCREEN_CHARS`]) do so after masking, not before.
     #[must_use]
     pub fn visible_text(&self) -> Vec<String>
     where
@@ -85,10 +91,7 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
                             .and_then(serde_json::Value::as_str)
                             .filter(|held| !held.trim().is_empty());
                         match (&node.name, held) {
-                            (Some(name), Some(held)) => Some(format!(
-                                "{name} = {:?}",
-                                held.chars().take(80).collect::<String>()
-                            )),
+                            (Some(name), Some(held)) => Some(format!("{name} = {held:?}")),
                             (name, _) => name.clone(),
                         }
                     }))

@@ -544,6 +544,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 None => self.clear_obstacle(log, screen, intent).await?,
             }
             state.last = None;
+            // Clearing an obstacle is not a press to weigh an oscillation
+            // against: the screens before and after belong to two different
+            // situations, so a later coincidence between them is not the
+            // two presses that undid each other.
+            state.pressed_before = None;
+            state.seen.clear();
             return Ok(true);
         }
         let regressed = match (&state.last, judged.progress) {
@@ -606,6 +612,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         self.undo(log, state, &why, target.as_ref()).await?;
         self.plan_branch(state);
         state.last = None;
+        // A verified undo is supposed to return to an earlier screen, so
+        // seeing it again next turn is not an oscillation: without this,
+        // `note_oscillation` would see the pre-mistake screen twice with
+        // the mistaken press in between and ban `pressed_before` — the
+        // correct earlier press that undoing the mistake deliberately
+        // brought back.
+        state.pressed_before = None;
+        state.seen.clear();
         Ok(true)
     }
 

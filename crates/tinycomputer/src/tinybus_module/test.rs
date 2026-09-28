@@ -501,6 +501,13 @@ fn a_planner_is_configured_from_private_configuration_only_with_a_key() {
         service.tasks.rescue_configured(),
         "the planner's key brings the rescuer"
     );
+    assert!(service.tasks.output_configured(), "and the shaper");
+    assert!(
+        DesktopService::from_config(
+            &json!({"planner": {"api_key": "k", "output_model": "openai/gpt-6-luna-pro"}})
+        )
+        .is_ok()
+    );
     assert!(
         DesktopService::from_config(
             &json!({"planner": {"api_key": "k", "rescue_model": "openai/gpt-6-luna-pro"}})
@@ -512,6 +519,12 @@ fn a_planner_is_configured_from_private_configuration_only_with_a_key() {
             .unwrap()
             .tasks
             .rescue_configured()
+    );
+    assert!(
+        !DesktopService::from_config(&json!({}))
+            .unwrap()
+            .tasks
+            .output_configured()
     );
     assert!(DesktopService::from_config(&json!({"planner": {"api_key": " "}})).is_err());
     assert!(DesktopService::from_config(&json!({"planner": {"model": "m"}})).is_err());

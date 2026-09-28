@@ -1,0 +1,99 @@
+{
+  "app": "net.whatsapp.WhatsApp",
+  "steps": [
+    {
+      "open": "net.whatsapp.WhatsApp"
+    },
+    "show the chat list with the All filter selected",
+    {
+      "pick": {
+        "from": "the list of chats",
+        "by": "the chat at the top of the list"
+      }
+    },
+    {
+      "read": {
+        "what": "the open chat's name: the name of the button at the top of the conversation, above its messages",
+        "into": "chat_1"
+      }
+    },
+    {
+      "extract": {
+        "what": "the messages in the open chat",
+        "into": "messages_1"
+      }
+    },
+    {
+      "pick": {
+        "from": "the list of chats",
+        "by": "the chat nearest the top of the list that is not already collected"
+      }
+    },
+    {
+      "read": {
+        "what": "the open chat's name: the name of the button at the top of the conversation, above its messages",
+        "into": "chat_2"
+      }
+    },
+    {
+      "extract": {
+        "what": "the messages in the open chat",
+        "into": "messages_2"
+      }
+    },
+    {
+      "pick": {
+        "from": "the list of chats",
+        "by": "the chat nearest the top of the list that is not already collected"
+      }
+    },
+    {
+      "read": {
+        "what": "the open chat's name: the name of the button at the top of the conversation, above its messages",
+        "into": "chat_3"
+      }
+    },
+    {
+      "extract": {
+        "what": "the messages in the open chat",
+        "into": "messages_3"
+      }
+    },
+    {
+      "pick": {
+        "from": "the list of chats",
+        "by": "the chat nearest the top of the list that is not already collected"
+      }
+    },
+    {
+      "read": {
+        "what": "the open chat's name: the name of the button at the top of the conversation, above its messages",
+        "into": "chat_4"
+      }
+    },
+    {
+      "extract": {
+        "what": "the messages in the open chat",
+        "into": "messages_4"
+      }
+    },
+    {
+      "pick": {
+        "from": "the list of chats",
+        "by": "the chat nearest the top of the list that is not already collected"
+      }
+    },
+    {
+      "read": {
+        "what": "the open chat's name: the name of the button at the top of the conversation, above its messages",
+        "into": "chat_5"
+      }
+    },
+    {
+      "extract": {
+        "what": "the messages in the open chat",
+        "into": "messages_5"
+      }
+    }
+  ]
+}

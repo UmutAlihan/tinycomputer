@@ -1,0 +1,56 @@
+{
+  "instructions": "The five chats in list order (chat_1 to chat_5 with messages_1 to messages_5), each with its name and its ten most recent messages, oldest first. `from` is who sent it (\"me\" for the person's own messages), `text` the message itself without the words the screen reader adds (\"message\", \"Received from\", the time), and `time` the time or date shown with it. A chat whose name was not read is named from its messages.",
+  "schema": {
+    "type": "object",
+    "required": [
+      "chats"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "chats": {
+        "type": "array",
+        "maxItems": 5,
+        "items": {
+          "type": "object",
+          "required": [
+            "name",
+            "messages"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "messages": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "required": [
+                  "from",
+                  "text",
+                  "time"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "time": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

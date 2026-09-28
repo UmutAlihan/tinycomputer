@@ -1,4 +1,4 @@
-//! The planner's and the rescuer's models on `OpenRouter`, through
+//! The planner's, the rescuer's, and the shaper's models on `OpenRouter`, through
 //! `tinyinference-llm`.
 //!
 //! Only this file links a text-generating model, and only with the `planner`
@@ -14,6 +14,7 @@ use tinyinference_llm::{ChatModel, Message, ModelRequest, ProviderKind, Provider
 
 use super::{Completion, LanguageModel, Planner, Role, Turn};
 use crate::rescue::Rescuer;
+use crate::shape::Shaper;
 
 /// The model used when the configuration names none.
 pub const PLANNER_MODEL: &str = "anthropic/claude-sonnet-5";
@@ -21,6 +22,10 @@ pub const PLANNER_MODEL: &str = "anthropic/claude-sonnet-5";
 /// The reasoning model a failed step is rescued with when the configuration
 /// names none.
 pub const RESCUE_MODEL: &str = "openai/gpt-6-luna";
+
+/// The reasoning model a finished task's answer is shaped with when the
+/// configuration names none.
+pub const OUTPUT_MODEL: &str = "openai/gpt-6-luna";
 
 /// The module's private `planner` configuration.
 #[derive(Clone, Deserialize)]
@@ -34,6 +39,10 @@ pub struct PlannerConfig {
     /// [`RESCUE_MODEL`] when absent.
     #[serde(default)]
     pub rescue_model: Option<String>,
+    /// The `OpenRouter` model id a finished task's answer is shaped with;
+    /// [`OUTPUT_MODEL`] when absent.
+    #[serde(default)]
+    pub output_model: Option<String>,
 }
 
 impl std::fmt::Debug for PlannerConfig {
@@ -43,6 +52,7 @@ impl std::fmt::Debug for PlannerConfig {
             .debug_struct("PlannerConfig")
             .field("model", &self.model)
             .field("rescue_model", &self.rescue_model)
+            .field("output_model", &self.output_model)
             .finish_non_exhaustive()
     }
 }
@@ -76,6 +86,24 @@ pub fn open_router_rescuer(config: &PlannerConfig) -> Result<Rescuer, String> {
         temperature: None,
         reasoning: Some(ReasoningEffort::Low),
         max_tokens: 8_000,
+    })))
+}
+
+/// A [`Shaper`] on `OpenRouter` configured by `config`: the same key, the
+/// `output_model` (or [`OUTPUT_MODEL`]), reasoning briefly before it answers.
+///
+/// # Errors
+///
+/// Why the model could not be built, such as an empty key.
+pub fn open_router_shaper(config: &PlannerConfig) -> Result<Shaper, String> {
+    let model = chat_model(config, config.output_model.as_ref(), OUTPUT_MODEL)?;
+    Ok(Shaper::new(Arc::new(OpenRouter {
+        model,
+        // Reasoning models take no sampling temperature.
+        temperature: None,
+        reasoning: Some(ReasoningEffort::Low),
+        // Room for a result built from many records.
+        max_tokens: 16_000,
     })))
 }
 

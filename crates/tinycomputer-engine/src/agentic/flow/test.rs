@@ -1947,6 +1947,67 @@ async fn a_read_target_beyond_the_source_cap_is_still_found_by_paging() {
 }
 
 #[tokio::test]
+async fn a_read_can_take_an_elements_name_rather_than_its_value() {
+    // The Subject field is named "Subject" and holds what was typed: asked
+    // for the field's name, the read gets the name, not the value.
+    let answers = |part: &'static str| {
+        move |id: &str, question: &Question, _: &Sim| {
+            (id == "source").then(|| pick(question, &format!("\"part\":\"{part}\""), 0.9))
+        }
+    };
+    for (part, read) in [("name", "Subject"), ("value", "Moving Thursday")] {
+        let run = run_with(
+            App::default(),
+            json!({"app": "Mail", "steps": [
+                "start a new email message",
+                {"enter": {"subject": "Moving Thursday"}},
+                {"read": {"what": "the subject field", "into": "got"}}
+            ]}),
+            |_| {},
+            answers(part),
+        )
+        .await;
+        assert_eq!(run.result.stop, FlowStopReason::Completed, "{part}");
+        assert_eq!(run.result.vars["got"], read, "{part}");
+    }
+}
+
+#[tokio::test]
+async fn later_steps_remember_what_earlier_steps_saved() {
+    // A flow that walks a list must know which items it has already done:
+    // every state after a read recalls the value, and an extract's rows as
+    // their count.
+    let app = flights();
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"read": {"what": "the window heading", "into": "heading"}},
+            {"extract": {"what": "the flight results", "into": "flights"}},
+            {"read": {"what": "the first Select button", "into": "again"}}
+        ]}),
+        |_| {},
+        |id, question, _| (id == "source").then(|| pick(question, "Select", 0.9)),
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    let first = run.requests.first().unwrap();
+    assert!(
+        first.state.get("already_collected").is_none(),
+        "nothing is recalled before anything is saved"
+    );
+    let last = run.requests.last().unwrap();
+    let recalled = &last.state["already_collected"]["untrusted_accessibility_data"];
+    assert_eq!(recalled["heading"], run.result.vars["heading"]);
+    assert!(
+        recalled["flights"]
+            .as_str()
+            .unwrap()
+            .starts_with("3 items; the first: IndiGo 6E-2135"),
+        "{recalled}"
+    );
+}
+
+#[tokio::test]
 async fn control_steps_branch_repeat_read_and_wait() {
     let run = run_with(
         App::default(),
@@ -3304,6 +3365,64 @@ async fn extract_stores_every_item_of_the_list() {
     assert!(nothing.result.steps[0].note.contains("no list of results"));
 }
 
+#[tokio::test]
+async fn a_judged_pick_chooses_within_the_list_it_names() {
+    // Seven days above three flights: the judged pick is made among the
+    // flights `from` names, not the longer strip of days.
+    let app = flights();
+    app.sim().date_strip = 7;
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "the most comfortable airline"}}
+        ]}),
+        |_| {},
+        |id, question, _| match id {
+            "list" => Some(pick(question, "IndiGo", 0.9)),
+            "record" => Some(pick(question, "Vistara", 0.9)),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.app.sim().picked, ["@s:select-2"]);
+}
+
+#[tokio::test]
+async fn extract_asks_which_list_is_meant_when_several_show() {
+    // Seven days above three flights: the longest list is not the one
+    // asked for, and Jev says which is.
+    let app = flights();
+    app.sim().date_strip = 7;
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"extract": {"what": "the flight results", "into": "flights"}}
+        ]}),
+        |_| {},
+        |id, question, _| (id == "list").then(|| pick(question, "IndiGo", 0.9)),
+    )
+    .await;
+    let rows: Vec<Vec<String>> = serde_json::from_str(&run.result.vars["flights"]).unwrap();
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[0][0], "IndiGo 6E-2135");
+
+    // Unsure, it keeps the longest, as it did before it asked.
+    let app = flights();
+    app.sim().date_strip = 7;
+    let unsure = run_with(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"extract": {"what": "the flight results", "into": "flights"}}
+        ]}),
+        |_| {},
+        |id, question, _| (id == "list").then(|| pick(question, "IndiGo", 0.3)),
+    )
+    .await;
+    let rows: Vec<Vec<String>> = serde_json::from_str(&unsure.result.vars["flights"]).unwrap();
+    assert_eq!(rows.len(), 7);
+}
+
 // ------------------------------------------------ brief, secrets, and votes
 
 /// The brief a request's choosing questions carry; `Null` when none does.
@@ -3456,6 +3575,50 @@ async fn a_secret_the_page_shows_back_is_masked_in_every_request() {
     );
     let traced = serde_json::to_string(&run.result.trace).unwrap();
     assert!(!traced.contains("4111111111111111"));
+}
+
+#[tokio::test]
+async fn a_secret_longer_than_the_display_clip_is_still_fully_masked() {
+    // A secret over 80 characters must still be masked whole: clipping the
+    // held value to a readable length before `FlowRun::mask` sees it would
+    // leave the first 80 characters — everything the exact-match and
+    // digit-run masking can no longer find — sitting unmasked in the state.
+    let long_secret = "4111".repeat(25); // 100 characters, all digits.
+    let run = run_with(
+        App::default(),
+        json!({
+            "app": "Mail",
+            "steps": [
+                {"open": "Mail"},
+                "start a new email message",
+                {"enter": {"message body": "${card number}"}},
+                {"verify": "the draft shows the body"}
+            ]
+        }),
+        |request| {
+            request.vars = BTreeMap::from([("card number".to_owned(), long_secret.clone())]);
+            request.facts = BTreeSet::from(["card number".to_owned()]);
+            request.include_values = true;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(run.app.sim().fields["Body"], long_secret);
+    let text = run
+        .requests
+        .iter()
+        .map(|request| serde_json::to_string(request).unwrap())
+        .collect::<String>();
+    assert!(
+        !text.contains(&long_secret[..80]),
+        "even the first 80 characters of a long secret must never appear unmasked"
+    );
+    assert!(
+        text.contains("${card number}"),
+        "the page's copy reads as its template"
+    );
+    let traced = serde_json::to_string(&run.result.trace).unwrap();
+    assert!(!traced.contains(&long_secret[..80]));
 }
 
 #[tokio::test]

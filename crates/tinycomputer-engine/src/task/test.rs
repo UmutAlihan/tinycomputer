@@ -173,7 +173,10 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
     assert_eq!(view.status, TaskStatus::Running);
     assert_eq!(view.next, ["AwaitTask", "CancelTask"]);
     let done = settle(&tasks, &view.id).await;
-    let TaskStatus::Done { answer, records } = &done.status else {
+    let TaskStatus::Done {
+        answer, records, ..
+    } = &done.status
+    else {
         panic!("{:?}", done.status);
     };
     assert!(
@@ -942,7 +945,8 @@ fn the_app_in_front_is_the_last_opened_before_a_step() {
 
 #[tokio::test]
 async fn describe_documents_every_member_and_its_examples_really_work() {
-    let described = capabilities(Vec::new(), true, false, false);
+    let (tasks, _) = controller(Vec::new());
+    let described = capabilities(Vec::new(), true, &tasks);
     let names = described
         .members
         .iter()
@@ -959,7 +963,7 @@ async fn describe_documents_every_member_and_its_examples_really_work() {
     assert!(described.step_kinds.iter().any(|kind| kind == "browse"));
     assert!(!described.planner_configured);
     assert!(!described.rescue_configured);
-    assert!(capabilities(Vec::new(), true, true, true).rescue_configured);
+    assert!(!described.output_configured);
 
     let flight = &described.examples[0];
     assert_eq!(flight.member, "StartTask");
@@ -1254,4 +1258,5 @@ async fn a_run_gets_the_callers_values_and_the_flow_keeps_its_own_definitions() 
     assert_eq!(request.flow.vars["first_name"], "${first name}");
 }
 
+mod output;
 mod rescue;

@@ -19,7 +19,12 @@ Change a constant and its row together.
 | `CORROBORATED` | 0.80 | `ground.rs` | corroboration that accepts a target alone |
 | `AGREED` | 0.50 | `ground.rs` | corroboration that accepts a target the re-ask agreed on |
 | `SLOT_FLOOR` | 0.40 | `enter.rs` | least probability for a slot assignment |
-| `LOCATE_FLOOR` | 0.50 | `steps.rs` | least probability for a `read`, `pick`, or `stop_before` target |
+| `LOCATE_FLOOR` | 0.50 | `steps.rs` | least probability for a `read`, `pick`, or `stop_before` target, or an `extract`'s list |
+| `MAX_LISTS` | 6 | `steps.rs` | lists an `extract` offers Jev when several show; past it, the longest six |
+| `LIST_PREVIEW` | 3 | `steps.rs` | first items of each list an `extract` shows Jev to tell the lists apart |
+| `MAX_COLLECTED` | 12 | `wide.rs` | saved variables every state recalls as `already_collected`, the most recent first kept |
+| `COLLECTED_CHARS` | 120 | `wide.rs` | characters of each saved value `already_collected` recalls |
+| `MIN_FLAT_ITEMS` | 3 | `tinycomputer-core` `surface/groups.rs` | same-role leaf siblings that make a list for `extract` and `pick` on a screen where nothing repeats by ordinal, as on a desktop tree |
 | `CAP` | 20 | `ask.rs` | most options in one Choice |
 | `DO_TURNS` | 8 | `steps.rs` | turns a `do` step may spend |
 | `REFLECT_FLOOR` | 0.50 | `reflect.rs` | belief that a pressed `choose` left its choice, below which it is repaired, and failed if the repair does not take |
