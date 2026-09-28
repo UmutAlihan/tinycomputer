@@ -3764,6 +3764,50 @@ fn a_fare_card_is_one_option_and_a_checked_one_is_already_chosen() {
     assert!(already_chosen(&screen, "Saver").is_none());
 }
 
+#[test]
+fn a_field_already_showing_the_option_holds_it_unless_the_flow_typed_it() {
+    // Emirates' passengers box reads "1 Adult"; the stepper beside it names
+    // "1 Adult" too, and pressing it makes two.
+    let mut passengers = node(
+        "Passengers",
+        "textbox",
+        &["Click", "SetValue"],
+        &["main"],
+        1.0,
+    );
+    passengers.value = Some(json!("1 Adult"));
+    let stepper = node(
+        "Increase number of Adult passengers. You have selected 1 Adult. Ages 12+",
+        "button",
+        &["Click"],
+        &["main"],
+        2.0,
+    );
+    let screen = Screen {
+        app: "browser".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: vec![stepper, passengers.clone()],
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    let none = BTreeSet::new();
+    assert_eq!(
+        already_holds(&screen, "1 Adult", &none).and_then(|held| held.name),
+        Some("Passengers".to_owned()),
+        "the stepper only mentions the option; the box holds it"
+    );
+    assert!(already_holds(&screen, "2 Adults", &none).is_none());
+    assert!(already_holds(&screen, "Adult", &none).is_none(), "whole value only");
+    assert!(already_holds(&screen, "", &none).is_none());
+    let typed = BTreeSet::from([super::view::element_kind(&passengers)]);
+    assert!(
+        already_holds(&screen, "1 Adult", &typed).is_none(),
+        "text the flow typed to search is not a choice"
+    );
+}
+
 #[tokio::test]
 async fn a_reveal_that_fails_leaves_the_other_ways_to_try() {
     let run = run_with(
