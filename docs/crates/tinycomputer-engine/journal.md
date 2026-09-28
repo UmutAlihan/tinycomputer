@@ -36,7 +36,7 @@ TINYCOMPUTER_JEV_JOURNAL=1 scripts/lab run <scenario> --mode flow
 Each run gets its own directory, `<dir>/<run id>/`, holding one file:
 `journal.jsonl` (`JOURNAL_FILE`), JSON Lines, one event per line. A run id
 sorts by start time and is safe as a single path segment:
-`20260928T101530Z-flow-a1b2c3`, a compact UTC timestamp, the run's kind
+`20260928T101530Z-flow-a1b2c3`: a compact UTC timestamp, the run's kind
 (`flow`, `goal`, `intent`, `goal-continuation`), and three random bytes so
 two runs started in the same second never collide.
 
@@ -64,13 +64,13 @@ later means reading one file, not stitching several together.
 
 Every event carries `event` (its kind), `seq` (a per-run sequence number),
 `at` (a wall-clock RFC 3339 timestamp), and `elapsed_ms` (time since the
-run's journal was opened), written by `Journal::record`, which every event
-kind goes through. Two kinds matter most:
+run's journal was opened). Each is written by `Journal::record`, which
+every event kind goes through. Two kinds matter most:
 
-- **`run`**, written once, when a run begins: its `kind`, a human `label`
+- **`run`**: written once, when a run begins: its `kind`, a human `label`
   (the goal or intent text, or the task's), the Jev `model` in use, and the
   process id.
-- **`exchange`**, written for every single Jev call, win or lose: the
+- **`exchange`**: written for every single Jev call, win or lose: the
   optional `step` label, which `questions` were asked, the request's byte
   size, the full `request` sent, and either `{"ok": true, latency_ms,
   attempts, request_id, model, input_tokens, output_tokens, answers}` or

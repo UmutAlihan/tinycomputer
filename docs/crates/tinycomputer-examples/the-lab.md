@@ -106,7 +106,7 @@ and the journal answer different questions: the trace file shows what a run
 it took.
 
 `target/lab-runs/memory.json` carries grounding hints between runs of the
-same scenario — where things tended to be found last time — so a second run
+same scenario, where things tended to be found last time, so a second run
 of the same scenario usually needs fewer Jev calls than the first.
 `--no-memory` turns that off, which is useful when you want to measure a
 loop's cold-start cost specifically. See
