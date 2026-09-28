@@ -1,6 +1,7 @@
 # tinycomputer TinyBus Module
 
-This package contains the native `tinycomputer` module for TinyBus module ABI
+tinycomputer is a decision model (Jev) based harness for desktop and browser
+automation, written in Rust. This package contains the native `tinycomputer` module for TinyBus module ABI
 v1. Install only the archive matching the host operating system and
 architecture.
 

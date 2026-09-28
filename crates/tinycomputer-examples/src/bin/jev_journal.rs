@@ -12,7 +12,7 @@
 //! ```
 //!
 //! `<id>` is `latest`, any unique part of a run id, or a run directory.
-//! See `docs/jev-journal.md`.
+//! See `docs/technical/jev-journal.md`.
 
 use std::process::ExitCode;
 

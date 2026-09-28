@@ -1,5 +1,9 @@
 # tinycomputer-bus
 
+Part of [tinycomputer](../../README.md), a decision model (Jev) based harness for
+desktop and browser automation, written in Rust. This crate is its wire contract: what a host sends and gets back. Its user guide is
+[`docs/crates/tinycomputer-bus/`](../../docs/crates/tinycomputer-bus/README.md).
+
 Every type that crosses the tinycomputer module's `TinyBus` boundary, and the
 names of the members that carry them.
 

@@ -5,7 +5,7 @@
 //! - `record` writes run artifacts, timelines, and scorecards.
 //! - `author` (feature `inference`) is the optional LLM that writes flows.
 //!
-//! Start with `scripts/lab`; see `docs/lab.md`.
+//! Start with `scripts/lab`; see `docs/technical/lab.md`.
 
 #[cfg(feature = "inference")]
 pub mod author;
