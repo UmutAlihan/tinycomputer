@@ -15,6 +15,7 @@ use std::collections::BTreeMap;
 
 use serde_json::json;
 use tinycomputer_bus::FlowLoop;
+use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use super::{
     AgentBackend, FlowRun, Halt, StepLog,
@@ -31,8 +32,6 @@ pub(super) const CORROBORATED: f64 = 0.8;
 pub(super) const AGREED: f64 = 0.5;
 /// Deepest ancestor level narrowing splits on.
 const MAX_REGION_DEPTH: usize = 8;
-/// Region rounds before the knockout takes over.
-const MAX_REGION_ROUNDS: usize = 3;
 
 /// Named groups of candidates, largest first.
 pub(super) type Regions = Vec<(String, Vec<Candidate>)>;
@@ -362,6 +361,123 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let Some((choice, confidence)) = chosen(answers, "target") else {
             return Ok(None);
         };
+        let Some(first) = keys
+            .iter()
+            .position(|key| *key == choice)
+            .and_then(|index| pool.get(index).cloned())
+        else {
+            return Ok(None);
+        };
+        if confidence >= ACT
+            || (confidence >= NAMED_FLOOR && exact_named_match(purpose, Some(&first)))
+        {
+            return Ok(Some(Grounded {
+                candidate: first,
+                confidence,
+            }));
+        }
+        let consistency = self.enabled(FlowLoop::Consistency) && pool.len() > 1;
+        let corroboration = self.enabled(FlowLoop::Corroboration);
+        if !consistency && !corroboration {
+            return Ok(None);
+        }
+        let mut questions = Questions::default();
+        let mut reordered = pool.clone();
+        reordered.reverse();
+        let letters = lettered(reordered.len());
+        if consistency {
+            log.used(FlowLoop::Consistency);
+            questions = questions.with(
+                "again",
+                elements(purpose, &reordered, &letters, self.include_values),
+            );
+        }
+        if corroboration {
+            log.used(FlowLoop::Corroboration);
+            questions =
+                questions.with("confirm", corroborate(purpose, &first, self.include_values));
+        }
+        let answers = self
+            .ask(
+                log,
+                ask::request(self.model(), self.state(screen, purpose), questions),
+            )
+            .await?;
+        let again = chosen(&answers, "again").and_then(|(choice, probability)| {
+            letters
+                .iter()
+                .position(|key| *key == choice)
+                .and_then(|index| reordered.get(index))
+                .map(|candidate| (candidate.clone(), probability))
+        });
+        let confirm = probability(&answers, "confirm");
+        let agrees = again
+            .as_ref()
+            .is_some_and(|(candidate, _)| candidate.ref_id == first.ref_id);
+        let accepted = match (consistency, corroboration) {
+            (true, true) => {
+                (agrees && confirm.unwrap_or_default() >= AGREED)
+                    || confirm.unwrap_or_default() >= CORROBORATED
+            }
+            (true, false) => agrees,
+            (false, _) => confirm.unwrap_or_default() >= CORROBORATED,
+        };
+        if !accepted {
+            return Ok(None);
+        }
+        let again_confidence = again.map_or(0.0, |(_, probability)| probability);
+        Ok(Some(Grounded {
+            candidate: first,
+            confidence: confidence
+                .max(again_confidence)
+                .max(confirm.unwrap_or_default()),
+        }))
+    }
+}
+
+/// The knockout's group winners, in page order. When the region question
+/// chose a region holding at least one winner, only that region's winners
+/// go on: its answer is the coarse look a person takes first.
+fn winners(
+    knockout: &BTreeMap<String, Answer>,
+    groups: Vec<(Option<usize>, Vec<Candidate>)>,
+    region: Option<usize>,
+    regions: Option<&(Vec<String>, Regions)>,
+) -> Vec<Candidate> {
+    let won = groups
+        .into_iter()
+        .enumerate()
+        .filter_map(|(index, (home, group))| {
+            let (choice, _) = chosen(knockout, &format!("group_{index}"))?;
+            let position = choice.parse::<usize>().ok()?.checked_sub(1)?;
+            group.into_iter().nth(position).map(|winner| (home, winner))
+        })
+        .collect::<Vec<_>>();
+    let Some(region) = region else {
+        return won.into_iter().map(|(_, winner)| winner).collect();
+    };
+    let inside = |home: Option<usize>, winner: &Candidate| {
+        home.map_or_else(
+            || {
+                regions
+                    .and_then(|(_, regions)| regions.get(region))
+                    .is_some_and(|(_, members)| {
+                        members.iter().any(|member| member.ref_id == winner.ref_id)
+                    })
+            },
+            |home| home == region,
+        )
+    };
+    if won.iter().any(|(home, winner)| inside(*home, winner)) {
+        won.into_iter()
+            .filter(|(home, winner)| inside(*home, winner))
+            .map(|(_, winner)| winner)
+            .collect()
+    } else {
+        won.into_iter().map(|(_, winner)| winner).collect()
+    }
+}
+
 /// Groups `pool` by the first ancestor level, at or below `from`, that splits
 /// it into more than one region. Regions beyond `CAP - 1` are merged.
 pub(super) fn split(pool: &[Candidate], from: usize) -> Option<(usize, Regions)> {
