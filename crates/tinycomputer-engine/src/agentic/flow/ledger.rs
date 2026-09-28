@@ -92,7 +92,7 @@ impl Ledger {
             .collect::<Vec<_>>();
         let mut memory = json!({
             "steps_done": self.finished,
-            "now": context.now,
+            "now": clip(context.now),
             "recent_actions": recent,
             "budget_left": {
                 "actions": context.budget_left.0,
