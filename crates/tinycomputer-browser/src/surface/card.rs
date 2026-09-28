@@ -1,12 +1,11 @@
 //! Clicking through a result card's own cover, and pressing a selection again
 //! when a page ignored the click.
 
-use super::sight;
-
 use serde_json::{Value, json};
 use tinycomputer_bus::DesktopResponse;
 use tinycomputer_core::surface::Candidate;
 
+use super::sight;
 use super::BrowserSurface;
 
 /// Whether what covers a point belongs to the same result card as the
@@ -76,6 +75,7 @@ const SAME_CARD_JS: &str = r#"((x, y, name, exact) => {
 })"#;
 
 impl BrowserSurface {
+    /// Clicks the middle of `reference` even though something covers it,
     /// but only when the cover is part of the same result card, so a banner
     /// or dialog in front still blocks the click. `None` when it is not.
     /// Presses a tab, radio, or option again through the DOM when the click

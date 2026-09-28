@@ -33,6 +33,8 @@ use tinycomputer_cursor::ScreenCursor;
 use crate::error::{Error, Result};
 use crate::sessions::Browser;
 use envelope::reply;
+#[cfg(doc)]
+use tinycomputer_core::surface::Surface;
 
 /// How deep a skeleton observation reads before a flow drills in.
 const SKELETON_DEPTH: u32 = 6;
@@ -175,8 +177,6 @@ impl BrowserSurface {
         *slot = Some(info.id.clone());
         Ok(info.id)
     }
-
-    /// Clicks the middle of `reference` even though something covers it,
 
     /// The page, or the part of it under `root`, read by sight; `None` when
     /// the reading fails or sees what it cannot reach, and the tree is read

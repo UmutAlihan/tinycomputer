@@ -1,10 +1,9 @@
 //! Whether the focused element, or the one a ref names, takes typed text.
 
-use super::operations::target;
-
 use serde_json::{Value, json};
 use tinycomputer_bus::browser::Action;
 
+use super::operations::target;
 use super::BrowserSurface;
 
 impl BrowserSurface {
