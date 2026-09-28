@@ -72,7 +72,9 @@ the browser, the task API, and the planner in
 [`specs/unified-agent.md`](specs/unified-agent.md), and the wide strategy —
 one request per turn over a digest of the screen, with a survey and a working
 memory — in [`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)
-([`plans/jev-wide-turns.md`](plans/jev-wide-turns.md)).
+([`plans/jev-wide-turns.md`](plans/jev-wide-turns.md)). How the browser
+surface reads a page by what is drawn rather than by its ARIA markup is in
+[`specs/browser-sight.md`](specs/browser-sight.md).
 
 ## Conventions
 

@@ -25,4 +25,5 @@ example, [`jev-intent-flows.md`](jev-intent-flows.md) for the flow runtime, and
 [`unified-agent.md`](unified-agent.md) for browser and desktop behind one task API,
 [`jev-briefing.md`](jev-briefing.md) for briefs, secrets, and votes,
 [`jev-wide-turns.md`](jev-wide-turns.md) for the wide strategy,
+[`browser-sight.md`](browser-sight.md) for how the browser reads a page,
 and [`virtual-cursor.md`](virtual-cursor.md) for the agent's drawn cursor.
