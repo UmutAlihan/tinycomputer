@@ -195,6 +195,7 @@ fn a_brief_pins_its_wire_form_and_defaults_empty() {
         (FlowLoop::Expectation, "expectation"),
         (FlowLoop::Checkpoint, "checkpoint"),
         (FlowLoop::Backtrack, "backtrack"),
+        (FlowLoop::Attention, "attention"),
     ] {
         assert_eq!(serde_json::to_value(flow_loop).unwrap(), json!(wire));
     }

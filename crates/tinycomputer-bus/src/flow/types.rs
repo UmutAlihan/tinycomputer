@@ -355,6 +355,10 @@ pub enum FlowLoop {
     Checkpoint,
     /// Returning to a checkpoint and trying the next-best candidate.
     Backtrack,
+    /// Asking, before the step, what on screen needs attention first — the
+    /// step, or a distraction such as a consent card or promo toast — and
+    /// clearing a distraction with its least-committal control.
+    Attention,
 }
 
 /// How much the flow runtime deliberates before it acts on a decision.
