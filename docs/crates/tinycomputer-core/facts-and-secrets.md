@@ -65,7 +65,7 @@ assert!(!is_sensitive_name("date of birth"));
 ## `mask`: turning a value back into `${name}`
 
 Once a value has left the model's view (typed into a field, say), it can
-still show up in text coming back the other way, a screen reading back
+still show up in text coming back the other way: a screen reading back
 what was typed, or a page confirming the last four digits. `Facts::mask`
 replaces every secret value it finds, longest value first (so a shorter
 value that happens to be a substring of a longer one is not replaced
