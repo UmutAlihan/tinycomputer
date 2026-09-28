@@ -77,6 +77,11 @@ const CLOSE_THE_POPUP: &str = r#"{"action": "retry",
   "reason": "an offer popup covers the Search button",
   "steps": ["close the offer popup", "search for flights"]}"#;
 
+/// Every run fails at its second step, which after this guidance is the
+/// guidance's own `wait_for`, never the flow's `stop_before`.
+const TWO_STEPS: &str = r#"{"action": "retry", "reason": "try the button's label",
+  "steps": ["press Search Flights", {"wait_for": "flight results are listed"}]}"#;
+
 const ONE_STEP: &str = r#"{"action": "retry", "reason": "try the button's label",
   "steps": ["press Search Flights"]}"#;
 
@@ -152,7 +157,7 @@ async fn a_failed_step_is_rescued_and_the_task_finishes() {
 async fn rescues_stop_after_three_and_the_task_fails_as_before() {
     let (tasks, script, model) = rescued(
         vec![failed_at_step_two(); 4],
-        &[Ok(ONE_STEP), Ok(ONE_STEP), Ok(ONE_STEP), Ok(ONE_STEP)],
+        &[Ok(TWO_STEPS), Ok(TWO_STEPS), Ok(TWO_STEPS), Ok(TWO_STEPS)],
     );
     let view = begin(&tasks, TaskBudget::default());
     let TaskStatus::Failed {
@@ -178,7 +183,7 @@ async fn rescues_stop_after_three_and_the_task_fails_as_before() {
     for (max, calls) in [(Some(0), 0), (Some(1), 1), (Some(9), 3)] {
         let (tasks, _, model) = rescued(
             vec![failed_at_step_two(); 4],
-            &[Ok(ONE_STEP), Ok(ONE_STEP), Ok(ONE_STEP)],
+            &[Ok(TWO_STEPS), Ok(TWO_STEPS), Ok(TWO_STEPS)],
         );
         let view = begin(
             &tasks,
