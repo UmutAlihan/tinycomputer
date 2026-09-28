@@ -10,8 +10,8 @@ does.** Every write is best effort; a write that fails is silently dropped
 rather than failing the run it is describing.
 
 This page covers the journal from inside this crate. For how to actually
-read one afterwards, the CLI tool, what a summary looks like, how to spot
-where time went, see [`docs/technical/jev-journal.md`](../../technical/jev-journal.md).
+read one afterwards (the CLI tool, what a summary looks like, how to spot
+where time went), see [`docs/technical/jev-journal.md`](../../technical/jev-journal.md).
 
 ## Turning it on
 
