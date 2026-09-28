@@ -85,6 +85,15 @@ use backend::{AgentBackend, blocking, observe_async};
 use validate::{step_path, substitute_safe};
 use view::{Candidate, Depth, Screen, target_payload};
 
+/// One request of a batch as its framings came back: the request, the
+/// framings that answered, the first failure, and how many were asked.
+type Gathered = (
+    EvaluationRequest,
+    Vec<(vote::Framing, BTreeMap<String, Answer>)>,
+    Option<tinyinference_decisions::EvaluationFailure>,
+    u32,
+);
+
 /// Upper bound on [`RunFlowRequest::max_actions`].
 const MAX_ACTIONS: u32 = 120;
 /// Upper bound on [`RunFlowRequest::max_model_calls`]. Jev is cheap, and
@@ -656,31 +665,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             gathered.push((request, answered, failure, first));
         }
         if first < votes {
-            let more = gathered
-                .iter()
-                .map(|(request, answered, _, _)| {
-                    let split =
-                        !answered.is_empty() && !vote::settled(&vote::ballots(answered), PAGE_KIND);
-                    split.then(|| {
-                        let framings = vote::framings_between(request, first, votes);
-                        let handles = self.spawn(&framings);
-                        (framings, handles)
-                    })
-                })
-                .collect::<Vec<_>>();
-            if more.iter().any(Option::is_some) {
-                self.rounds = self.rounds.saturating_add(1);
-            }
-            for ((_, answered, failure, framed), more) in gathered.iter_mut().zip(more) {
-                if let Some((framings, handles)) = more {
-                    *framed = votes;
-                    let (fresh, error) = self.gather(log, framings, handles).await;
-                    answered.extend(fresh);
-                    if failure.is_none() {
-                        *failure = error;
-                    }
-                }
-            }
+            self.ask_the_rest(log, &mut gathered, first, votes).await;
         }
         let mut replies = Vec::with_capacity(batched);
         for (request, answered, failure, framed) in gathered {
@@ -725,6 +710,42 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             replies.push(answers);
         }
         Ok(replies)
+    }
+
+    /// Asks every request in `gathered` whose first `first` framings split
+    /// in the rest of its `votes`, all at once, and adds their answers.
+    async fn ask_the_rest(
+        &mut self,
+        log: &mut StepLog,
+        gathered: &mut [Gathered],
+        first: u32,
+        votes: u32,
+    ) {
+        let more = gathered
+            .iter()
+            .map(|(request, answered, _, _)| {
+                let split =
+                    !answered.is_empty() && !vote::settled(&vote::ballots(answered), PAGE_KIND);
+                split.then(|| {
+                    let framings = vote::framings_between(request, first, votes);
+                    let handles = self.spawn(&framings);
+                    (framings, handles)
+                })
+            })
+            .collect::<Vec<_>>();
+        if more.iter().any(Option::is_some) {
+            self.rounds = self.rounds.saturating_add(1);
+        }
+        for ((_, answered, failure, framed), more) in gathered.iter_mut().zip(more) {
+            if let Some((framings, handles)) = more {
+                *framed = votes;
+                let (fresh, error) = self.gather(log, framings, handles).await;
+                answered.extend(fresh);
+                if failure.is_none() {
+                    *failure = error;
+                }
+            }
+        }
     }
 
     /// Waits for every framing in `handles`, charging each answer to the run

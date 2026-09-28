@@ -222,15 +222,15 @@ fn agrees(answers: &[Answer]) -> bool {
             .max_by(|left, right| left.1.total_cmp(right.1))
             .map(|(key, _)| key.clone())
     };
-    let mut picks = BTreeMap::new();
+    let mut picks = std::collections::BTreeSet::new();
     let mut beliefs = Vec::new();
     for answer in answers {
         match answer {
             Answer::Choice(choice) => {
-                picks.insert(choice.choice.clone(), ());
+                picks.insert(choice.choice.clone());
             }
             Answer::Score(score) => {
-                picks.insert(peak(&score.probabilities).unwrap_or_default(), ());
+                picks.insert(peak(&score.probabilities).unwrap_or_default());
             }
             Answer::Noul(noul) => beliefs.push(noul.noul),
         }
