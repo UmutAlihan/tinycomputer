@@ -100,9 +100,9 @@ Every `TaskView.status` is one of nine states (`TaskStatus` in
 | `Checkpoint` | Stopped at a checkpoint, always on reaching a payment page, when the task is not allowed to fill the payment form. | `ContinueTask.approve` only if `continuable`; a payment checkpoint never is |
 | `NeedsHuman` | Blocked on something only a person can do: a captcha, a login page, a one-time code. | `ContinueTask { answer: "done" }` once the person has |
 | `NeedsPlan` | A plain-language `task` arrived and no planner is configured. | Write a flow from the returned `guide` and call `StartTask` again with it |
-| `Done` | Finished, with an `answer` and any `records` from `extract`/`pick` steps. |, (final) |
-| `Failed` | Could not finish, with `reason`, `hint`, and whether `recoverable`. |, (final, unless recoverable, see below) |
-| `Cancelled` | Stopped by `CancelTask`. |, (final) |
+| `Done` | Finished, with an `answer` and any `records` from `extract`/`pick` steps. | (final) |
+| `Failed` | Could not finish, with `reason`, `hint`, and whether `recoverable`. | (final, unless recoverable; see below) |
+| `Cancelled` | Stopped by `CancelTask`. | (final) |
 
 `TaskStatus::is_final()` is true for `Done`, `Failed`, `Cancelled`, and a
 non-continuable `Checkpoint`. `next_calls` (in `task/mod.rs`) computes which
