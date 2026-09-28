@@ -256,8 +256,9 @@ guessed.
   need a repair that can type, which the `do` loop cannot.
 - **Checkpoints for typed text in the `do` loop.** It never types; `enter`
   re-enters a flagged field instead.
-- **Predictions on the wide strategy.** Its turns get the expectation
-  questions and the verified undo, but its targets keep the wide `prepare`
-  path's thresholds.
+- **The wide strategy's first-pass targets.** Wide turns get the
+  expectation checks, the verified undo, and backtracking, and their final
+  Choices go through the gate. The targets `wide::prepare` reads from the
+  turn's one request keep its thresholds.
 - **Calibrating the constants on live data.** They are set from the recorded
   audits, and the calibration view exists to revise them.

@@ -25,8 +25,35 @@ Change a constant and its row together.
 | `DO_TURNS` | 8 | `steps.rs` | turns a `do` step may spend |
 | `REFLECT_FLOOR` | 0.50 | `reflect.rs` | belief that a pressed `choose` left its choice, below which it is repaired, and failed if the repair does not take |
 | `REPAIR_TURNS` | 4 | `reflect.rs` | turns one reflection repair may spend |
-| `MAX_ACTIONS` / `MAX_CALLS` | 120 / 5000 | `mod.rs` | per-run caps on actions and Jev calls |
-| `MAX_VOTES` | 9 | `vote.rs` | most framings one decision is asked in |
+| `MAX_ACTIONS` / `MAX_CALLS` | 120 / 10000 | `mod.rs` | per-run caps on actions and Jev calls |
+| `MAX_VOTES` | 9 | `vote.rs` | most framings one decision is asked in; a deliberated decision is widened up to it |
+| `STALL_TURNS` / `MAX_IDLE_WAITS` | 3 / 2 | `act.rs` | unchanged turns before a step fails; idle waits before Jev may not wait again |
+| `MAX_OBSTACLES` / `MAX_UNDOS` | 2 / 2 | `act.rs` | obstacles dismissed and undos run per step at most |
+| `FIELD_ERROR` | 0.70 | `enter.rs` | field-error probability that makes a slot be entered again |
+| `NOT_ASKED` | 0.35 | `enter.rs` | "the form asks for it" probability under which a slot with no field is taken as not asked for |
+
+## Deliberation
+
+The gates of [`specs/jev-deliberation.md`](specs/jev-deliberation.md), which
+replace the single-number bars above at every site they apply to unless
+`deliberation` is `off`.
+
+| Constant | Value | Where | Meaning |
+|---|---|---|---|
+| `ACCEPT_MARGIN` | 0.25 | `evidence/` | least lead of a Choice's winner over the runner-up to act on it as read |
+| `ACCEPT_AGREEMENT` | 0.80 | `evidence/` | least share of framings that picked the winner, or put a judgement on the same side of its threshold, to act on it as read |
+| `ABSTAIN_FLOOR` / `ABSTAIN_AGREEMENT` | 0.20 / 0.40 | `evidence/` | a winner under both is abstained from: nothing serves |
+| `UNDECIDED_BAND` | 0.12 | `evidence/` | half-width of the band around a judgement's threshold inside which it is deliberated |
+| `MAX_FINALISTS` / `FINALIST_FLOOR` | 4 / 0.05 | `duel/` | most finalists a duel compares, and the least probability to be one |
+| `DUEL_WIN` | 0.60 | `duel/` | least share of every pairing the champion must take, both orders averaged |
+| `CONTRAST_KEEP` | 0.50 | `escalate/` | belief that keeps the duel's champion when contrasted |
+| `CONTRAST_ACCEPT` / `CONTRAST_LEAD` | 0.65 / 0.20 | `escalate/` | with no champion, the belief and lead a contrasted leader needs |
+| `BRANCH_MARGIN` | 0.30 | `ground.rs` | lead of the chosen region under which narrowing keeps the runner-up region too |
+| `MISTAKE` | 0.50 | `act.rs` | "did what it was meant to" belief under which a press whose effect was missed is undone |
+| `CLEAR_MISTAKE` | 0.25 | `act.rs` | that belief under which any press is undone |
+| `MAX_BRANCHES` | 3 deep / 1 standard | `act.rs` | next-best candidates a `do` step backtracks into |
+| `RESTORED` | 0.80 | `checkpoint/` | share of a checkpoint's marks a screen must show again for an undo to count as verified |
+| `IRREVERSIBLE_FLOOR` | 0.85 | `steps.rs` | belief a deep run needs before a `stop_before` presses its control |
 | `CROWDED` | 40 | `survey.rs` | actionable elements above which a wide turn surveys the screen first |
 | `DISTRACTION` | 0.70 | `survey.rs` | distraction probability that collapses a region and ranks it last |
 | `DIGEST_BUDGET` | 24,000 bytes | `wide.rs` | screen a wide request shows before regions are collapsed (about 9,000 tokens of dense page text) |
