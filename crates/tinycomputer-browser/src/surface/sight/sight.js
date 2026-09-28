@@ -298,6 +298,7 @@
   };
 
   const containers = new Map();
+  const unnamed = new Map();
   // The container label a person would see `element` as, or null.
   const container = (element) => {
     if (containers.has(element)) return containers.get(element);
@@ -325,7 +326,14 @@
         if (group) {
           const named = labelOf(element) || (['region', 'group', 'form', 'dialog'].includes(group) ? heading(element) : '');
           if (group === 'region' && !named) label = null;
-          else label = named ? `${group} ${JSON.stringify(named)}` : group;
+          else if (named) label = `${group} ${JSON.stringify(named)}`;
+          else {
+            // Unnamed lists are told apart by their place on the page, so
+            // two lists' first cards are not read as one card.
+            const count = (unnamed.get(group) || 0) + 1;
+            unnamed.set(group, count);
+            label = count === 1 ? group : `${group} ${count}`;
+          }
         }
       }
     }
