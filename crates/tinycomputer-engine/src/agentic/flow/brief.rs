@@ -1,7 +1,13 @@
 //! The run's brief: the goal, the plan, and what has been chosen so far,
 //! added to every question that chooses.
 
-use super::*;
+use serde_json::{Value, json};
+use tinyinference_decisions::{EvaluationRequest, Question};
+
+use super::{
+    FlowRun, MAX_GOAL, MAX_PLAN_LINE, MAX_SO_FAR, MAX_SO_FAR_NOTE, backend::AgentBackend,
+    decide::PAGE_KIND,
+};
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// Adds the run's brief — the goal, whom it is for, the plan with this
