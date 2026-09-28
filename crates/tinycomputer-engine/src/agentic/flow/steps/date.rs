@@ -28,7 +28,7 @@ use crate::agentic::flow::{
 use super::*;
 
 /// The months a date picker is paged forward at most.
-const MAX_MONTHS: usize = 12;
+pub(super) const MAX_MONTHS: usize = 12;
 
 /// Month names, as a date option spells them.
 const MONTHS: &[&str] = &[
@@ -96,13 +96,13 @@ fn is_leap_year(year: u16) -> bool {
 
 /// Whether a control's label says only that it shows the next month; a
 /// date field whose label lists the whole calendar says much more.
-fn is_next_month(name: &str) -> bool {
+pub(super) fn is_next_month(name: &str) -> bool {
     let words = plain(name);
     words.contains("next month") && words.split(' ').count() <= 4
 }
 
 /// The day, month, and year (when given) a date option names, as words.
-fn date_words(option: &str) -> Vec<String> {
+pub(super) fn date_words(option: &str) -> Vec<String> {
     plain(option)
         .split(' ')
         .filter(|word| {

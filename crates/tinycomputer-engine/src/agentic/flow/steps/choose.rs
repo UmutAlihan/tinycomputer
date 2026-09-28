@@ -81,7 +81,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Puts back every field of `before` whose text the step changed.
-    pub(super) async fn restore_text(
+    async fn restore_text(
         &mut self,
         log: &mut StepLog,
         before: &[(Candidate, String)],
@@ -151,7 +151,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(())
     }
 
-    pub(super) async fn try_option(
+    async fn try_option(
         &mut self,
         log: &mut StepLog,
         what: &str,
@@ -265,7 +265,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// `AlreadyDone` when `screen` shows `option` chosen already: a checked
     /// option control, or — before this step acts, since what it types to
     /// filter a list would read back as the choice — a field holding it.
-    pub(super) fn made_already(
+    fn made_already(
         &mut self,
         screen: &Screen,
         what: &str,
@@ -290,7 +290,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// The option control on `screen` that fits `option` read as a
     /// description, by Jev; `None` when no control fits well enough.
-    pub(super) async fn described(
+    async fn described(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,

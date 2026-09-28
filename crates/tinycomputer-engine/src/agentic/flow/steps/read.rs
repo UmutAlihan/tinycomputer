@@ -31,7 +31,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Every piece of text a `read` may take, as (label, what Jev is shown,
     /// the text itself): each element's text, its name apart when it says
     /// something the text does not, and the screen's static lines.
-    pub(super) fn read_sources(&self, screen: &super::view::Screen) -> Vec<(String, Value, String)> {
+    fn read_sources(&self, screen: &crate::agentic::flow::view::Screen) -> Vec<(String, Value, String)> {
         let ordered = ask::ordered_nodes(screen);
         screen
             .candidates

@@ -29,7 +29,7 @@ use super::*;
 
 /// Every text field on `screen` that holds text, with that text: what a
 /// failed `choose` puts back.
-fn held_text(screen: &Screen) -> Vec<(Candidate, String)> {
+pub(super) fn held_text(screen: &Screen) -> Vec<(Candidate, String)> {
     screen
         .candidates
         .iter()
@@ -62,7 +62,7 @@ pub(in crate::agentic::flow) fn closest(matches: Vec<Candidate>) -> Vec<Candidat
 
 /// Lower-case words joined by single spaces, so `Sunday, 18 October` and
 /// `sunday 18 october` compare equal.
-fn plain(text: &str) -> String {
+pub(super) fn plain(text: &str) -> String {
     text.split(|character: char| !character.is_alphanumeric())
         .filter(|word| !word.is_empty())
         .map(str::to_lowercase)
@@ -86,14 +86,14 @@ const ONE_OPTION_ROLES: &[&str] = &[
 ];
 
 /// Whether a control is checked or selected already.
-fn is_checked(candidate: &Candidate) -> bool {
+pub(super) fn is_checked(candidate: &Candidate) -> bool {
     candidate
         .states
         .iter()
         .any(|state| state == "checked" || state == "selected")
 }
 
-fn is_one_option(candidate: &Candidate) -> bool {
+pub(super) fn is_one_option(candidate: &Candidate) -> bool {
     ONE_OPTION_ROLES
         .iter()
         .any(|role| candidate.role.eq_ignore_ascii_case(role))
@@ -200,7 +200,7 @@ pub(in crate::agentic::flow) fn left_unchosen(screen: &Screen, option: &str, fil
 
 /// The ancestors siblings share: `path` without the numbered items it ends
 /// in, since each tab of a strip sits in its own `listitem #n`.
-fn container(path: &[String]) -> &[String] {
+pub(super) fn container(path: &[String]) -> &[String] {
     let numbered = |segment: &&String| {
         segment
             .rsplit_once(" #")
@@ -231,7 +231,7 @@ pub(in crate::agentic::flow) fn lists_more_than(candidate: &Candidate, option: &
 }
 
 /// Whether an element takes typed text.
-fn editable(candidate: &Candidate) -> bool {
+pub(super) fn editable(candidate: &Candidate) -> bool {
     candidate
         .available_actions
         .iter()
@@ -240,7 +240,7 @@ fn editable(candidate: &Candidate) -> bool {
 
 /// Whether every match carries the same label, as a day's button and its
 /// grid cell do.
-fn one_option(matches: &[Candidate]) -> bool {
+pub(super) fn one_option(matches: &[Candidate]) -> bool {
     let mut labels = matches
         .iter()
         .map(|candidate| plain(candidate.name.as_deref().unwrap_or_default()));
@@ -251,7 +251,7 @@ fn one_option(matches: &[Candidate]) -> bool {
 
 /// The match to press without judgement: a button, option, or link before a
 /// cell or container, then the shortest label.
-fn plainest(matches: Vec<Candidate>) -> Option<Candidate> {
+pub(super) fn plainest(matches: Vec<Candidate>) -> Option<Candidate> {
     let rank = |candidate: &Candidate| {
         let role = match candidate.role.as_str() {
             "button" | "option" | "menuitem" | "link" | "radio" => 0,
@@ -265,7 +265,7 @@ fn plainest(matches: Vec<Candidate>) -> Option<Candidate> {
 /// Whether an element shows `option` in its name, value, or description. A
 /// date matches by its day, month, and year, whatever the weekday or order
 /// (`Sunday, 18 October 2026` shows `18 October 2026`).
-fn mentions(candidate: &Candidate, option: &str) -> bool {
+pub(super) fn mentions(candidate: &Candidate, option: &str) -> bool {
     let wanted = plain(option);
     let date = looks_like_date(option).then(|| date_words(option));
     !wanted.is_empty()
@@ -318,7 +318,7 @@ pub(in crate::agentic::flow) fn search_text(option: &str) -> String {
 /// option's own label, so an unrelated control elsewhere that happens to
 /// share the option's text must not qualify. Some pages carry no region
 /// text at all, and narrowing then would drop every real option.
-fn within(pool: Vec<Candidate>, what: &str) -> Vec<Candidate> {
+pub(super) fn within(pool: Vec<Candidate>, what: &str) -> Vec<Candidate> {
     let regional = pool
         .iter()
         .filter(|candidate| in_region(candidate, what))
@@ -356,7 +356,7 @@ pub(in crate::agentic::flow) fn redacted(candidate: &Candidate) -> Candidate {
 }
 
 /// Elements that can be pressed.
-fn clickable(candidates: &[Candidate]) -> Vec<Candidate> {
+pub(super) fn clickable(candidates: &[Candidate]) -> Vec<Candidate> {
     candidates
         .iter()
         .filter(|candidate| {

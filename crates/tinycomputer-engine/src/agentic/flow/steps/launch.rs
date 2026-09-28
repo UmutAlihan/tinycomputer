@@ -109,20 +109,20 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Waits for the application to show a readable window, as a freshly
     /// launched one takes a moment to.
-    pub(super) async fn await_window(&self) -> bool {
+    async fn await_window(&self) -> bool {
         for _ in 0..WINDOW_CHECKS {
-            if super::backend::observe_async(
+            if crate::agentic::flow::backend::observe_async(
                 self.backend.clone(),
                 self.app.clone(),
                 None,
-                super::view::Depth::Skeleton,
+                crate::agentic::flow::view::Depth::Skeleton,
             )
             .await
             .is_ok()
             {
                 return true;
             }
-            let _ = super::backend::blocking(self.backend.clone(), |backend| {
+            let _ = crate::agentic::flow::backend::blocking(self.backend.clone(), |backend| {
                 backend.execute(JevOperation::Wait, None, None)
             })
             .await;

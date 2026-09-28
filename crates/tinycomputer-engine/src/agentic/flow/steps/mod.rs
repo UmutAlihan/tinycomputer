@@ -36,7 +36,7 @@ use tinycomputer_bus::FlowAction;
 use super::{Ended, FlowRun, Halt, StepLog, backend::AgentBackend};
 
 /// Turns a `do` step may spend.
-pub(super) const DO_TURNS: u32 = 8;
+const DO_TURNS: u32 = 8;
 /// Turns spent opening the thing a `choose` step picks from.
 pub(super) const REVEAL_TURNS: u32 = 3;
 /// Times `open` checks for a readable window, waiting between checks.

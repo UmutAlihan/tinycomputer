@@ -146,10 +146,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// first [`LIST_PREVIEW`] items, among the first [`MAX_LISTS`]. A list
     /// not clearly chosen falls back to the longest, the one an `extract`
     /// took before it asked.
-    pub(super) async fn judge_list(
+    async fn judge_list(
         &mut self,
         log: &mut StepLog,
-        screen: &super::view::Screen,
+        screen: &crate::agentic::flow::view::Screen,
         what: &str,
         families: &[Vec<Group>],
     ) -> Result<usize, Halt> {
@@ -196,10 +196,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Asks Jev which record best meets `by`, among the first
     /// [`ask::MAX_READ_SOURCES`]-sized page of them.
-    pub(super) async fn judge_pick(
+    async fn judge_pick(
         &mut self,
         log: &mut StepLog,
-        screen: &super::view::Screen,
+        screen: &crate::agentic::flow::view::Screen,
         from: &str,
         by: &str,
         groups: &[Group],
