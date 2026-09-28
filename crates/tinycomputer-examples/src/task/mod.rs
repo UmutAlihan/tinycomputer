@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use tinycomputer_bus::agent::{ContinueTaskRequest, TaskStatus, TaskView};
+use tinycomputer_bus::agent::{ContinueTaskRequest, InputField, TaskStatus, TaskView};
 
 use crate::host::{Host, LabError};
 
@@ -19,7 +19,8 @@ pub const AWAIT_SLICE: Duration = Duration::from_secs(30);
 
 /// Follows the task until it stops: prints each new state, answers a
 /// `needs_input` from `answers` when every field it asks for is there, and
-/// cancels the task once `limit` has passed.
+/// cancels the task once `limit` has passed — checked on every state it
+/// reports, so an answerable pause past the limit is cancelled, not answered.
 ///
 /// # Errors
 ///
@@ -39,25 +40,20 @@ pub async fn follow(
             println!("{line}");
             last = line;
         }
+        if view.status.is_final() {
+            return Ok(view);
+        }
+        let Some(wait) = next_wait(started.elapsed(), limit) else {
+            println!("time limit reached; cancelling");
+            return host.cancel_task(&id).await;
+        };
         view = match &view.status {
             TaskStatus::Running => {
-                let Some(wait) = next_wait(started.elapsed(), limit) else {
-                    println!("time limit reached; cancelling");
-                    return host.cancel_task(&id).await;
-                };
                 let timeout_ms = u64::try_from(wait.as_millis()).unwrap_or(u64::MAX);
                 host.await_task(&id, timeout_ms).await?
             }
             TaskStatus::NeedsInput { fields } => {
-                let Some(inputs) = fields
-                    .iter()
-                    .map(|field| {
-                        answers
-                            .get(&field.name)
-                            .map(|value| (field.name.clone(), value.clone()))
-                    })
-                    .collect::<Option<BTreeMap<_, _>>>()
-                else {
+                let Some(inputs) = inputs_for(fields, answers) else {
                     return Ok(view);
                 };
                 println!(
@@ -73,6 +69,41 @@ pub async fn follow(
             }
             _ => return Ok(view),
         };
+    }
+}
+
+/// The answers to a `needs_input` pause: one per field it asks for, or
+/// `None` when any is missing — or when it asks for nothing, which no answer
+/// can move past, so the pause is handed back rather than continued empty.
+#[must_use]
+pub fn inputs_for(
+    fields: &[InputField],
+    answers: &BTreeMap<String, String>,
+) -> Option<BTreeMap<String, String>> {
+    if fields.is_empty() {
+        return None;
+    }
+    fields
+        .iter()
+        .map(|field| {
+            answers
+                .get(&field.name)
+                .map(|value| (field.name.clone(), value.clone()))
+        })
+        .collect()
+}
+
+/// `url` with its credentials, query, and fragment dropped, for a log line:
+/// those are where tokens and personal data ride.
+#[must_use]
+pub fn loggable(url: &str) -> String {
+    let url = url.split(['?', '#']).next().unwrap_or_default();
+    match url.split_once("://") {
+        Some((scheme, rest)) => {
+            let rest = rest.rsplit_once('@').map_or(rest, |(_, host)| host);
+            format!("{scheme}://{rest}")
+        }
+        None => url.to_owned(),
     }
 }
 
@@ -140,7 +171,8 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         }
     }
     // Sessions still open — a task paused at a checkpoint keeps its own — are
-    // captured as they stand now, then closed.
+    // captured as they stand now, then closed. Every session belongs to this
+    // run: `Host::load` gives each run a private bus and its own module.
     for (index, session) in host.browser_sessions().await?.iter().enumerate() {
         let name = format!("open-{index}.png");
         match host.browser_screenshot(&session.id).await {
@@ -149,7 +181,7 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
                 println!(
                     "screenshot: {} ({})",
                     out.join(&name).display(),
-                    session.url
+                    loggable(&session.url)
                 );
             }
             Err(error) => println!("screenshot of {} failed: {error}", session.id),

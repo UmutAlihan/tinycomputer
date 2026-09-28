@@ -8,7 +8,8 @@ use std::time::Duration;
 
 use tinycomputer_bus::agent::TaskStatus;
 
-use super::{AWAIT_SLICE, next_wait, passed, state};
+use super::{AWAIT_SLICE, inputs_for, loggable, next_wait, passed, state};
+use tinycomputer_bus::agent::{InputField, InputKind};
 
 const LIMIT: Duration = Duration::from_secs(20 * 60);
 
@@ -52,4 +53,38 @@ fn a_finished_task_or_a_payment_stop_passes() {
 fn a_status_is_named_by_its_wire_state() {
     assert_eq!(state(&TaskStatus::Running), "running");
     assert_eq!(state(&TaskStatus::Cancelled), "cancelled");
+}
+
+fn field(name: &str) -> InputField {
+    InputField {
+        name: name.to_owned(),
+        why: String::new(),
+        kind: InputKind::Text,
+        options: Vec::new(),
+    }
+}
+
+#[test]
+fn a_pause_is_answered_only_when_every_field_is_known() {
+    let answers = BTreeMap::from([("phone".to_owned(), "+91".to_owned())]);
+    assert_eq!(
+        inputs_for(&[field("phone")], &answers),
+        Some(answers.clone())
+    );
+    assert_eq!(inputs_for(&[field("phone"), field("email")], &answers), None);
+}
+
+#[test]
+fn a_pause_asking_for_nothing_is_handed_back() {
+    let answers = BTreeMap::from([("phone".to_owned(), "+91".to_owned())]);
+    assert_eq!(inputs_for(&[], &answers), None);
+}
+
+#[test]
+fn a_logged_url_keeps_only_its_origin_and_path() {
+    assert_eq!(
+        loggable("https://user:secret@pay.test/checkout?token=abc#step"),
+        "https://pay.test/checkout"
+    );
+    assert_eq!(loggable("about:blank"), "about:blank");
 }
