@@ -188,32 +188,22 @@ fn inside_field_content(path: &[String]) -> bool {
 /// is set. A ref-less text node's own name, description, or value is shown
 /// unconditionally too, unless it sits inside a rich-text area or a
 /// tokenized field ([`inside_field_content`]) — there it mirrors that
-/// field's held contents, so it is gated on `include_values` like any other
-/// value.
+/// field's held contents, so the whole node is gated on `include_values`
+/// like any other value.
 fn text_of(node: &Candidate, actionable: bool, include_values: bool) -> Option<String> {
+    let named = || node.name.clone().or_else(|| node.description.clone());
     let held_value = || match &node.value {
         Some(Value::String(value)) => Some(value.clone()),
         _ => None,
     };
-    let gated = !actionable && inside_field_content(&node.path);
-    let text = if actionable || !gated {
-        node.name
-            .clone()
-            .or_else(|| node.description.clone())
-            .or_else(|| {
-                if actionable {
-                    include_values.then(held_value).flatten()
-                } else {
-                    held_value()
-                }
-            })
-    } else if include_values {
-        node.name
-            .clone()
-            .or_else(|| node.description.clone())
-            .or_else(held_value)
+    let text = if !actionable && inside_field_content(&node.path) {
+        include_values
+            .then(|| named().or_else(held_value))
+            .flatten()
+    } else if actionable {
+        named().or_else(|| include_values.then(held_value).flatten())
     } else {
-        None
+        named().or_else(held_value)
     }?;
     let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
     (!text.is_empty()).then_some(text)
