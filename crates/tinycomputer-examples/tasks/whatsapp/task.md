@@ -30,6 +30,7 @@ Run it on this Mac, from a shell with the Accessibility permission:
     TASK_FILE=crates/tinycomputer-examples/tasks/whatsapp/task.md \
     FACTS_FILE=crates/tinycomputer-examples/tasks/whatsapp/facts.json \
     OUTPUT_FILE=crates/tinycomputer-examples/tasks/whatsapp/output.json \
-    TASK_SURFACE=desktop cargo run -p tinycomputer-examples --bin task_live
+    TASK_SURFACE=desktop TINYCOMPUTER_MODULE="$(scripts/build-module)" \
+    cargo run -p tinycomputer-examples --bin task_live
 
 Opening a chat marks it read in WhatsApp, so its senders see read receipts.

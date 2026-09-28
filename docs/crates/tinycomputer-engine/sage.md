@@ -66,13 +66,11 @@ lever the eval names but has not yet measured.
 
 ## Switching an example to Sage
 
-`crates/tinycomputer-examples/src/bin/task_live.rs` reads
-`TINYCOMPUTER_DECISIONS`: set to `sage`, it builds a `JevRuntime::sage`
-instead of the default Jev-backed one, using `SAGE_API_KEY` for the
-credential and `SAGE_FAST` for the latency mode. Every other setting
-(deliberation, votes, rescue budget) stays exactly as the example already
-configures it, so a run can be repeated against either model with nothing
-else changed.
+No example does any more. The recorded eval ran `task_live` with a
+`TINYCOMPUTER_DECISIONS=sage` switch that built a `JevRuntime::sage` in
+process; `task_live` now drives the loaded module over the bus, and the
+module's configuration has no Sage setting, so Sage is reachable only from
+code that builds a `JevRuntime` itself.
 
 ## What the live eval found
 
@@ -104,8 +102,6 @@ the fairer comparison still to run.
 - `crates/tinycomputer-engine/src/agentic/sage/mod.rs`, `SageEvaluator`,
   `batch`, `sage_question`, `answer_for`.
 - `crates/tinycomputer-engine/src/agentic/mod.rs`, `JevRuntime::sage`.
-- `crates/tinycomputer-examples/src/bin/task_live.rs`, the
-  `TINYCOMPUTER_DECISIONS` / `SAGE_API_KEY` / `SAGE_FAST` switch.
 - [jev-runtime.md](jev-runtime.md), the one door every decision, Jev's or
   Sage's, goes through.
 - [`docs/technical/evals/2026-09-29-sage.md`](../../technical/evals/2026-09-29-sage.md),

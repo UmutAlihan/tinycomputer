@@ -49,7 +49,9 @@ is optional:
   guidance, up to five times, before the task fails, and an optional
   `output_model` (default `openai/gpt-6-luna`) that shapes a finished task's
   answer when `StartTask` asks for an `output`;
-- `browser.executable`: the Chrome or Chromium binary to launch.
+- `browser`: how every browser launches — `executable` (the Chrome or
+  Chromium binary), `user_agent`, `args` (an array of launch arguments), and
+  `perception` (`sight`, the default, or `tree`: how a task reads a page).
 
 Configuration is delivered as sensitive host-control traffic and is never
 shown to monitors.
