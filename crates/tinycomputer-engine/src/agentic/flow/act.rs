@@ -22,6 +22,7 @@ use tinyinference_decisions::Answer;
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
+    ground::Opening,
     memory::{learn, remember},
     view::{
         Candidate, Screen, change_note, element_kind, fingerprint, is_destructive, label, signature,
