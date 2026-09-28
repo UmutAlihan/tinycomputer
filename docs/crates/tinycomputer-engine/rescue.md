@@ -167,12 +167,12 @@ whichever is smaller.
 Each rescue is recorded as a `Rescue` (visible in `TaskReport.rescues`) with
 an `outcome`:
 
-- **`Running`**, the guidance's run has not finished yet (this is what a
+- **`Running`**: the guidance's run has not finished yet (this is what a
   freshly recorded rescue starts as, before its run completes).
-- **`Recovered`**, every one of the guidance's own top-level steps finished
+- **`Recovered`**: every one of the guidance's own top-level steps finished
   or reached its own approval gate.
-- **`FailedAgain`**, one of the guidance's own steps failed.
-- **`GaveUp`**, the model gave up, the call itself failed, or no valid
+- **`FailedAgain`**: one of the guidance's own steps failed.
+- **`GaveUp`**: the model gave up, the call itself failed, or no valid
   guidance ever came back within the repair budget.
 
 `rescue_outcome`, in `task/mod.rs`, decides `Recovered` vs `FailedAgain` by
@@ -191,7 +191,7 @@ not a scripted one.
 - **A false success.** A flow's `choose` step for the departure airport,
   arrival airport, and date each reported success, but the search page
   still showed all three empty. The rescuer read the screen, noticed they
-  were still missing, re-entered all three, and searched again, it worked.
+  were still missing, re-entered all three, and searched again: it worked.
   Neither Jev's own check nor a reflection pass had caught the false
   positive; the rescuer caught it because it was looking at the actual
   screen text, not trusting the earlier step's own report.
