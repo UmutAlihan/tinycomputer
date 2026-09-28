@@ -69,26 +69,20 @@ mod test;
 
 use std::{
     collections::{BTreeMap, BTreeSet},
-    future::Future,
-    pin::Pin,
     time::Instant,
 };
 
-use serde_json::{Value, json};
+use serde_json::json;
 use tinycomputer_bus::{
-    Deliberation, DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord,
-    FlowBrief, FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint,
-    JevExchange, JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport,
-    ValidateFlowRequest,
+    Deliberation, DesktopError, DesktopResponse, FLOW_GUIDE, FlowActionRecord, FlowBrief,
+    FlowLoop, FlowStopReason, FlowStrategy, GroundingHint, JevExchange, JevMetrics, JevTarget,
+    RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
 use tinycomputer_core::Facts;
-use tinyinference_decisions::{Answer, EvaluationRequest, Question};
 
-use super::journal::millis;
-use super::{JevRuntime, merge_metrics, provider_error, response};
-use backend::{AgentBackend, blocking, observe_async};
-use validate::{step_path, substitute_safe};
-use view::{Candidate, Depth, Screen, target_payload};
+use super::{JevRuntime, merge_metrics, response};
+use backend::AgentBackend;
+use view::Candidate;
 
 /// Upper bound on [`RunFlowRequest::max_actions`].
 const MAX_ACTIONS: u32 = 120;
