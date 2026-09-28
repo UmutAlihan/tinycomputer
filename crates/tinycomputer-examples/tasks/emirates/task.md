@@ -11,7 +11,9 @@ What we found when we researched the site for an automated browser:
 - The form has trip-type tabs ("Return", "One way", "Multi-city"), a
   "Departure airport" and an "Arrival airport" text box that list matching
   airports as you type ("Mumbai (Bombay), India Chhatrapati Shivaji
-  International BOM"), a "Departing" date button that opens a calendar, a
+  International BOM"). Typed text alone does not count: an airport is set
+  only by choosing it from that list, so treat each airport as a choice, not
+  as text to enter. There is a "Departing" date button that opens a calendar, a
   "Passengers" box, a "Class" button, and "Search flights".
 - The home page's own widget only takes the two airports; its city names also
   match unrelated "featured fare" links, so use the booking page instead.
