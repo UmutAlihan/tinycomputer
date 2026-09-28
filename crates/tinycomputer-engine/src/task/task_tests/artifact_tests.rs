@@ -53,7 +53,12 @@ async fn a_payment_checkpoint_keeps_its_screen_in_the_report_only() {
     // ListTasks, so the handle stays out of it.
     assert!(screenshot.is_none());
     let listed = tasks.list().data.unwrap();
-    assert!(serde_json::to_string(&listed).unwrap().find("o-1").is_none());
+    assert!(
+        serde_json::to_string(&listed)
+            .unwrap()
+            .find("o-1")
+            .is_none()
+    );
     assert_eq!(tasks.report(&view.id).data.unwrap().artifacts, [shot()]);
 }
 

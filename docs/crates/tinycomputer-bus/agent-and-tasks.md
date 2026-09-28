@@ -240,8 +240,10 @@ When a run stops on its own — at a checkpoint, before an approval, at a
 person's turn, at the end, or cut off by its time budget — the task tries to
 take a screenshot of its surface before letting it go (best effort, within
 ten seconds). `CancelTask` releases at once without one; take a
-`BrowserScreenshot` first if you want the screen. It lands in `artifacts` and, for a checkpoint, an approval, or a person's
-turn, on the status's own `screenshot`. Each is a held output: read it with
+`BrowserScreenshot` first if you want the screen. It lands in `artifacts`
+only — never on a status's `screenshot`, because a `TaskView` also travels
+through `AwaitTask` and `ListTasks`, which are not confidential, and a held
+output's id is all `BrowserReadOutput` needs. Read it with
 `BrowserReadOutput` within five minutes, before it expires.
 
 Each `Rescue` records one time a failed step was handed to a reasoning model

@@ -91,8 +91,14 @@ fn a_logged_url_keeps_only_its_scheme_and_host() {
     );
     // A path can carry a token (a magic link), and an `@` in it is not a
     // credential separator.
-    assert_eq!(loggable("https://example.com/reset/t0k3n"), "https://example.com");
-    assert_eq!(loggable("https://example.com/@alice?tab=1"), "https://example.com");
+    assert_eq!(
+        loggable("https://example.com/reset/t0k3n"),
+        "https://example.com"
+    );
+    assert_eq!(
+        loggable("https://example.com/@alice?tab=1"),
+        "https://example.com"
+    );
     assert_eq!(loggable("https://u:p@example.com"), "https://example.com");
     assert_eq!(loggable("about:blank"), "about:blank");
 }
