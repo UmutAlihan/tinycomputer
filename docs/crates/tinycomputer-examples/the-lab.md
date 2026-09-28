@@ -114,7 +114,7 @@ loop's cold-start cost specifically. See
 
 ## The debugging loop
 
-1. `scripts/lab eval all --modes flow,goal --trials 3` — get a scorecard
+1. `scripts/lab eval all --modes flow,goal --trials 3`: get a scorecard
    across every scenario and mode.
 2. Pick a failure, re-run it with `scripts/lab report <its dir>`, and read
    its `jev.jsonl`.
