@@ -55,8 +55,8 @@ the first thing to touch the journal.
 
 The task controller uses a different entry point,
 `JevRuntime::journaled_as(run_id)`, so that every flow run belonging to one
-*task*, the first run, and every rescue's or approval's continuation of it
-— writes to the same journal file, named after the task rather than after
+*task*, the first run, and every rescue's or approval's continuation of it,
+writes to the same journal file, named after the task rather than after
 whichever run happened to start it. Reading one task's whole story back
 later means reading one file, not stitching several together.
 
