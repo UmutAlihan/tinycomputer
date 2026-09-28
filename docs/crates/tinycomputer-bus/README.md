@@ -78,7 +78,7 @@ for the engineering write-up this page is a friendlier tour of.
 | `flow/` | `Flow`, the app-agnostic script format, and its authoring guide | [Writing flows, the wire format](flows.md) |
 | `agentic/` | `RunGoal` and `ResolveIntent`: the lower-level, bounded desktop-control loop that flows are built on | [The goal loop](goal-loop.md) |
 | `agent/` | The Agent (task) interface: hand over a job in plain language, get back a paused-or-finished view | [The Agent and task types](agent-and-tasks.md) |
-| `browser/` | The browser interface's own vocabulary: sessions, snapshots, actions, screenshots, downloads | [Browser types](browser.md) |
+| `browser/` | The 13 `Browser…` members' own vocabulary, served on the same interface as the desktop members: sessions, snapshots, actions, screenshots, downloads | [Browser types](browser.md) |
 | `version/` | `CONTRACT_VERSION` and the rule a host uses to decide whether it can bind to a given module | [Versioning and compatibility](versioning.md) |
 
 Each page below explains the *why*, links to the source for the exact field
