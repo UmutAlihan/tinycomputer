@@ -290,7 +290,7 @@ directly from which interface it is on.
 using this interface: which `SurfaceKind`s are available right now (and why
 not, when one is missing, a permission, a browser), whether Jev and the
 planner are configured, whether rescue is configured, whether shaped output
-is configured, the flow step kinds, the flow guide itself, and, per member ,
+is configured, the flow step kinds, the flow guide itself, and, per member,
 a `MemberDoc` with its JSON Schema for input and output plus a one-sentence
 summary and whether it needs confidential delivery. `examples` are worked
 requests ready to adapt rather than write from scratch.

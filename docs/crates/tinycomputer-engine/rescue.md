@@ -222,7 +222,7 @@ not a scripted one.
   effectively already satisfied and answered `skip`. This is flagged in the
   eval's own findings as worth reviewing: a `skip` can let a rescuer's
   reading of the screen substitute for a check that Jev itself did not
-  pass, a real trade-off between recovering a stuck task and trusting the
+  pass: a real trade-off between recovering a stuck task and trusting the
   original author's own verification.
 
 ## Configuring a rescuer
@@ -236,7 +236,7 @@ pub fn open_router_rescuer(config: &PlannerConfig) -> Result<Rescuer, String>
 ```
 
 using `config.rescue_model` (`RESCUE_MODEL`, `openai/gpt-6-luna`, when
-unset) at low reasoning effort, a reasoning model, given a little room to
+unset) at low reasoning effort: a reasoning model, given a little room to
 think before it answers, rather than the planner's plain low-temperature
 completion.
 
