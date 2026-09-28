@@ -132,3 +132,38 @@ After the fixes, both strategies refuse the row once, press nothing they
 should not, and fail step 11 with that note. Srinagar cannot be entered in
 this widget at desktop width from a headless browser; that is the site, not
 the harness.
+
+## Sight: reading the page without relying on ARIA
+
+The typing failure came from trusting the page's markup: rows that *declare*
+`combobox` and a label that points nowhere. Most sites mark up partly or
+wrongly, so the browser surface now reads the rendered page the way a person
+looks at it ([`specs/browser-sight.md`](../specs/browser-sight.md)): what is
+drawn and on top, the words on and beside each control, and which boxes
+really take text. The accessibility tree is the fallback.
+
+Read with a local headless Chrome (1280×800), one pass each:
+
+| Page | What sight shows | The tree showed |
+|---|---|---|
+| goindigo.in, destination open | the rows as `button "Mumbai Chhatrapati Shivaji Maharaj International Airport BOM"` …, the field as `button "To Search by place/airport"`, the offers under the list `covered`; no text box, since none is drawn | nine unnamed `combobox` rows offered as text fields |
+| goindigo.in form | each radio, date, passenger, and payment control once (the page draws a second radio and a wrapper around each) | two of each, one named `oneWay` |
+| Google Flights results | the fields as `textbox "Where from? New Delhi DEL" = "New Delhi"`; the cards grouped per list, not marked covered by their own text | the same fields and cards |
+| travel fixture | every field named by the label above it | the same |
+
+One reading takes 10–60 ms in the page.
+
+Live, in the Docker lab, with sight (the default):
+
+| Run | Outcome | Jev |
+|---|---|---|
+| travel fixture, narrow | pass, stopped at payment; 11 `seen:` refs acted on, no tree refs | 15 decisions, 75 calls (tree: 14 / 70) |
+| Kashmir, replayed plan, narrow | steps 1–10 as with the tree, then step 11: "no field that takes text was found for: destination city search" | — |
+
+At step 11 sight never offered a city row as a field, so nothing was typed
+into one and none was pressed; the tree reached the same failure only after
+the row refused the text. Step 4 showed the one flaw the run found: Google
+Flights renders two unnamed lists at one place, and their first cards were
+read as one card; unnamed lists are now numbered in page order (`list`,
+`list 2`). IndiGo's desktop widget still draws no search box, so Srinagar
+still cannot be entered there.
