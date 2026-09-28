@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use super::{ESCAPED, MAX_DISTRACTION_SIZE, MAX_DISTRACTIONS, distractions};
+use super::{ESCAPED, MAX_DISTRACTION_SIZE, MAX_DISTRACTIONS, find::distractions};
 use crate::agentic::flow::view::{Candidate, Screen, signature};
 
 fn button(name: &str, path: &[&str]) -> Candidate {

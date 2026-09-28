@@ -1,7 +1,7 @@
 //! Flow validation and `${name}` substitution: pure functions, no desktop.
 
 mod substitution;
-mod walk;
+mod rules;
 
 pub(super) use substitution::{normalize, references, substitute, substitute_safe};
 
