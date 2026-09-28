@@ -267,6 +267,13 @@ impl<D: Surface + Sync, W: Surface + Sync> Surface for Workspace<D, W> {
         }
         reply
     }
+    fn back(&self, app: &str) -> DesktopResponse {
+        match (self.active_browser(), &self.desktop) {
+            (Some(browser), _) => browser.back(app),
+            (None, Some(desktop)) => desktop.back(app),
+            (None, None) => no_browser("back"),
+        }
+    }
 }
 
 #[cfg(test)]

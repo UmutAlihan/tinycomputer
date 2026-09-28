@@ -87,6 +87,21 @@ pub trait Surface: Clone + Send + 'static {
             ),
         )
     }
+
+    /// Goes back to the previous page, for a surface that keeps a history.
+    ///
+    /// A desktop application keeps none, so the default refuses with
+    /// `ACTION_NOT_SUPPORTED`; a browser tab goes back, and its reply carries
+    /// the address it landed on as `url`.
+    fn back(&self, app: &str) -> DesktopResponse {
+        DesktopResponse::err(
+            "back",
+            tinycomputer_bus::DesktopError::new(
+                "ACTION_NOT_SUPPORTED",
+                format!("{app} keeps no history to go back through"),
+            ),
+        )
+    }
 }
 
 /// Whether a person would carry out `operation` with the pointer — click,
