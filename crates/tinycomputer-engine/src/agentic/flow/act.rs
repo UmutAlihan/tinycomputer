@@ -300,9 +300,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 let pressed = state.last.as_ref().and_then(|last| last.target.clone());
                 self.judge_wide(log, &screen, intent, pressed.as_ref(), &state.banned)
                     .await?
-            } else {
-                self.judge_speculating(log, &screen, intent, last.as_deref(), &state.banned)
+            } else if state.last.is_none() {
+                self.judge_speculating(log, &screen, intent, &state.banned)
                     .await?
+            } else {
+                self.judge(log, &screen, intent, last.as_deref()).await?
             };
             if judged.next == "finished"
                 && judged.done.is_some_and(|done| done < finish_floor(turn))
@@ -758,21 +760,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// One request judging the screen against `intent` and proposing a move;
     /// after pressing `last`, it also asks whether that helped.
-    /// Judges the turn and, in the same round trip, asks grounding's first
-    /// round for an `activate` move: most turns activate, and the target's
-    /// pool and purpose do not depend on the judge's answer. A turn that
-    /// ends up activating then waits for one round trip fewer.
+    /// Judges a step's first turn and, in the same round trip, asks
+    /// grounding's first round for an `activate` move: before anything is
+    /// done a step almost always activates, and the target's pool and
+    /// purpose do not depend on the judge's answer, so the turn waits for
+    /// one round trip fewer. Later turns are not speculated on: after an
+    /// action the judge most often ends the step, and the grounding round
+    /// would be spent for nothing.
     async fn judge_speculating(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
         intent: &str,
-        last: Option<&str>,
         banned: &BTreeSet<String>,
     ) -> Result<Judgement, Halt> {
-        let questions = self.judge_questions(log, intent, last);
+        let questions = self.judge_questions(log, intent, None);
         if questions.is_empty() || !self.enabled(FlowLoop::Moves) {
-            return self.judge(log, screen, intent, last).await;
+            return self.judge(log, screen, intent, None).await;
         }
         let pool = self.pool(screen, "Click", banned);
         let opening = self.opening(log, screen, &activate_purpose("click", intent), intent, pool, true);
