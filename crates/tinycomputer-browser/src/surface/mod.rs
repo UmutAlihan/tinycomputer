@@ -268,8 +268,7 @@ impl BrowserSurface {
                 target: Target::reference(reference),
             },
         )
-        .ok
-            && self.focused_field_is_editable()
+        .ok && self.focused_field_is_editable()
     }
 
     fn perform(&self, command: &str, action: Action) -> DesktopResponse {

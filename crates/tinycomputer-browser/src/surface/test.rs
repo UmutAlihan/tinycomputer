@@ -397,11 +397,15 @@ fn pasting_focuses_selects_and_inserts_without_a_clipboard() {
             .paste("", &node("e2", &["Click", "SetValue"]), "Srinagar")
             .ok
     );
-    let actions = fake.actions();
-    let tail = &actions[actions.len() - 9..];
+    let actions = fake
+        .actions()
+        .into_iter()
+        .filter(|action| ["focus", "evaluate", "press", "inserttext"].contains(&action.as_str()))
+        .collect::<Vec<_>>();
     assert_eq!(
-        tail.iter().step_by(3).collect::<Vec<_>>(),
-        ["focus", "press", "inserttext"]
+        &actions[actions.len() - 4..],
+        ["focus", "evaluate", "press", "inserttext"],
+        "focus, check it takes text, select, insert"
     );
     assert_eq!(fake.last("inserttext")["text"], "Srinagar");
     let before = fake.actions().len();
@@ -432,8 +436,10 @@ fn a_paste_stops_at_the_first_failed_step() {
             .code,
         "NO_SUCH_ELEMENT"
     );
-    let unselectable = Fake::scripted(|command| {
-        (command["action"] == "press").then(|| failure("Operation timed out"))
+    let unselectable = Fake::scripted(|command| match command["action"].as_str().unwrap() {
+        "press" => Some(failure("Operation timed out")),
+        "evaluate" => Some(ok(&json!({"result": true}))),
+        _ => None,
     });
     let Harness { surface, .. } = harness("paste-select", unselectable);
     assert_eq!(
@@ -566,6 +572,15 @@ fn boxed_fake(refuse: bool) -> Fake {
             &json!({"x": 400.0, "y": 300.0, "width": 120.0, "height": 32.0}),
         )),
         "evaluate" if refuse => Some(failure("Evaluation failed: CSP")),
+        // The focused element takes text, so a fill goes ahead.
+        "evaluate"
+            if command["script"]
+                .as_str()
+                .unwrap()
+                .contains("activeElement") =>
+        {
+            Some(ok(&json!({"result": true})))
+        }
         "evaluate" => Some(ok(
             &json!({"result": [100.0, 50.0, 1280.0, 880.0, 1280.0, 800.0]}),
         )),
@@ -705,4 +720,32 @@ fn a_page_that_will_not_say_where_its_window_is_still_gets_its_action() {
     );
     assert_eq!(fake.last("click")["selector"], "@e5");
     assert!(drawn.glides().is_empty());
+}
+
+#[test]
+fn text_is_never_filled_or_pasted_into_an_element_that_does_not_take_it() {
+    // A `div` with a `combobox` role — a city in a list of suggestions —
+    // focuses, but what takes focus is no input: the page's check says no.
+    let rows = Fake::scripted(|command| match command["action"].as_str().unwrap() {
+        "evaluate" => Some(ok(&json!({"result": false}))),
+        _ => None,
+    });
+    let Harness { fake, surface, .. } = harness("not-a-field", rows);
+    let row = node("e216", &["Click", "SetValue"]);
+    let filled = surface.execute(
+        JevOperation::TypeText,
+        Some(row.clone()),
+        Some("Srinagar".to_owned()),
+    );
+    assert_eq!(filled.error.unwrap().code, "NOT_A_TEXT_FIELD");
+    let pasted = surface.paste("", &row, "Srinagar");
+    assert_eq!(pasted.error.unwrap().code, "NOT_A_TEXT_FIELD");
+    let actions = fake.actions();
+    assert!(
+        !actions
+            .iter()
+            .any(|action| action == "fill" || action == "inserttext" || action == "press"),
+        "nothing is typed: {actions:?}"
+    );
+    assert_eq!(fake.last("focus")["selector"], "@e216");
 }
