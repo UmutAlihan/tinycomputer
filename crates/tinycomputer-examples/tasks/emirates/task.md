@@ -4,15 +4,20 @@ to the payment page. Never pay: stop in front of the payment step.
 
 What we found when we researched the site for an automated browser:
 
-- Emirates' own site, https://www.emirates.com/in/english/, loads and serves
-  its booking widget. A first visit opens with a cookie sheet ("Accept"
-  dismisses it); a later one does not, so only dismiss it if it shows.
-- The "Search flights" tab has "Flight" chosen. Its "Departure airport" button
-  opens a list of airports as options ("Mumbai (Bombay), India Chhatrapati
-  Shivaji International BOM"); "Arrival airport" works the same way ("Dubai").
-  "Continue" moves on to the dates and passengers.
+- Emirates' booking page, https://www.emirates.com/in/english/book/, loads and
+  holds the whole search on one form. A first visit opens with a cookie sheet
+  ("Accept" dismisses it); a later one does not, so only dismiss it if it
+  shows.
+- The form has trip-type tabs ("Return", "One way", "Multi-city"), a
+  "Departure airport" and an "Arrival airport" text box that list matching
+  airports as you type ("Mumbai (Bombay), India Chhatrapati Shivaji
+  International BOM"), a "Departing" date button that opens a calendar, a
+  "Passengers" box, a "Class" button, and "Search flights".
+- The home page's own widget only takes the two airports; its city names also
+  match unrelated "featured fare" links, so use the booking page instead.
 
-Plan: book on emirates.com as a guest. Choose a one-way trip, Mumbai to Dubai,
-18 October 2026, one adult, economy; search, choose the cheapest economy fare,
-continue, fill the passenger and contact details from the facts, decline
-seats, meals, insurance and every other paid extra, and stop before paying.
+Plan: book on emirates.com as a guest. On the booking page choose "One way",
+Mumbai to Dubai, 18 October 2026, one adult, economy; search, choose the
+cheapest economy fare, continue, fill the passenger and contact details from
+the facts, decline seats, meals, insurance and every other paid extra, and
+stop before paying.
