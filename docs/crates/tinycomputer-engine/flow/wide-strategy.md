@@ -105,6 +105,17 @@ out when the chosen target is not confident enough on its own (one
 Choice). A move whose target came back `none` is simply not re-asked that
 same turn; the next turn looks at the screen again instead.
 
+## Remembering what was already saved
+
+Alongside the ledger's `variables_read` (just names and a budget), every
+state, wide or narrow, also carries `already_collected`: the actual values
+a `read`, `extract`, or `pick` step has saved so far, the twelve most
+recent (`MAX_COLLECTED`), each clipped to 120 characters (`COLLECTED_CHARS`).
+This is what lets a step such as "open the next chat not yet read" be
+judged against what the run remembers, not just against a list of names.
+It also carries across a task's separate runs, and reaches the rescuer
+too. See [`../output.md`](../output.md) for the whole picture.
+
 ## Remembering obstacles
 
 The control that dismissed an overlay is learned as a grounding hint,
