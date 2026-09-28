@@ -700,6 +700,7 @@ fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraint
             max_model_calls,
             votes: state.budget.votes.unwrap_or(DEFAULT_VOTES),
             strategy: state.budget.strategy.unwrap_or_default(),
+            deliberation: state.budget.deliberation.unwrap_or_default(),
             brief: brief(&state),
             memory: state.memory.clone(),
             trace: state.trace,
