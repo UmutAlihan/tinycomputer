@@ -284,7 +284,8 @@ impl BrowserSurface {
   if (tag === 'textarea') return !element.readOnly && !element.disabled;
   if (tag !== 'input') return false;
   const type = (element.getAttribute('type') || 'text').toLowerCase();
-  return ['text', 'search', 'email', 'tel', 'url', 'number', 'password'].includes(type)
+  return ['text', 'search', 'email', 'tel', 'url', 'number', 'password',
+    'date', 'time', 'month', 'week', 'datetime-local'].includes(type)
     && !element.readOnly && !element.disabled;
 })()";
         let Ok(id) = self.ensure_session() else {
