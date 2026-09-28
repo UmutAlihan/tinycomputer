@@ -108,13 +108,11 @@ fn a_stale_ref_recovers_like_the_desktop_one() {
 #[test]
 fn only_retryable_hints_are_offered_for_recoverable_names() {
     for name in NAMES {
-        if let Some(hint) = recovery(name) {
-            if hint.retryable {
-                assert!(
-                    is_agent_recoverable(name),
-                    "{name} is retryable but not recoverable"
-                );
-            }
+        if recovery(name).is_some_and(|hint| hint.retryable) {
+            assert!(
+                is_agent_recoverable(name),
+                "{name} is retryable but not recoverable"
+            );
         }
     }
 }
