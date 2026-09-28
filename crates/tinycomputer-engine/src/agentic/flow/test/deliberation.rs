@@ -598,3 +598,88 @@ async fn a_missed_effect_asks_whether_the_press_was_intended() {
     assert!(loops(&run, 0).contains(&FlowLoop::Expectation));
     assert!(loops(&run, 0).contains(&FlowLoop::Undo));
 }
+
+fn toast() -> App {
+    App::with(|sim| {
+        sim.quirks.insert(Quirk::PromoToast);
+    })
+}
+
+#[tokio::test]
+async fn a_promo_toast_is_cleared_before_the_step() {
+    let run = run_with(
+        toast(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |_| {},
+        |id, question, _| match id {
+            "focus" => Some(pick(question, "Unlimited date changes", 0.9)),
+            "move" => Some(pick(question, "activate", 0.9)),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.app.sim().clicks, ["Close", "New Message"]);
+    assert!(loops(&run, 0).contains(&FlowLoop::Attention));
+    let Question::Choice(focus) = run
+        .requests
+        .iter()
+        .find_map(|request| request.questions.get("focus"))
+        .unwrap()
+    else {
+        panic!("focus is a choice")
+    };
+    assert!(focus.criteria.contains_key("step"));
+    assert_eq!(focus.criteria.len(), 3, "the step, the one toast, and none");
+}
+
+#[tokio::test]
+async fn a_screen_where_nothing_is_in_the_way_asks_nothing() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |_| {},
+        |id, question, _| (id == "move").then(|| pick(question, "activate", 0.9)),
+    )
+    .await;
+    assert_eq!(asked(&run.requests, "focus"), 0);
+    assert!(!loops(&run, 0).contains(&FlowLoop::Attention));
+}
+
+#[tokio::test]
+async fn a_toast_is_cleared_before_a_choose_grounds() {
+    let run = run_with(
+        App::with(|sim| {
+            sim.quirks.insert(Quirk::PromoToast);
+            sim.trip = Some(("Return", 0));
+        }),
+        json!({"app": "Mail", "steps": [{"choose": {"what": "the trip type tabs", "option": "One way"}}]}),
+        |_| {},
+        |id, question, _| (id == "focus").then(|| pick(question, "Unlimited date changes", 0.9)),
+    )
+    .await;
+    assert_eq!(
+        run.app.sim().clicks.first().map(String::as_str),
+        Some("Close")
+    );
+    assert!(run.app.sim().clicks.contains(&"One way".to_owned()));
+    assert!(loops(&run, 0).contains(&FlowLoop::Attention));
+}
+
+#[tokio::test]
+async fn a_toast_jev_says_is_not_in_the_way_is_left() {
+    let run = run_with(
+        toast(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |_| {},
+        |id, question, _| match id {
+            "focus" => Some(pick(question, "step", 0.9)),
+            "move" => Some(pick(question, "activate", 0.9)),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert!(!run.app.sim().clicks.contains(&"Close".to_owned()));
+    assert!(asked(&run.requests, "focus") >= 1);
+}

@@ -74,6 +74,8 @@ enum Quirk {
     StuckHistory,
     /// The Archive button shows disabled.
     DisabledArchive,
+    /// A promo toast with a Close button sits over the page until closed.
+    PromoToast,
 }
 
 #[derive(Debug, Default)]
@@ -608,6 +610,11 @@ impl App {
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
         }
+        if sim.has(Quirk::PromoToast) {
+            let toast = [root.as_str(), "region \"Unlimited date changes\""];
+            candidates.push(node("Close", "button", &["Click"], &toast, 700.0));
+            candidates.push(node("Learn more", "link", &["Click"], &toast, 720.0));
+        }
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
         if sim.obstacle {
@@ -705,6 +712,10 @@ impl AgentBackend for App {
                     sim.picked.push(reference);
                 }
                 sim.clicks.push(name.clone());
+                if name == "Close" && sim.has(Quirk::PromoToast) {
+                    sim.quirks.remove(&Quirk::PromoToast);
+                    return DesktopResponse::ok("click", json!({}));
+                }
                 if sim.page().is_some() {
                     press_shop(&mut sim, &name);
                     return sim.located("click");
