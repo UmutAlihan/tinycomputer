@@ -8,7 +8,6 @@
 //!    element and a knockout of `CAP`-sized groups cut along the regions;
 //!    the chosen region's winners go on to the Choice.
 //! 3. **Choice** over at most `CAP` elements.
-//!
 //! 4. **Consistency and corroboration**: a low-confidence pick is re-asked
 //!    with relabelled options, and confirmed with a yes/no question, in one
 //!    request. It is used only if the evidence agrees.
@@ -179,7 +178,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let request = ask::request(
             self.model(),
             self.state(screen, purpose),
-            Questions::default().with("target", elements(purpose, pool, &keys, self.include_values)),
+            Questions::default().with(
+                "target",
+                elements(purpose, pool, &keys, self.include_values),
+            ),
         );
         First::Chosen { keys, request }
     }
@@ -350,7 +352,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 ),
             )
             .await?;
-        self.settle(log, screen, purpose, pool, &keys, &answers).await
+        self.settle(log, screen, purpose, pool, &keys, &answers)
+            .await
     }
 
     /// Reads the final Choice's `answers`; a pick under [`ACT`] is re-asked

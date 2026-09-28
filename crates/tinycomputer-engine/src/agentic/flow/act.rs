@@ -779,7 +779,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             return self.judge(log, screen, intent, None).await;
         }
         let pool = self.pool(screen, "Click", banned);
-        let opening = self.opening(log, screen, &activate_purpose("click", intent), intent, pool, true);
+        let opening = self.opening(
+            log,
+            screen,
+            &activate_purpose("click", intent),
+            intent,
+            pool,
+            true,
+        );
         let mut requests = vec![ask::request(
             self.model(),
             self.state(screen, intent),
@@ -789,9 +796,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let wanted = speculative.len();
         requests.extend(speculative);
         let mut answers = self.ask_batch(log, requests).await?.into_iter();
-        let judged = answers.next().ok_or_else(|| {
-            Halt::Failed("no Jev evaluation completed".to_owned())
-        })?;
+        let judged = answers
+            .next()
+            .ok_or_else(|| Halt::Failed("no Jev evaluation completed".to_owned()))?;
         let rest = answers.collect::<Vec<_>>();
         let mut judged = Judgement::read(&judged);
         if rest.len() == wanted {
