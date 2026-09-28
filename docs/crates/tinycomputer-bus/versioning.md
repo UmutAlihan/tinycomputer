@@ -12,7 +12,7 @@ code, so this page exists mostly to keep them apart.
 pub const CONTRACT_VERSION: (u32, u32) = (2, 5);
 ```
 
-This describes the *vocabulary*, the member set and the payload shapes ,
+This describes the *vocabulary*: the member set and the payload shapes,
 not the crate's own package version (which the release workflow owns
 separately; see the root `CLAUDE.md`'s "Releases" section). It is a plain
 `(major, minor)` pair with no pre-release component, and the rule for
