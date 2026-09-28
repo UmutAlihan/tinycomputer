@@ -14,6 +14,7 @@ use serde_json::json;
 use tinybus::broker::Broker;
 use tinybus::transport::memory::MemoryBus;
 use tinybus::{Connection, Interface};
+use tinycomputer_bus::browser::names::methods as browser;
 use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
 
 /// The `methods = [...]` list `module_export!` was handed, read back out of
@@ -174,12 +175,16 @@ async fn an_unknown_member_is_a_transport_error_not_an_envelope() -> tinybus::Re
 /// The payloads are the same rejected-before-anything-happens ones the engine
 /// sweep in `desktop/test.rs` uses, and safe for the same reasons — see the
 /// note there. `ClipboardClear` is absent for that note's reason: there is no
-/// invalid input to hand it.
+/// invalid input to hand it. The browser members name a session or an output
+/// that was never opened, so none reaches a browser; `BrowserOpenSession` is
+/// absent because every input to it launches one.
 fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
     let empty_ref = json!([{ "ref_id": "" }]);
     let no_app = json!([{ "app": "" }]);
     let nothing = json!([]);
     let empty = json!([{}]);
+    let no_session = json!([{ "session": "s-0" }]);
+    let no_output = json!([{ "output": "o-0" }]);
 
     vec![
         (
@@ -252,6 +257,21 @@ fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
         (names::methods::VERSION, nothing.clone()),
         (names::methods::STATUS, nothing.clone()),
         (names::methods::PERMISSIONS, empty),
+        (browser::CLOSE_SESSION, no_session.clone()),
+        (browser::LIST_SESSIONS, nothing),
+        (browser::NAVIGATE, json!([{ "session": "s-0", "url": "https://example.com" }])),
+        (browser::SNAPSHOT, no_session.clone()),
+        (
+            browser::PERFORM,
+            json!([{ "session": "s-0", "action": "press", "key": "Tab" }]),
+        ),
+        (browser::READ_PAGE, no_session.clone()),
+        (browser::EVALUATE, json!([{ "session": "s-0", "expression": "1" }])),
+        (browser::SCREENSHOT, no_session.clone()),
+        (browser::READ_OUTPUT, no_output.clone()),
+        (browser::RELEASE_OUTPUT, no_output),
+        (browser::LIST_DOWNLOADS, no_session.clone()),
+        (browser::WAIT_DOWNLOAD, no_session),
     ]
 }
 
@@ -281,6 +301,7 @@ fn the_wire_sweep_covers_every_member_except_the_one_with_no_safe_input() {
             &names::methods::TASK_REPORT,
             &names::methods::LIST_TASKS,
             &names::methods::CLIPBOARD_CLEAR,
+            &browser::OPEN_SESSION,
         ],
         "the task members answer in their own reply shape; see the agent tests below"
     );
@@ -596,44 +617,15 @@ fn the_cursor_is_configured_or_refused() {
     assert!(DesktopService::from_config(&json!({"cursor": "off"})).is_ok());
 }
 
-/// The members `dispatch.rs` marks `#[tinybus(confidential)]`, as wire names.
-///
-/// Read from the source for the same reason [`manifest_methods`] is: the
-/// macro keeps the flag inside the generated dispatch and exposes no way to
-/// ask for it.
-fn confidential_members() -> Vec<String> {
-    let source = include_str!("dispatch.rs");
-    let mut members = Vec::new();
-    let mut marked = false;
-    for line in source.lines().map(str::trim) {
-        if line == "#[tinybus(confidential)]" {
-            marked = true;
-        } else if let Some(rest) = line.strip_prefix("async fn ") {
-            if marked {
-                let name = rest.split('(').next().unwrap_or_default();
-                members.push(
-                    name.split('_')
-                        .map(|word| {
-                            let mut chars = word.chars();
-                            chars.next().map_or_else(String::new, |first| {
-                                first.to_ascii_uppercase().to_string() + chars.as_str()
-                            })
-                        })
-                        .collect::<String>(),
-                );
-            }
-            marked = false;
-        }
-    }
-    members
-}
-
 #[test]
 fn the_catalogue_marks_exactly_the_confidential_members() {
-    let catalogued = tinycomputer_bus::catalogue::MEMBERS
-        .iter()
-        .filter(|member| member.confidential)
-        .map(|member| member.name.to_owned())
-        .collect::<Vec<_>>();
-    assert_eq!(confidential_members(), catalogued);
+    let service = service();
+    for member in tinycomputer_bus::catalogue::MEMBERS {
+        assert_eq!(
+            service.requires_confidential(&member.name.try_into().expect("valid member")),
+            member.confidential,
+            "{} disagrees with the served interface",
+            member.name
+        );
+    }
 }
