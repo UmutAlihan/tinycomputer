@@ -17,7 +17,7 @@ field back after acting on it.
 
 ## What it actually does
 
-1. Call `execute(TypeText, target, text)`, the fast, headless path.
+1. Call `execute(TypeText, target, text)`: the fast, headless path.
 2. Read the field back (`read_settled`, described below).
    - If the read-back value holds the text, report success:
      `{"path": "set_value", "verified": true}`.
