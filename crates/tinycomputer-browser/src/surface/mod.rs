@@ -386,7 +386,7 @@ impl Surface for BrowserSurface {
                     )
                 },
                 |reference| {
-                    self.perform(command, action(target(&reference), text.clone()))
+                    self.perform(command, action(self::target(&reference), text.clone()))
                 },
             )
         };
@@ -460,7 +460,7 @@ impl Surface for BrowserSurface {
                 Action::Scroll {
                     direction: ScrollDirection::Down,
                     pixels: None,
-                    target: reference.as_deref().map(target),
+                    target: reference.as_deref().map(self::target),
                 },
             ),
             JevOperation::Wait => self.perform("wait", pause(500)),
