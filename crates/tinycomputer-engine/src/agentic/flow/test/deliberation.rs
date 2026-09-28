@@ -198,14 +198,7 @@ async fn escalation_degrades_gracefully_when_the_budget_is_short() {
 #[tokio::test]
 async fn a_condition_split_across_views_does_not_pass() {
     let flow = json!({"app": "Mail", "steps": [{"verify": "the draft shows the recipient"}]});
-    let hook = |view_holds: f64| {
-        move |id: &str, _: &Question, _: &Sim| match id {
-            // Near the bar with history; the screen alone disagrees.
-            "holds" => None,
-            _ => None,
-        }
-        .or_else(|| (id == "holds").then(|| noul(view_holds)))
-    };
+    // Near the bar with the history; `view_holds` over the screen alone.
     let split = |view_holds: f64| {
         move |id: &str, question: &Question, _: &Sim| {
             (id == "holds").then(|| {
@@ -217,7 +210,6 @@ async fn a_condition_split_across_views_does_not_pass() {
             })
         }
     };
-    let _ = hook;
     let deep = run_with(App::default(), flow.clone(), |_| {}, split(0.3)).await;
     assert_eq!(deep.result.stop, FlowStopReason::StepFailed);
     assert!(loops(&deep, 0).contains(&FlowLoop::Escalation));
