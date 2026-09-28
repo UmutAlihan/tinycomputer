@@ -33,7 +33,7 @@ assert_eq!(consequence("Continue to traveller details"), Consequence::Reversible
 ```
 
 The check is a whole-word match against two short word lists (`PAYMENT` and
-`IRREVERSIBLE`), not a machine-learned classifier, a control's label is
+`IRREVERSIBLE`), not a machine-learned classifier. A control's label is
 lower-cased, punctuation is turned into spaces, and each list is checked as a
 whole-word phrase so that, say, "Payment history" does not accidentally
 match "pay" as a substring of something else. An **empty** label is treated
