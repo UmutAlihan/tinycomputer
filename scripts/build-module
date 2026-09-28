@@ -8,6 +8,10 @@
 #   TINYCOMPUTER_MODULE="$(scripts/build-module)" cargo run -p tinycomputer-examples --bin task_live
 #
 # <target> is $CARGO_TARGET_DIR when set (the Docker lab sets it), else target/.
+# TINYCOMPUTER_MODULE_DIR installs the module somewhere else instead of
+# <target>/lab: the loader refuses a module when any directory above it is
+# writable by, or owned by, another user, which rules out the Docker lab's
+# bind mount and volumes, so the Docker runners install into $HOME.
 # Every runner that drives the module over the bus — scripts/lab, tasks/run,
 # fixtures/run — builds it through here.
 set -euo pipefail
@@ -15,6 +19,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 target="${CARGO_TARGET_DIR:-$root/target}"
+dir="${TINYCOMPUTER_MODULE_DIR:-$target/lab}"
 
 case "$(uname -s)" in
   Darwin) library="libtinycomputer.dylib" ;;
@@ -23,23 +28,23 @@ case "$(uname -s)" in
 esac
 
 cargo build --release -p tinycomputer --lib >&2
-mkdir -p "$target/lab"
+mkdir -p "$dir"
 # The TinyBus loader refuses a module whose directory or file another user
 # could write, so an inherited group- or world-writable mode (the Docker
 # lab's volumes are) is stripped here rather than left to fail the load.
-chmod 755 "$target/lab"
-install -m 644 "$target/release/${library}" "$target/lab/${library}"
+chmod 755 "$dir"
+install -m 644 "$target/release/${library}" "$dir/${library}"
 if [[ "$(uname -s)" == "Darwin" ]]; then
   # The engine's clipboard (and so the paste fallback for rich-text
   # fields) runs through a helper it only trusts beside the module.
   cargo build --release -p agent-desktop-macos --bin agent-desktop-macos-helper >&2
-  install -m 755 "$target/release/agent-desktop-macos-helper" "$target/lab/agent-desktop-macos-helper"
+  install -m 755 "$target/release/agent-desktop-macos-helper" "$dir/agent-desktop-macos-helper"
 fi
 if command -v sha256sum >/dev/null 2>&1; then
-  hash="$(sha256sum "$target/lab/${library}" | awk '{print $1}')"
+  hash="$(sha256sum "$dir/${library}" | awk '{print $1}')"
 else
-  hash="$(shasum -a 256 "$target/lab/${library}" | awk '{print $1}')"
+  hash="$(shasum -a 256 "$dir/${library}" | awk '{print $1}')"
 fi
-printf '"%s" = "%s"\n' "$library" "$hash" > "$target/lab/modules.toml"
-chmod 644 "$target/lab/modules.toml"
-echo "$target/lab/${library}"
+printf '"%s" = "%s"\n' "$library" "$hash" > "$dir/modules.toml"
+chmod 644 "$dir/modules.toml"
+echo "$dir/${library}"

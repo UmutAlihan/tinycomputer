@@ -11,7 +11,11 @@ server=$!
 trap 'kill "$server" 2>/dev/null' EXIT
 if [ "$bin" = task_fixture ]; then
   # task_fixture drives the built module over the bus, as a host would.
-  TINYCOMPUTER_MODULE="${TINYCOMPUTER_MODULE:-$("$here/../../../scripts/build-module")}"
+  # The loader refuses a module under a directory another user can write,
+# which the lab's bind mount and volumes are, so it is installed in $HOME.
+TINYCOMPUTER_MODULE_DIR="${TINYCOMPUTER_MODULE_DIR:-$HOME/.local/lib/tinycomputer}"
+export TINYCOMPUTER_MODULE_DIR
+TINYCOMPUTER_MODULE="${TINYCOMPUTER_MODULE:-$("$here/../../../scripts/build-module")}"
   export TINYCOMPUTER_MODULE
 fi
 cargo build -q -p tinycomputer-examples --bin "$bin"
