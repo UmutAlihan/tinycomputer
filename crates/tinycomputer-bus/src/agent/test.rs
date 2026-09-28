@@ -219,6 +219,7 @@ fn rescues_pin_their_wire_form() {
         failure: "the class button is covered".to_owned(),
         reason: "the calendar is still open".to_owned(),
         steps: vec![crate::FlowStep::Intent("close the calendar".to_owned())],
+        covers: 1,
         outcome: super::RescueOutcome::FailedAgain,
     };
     let value = serde_json::to_value(&rescue).unwrap();
@@ -229,6 +230,7 @@ fn rescues_pin_their_wire_form() {
             "failure": "the class button is covered",
             "reason": "the calendar is still open",
             "steps": ["close the calendar"],
+            "covers": 1,
             "outcome": "failed_again"
         })
     );

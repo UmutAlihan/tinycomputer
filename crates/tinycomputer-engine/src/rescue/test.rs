@@ -196,13 +196,14 @@ fn the_briefing_shows_earlier_rescues_and_cuts_a_long_screen() {
         steps: vec![FlowStep::Action(tinycomputer_bus::FlowAction::Do(
             "open October".to_owned(),
         ))],
+        covers: 1,
         outcome: RescueOutcome::FailedAgain,
     }];
     briefing.screen = vec!["x".repeat(SCREEN_CHARS / 2); 4];
     let text = render(&briefing);
     assert!(!text.contains("Goal:"));
     assert!(text.contains("step 2 (no date was taken): the calendar needs a month first"));
-    assert!(text.contains("one of its steps failed"));
+    assert!(text.contains("(covering 1 more), one of its steps failed"));
     assert!(text.contains("Variables you may use: none."));
     assert!(text.contains('…'));
     assert!(text.len() < SCREEN_CHARS + 2_000);

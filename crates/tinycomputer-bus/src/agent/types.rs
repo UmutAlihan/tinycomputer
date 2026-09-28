@@ -465,15 +465,10 @@ pub struct Rescue {
     pub steps: Vec<FlowStep>,
     /// How many of the steps right after the failed one `steps` also do,
     /// dropped from the flow; never one holding a `stop_before`.
-    #[serde(default, skip_serializing_if = "is_zero")]
+    #[serde(default)]
     pub covers: usize,
     /// How the rescue went.
     pub outcome: RescueOutcome,
-}
-
-#[allow(clippy::trivially_copy_pass_by_ref)] // serde's skip_serializing_if passes a reference.
-fn is_zero(count: &usize) -> bool {
-    *count == 0
 }
 
 /// How a [`Rescue`] went.
