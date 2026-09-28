@@ -432,18 +432,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let mut log = StepLog::default();
         self.begin_step(&path);
         let started = Instant::now();
-        let result = match &action {
-            FlowAction::Choose(_)
-            | FlowAction::Enter(_)
-            | FlowAction::Pick(_)
-            | FlowAction::Read(_)
-            | FlowAction::Extract(_)
-            | FlowAction::StopBefore(_) => match self.clear_the_way(&mut log, &text).await {
-                Ok(()) => steps::run(self, &mut log, &action, &text, &path).await,
-                Err(halt) => Err(halt),
-            },
-            _ => steps::run(self, &mut log, &action, &text, &path).await,
-        };
+        let result = self.run_action(&mut log, &action, &text, &path).await;
         let result = self.reflected(&mut log, &action, &text, result).await;
         let wall_ms = millis(started.elapsed());
         let (ended, halt) = match result {
@@ -534,6 +523,29 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             Some(halt) => Err(halt),
             None => Ok(()),
         }
+    }
+
+    /// Runs one step's action. A step that grounds an element first clears
+    /// what is in the way (`attention.rs`); a `do` step attends every turn.
+    async fn run_action(
+        &mut self,
+        log: &mut StepLog,
+        action: &FlowAction,
+        text: &str,
+        path: &str,
+    ) -> Result<Ended, Halt> {
+        if matches!(
+            action,
+            FlowAction::Choose(_)
+                | FlowAction::Enter(_)
+                | FlowAction::Pick(_)
+                | FlowAction::Read(_)
+                | FlowAction::Extract(_)
+                | FlowAction::StopBefore(_)
+        ) {
+            self.clear_the_way(log, text).await?;
+        }
+        steps::run(self, log, action, text, path).await
     }
 
     /// Resets what one step keeps, before step `path` runs.
