@@ -1,12 +1,8 @@
 //! The reply envelope every Agent member returns, and its error.
 
-use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
-use crate::browser::OutputRef;
-use crate::flow::{Flow, FlowStep, GroundingHint, JevExchange, StepReport};
 
 /// Every reply on the Agent interface: the value, or an error a caller can
 /// act on. Never a transport failure for something the caller did.

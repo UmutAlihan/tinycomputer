@@ -1,12 +1,9 @@
 //! The `Describe` reply: capabilities, surfaces, and member docs for a model.
 
-use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::browser::OutputRef;
-use crate::flow::{Flow, FlowStep, GroundingHint, JevExchange, StepReport};
 use super::SurfaceKind;
 
 /// `Describe`: how to use this module, in one reply.
