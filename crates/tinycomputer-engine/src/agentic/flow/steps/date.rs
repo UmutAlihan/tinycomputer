@@ -1,10 +1,6 @@
 //! Reading a date option: whether it names a calendar day, and the words a
 //! control must show to be that day.
 
-
-
-
-
 use super::matching::plain;
 
 /// The months a date picker is paged forward at most.

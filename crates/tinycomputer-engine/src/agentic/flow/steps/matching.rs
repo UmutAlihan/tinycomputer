@@ -3,11 +3,9 @@
 
 use std::collections::BTreeSet;
 
-
-
 use crate::agentic::flow::view::{Candidate, Screen, element_kind, label};
 
-use super::date::{looks_like_date, date_words};
+use super::date::{date_words, looks_like_date};
 
 /// Every text field on `screen` that holds text, with that text: what a
 /// failed `choose` puts back.
@@ -138,7 +136,11 @@ const SELECTABLE_ROLES: &[&str] = &["tab", "radio", "radiobutton", "option", "me
 /// still offered there unselected — a press that took closes the list or
 /// marks the option. `None` when nothing on screen settles it, and Jev is
 /// asked instead.
-pub(in crate::agentic::flow) fn left_unchosen(screen: &Screen, option: &str, filtered: bool) -> Option<String> {
+pub(in crate::agentic::flow) fn left_unchosen(
+    screen: &Screen,
+    option: &str,
+    filtered: bool,
+) -> Option<String> {
     let wanted = plain(option);
     if wanted.is_empty() {
         return None;

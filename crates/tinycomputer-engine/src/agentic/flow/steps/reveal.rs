@@ -1,9 +1,7 @@
 //! Making an option show when a `choose` step cannot find it: opening the
 //! control, paging a calendar, or typing the option to filter a list.
 
-
 use tinycomputer_bus::JevOperation;
-
 
 use crate::agentic::flow::{
     FlowRun, Halt, StepLog,
@@ -11,10 +9,13 @@ use crate::agentic::flow::{
     view::{Screen, element_kind, label},
 };
 
-use super::{REVEAL_TURNS, date::{MAX_MONTHS, looks_like_date, is_next_month}, matching::{lists_more_than, mentions, search_text, clickable}};
+use super::{
+    REVEAL_TURNS,
+    date::{MAX_MONTHS, is_next_month, looks_like_date},
+    matching::{clickable, lists_more_than, mentions, search_text},
+};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// The next way to make `option` show after attempt `attempt` found
     /// nothing: open `what`, page a calendar, or type the option to filter.
     pub(super) async fn another_way(
@@ -150,5 +151,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         Ok(())
     }
-
 }

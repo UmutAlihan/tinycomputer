@@ -1,12 +1,8 @@
 //! The `choose` step: picking an option in a list, an autocomplete box, or a
 //! date picker, and putting back text the attempt changed.
 
-
 use serde_json::{Value, json};
-use tinycomputer_bus::{
-    ChooseStep, FlowLoop, JevOperation, StepOutcome,
-};
-
+use tinycomputer_bus::{ChooseStep, FlowLoop, JevOperation, StepOutcome};
 
 use crate::agentic::flow::{
     Ended, FlowRun, Halt, StepLog,
@@ -17,11 +13,20 @@ use crate::agentic::flow::{
     view::{Candidate, Screen, element_kind, is_destructive, label},
 };
 
-use super::{LOCATE_FLOOR, matching::{held_text, closest, is_checked, is_one_option, already_chosen, already_holds, lists_more_than, editable, one_option, plainest, mentions, within, redacted, clickable}};
+use super::{
+    LOCATE_FLOOR,
+    matching::{
+        already_chosen, already_holds, clickable, closest, editable, held_text, is_checked,
+        is_one_option, lists_more_than, mentions, one_option, plainest, redacted, within,
+    },
+};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
-    pub(super) async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
+    pub(super) async fn choose(
+        &mut self,
+        log: &mut StepLog,
+        choose: &ChooseStep,
+    ) -> Result<Ended, Halt> {
         // `what` and `option` are shown to Jev, so a secret is never
         // expanded into them; validation already rejects one there.
         let what = substitute_safe(&choose.what, &self.vars, &self.facts);
@@ -304,5 +309,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .await?
             .filter(|grounded| grounded.confidence >= LOCATE_FLOOR))
     }
-
 }

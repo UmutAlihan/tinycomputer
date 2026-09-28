@@ -1,23 +1,17 @@
 //! The `open` and `browse` steps: launching an application or a page and
 //! waiting for it to show a readable window.
 
-
-use tinycomputer_bus::{
-    JevOperation, StepOutcome,
-};
+use tinycomputer_bus::{JevOperation, StepOutcome};
 
 use crate::workspace::BROWSER;
 
 use crate::agentic::flow::{
-    Ended, FlowRun, Halt, StepLog,
-    backend::AgentBackend,
-    validate::substitute_safe,
+    Ended, FlowRun, Halt, StepLog, backend::AgentBackend, validate::substitute_safe,
 };
 
 use super::WINDOW_CHECKS;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     pub(super) async fn open(&mut self, log: &mut StepLog, app: &str) -> Result<Ended, Halt> {
         // The launched application becomes `self.app`, and this step's note
         // joins `history` — both reach Jev on a later step — so a fact here
@@ -118,5 +112,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         false
     }
-
 }

@@ -1,11 +1,7 @@
 //! The `read` step: taking one piece of text on screen into a variable.
 
-
 use serde_json::{Value, json};
-use tinycomputer_bus::{
-    FlowLoop, ReadStep, StepOutcome,
-};
-
+use tinycomputer_bus::{FlowLoop, ReadStep, StepOutcome};
 
 use crate::agentic::flow::{
     Ended, FlowRun, Halt, StepLog,
@@ -18,11 +14,13 @@ use crate::agentic::flow::{
 use super::LOCATE_FLOOR;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Every piece of text a `read` may take, as (label, what Jev is shown,
     /// the text itself): each element's text, its name apart when it says
     /// something the text does not, and the screen's static lines.
-    fn read_sources(&self, screen: &crate::agentic::flow::view::Screen) -> Vec<(String, Value, String)> {
+    fn read_sources(
+        &self,
+        screen: &crate::agentic::flow::view::Screen,
+    ) -> Vec<(String, Value, String)> {
         let ordered = ask::ordered_nodes(screen);
         screen
             .candidates
@@ -153,7 +151,6 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             "no text on screen clearly shows {what}"
         )))
     }
-
 }
 
 /// The text an element shows: its value, else its name.

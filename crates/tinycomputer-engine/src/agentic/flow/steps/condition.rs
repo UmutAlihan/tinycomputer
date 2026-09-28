@@ -1,12 +1,7 @@
 //! Steps that judge a condition on screen: `verify`, `wait_for`,
 //! `repeat_until`, and `if`.
 
-
-use tinycomputer_bus::{
-    FlowLoop, IfStep, JevOperation,
-    RepeatStep, StepOutcome,
-};
-
+use tinycomputer_bus::{FlowLoop, IfStep, JevOperation, RepeatStep, StepOutcome};
 
 use crate::agentic::flow::{
     Ended, FlowRun, Halt, StepLog,
@@ -20,7 +15,6 @@ use crate::agentic::flow::{
 use super::WAIT_CHECKS;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Judges one condition on the current screen.
     ///
     /// A deliberating run settles a judgement near [`DONE`] on its evidence
@@ -71,7 +65,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(held)
     }
 
-    pub(super) async fn verify(&mut self, log: &mut StepLog, condition_text: &str) -> Result<Ended, Halt> {
+    pub(super) async fn verify(
+        &mut self,
+        log: &mut StepLog,
+        condition_text: &str,
+    ) -> Result<Ended, Halt> {
         let held = self.holds(log, condition_text).await?;
         if held >= DONE {
             Ok(Ended::new(
@@ -85,7 +83,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
     }
 
-    pub(super) async fn wait_for(&mut self, log: &mut StepLog, condition_text: &str) -> Result<Ended, Halt> {
+    pub(super) async fn wait_for(
+        &mut self,
+        log: &mut StepLog,
+        condition_text: &str,
+    ) -> Result<Ended, Halt> {
         for check in 0..WAIT_CHECKS {
             let held = self.holds(log, condition_text).await?;
             if held >= DONE {
@@ -154,5 +156,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             format!("took the {taken} branch (confidence {held:.2})"),
         ))
     }
-
 }

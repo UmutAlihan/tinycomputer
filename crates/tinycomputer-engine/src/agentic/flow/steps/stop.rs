@@ -1,11 +1,7 @@
 //! The `stop_before` step: finding an irreversible control and stopping in
 //! front of it, or pressing it when the run allows destructive actions.
 
-
-use tinycomputer_bus::{
-    FlowLoop, FlowStopReason, JevOperation, StepOutcome,
-};
-
+use tinycomputer_bus::{FlowLoop, FlowStopReason, JevOperation, StepOutcome};
 
 use crate::agentic::flow::{
     Ended, FlowRun, Halt, StepLog,
@@ -18,8 +14,11 @@ use crate::agentic::flow::{
 use super::{IRREVERSIBLE_FLOOR, LOCATE_FLOOR, matching::clickable};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
-    pub(super) async fn stop_before(&mut self, log: &mut StepLog, action: &str) -> Result<Ended, Halt> {
+    pub(super) async fn stop_before(
+        &mut self,
+        log: &mut StepLog,
+        action: &str,
+    ) -> Result<Ended, Halt> {
         let purpose = format!("perform: {action}");
         // Asked to "perform: paying", Jev weighs the request against the
         // brief's own rule to stop before paying and hesitates (measured:
@@ -92,5 +91,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             )))
         }
     }
-
 }

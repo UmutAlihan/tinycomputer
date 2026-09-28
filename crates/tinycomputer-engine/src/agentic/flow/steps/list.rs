@@ -1,14 +1,10 @@
 //! Steps over a list of results: `pick` the best item by a criterion, and
 //! `extract` every item as rows.
 
-
 use serde_json::json;
-use tinycomputer_bus::{
-    FlowLoop, JevOperation, PickStep, ReadStep, StepOutcome,
-};
+use tinycomputer_bus::{FlowLoop, JevOperation, PickStep, ReadStep, StepOutcome};
 use tinycomputer_core::surface::{Group, result_families};
 use tinycomputer_core::{Criterion, Record, rank};
-
 
 use crate::agentic::flow::{
     Ended, FlowRun, Halt, StepLog,
@@ -18,10 +14,9 @@ use crate::agentic::flow::{
     view::{is_destructive, label},
 };
 
-use super::{MAX_PICK_SUMMARY, LOCATE_FLOOR, MAX_LISTS, LIST_PREVIEW};
+use super::{LIST_PREVIEW, LOCATE_FLOOR, MAX_LISTS, MAX_PICK_SUMMARY};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Picks the best of a list of results by `pick.by`, stores its text,
     /// and opens it. A criterion over prices, times, durations, or stops is
     /// ranked exactly; anything else is judged by Jev among the records.
@@ -101,7 +96,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Stores every item of the list showing as JSON rows of their text.
     /// Where several lists show, Jev says which one is `what`.
-    pub(super) async fn extract(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
+    pub(super) async fn extract(
+        &mut self,
+        log: &mut StepLog,
+        read: &ReadStep,
+    ) -> Result<Ended, Halt> {
         let what = substitute_safe(&read.what, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
@@ -234,7 +233,6 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .position(|key| *key == choice)
             .ok_or_else(|| Halt::Failed(format!("no item in {from} clearly meets {by}")))
     }
-
 }
 
 /// Each card's text as a record, its fields numbered in reading order.
