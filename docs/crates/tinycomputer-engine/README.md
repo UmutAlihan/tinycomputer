@@ -74,10 +74,18 @@ A few things run alongside that column rather than inside it:
 - the **rescuer** (`rescue/`) is called by the task controller *after* a step
   fails, to suggest a fix, and also never sees the screen except as text with
   every fact value already redacted;
+- the **shaper** (`shape/`) is called by the task controller once every
+  step has finished, to turn what the flow saved into the JSON its caller
+  asked for; it never acts and never sees a screen either. See
+  [output.md](output.md);
 - the **journal** (`agentic/journal/`) is a passive listener wired into
   `JevRuntime`, writing what happened for later reading;
 - the **workspace** (`workspace/`) sits underneath the flow runtime, so a
   step that says `open Mail` or `browse https://…` reaches the right surface.
+
+`JevRuntime` also has a second mode: `JevRuntime::sage` answers the same
+loops with Levanto Sage instead of Jev, for measuring one decision model
+against the other behind identical code. See [sage.md](sage.md).
 
 ## Reading order
 
