@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::browser::OutputRef;
-use crate::flow::{Flow, GroundingHint, JevExchange, StepReport};
+use crate::flow::{Flow, FlowStep, GroundingHint, JevExchange, StepReport};
 
 /// A task's identity, handed out by `StartTask`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -196,6 +196,10 @@ pub struct TaskBudget {
     pub deliberation: Option<crate::Deliberation>,
     /// Wall-clock time, excluding time spent waiting for the caller.
     pub max_elapsed_ms: Option<u64>,
+    /// How many times a failed step may be rescued by the reasoning model
+    /// before the task fails; the module's default (3, also the most) when
+    /// unset, and `0` turns rescues off.
+    pub max_rescues: Option<u32>,
 }
 
 /// `AwaitTask`: wait for a task to need something or finish.
@@ -439,6 +443,42 @@ pub struct TaskReport {
     pub learned: Vec<GroundingHint>,
     /// Every Jev exchange, when `StartTask.trace` was set.
     pub trace: Vec<JevExchange>,
+    /// Each time a failed step was handed to the reasoning model, in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub rescues: Vec<Rescue>,
+}
+
+/// One rescue: a failed step, what the reasoning model made of it, and
+/// whether its guidance got the task past it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Rescue {
+    /// The zero-based top-level index of the failed step, in the flow that
+    /// was running when it failed.
+    pub step: usize,
+    /// Why the step failed.
+    pub failure: String,
+    /// What the model said was wrong, or why it gave up.
+    pub reason: String,
+    /// The steps the model put in place of the failed one; empty when it
+    /// gave up.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub steps: Vec<FlowStep>,
+    /// How the rescue went.
+    pub outcome: RescueOutcome,
+}
+
+/// How a [`Rescue`] went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RescueOutcome {
+    /// The guidance is running.
+    Running,
+    /// The guidance's steps all finished.
+    Recovered,
+    /// One of the guidance's own steps failed.
+    FailedAgain,
+    /// The model gave up, failed, or never gave valid guidance.
+    GaveUp,
 }
 
 /// `Describe`: how to use this module, in one reply.
@@ -452,6 +492,10 @@ pub struct Capabilities {
     pub jev_configured: bool,
     /// Whether the planner is configured; without it `task` needs a `flow`.
     pub planner_configured: bool,
+    /// Whether a failed step is handed to a reasoning model for guidance
+    /// before the task fails.
+    #[serde(default)]
+    pub rescue_configured: bool,
     /// The flow step kinds.
     pub step_kinds: Vec<String>,
     /// The flow authoring guide.

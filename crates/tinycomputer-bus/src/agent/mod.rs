@@ -52,7 +52,7 @@ mod types;
 
 pub use types::{
     AgentError, AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, Example,
-    InputField, InputKind, MemberDoc, PaymentMode, PlanTaskRequest, StartTaskRequest, StepView,
+    InputField, InputKind, MemberDoc, PaymentMode, PlanTaskRequest, Rescue, RescueOutcome, StartTaskRequest, StepView,
     SurfaceAvailability, SurfaceKind, TaskBudget, TaskConstraints, TaskId, TaskPlan, TaskRef,
     TaskReport, TaskStatus, TaskView,
 };
