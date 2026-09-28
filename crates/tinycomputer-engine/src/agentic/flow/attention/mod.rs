@@ -25,7 +25,7 @@ use super::{
     AgentBackend, FlowRun, Halt, StepLog,
     ask::{self, Questions},
     evidence::{self, Bar, Verdict},
-    view::{Candidate, RegionKind, Screen, describe, digest, is_destructive, label, signature},
+    view::{Candidate, Screen, describe, digest, is_destructive, label, signature},
 };
 
 /// Most distractions one attention question offers.
@@ -136,9 +136,13 @@ fn words(text: &str) -> Vec<String> {
 }
 
 /// The distractions on `screen` a step about `intent` may need cleared first,
-/// at most [`MAX_DISTRACTIONS`], front regions first. `cleared` holds the
+/// at most [`MAX_DISTRACTIONS`], those in front first. `cleared` holds the
 /// signatures of controls already pressed this step, which are not offered
 /// again.
+///
+/// A distraction is the container a dismiss control sits in, with every
+/// element under it: the digest's regions are too coarse on a small page,
+/// where a toast and the form beside it share one.
 pub(super) fn distractions(
     screen: &Screen,
     intent: &str,
@@ -151,50 +155,75 @@ pub(super) fn distractions(
             word.len() > 3 && DISTRACTION_WORDS.contains(&word.as_str()) && intent.contains(word)
         })
     };
-    let mut found = Vec::new();
-    let mut regions = digest(screen).regions;
-    regions.sort_by_key(|region| region.kind != RegionKind::Front);
-    for region in regions {
-        let members = region
-            .members
-            .iter()
-            .filter_map(|index| screen.candidates.get(*index))
-            .collect::<Vec<_>>();
-        let closer = members
-            .iter()
-            .filter(|candidate| !is_destructive(candidate, screen, stop_before))
-            .filter(|candidate| !cleared.contains(&signature(candidate)))
-            .filter_map(|candidate| Some((closer_rank(candidate)?, *candidate)))
-            .min_by_key(|(rank, _)| *rank);
-        let Some((rank, closer)) = closer else {
+    let in_front = digest(screen)
+        .front()
+        .flat_map(|region| region.members.iter().copied())
+        .collect::<BTreeSet<_>>();
+    // Each container's least committal dismiss control, in page order.
+    let mut containers: Vec<(Vec<String>, usize, &Candidate)> = Vec::new();
+    for candidate in &screen.candidates {
+        let Some(rank) = closer_rank(candidate) else {
             continue;
         };
-        let text = std::iter::once(region.name.clone())
-            .chain(members.iter().map(|member| label(member)))
+        if is_destructive(candidate, screen, stop_before) || cleared.contains(&signature(candidate))
+        {
+            continue;
+        }
+        match containers
+            .iter_mut()
+            .find(|(path, _, _)| *path == candidate.path)
+        {
+            Some(entry) if rank < entry.1 => *entry = (candidate.path.clone(), rank, candidate),
+            Some(_) => {}
+            None => containers.push((candidate.path.clone(), rank, candidate)),
+        }
+    }
+    let mut found = Vec::new();
+    for (path, rank, closer) in containers {
+        let members = screen
+            .candidates
+            .iter()
+            .enumerate()
+            .filter(|(_, candidate)| candidate.path.starts_with(&path))
+            .collect::<Vec<_>>();
+        let front = members.iter().any(|(index, _)| in_front.contains(index));
+        let text = path
+            .iter()
+            .cloned()
+            .chain(members.iter().map(|(_, member)| label(member)))
             .collect::<Vec<_>>()
             .join(" ");
-        let marked = region.kind == RegionKind::Front
+        let marked = front
             || words(&text)
                 .iter()
                 .any(|word| DISTRACTION_WORDS.contains(&word.as_str()));
-        // A plain "Close" in ordinary content, with nothing to say it is a
-        // distraction, is as likely a panel the step needs.
-        if !marked && rank != 1 {
+        // A plain "Close" says enough; an "Accept" or "Reject" in ordinary
+        // content, with nothing to say it is a distraction, is the step's.
+        if (!marked && rank != 1) || named_by_step(&text) {
             continue;
         }
-        if named_by_step(&text) {
-            continue;
-        }
-        found.push(Distraction {
-            name: region.name,
-            shows: members.iter().take(6).map(|member| label(member)).collect(),
-            closer: closer.clone(),
-        });
-        if found.len() >= MAX_DISTRACTIONS {
-            break;
-        }
+        found.push((
+            !front,
+            Distraction {
+                name: path
+                    .last()
+                    .cloned()
+                    .unwrap_or_else(|| "top level".to_owned()),
+                shows: members
+                    .iter()
+                    .take(6)
+                    .map(|(_, member)| label(member))
+                    .collect(),
+                closer: closer.clone(),
+            },
+        ));
     }
+    found.sort_by_key(|(behind, _)| *behind);
     found
+        .into_iter()
+        .take(MAX_DISTRACTIONS)
+        .map(|(_, distraction)| distraction)
+        .collect()
 }
 
 /// A distraction as a Choice option Jev reads, wrapped as untrusted data.
