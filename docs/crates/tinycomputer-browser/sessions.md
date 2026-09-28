@@ -2,7 +2,7 @@
 
 A session is one browser tab (technically one `DaemonState`) that
 `tinycomputer-browser` drives from open to close. Everything else in the
-crate — navigating, reading, clicking, screenshotting — happens on a session.
+crate, navigating, reading, clicking, screenshotting, happens on a session.
 This page covers how one starts, what it costs, and how it ends.
 
 Code: `crates/tinycomputer-browser/src/sessions/mod.rs`. The wire shape of the
@@ -27,7 +27,7 @@ What opening a session actually does, in order:
 
 Step 4 matters more than it looks. Without an explicit launch, agent-browser
 would auto-launch from whatever `AGENT_BROWSER_*` environment variables
-happen to be set on the *host process* that loaded the module — not this
+happen to be set on the *host process* that loaded the module, not this
 session's configuration. Sending `launch` explicitly, every time, is what
 makes sessions in the same process independent of each other and of
 whatever the host happens to have set.
@@ -42,13 +42,13 @@ whatever the host happens to have set.
   browser is this session's alone.
 - **Attaching** (`endpoint: Some(...)`): the module connects to a browser
   that is already running, at a DevTools endpoint
-  (`http://127.0.0.1:9222`, or a raw `ws://`/`wss://` browser socket) —
+  (`http://127.0.0.1:9222`, or a raw `ws://`/`wss://` browser socket),
   instead of starting a new one.
 
 Attaching is how a host reuses a browser it manages itself, or how a sandbox
 points the module at a Chrome running in a different container. It also
 changes what closing the session does: `Browser::close_session` always sends
-an engine `close`, but for an attached session that only disconnects — the
+an engine `close`, but for an attached session that only disconnects; the
 browser it did not launch keeps running. `SessionInfo::launched` tells you
 which case you are in.
 
@@ -61,7 +61,7 @@ regardless of the flag) is one with an actual window on screen. That matters
 for one thing in particular: the on-screen cursor. `BrowserSurface` only
 glides the shared agent cursor onto elements when the session has a window to
 draw over (`BrowserSurface::shows_cursor`, see [surface.md](surface.md)).
-Headless or headed, every action is performed identically either way — the
+Headless or headed, every action is performed identically either way; the
 cursor is purely cosmetic.
 
 ## The viewport
@@ -84,7 +84,7 @@ this session may navigate to. An entry is either a full origin
 (`https://example.com`) or a host with a leading dot to also admit its
 subdomains (`.example.com`, which becomes agent-browser's `*.example.com`
 pattern). A navigation outside the list is refused before the browser is
-asked to make a request — the cheapest and most certain point to refuse it.
+asked to make a request: the cheapest and most certain point to refuse it.
 
 This is a guard rail, not a sandbox. The scheme is not enforced (the engine
 filters by host only), and a page that is already loaded can still make its
@@ -98,7 +98,7 @@ for how this fits into the wider safety picture.
 Calls on one session are serialized: each session is a
 `tokio::sync::Mutex<Session>`, so two calls against the same session never
 race, and a caller does not need to serialize its own calls. Different
-sessions run independently of each other — with one exception. When the
+sessions run independently of each other, with one exception. When the
 crate is built with the `agent-browser` feature (the real, linked engine),
 commands across *every* session in the process share one more lock
 (`crates/tinycomputer-browser/src/linked/mod.rs`, the static `ENGINE`
@@ -115,7 +115,7 @@ process: nothing here assumes a caller will always remember to close what it
 opens, so the limit exists as a backstop rather than a target to plan
 around. If your use case genuinely needs to page through more than eight
 sites at once, close sessions you are done with (or use tabs within a
-session — outside the scope of this crate today) instead of pushing past the
+session, outside the scope of this crate today) instead of pushing past the
 limit.
 
 ## Scratch space
@@ -129,7 +129,7 @@ when the session closes.
 ## Closing a session
 
 `Browser::close_session` removes the session from the table, sends a `close`
-command (best-effort — a session that is already dead has nothing left to
+command (best-effort: a session that is already dead has nothing left to
 close), and removes its scratch directory. Closing a session that does not
 exist succeeds silently: a caller retrying a close should never have to tell
 "already gone" apart from "never existed".

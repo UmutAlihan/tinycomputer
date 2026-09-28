@@ -167,15 +167,15 @@ a number of laps. See the cursor crate's own docs for what a pace changes.
 A handful of small binaries call a loaded module directly over the bus,
 bypassing the lab and the task API, for narrow checks during development:
 
-- **`live_probe`** — `live_probe <attested-module> <app> <name-fragment>`
+- **`live_probe`**: `live_probe <attested-module> <app> <name-fragment>`
   prints only the accessibility nodes matching a name fragment, and their
   parents. Read-only; no Jev, no permission beyond what a snapshot already
   needs.
-- **`live_goal`** — `live_goal <probe|run> <attested-module>` exercises a
+- **`live_goal`**: `live_goal <probe|run> <attested-module>` exercises a
   bounded Calculator goal. `probe` just prints Calculator's controls;
   `run` needs `OPENROUTER_API_KEY` and performs a real scoped calculation,
   then checks the visible result.
-- **`live_spotify`** — an opt-in, real-module Jev exercise against Spotify
+- **`live_spotify`**: an opt-in, real-module Jev exercise against Spotify
   on macOS. It spends OpenRouter credit and changes Spotify's visible
   playback state, so run it only when you mean to.
 
