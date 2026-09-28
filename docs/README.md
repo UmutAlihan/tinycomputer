@@ -54,6 +54,8 @@ Start with these, in order:
   and timing of a run on disk — and how to use it to find latency.
 - [`tasks.md`](tasks.md): the task API for outside agents, pausing and
   resuming, private values, budgets, and the planner.
+- [`../scripts/debug-ui/`](../scripts/debug-ui/): the local Vite SPA for
+  inspecting Jev journal JSONL files.
 - [`lab.md`](lab.md) and [`docker-lab.md`](docker-lab.md): running flows on a
   real desktop, and anything that launches Chromium in a container.
 - [`evals/`](evals/): recorded results of live runs.
