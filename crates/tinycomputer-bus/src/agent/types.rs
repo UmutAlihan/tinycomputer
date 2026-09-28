@@ -266,6 +266,35 @@ pub struct TaskRef {
     pub id: TaskId,
 }
 
+/// `TaskReport`: which task, and whether to include its Jev exchanges.
+///
+/// Not a [`TaskRef`], for a reason on the wire: `TaskReport` is confidential,
+/// and a `TinyBus` client refuses to send a confidential body holding an
+/// object whose only field is a string `id`, because that is the shape of a
+/// stream handle, whose bytes would travel unprotected. `trace` is always
+/// serialized, so the request never has that shape.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TaskReportRequest {
+    /// The task.
+    pub id: TaskId,
+    /// Include every Jev exchange, when `StartTask.trace` recorded them. A
+    /// traced report can run to megabytes; `false` leaves them out.
+    #[serde(default = "include_trace")]
+    pub trace: bool,
+}
+
+impl TaskReportRequest {
+    /// The full report of `id`, trace included.
+    #[must_use]
+    pub fn new(id: TaskId) -> Self {
+        Self { id, trace: true }
+    }
+}
+
+const fn include_trace() -> bool {
+    true
+}
+
 /// `PlanTask`: draft a flow without acting.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]

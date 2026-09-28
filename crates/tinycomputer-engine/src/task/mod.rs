@@ -442,6 +442,19 @@ impl Tasks {
         })
     }
 
+    /// The report `request` asks for: [`Tasks::report`], without the Jev
+    /// exchanges unless `request.trace`.
+    #[must_use]
+    pub fn report_for(&self, request: &TaskReportRequest) -> AgentResponse<TaskReport> {
+        let mut reply = self.report(&request.id);
+        if !request.trace
+            && let Some(report) = reply.data.as_mut()
+        {
+            report.trace.clear();
+        }
+        reply
+    }
+
     /// Every task held, newest first.
     #[must_use]
     pub fn list(&self) -> AgentResponse<Vec<TaskView>> {

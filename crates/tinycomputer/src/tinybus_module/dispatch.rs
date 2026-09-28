@@ -256,8 +256,11 @@ impl DesktopService {
 
     /// Everything a task did.
     #[tinybus(confidential)]
-    async fn task_report(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskReport>> {
-        self.on_tasks(move |tasks| tasks.report(&request.id)).await
+    async fn task_report(
+        &self,
+        request: TaskReportRequest,
+    ) -> TinyBusResult<AgentResponse<TaskReport>> {
+        self.on_tasks(move |tasks| tasks.report_for(&request)).await
     }
 
     /// The tasks this module holds, newest first.
