@@ -79,6 +79,8 @@ enum Quirk {
     /// Text typed with no target lands at the end of the field typed into
     /// last, as a browser keeps the focus there.
     FocusStays,
+    /// Something Escape does not close covers the New Message button.
+    Covered,
 }
 
 #[derive(Debug, Default)]
@@ -614,6 +616,13 @@ impl App {
         }
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
+        }
+        if sim.has(Quirk::Covered) {
+            for candidate in &mut candidates {
+                if candidate.name.as_deref() == Some("New Message") {
+                    candidate.states = vec!["covered".to_owned()];
+                }
+            }
         }
         if sim.has(Quirk::PromoToast) {
             let toast = [root.as_str(), "region \"Unlimited date changes\""];

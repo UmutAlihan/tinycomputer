@@ -721,3 +721,31 @@ async fn a_failed_choose_puts_back_the_text_it_typed_by_mistake() {
         "without deliberation the stray text stays"
     );
 }
+
+#[tokio::test]
+async fn escape_at_a_covering_is_pressed_once_per_step() {
+    // Live on Emirates, an open calendar covered the Class button and Escape
+    // did not close it: pressing it again every loop only wastes turns.
+    let run = run_with(
+        App::with(|sim| {
+            sim.quirks.insert(Quirk::Covered);
+        }),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| request.max_actions = 6,
+        |id, question, _| match id {
+            "focus" => Some(pick(question, "something open over the page", 0.9)),
+            "move" => Some(pick(question, "stuck", 0.9)),
+            _ => None,
+        },
+    )
+    .await;
+    let escapes = run
+        .app
+        .sim()
+        .presses
+        .iter()
+        .filter(|press| *press == "escape")
+        .count();
+    assert_eq!(escapes, 1);
+    assert!(loops(&run, 0).contains(&FlowLoop::Attention));
+}

@@ -348,7 +348,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if !self.deliberates(FlowLoop::Attention) || cleared.count >= MAX_CLEARED {
             return Ok(false);
         }
-        let found = distractions(screen, intent, &self.stop_before, &cleared.pressed);
+        // One Escape at a covering per step, however many loops attend: the
+        // reveal loop inside a `choose` keeps its own `cleared`.
+        let mut pressed = cleared.pressed.clone();
+        if self.escaped {
+            pressed.insert(ESCAPED.to_owned());
+        }
+        let found = distractions(screen, intent, &self.stop_before, &pressed);
         if found.is_empty() || self.room() == 0 {
             return Ok(false);
         }
@@ -421,6 +427,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             (reply, label(&target))
         } else {
             cleared.pressed.insert(ESCAPED.to_owned());
+            self.escaped = true;
             let app = self.app.clone();
             let reply = self
                 .act(
