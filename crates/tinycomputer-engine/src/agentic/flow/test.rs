@@ -4282,7 +4282,10 @@ async fn dismiss_options_honor_the_runs_value_visibility_policy() {
     let hidden = run_with(
         App::with(|sim| sim.obstacle = true),
         json!({"app": "Mail", "steps": ["start a new email message"]}),
-        wide,
+        |request| {
+            wide(request);
+            request.include_values = false;
+        },
         |_, _, _| None,
     )
     .await;
