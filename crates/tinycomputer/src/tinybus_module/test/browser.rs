@@ -276,7 +276,7 @@ async fn an_open_session_takes_the_configured_executable() -> tinybus::Result<()
     .await?;
     assert_eq!(data(&attached)["launched"], false);
 
-    let launched = launcher
+    let launch_commands = launcher
         .0
         .lock()
         .expect("the log is not poisoned")
@@ -284,10 +284,10 @@ async fn an_open_session_takes_the_configured_executable() -> tinybus::Result<()
         .filter(|command| command["action"] == "launch")
         .cloned()
         .collect::<Vec<_>>();
-    assert_eq!(launched.len(), 2);
-    assert_eq!(launched[0]["executablePath"], "/opt/chromium");
+    assert_eq!(launch_commands.len(), 2);
+    assert_eq!(launch_commands[0]["executablePath"], "/opt/chromium");
     assert!(
-        launched[1].get("executablePath").is_none(),
+        launch_commands[1].get("executablePath").is_none(),
         "an attached session launches nothing, so it takes no executable"
     );
     Ok(())
