@@ -41,7 +41,7 @@ because that convention differs by locale (`$1,234.56` versus
 *later* in the number is the decimal mark, and the earlier one is just a
 thousands separator. When only `,` appears, it is treated as a decimal mark
 if it is followed by exactly two digits and nothing else (`6,50`), and as a
-thousands separator otherwise, which correctly reads the Indian grouping
+thousands separator otherwise. That correctly reads the Indian grouping
 convention (`1,23,456`) as a whole number rather than mangling it. A named
 currency is always found by scanning for the *earliest* amount-before-a-name
 in the text, not the first currency name in the module's own list, so
@@ -50,7 +50,7 @@ whichever currency happens to be checked first internally.
 
 Prices found without any currency marker at all (a bare "6840" with no
 symbol, code, or name anywhere near it) are still read as a number, but with
-`currency: None`, which matters for ranking, described below.
+`currency: None`. That matters for ranking, described below.
 
 ## `parse_clock`, `parse_duration`, `parse_stops`
 
