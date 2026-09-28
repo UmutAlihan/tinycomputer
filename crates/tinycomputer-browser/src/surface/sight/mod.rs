@@ -32,6 +32,14 @@
 //! - **Containers are what a person sees a control in:** dialogs and fixed
 //!   layers, landmarks, named sections, and the cards of a list with their
 //!   ordinal, so result cards group as they do from the tree.
+
+//! - **Noise is left out:** ads (frames and links to ad servers, blocks
+//!   named or labelled as ads, tracking pixels), blank clickable boxes, and
+//!   what the page hides from people (`inert`, clipped screen-reader text,
+//!   and `aria-hidden` content slid out sideways or behind a dialog). An ad
+//!   in front, and a cookie, consent, or newsletter banner, is never noise:
+//!   a person has to answer it. The reply's `denoised` counts what went, by
+//!   kind ([`Denoised`]).
 //!
 //! Each control is marked with a `data-tc-seen` attribute the first time it
 //! is seen, and keeps it for as long as the element lives: a ref

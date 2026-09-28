@@ -103,11 +103,84 @@ a caret.
    root or a frame of a fifth of the viewport in front, the surface reads the
    accessibility tree for that observation, as before.
 
+9. **Denoising.** Noise is left out before anything is returned; see
+   [Denoising](#denoising).
+
 A covered click on a `seen:` ref finds its target by its mark, not by its
 name, so an unnamed card link is clicked through its own card too. A click
 on a `seen:` tab, radio, or option that leaves it on screen unselected is pressed once more by
 the element's own `click()`: a page can ignore a trusted click it has not yet
 wired up (Emirates' trip tabs, freshly loaded), and selecting is idempotent.
+
+## Denoising
+
+A person skips ads and never sees what a page hides from them, so sight
+leaves both out, and blank boxes with them. Each rule leaves a whole block
+out: the element and everything inside it.
+
+- **Ads.**
+  - Frames, pictures, and links whose address is on an ad or tracking
+    host: `doubleclick.net`, `googlesyndication.com`,
+    `googleadservices.com`, `adservice.google.*`, `amazon-adsystem.com`,
+    `taboola.com`, `outbrain.com`, `criteo.*`, `adnxs.com`, `moatads.com`,
+    `pubmatic.com`, `rubiconproject.com`, `scorecardresearch.com`, and their
+    subdomains.
+  - Elements whose class or id holds an ad word. A class is split into
+    words at `-` and `_` only, never inside a word, so `header`, `shadow`,
+    `download`, `adults`, and generated classes such as `css-1ad4k9` never
+    match. `adsbygoogle`, `adslot`, `adunit`, `adcontainer` (and the other
+    `ad…` compounds in `sight.js`), `advert…`, and `sponsor…` match in any
+    case. The short words `ad`, `ads`, and `dfp` must be in one case and
+    stand alone (`ads`) or beside a real word of three letters or more
+    (`ad-slot`, `top-ad`, `div-gpt-ad-1234-0`). Google's generated `gb_Ad`
+    and `gb_ad` are not ads.
+  - Elements with AdSense's `data-ad-slot` or `data-ad-client`, or Google
+    Publisher Tag's `data-google-query-id`.
+  - A shown label whose whole text is "Advertisement", "Sponsored", or "Ad"
+    (any case), together with the nearest block around it that holds more:
+    another word, a control, a picture, or a frame. The block is never the
+    page root, a landmark, a form, a dialog, anything that holds a field, or
+    more than 40% of the viewport. A control whose whole name is the label
+    is a control, not a label.
+  - Tracking pixels: a loaded image of at most 1×1 pixels drawn at most
+    1×1.
+  - An ad frame no longer counts toward the frame-in-front fallback, so an
+    inline banner does not send the reading to the tree.
+- **Blank boxes.** A box that is clickable only by its pointer cursor, tab
+  stop, or click handler is left out when it has no words, no name, no
+  picture, and nothing inside to act on or type into. Native controls,
+  controls with an ARIA role, and pictures that are controls stay. Sight
+  never returned decorative pictures or wrapper elements, so there is
+  nothing else to drop or collapse.
+- **Hidden.**
+  - `inert` blocks.
+  - Visually hidden screen-reader text, still laid out but clipped away:
+    positioned absolutely or fixed, and clipped by `clip: rect(0 0 0 0)`,
+    `clip-path: inset(50%)`, or a 1×1 box with `overflow: hidden`.
+  - `aria-hidden="true"` blocks a person cannot see: those slid out of the
+    viewport sideways (a carousel's clones), and those in the viewport with
+    something else in front at their middle (the page behind a dialog).
+    Pages mark plenty they draw with `aria-hidden`, such as a custom list's
+    shown label, a pill below the fold, or a page a modal library forgot to
+    unmark. What is in front, or above or below the viewport, stays.
+  - A checkbox or radio hidden by any of these inside its own label still
+    makes the label its stand-in, as a checkbox hidden by style does.
+- **Never noise.** An ad rule never drops a block that floats above the page
+  (a dialog or a fixed layer) or sits in one: an ad in front is an obstacle
+  a person must close. Nor does it drop a block whose class, id, label, or
+  first 600 characters of text mention cookies, consent, GDPR, privacy,
+  newsletters, or subscribing: the obstacle loop must see those banners to
+  answer them.
+- **Words.** The words in an ad never become a field's label.
+
+The reply carries `denoised: {ads, empty, hidden}`, the number of blocks of
+each kind that held something sight would otherwise have returned: a
+control, a text block, a shadow root or frame that would have sent the
+reading to the tree, or an ad's own frame or picture. A reading from before
+denoising has no such field, and every count reads as zero. The surface
+keeps the last reading's summary as `BrowserSurface::denoised()`, which is
+zero until a page is read, and zero again when the tree was read instead.
+The `Screen` does not carry it.
 
 ## Limits
 
@@ -118,6 +191,8 @@ wired up (Emirates' trip tabs, freshly loaded), and selecting is idempotent.
 | `MAX_LABELS` | 3,000 | visible words weighed as a field's label |
 | `MAX_NAME` / `MAX_TEXT` | 120 / 160 characters | as the tree's content names and context lines |
 | nearby label | 200 px left, 40 px above, 40 px right of a checkbox | the distances at which a person still reads words as a field's label |
+| ad label's block | at most 40% of the viewport | an ad, not the page section it sits in |
+| banner words read | first 600 characters of a block's text | enough to find a consent or newsletter banner's words cheaply |
 
 ## Invariants
 
@@ -134,6 +209,17 @@ wired up (Emirates' trip tabs, freshly loaded), and selecting is idempotent.
   bounds; the fallback when a reading fails or sees what it cannot reach;
   sight refs addressed by their marks in fill, focus, the covered click, and
   a scoped observation; `Perception::Tree` reading the tree alone.
+  The `denoised` summary parsed, defaulted when absent, and kept by the
+  surface.
+- Live fixture tests (`live_*` in `sight/test.rs`, with the `agent-browser`
+  feature and `TINYCOMPUTER_LIVE_BROWSER=1`, since CI has no browser): ad
+  frames, ad-named and "Sponsored" blocks, ad links, and pixels are removed,
+  while `header`, `shadow`, `download`, `adults`, and generated classes are
+  kept; blank boxes are dropped while picture boxes and native buttons stay;
+  consent, cookie, and newsletter banners are kept whole; `inert`, clipped,
+  and sideways `aria-hidden` content and the page behind a dialog are
+  dropped, while `aria-hidden` content a person sees stays and hidden
+  checkboxes keep their labels as stand-ins.
 - Live, read with a local headless Chrome: IndiGo's city rows named by their
   cities as buttons, its form's radios, date and passenger controls read
   once each, Google Flights' fields named "Where from? New Delhi DEL" and
