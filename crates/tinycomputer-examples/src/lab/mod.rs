@@ -1,6 +1,7 @@
 //! The lab: run high-level flows against real applications and score them.
 //!
-//! - `host` loads the built module through the real `TinyBus` loader.
+//! - `host` is [`crate::host`], re-exported: the built module loaded through
+//!   the real `TinyBus` loader.
 //! - `scenario` is the task ladder and the checkers that read real state.
 //! - `record` writes run artifacts, timelines, and scorecards.
 //! - `author` (feature `inference`) is the optional LLM that writes flows.
@@ -9,6 +10,6 @@
 
 #[cfg(feature = "inference")]
 pub mod author;
-pub mod host;
+pub use crate::host;
 pub mod record;
 pub mod scenario;

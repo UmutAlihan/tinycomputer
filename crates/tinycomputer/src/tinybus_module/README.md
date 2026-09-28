@@ -43,8 +43,9 @@ session appears in `BrowserListSessions` and a screenshot a task view names
 is readable with `BrowserReadOutput`. `browser_reply` wraps each result in
 the `DesktopResponse` envelope, the error converted by
 `tinycomputer_browser::Error::envelope`. `BrowserOpenSession` takes the
-configured `browser.executable` when the request names neither an executable
-nor an endpoint.
+configured `browser` settings (`browser_defaults.rs`) wherever the request
+left them unset; an attached session takes no executable or launch
+arguments.
 
 `tinybus_module_tests/browser_tests.rs` drives them over the in-memory bus
 against a scripted engine, so no browser is launched.
@@ -53,8 +54,9 @@ against a scripted engine, so no browser is launched.
 
 The module takes its configuration from the loader as a JSON object, parsed into
 `Desktop` by `Desktop::from_config`: `session_id` and `trace_path` as strings,
-`trace_strict` and `headed` as booleans. `browser.executable` names the
-browser binary, and `cursor` sets the agent's on-screen cursor: a pace
+`trace_strict` and `headed` as booleans. `browser` sets how every browser
+launches — `executable`, `user_agent`, `args`, and a task's page
+`perception` — and `cursor` sets the agent's on-screen cursor: a pace
 (`off`, `brisk`, `natural`, `calm`) or `{pace, overlay}` with the overlay
 helper's path. An optional `jev` object configures the
 provider, model, endpoint, and API key before the service is registered.

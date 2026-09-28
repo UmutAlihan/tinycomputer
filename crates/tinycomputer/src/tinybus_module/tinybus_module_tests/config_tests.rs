@@ -1,5 +1,5 @@
 //! Tests for the module configuration: rejection, desktop availability, the
-//! planner, the browser executable, and the cursor.
+//! planner, the browser settings, and the cursor.
 
 use crate::tinybus_module::DesktopService;
 use serde_json::json;
@@ -79,14 +79,68 @@ fn a_planner_is_configured_from_private_configuration_only_with_a_key() {
 }
 
 #[test]
-fn the_browser_executable_is_configured_or_refused() {
-    assert!(DesktopService::from_config(&json!({"browser": {}})).is_ok());
-    assert!(
-        DesktopService::from_config(&json!({"browser": {"executable": "/usr/bin/chromium"}}))
-            .is_ok()
+fn the_browser_configuration_is_read_or_refused() {
+    use crate::tinybus_module::config::BrowserDefaults;
+    use tinycomputer_browser::Perception;
+
+    assert_eq!(
+        BrowserDefaults::from_config(&json!({})).unwrap(),
+        BrowserDefaults::default()
     );
-    assert!(DesktopService::from_config(&json!({"browser": {"executable": 7}})).is_err());
-    assert!(DesktopService::from_config(&json!({"browser": "chrome"})).is_err());
+    assert!(DesktopService::from_config(&json!({"browser": {}})).is_ok());
+    let defaults = BrowserDefaults::from_config(&json!({"browser": {
+        "executable": "/usr/bin/chromium",
+        "user_agent": "Mozilla/5.0",
+        "args": ["--disable-blink-features=AutomationControlled"],
+        "perception": "tree"
+    }}))
+    .unwrap();
+    assert_eq!(defaults.executable.as_deref(), Some("/usr/bin/chromium"));
+    assert_eq!(defaults.user_agent.as_deref(), Some("Mozilla/5.0"));
+    assert_eq!(defaults.args.len(), 1);
+    assert_eq!(defaults.perception, Perception::Tree);
+    for invalid in [
+        json!({"browser": "chrome"}),
+        json!({"browser": {"executable": 7}}),
+        json!({"browser": {"user_agent": false}}),
+        json!({"browser": {"args": "--headless"}}),
+        json!({"browser": {"args": [1]}}),
+        json!({"browser": {"perception": "vision"}}),
+        json!({"browser": {"useragent": "typo"}}),
+    ] {
+        assert!(BrowserDefaults::from_config(&invalid).is_err(), "{invalid}");
+        assert!(DesktopService::from_config(&invalid).is_err(), "{invalid}");
+    }
+}
+
+#[test]
+fn browser_defaults_fill_only_what_the_caller_left_unset() {
+    use crate::tinybus_module::config::BrowserDefaults;
+    use tinycomputer_browser::SessionOptions;
+
+    let defaults = BrowserDefaults::from_config(&json!({"browser": {
+        "executable": "/opt/chromium", "user_agent": "UA", "args": ["--a"]
+    }}))
+    .unwrap();
+    let launched = defaults.apply(SessionOptions::default());
+    assert_eq!(launched.executable.as_deref(), Some("/opt/chromium"));
+    assert_eq!(launched.user_agent.as_deref(), Some("UA"));
+    assert_eq!(launched.args, vec!["--a".to_owned()]);
+
+    let own = defaults.apply(SessionOptions {
+        user_agent: Some("mine".to_owned()),
+        args: vec!["--b".to_owned()],
+        ..SessionOptions::default()
+    });
+    assert_eq!(own.user_agent.as_deref(), Some("mine"));
+    assert_eq!(own.args, vec!["--b".to_owned()]);
+
+    let attached = defaults.apply(SessionOptions {
+        endpoint: Some("http://127.0.0.1:9222".to_owned()),
+        ..SessionOptions::default()
+    });
+    assert!(attached.executable.is_none() && attached.args.is_empty());
+    assert_eq!(attached.user_agent.as_deref(), Some("UA"));
 }
 
 #[test]

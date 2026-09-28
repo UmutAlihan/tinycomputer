@@ -133,7 +133,7 @@ matter most:
 |---|---|
 | `jev` | the decision model's provider and key. Without it, only the primitives work |
 | `planner` | an OpenRouter key for the planner, which also brings rescues and output shapes. Without it, you write flows yourself |
-| `browser.executable` | which Chrome to use, if it can't find one |
+| `browser` | how browsers launch: `executable`, `user_agent`, `args`, and page `perception` |
 | `cursor` | the on-screen cursor you can watch: `off`, `brisk`, `natural`, or `calm` |
 
 Every key is described in

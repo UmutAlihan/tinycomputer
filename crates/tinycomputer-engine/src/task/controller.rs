@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use tinycomputer_bus::agent::{
     AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, PaymentMode, PlanTaskRequest,
-    StartTaskRequest, TaskId, TaskPlan, TaskReport, TaskStatus, TaskView,
+    StartTaskRequest, TaskId, TaskPlan, TaskReport, TaskReportRequest, TaskStatus, TaskView,
 };
 use tinycomputer_core::Facts;
 
@@ -301,6 +301,19 @@ impl Tasks {
             trace: state.exchanges.clone(),
             rescues: state.rescues.clone(),
         })
+    }
+
+    /// The report `request` asks for: [`Tasks::report`], without the Jev
+    /// exchanges unless `request.trace`.
+    #[must_use]
+    pub fn report_for(&self, request: &TaskReportRequest) -> AgentResponse<TaskReport> {
+        let mut reply = self.report(&request.id);
+        if !request.trace
+            && let Some(report) = reply.data.as_mut()
+        {
+            report.trace.clear();
+        }
+        reply
     }
 
     /// Every task held, newest first.

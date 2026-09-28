@@ -57,5 +57,6 @@ Sage as one batch group and maps the answers back:
   levels.
 
 Every call still goes through `JevRuntime::evaluate`. It is not reachable over
-the bus; `task_live` selects it with `TINYCOMPUTER_DECISIONS=sage`. See
+the bus, and since the examples drive the module over the bus, none of them
+selects it any more; the recorded comparison is
 `docs/technical/evals/2026-09-29-sage.md`.

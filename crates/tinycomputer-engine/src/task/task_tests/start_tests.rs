@@ -82,6 +82,16 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
     assert_eq!(report.steps.len(), 2);
     assert!(report.flow.is_some());
     assert_eq!(tasks.list().data.unwrap()[0].id, view.id);
+
+    let full = tinycomputer_bus::agent::TaskReportRequest::new(view.id.clone());
+    assert_eq!(tasks.report_for(&full).data.unwrap(), report);
+    let lean = tinycomputer_bus::agent::TaskReportRequest {
+        trace: false,
+        ..full
+    };
+    let lean = tasks.report_for(&lean).data.unwrap();
+    assert!(lean.trace.is_empty());
+    assert_eq!(lean.steps, report.steps);
 }
 
 #[tokio::test]

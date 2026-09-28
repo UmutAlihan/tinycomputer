@@ -9,6 +9,7 @@ use tinycomputer_bus::DesktopResponse;
 use tinycomputer_bus::agent::{SurfaceKind, TaskConstraints, TaskId};
 use tinycomputer_engine::{FlowFuture, FlowRunner, JevRuntime, TextFuture, Workspace};
 
+use super::config::BrowserDefaults;
 use crate::Desktop;
 
 type TaskWorkspace = Workspace<Desktop, BrowserSurface>;
@@ -20,9 +21,8 @@ pub(super) struct WorkspaceRunner {
     pub(super) desktop: Desktop,
     pub(super) jev: Option<JevRuntime>,
     pub(super) browser: Arc<Browser>,
-    /// The Chrome or Chromium binary sessions launch, when the platform's
-    /// own discovery would not find one.
-    pub(super) executable: Option<String>,
+    /// How every task's browser launches, and how it reads a page.
+    pub(super) defaults: BrowserDefaults,
     /// The screen's one agent cursor, which each task's browser shares with
     /// the desktop.
     pub(super) cursor: Arc<ScreenCursor>,
@@ -38,7 +38,7 @@ impl WorkspaceRunner {
             desktop,
             jev,
             browser,
-            executable: None,
+            defaults: BrowserDefaults::default(),
             cursor: Arc::new(ScreenCursor::off()),
             workspaces: Mutex::new(HashMap::new()),
         }
@@ -57,16 +57,16 @@ impl WorkspaceRunner {
             .then(|| {
                 BrowserSurface::new(
                     self.browser.clone(),
-                    SessionOptions {
+                    self.defaults.apply(SessionOptions {
                         endpoint: constraints.browser_endpoint.clone(),
-                        executable: self.executable.clone(),
                         headless: !constraints.headed,
                         allowed_origins: constraints.origins.clone(),
                         ..SessionOptions::default()
-                    },
+                    }),
                     tokio::runtime::Handle::current(),
                 )
                 .with_cursor(self.cursor.clone())
+                .with_perception(self.defaults.perception)
             });
             (Workspace::new(desktop, browser.clone()), browser)
         };
