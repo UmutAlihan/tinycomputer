@@ -23,11 +23,12 @@
 //! `Screen::candidates`) that maps straight back to the element. Everything
 //! read from the screen is wrapped as `untrusted_accessibility_data`.
 
+mod parse;
+mod render;
 mod types;
 
+pub use parse::digest;
 pub use types::{Digest, Region, RegionKind, Rendering};
-
-use super::{Candidate, Screen, element_line, groups, label};
 
 /// Most elements a region holds before it is split one level deeper.
 const REGION_SIZE: usize = 24;
@@ -74,11 +75,6 @@ const NOISE_WORDS: &[&str] = &[
     "contentinfo",
     "copyright",
 ];
-
-mod parse;
-mod render;
-
-pub use parse::digest;
 
 #[cfg(test)]
 mod digest_tests;

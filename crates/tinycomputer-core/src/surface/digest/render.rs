@@ -4,8 +4,8 @@
 use serde_json::{Value, json};
 
 use super::{CARD_CHARS, COLLAPSED_SLACK, EXAMPLES, LIST_CARDS, SUMMARY_CHARS};
-use super::{Candidate, Screen, element_line, groups, label};
 use super::{Digest, Region, RegionKind, Rendering};
+use crate::surface::{Candidate, Screen, element_line, groups, label};
 
 impl Digest {
     /// The region `index` (into `Screen::candidates`) belongs to.
@@ -173,7 +173,7 @@ fn relevance(region: &Region, rendering: &Rendering<'_>) -> f64 {
 
 /// One line per card of the list under `parent`, then a count of the rest.
 /// `include_values` gates a card's field content exactly as
-/// [`super::screen::element_line`] gates an ordinary element's held value.
+/// [`crate::surface::screen::element_line`] gates an ordinary element's held value.
 fn card_lines(
     screen: &Screen,
     depth: usize,
