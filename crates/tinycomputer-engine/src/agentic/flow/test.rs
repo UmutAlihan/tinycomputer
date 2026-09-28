@@ -106,9 +106,8 @@ struct Sim {
     trip: Option<(&'static str, u8)>,
     /// A web shop's page stack, newest last; empty for the mail app.
     pages: Vec<&'static str>,
-    /// The shop's extras: travel insurance and seat protection checkboxes.
-    insurance: bool,
-    protection: bool,
+    /// The shop's extras checked: "Travel insurance", "Seat protection".
+    checked: BTreeSet<&'static str>,
     /// Times the shop went back a page.
     backs: u32,
     quirks: BTreeSet<Quirk>,
@@ -138,6 +137,9 @@ impl Sim {
 const EXTRAS: &str = "https://shop.test/extras";
 const TERMS: &str = "https://shop.test/terms";
 const REVIEW: &str = "https://shop.test/review";
+/// The shop's two extras.
+const INSURANCE: &str = "Travel insurance";
+const PROTECTION: &str = "Seat protection";
 
 /// The shop's screen: an extras page with two checkboxes, a terms link, and
 /// Continue; the terms and review pages beyond it.
@@ -177,8 +179,8 @@ fn shop_screen(sim: &Sim) -> Screen {
             (
                 "Extras",
                 vec![
-                    checkbox("Seat protection", sim.protection, 100.0),
-                    checkbox("Travel insurance", sim.insurance, 140.0),
+                    checkbox(PROTECTION, sim.checked.contains(PROTECTION), 100.0),
+                    checkbox(INSURANCE, sim.checked.contains(INSURANCE), 140.0),
                     node(
                         "Insurance terms",
                         "link",
@@ -212,8 +214,16 @@ fn shop_screen(sim: &Sim) -> Screen {
 /// What pressing `name` does in the shop.
 fn press_shop(sim: &mut Sim, name: &str) {
     match name {
-        "Seat protection" => sim.protection = !sim.protection,
-        "Travel insurance" => sim.insurance = !sim.insurance,
+        PROTECTION | INSURANCE => {
+            let extra = if name == PROTECTION {
+                PROTECTION
+            } else {
+                INSURANCE
+            };
+            if !sim.checked.remove(extra) {
+                sim.checked.insert(extra);
+            }
+        }
         "Insurance terms" => sim.pages.push(TERMS),
         "Continue" => sim.pages.push(REVIEW),
         _ => {}

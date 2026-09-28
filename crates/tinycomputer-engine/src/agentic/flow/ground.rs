@@ -142,7 +142,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ) -> Opening {
         let mut pool = distinct(pool, self.include_values);
         if self.deliberates(FlowLoop::Denoise) {
-            let ranked = denoise::rank(pool.clone());
+            let ranked = denoise::rank(&pool);
             if ranked.len() != pool.len()
                 || ranked
                     .iter()

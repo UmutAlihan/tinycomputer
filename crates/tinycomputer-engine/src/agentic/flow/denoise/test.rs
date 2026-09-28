@@ -27,7 +27,7 @@ fn in_view_elements_outrank_offscreen_and_covered_ones() {
         element("Here", &[]),
         element("Also here", &["focused"]),
     ];
-    let ranked = rank(pool)
+    let ranked = rank(&pool)
         .into_iter()
         .map(|candidate| candidate.name.unwrap())
         .collect::<Vec<_>>();
@@ -45,7 +45,7 @@ fn disabled_and_empty_elements_are_left_out() {
     assert!(inert(&empty));
     assert!(!inert(&sized));
     assert!(!inert(&element("Unmeasured", &[])));
-    let ranked = rank(vec![element("Off", &["disabled"]), empty, sized]);
+    let ranked = rank(&[element("Off", &["disabled"]), empty, sized]);
     assert_eq!(ranked.len(), 1);
     assert_eq!(ranked[0].name.as_deref(), Some("Real"));
 }
@@ -59,7 +59,7 @@ fn a_control_exposed_twice_is_offered_once() {
     let mut elsewhere = element("Search", &[]);
     elsewhere.ref_id = "@elsewhere".to_owned();
     elsewhere.path = vec!["window".to_owned(), "toolbar".to_owned()];
-    let ranked = rank(vec![outer, inner, elsewhere]);
+    let ranked = rank(&[outer, inner, elsewhere]);
     let refs = ranked
         .iter()
         .map(|candidate| candidate.ref_id.as_str())

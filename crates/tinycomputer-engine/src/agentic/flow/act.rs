@@ -348,33 +348,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 return Ok(ended);
             }
             self.check_expectation(log, state, &screen);
-            let last = state
-                .last
-                .as_ref()
-                .and_then(|last| last.target.as_ref())
-                .map(label);
-            self.expecting = state.last.as_ref().and_then(|last| {
-                let target = last.target.as_ref()?;
-                let expected = last.expected.as_ref()?;
-                let missed = matches!(last.outcome, Some(Outcome::Missed(_)));
-                (missed || self.deep()).then(|| {
-                    (
-                        format!("pressed {}", label(target)),
-                        expected.effect.meant(&label(target)),
-                    )
-                })
-            });
-            let judged = if self.wide() {
-                let pressed = state.last.as_ref().and_then(|last| last.target.clone());
-                self.judge_wide(log, &screen, intent, pressed.as_ref(), &state.banned)
-                    .await?
-            } else if state.last.is_none() {
-                self.judge_speculating(log, &screen, intent, &state.banned)
-                    .await?
-            } else {
-                self.judge(log, &screen, intent, last.as_deref()).await?
-            };
-            self.expecting = None;
+            let judged = self.judge_turn(log, state, &screen, intent).await?;
             let mut judged = self
                 .settle_done(log, state, &screen, intent, judged, turn)
                 .await?;
@@ -456,6 +430,47 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Err(Halt::Failed(format!(
             "not accomplished after {max_turns} turns"
         )))
+    }
+
+    /// Judges one turn's screen the way the strategy asks: one wide request,
+    /// or a narrow judge — on the first turn with grounding's first round
+    /// beside it. After a deliberating press it also asks whether the press
+    /// did what it was meant to.
+    async fn judge_turn(
+        &mut self,
+        log: &mut StepLog,
+        state: &DoState,
+        screen: &Screen,
+        intent: &str,
+    ) -> Result<Judgement, Halt> {
+        let last = state
+            .last
+            .as_ref()
+            .and_then(|last| last.target.as_ref())
+            .map(label);
+        self.expecting = state.last.as_ref().and_then(|last| {
+            let target = last.target.as_ref()?;
+            let expected = last.expected.as_ref()?;
+            let missed = matches!(last.outcome, Some(Outcome::Missed(_)));
+            (missed || self.deep()).then(|| {
+                (
+                    format!("pressed {}", label(target)),
+                    expected.effect.meant(&label(target)),
+                )
+            })
+        });
+        let judged = if self.wide() {
+            let pressed = state.last.as_ref().and_then(|last| last.target.clone());
+            self.judge_wide(log, screen, intent, pressed.as_ref(), &state.banned)
+                .await
+        } else if state.last.is_none() {
+            self.judge_speculating(log, screen, intent, &state.banned)
+                .await
+        } else {
+            self.judge(log, screen, intent, last.as_deref()).await
+        };
+        self.expecting = None;
+        judged
     }
 
     /// Records what the last action changed, banning an element that changed
@@ -575,45 +590,50 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 label(target)
             ));
         }
+        self.undo(log, state, &why, target.as_ref()).await?;
+        self.plan_branch(state);
+        state.last = None;
+        Ok(true)
+    }
+
+    /// Undoes the last press, which `why` says was a mistake: back to its
+    /// checkpoint, verified, under deliberation; with Escape otherwise.
+    async fn undo(
+        &mut self,
+        log: &mut StepLog,
+        state: &DoState,
+        why: &str,
+        target: Option<&Candidate>,
+    ) -> Result<(), Halt> {
         let expected = state
             .last
             .as_ref()
             .and_then(|last| last.expected.clone())
             .filter(|_| self.deliberates(FlowLoop::Checkpoint));
-        match expected {
-            Some(expected) => {
-                let restore = self
-                    .restore(
-                        log,
-                        &expected.checkpoint,
-                        target.as_ref(),
-                        Some(&expected.effect),
-                    )
-                    .await?;
-                self.history.push(format!(
-                    "that was a mistake ({why}); undid it ({}){}",
-                    restore.rungs.join(", then "),
-                    if restore.restored {
-                        " and the screen is back where it was"
-                    } else {
-                        ", though the screen is not quite back where it was"
-                    }
-                ));
-            }
-            None => {
-                let app = self.app.clone();
-                self.act(log, "press escape (undo)", None, move |backend| {
-                    backend.press(&app, "escape")
-                })
+        if let Some(expected) = expected {
+            let restore = self
+                .restore(log, &expected.checkpoint, target, Some(&expected.effect))
                 .await?;
-                self.history.push(format!(
-                    "that made things worse ({why}); undid it and will try something else"
-                ));
-            }
+            self.history.push(format!(
+                "that was a mistake ({why}); undid it ({}){}",
+                restore.rungs.join(", then "),
+                if restore.restored {
+                    " and the screen is back where it was"
+                } else {
+                    ", though the screen is not quite back where it was"
+                }
+            ));
+            return Ok(());
         }
-        self.plan_branch(state);
-        state.last = None;
-        Ok(true)
+        let app = self.app.clone();
+        self.act(log, "press escape (undo)", None, move |backend| {
+            backend.press(&app, "escape")
+        })
+        .await?;
+        self.history.push(format!(
+            "that made things worse ({why}); undid it and will try something else"
+        ));
+        Ok(())
     }
 
     /// After an undo, the candidate to try next: the best runner-up of the

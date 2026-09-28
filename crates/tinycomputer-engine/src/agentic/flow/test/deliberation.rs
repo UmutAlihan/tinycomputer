@@ -320,7 +320,11 @@ async fn a_wrong_navigation_is_undone_by_going_back_and_verified() {
                 0.9,
             )),
             "intended" => Some(noul(if sim.page() == Some(TERMS) { 0.1 } else { 0.9 })),
-            "done" => Some(noul(if sim.insurance { 0.95 } else { 0.05 })),
+            "done" => Some(noul(if sim.checked.contains(INSURANCE) {
+                0.95
+            } else {
+                0.05
+            })),
             _ => None,
         },
     )
@@ -381,8 +385,16 @@ async fn a_wrong_toggle_is_pressed_again_and_the_runner_up_is_tried() {
                 question,
                 &[("Seat protection", 0.8), ("Travel insurance", 0.15)],
             )),
-            "intended" => Some(noul(if sim.protection { 0.1 } else { 0.9 })),
-            "done" => Some(noul(if sim.insurance { 0.95 } else { 0.05 })),
+            "intended" => Some(noul(if sim.checked.contains(PROTECTION) {
+                0.1
+            } else {
+                0.9
+            })),
+            "done" => Some(noul(if sim.checked.contains(INSURANCE) {
+                0.95
+            } else {
+                0.05
+            })),
             _ => None,
         },
     )
@@ -393,7 +405,7 @@ async fn a_wrong_toggle_is_pressed_again_and_the_runner_up_is_tried() {
         sim.clicks,
         ["Seat protection", "Seat protection", "Travel insurance"]
     );
-    assert!(sim.insurance && !sim.protection);
+    assert!(sim.checked.contains(INSURANCE) && !sim.checked.contains(PROTECTION));
     assert_eq!(
         sim.backs, 0,
         "a toggle is undone in place, not by going back"

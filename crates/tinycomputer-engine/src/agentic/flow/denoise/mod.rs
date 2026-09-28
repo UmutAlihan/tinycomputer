@@ -84,13 +84,12 @@ fn nested_twin(candidate: &Candidate, pool: &[Candidate]) -> bool {
 
 /// `pool` denoised: inert elements and nested twins left out, the rest
 /// ranked by [`Tier`], order kept within each.
-pub(super) fn rank(pool: Vec<Candidate>) -> Vec<Candidate> {
-    let kept = pool
+pub(super) fn rank(pool: &[Candidate]) -> Vec<Candidate> {
+    let mut kept = pool
         .iter()
-        .filter(|candidate| !inert(candidate) && !nested_twin(candidate, &pool))
+        .filter(|candidate| !inert(candidate) && !nested_twin(candidate, pool))
         .cloned()
         .collect::<Vec<_>>();
-    let mut kept = kept;
     kept.sort_by_key(tier);
     kept
 }

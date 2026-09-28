@@ -429,11 +429,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let action = step.action();
         let (kind, text) = describe_step(&action, &self.vars, &self.facts);
         let mut log = StepLog::default();
-        self.step.clone_from(&path);
-        self.ledger.begin();
-        self.refused.clear();
-        self.frontier.clear();
-        self.step_location.clone_from(&self.location);
+        self.begin_step(&path);
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let result = self.reflected(&mut log, &action, &text, result).await;
@@ -526,6 +522,15 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             Some(halt) => Err(halt),
             None => Ok(()),
         }
+    }
+
+    /// Resets what one step keeps, before step `path` runs.
+    fn begin_step(&mut self, path: &str) {
+        path.clone_into(&mut self.step);
+        self.ledger.begin();
+        self.refused.clear();
+        self.frontier.clear();
+        self.step_location.clone_from(&self.location);
     }
 
     pub(super) fn enabled(&self, flow_loop: FlowLoop) -> bool {
