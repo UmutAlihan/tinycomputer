@@ -5,7 +5,8 @@
 //! of it. The ledger keeps what a person carrying out the task would keep in
 //! mind instead:
 //!
-//! - every finished step, one line each, for the whole run;
+//! - the most recent finished steps (up to `MAX_FINISHED`), one line each,
+//!   so a long run's request does not grow without bound;
 //! - the most recent actions and what each changed, reaching back into the
 //!   steps before this one: the click that left a page is often the only
 //!   evidence that the page was dealt with (measured: a payment page judged
