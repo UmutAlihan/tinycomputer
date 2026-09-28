@@ -112,7 +112,7 @@ already arrived than to duplicate in every node's JSON.
 ## Turning a candidate into something Jev can read
 
 `describe()` and `element_line()` both take a `Candidate` and produce a
-description for the decision model, one as a JSON value wrapped in
+description for the decision model: one as a JSON value wrapped in
 `untrusted_accessibility_data`, the other as a single line of text. Both add
 two things a raw accessibility tree does not give you for free:
 
