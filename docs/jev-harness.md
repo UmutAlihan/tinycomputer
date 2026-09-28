@@ -97,7 +97,9 @@ framing of every request together: one round trip. In order:
    label-keyed Choices are shuffled and relabelled, and each copy gets a
    different one-line perspective. Framing 0 is the request as built.
 8. **Evaluate.** All framings go to `JevRuntime::evaluate` at once, each on
-   its own task. Each call is charged to the budget.
+   its own task. Each call is charged to the budget. A deliberating run
+   sends the first three, and the rest only when those split (staged votes,
+   `specs/jev-deliberation.md`).
 9. **Merge.** Answers are mapped back to the original keys, kept per
    framing as each question's ballot (`vote::ballots`), and averaged
    (`vote::tally`). A Choice's `confidence` becomes the share of framings

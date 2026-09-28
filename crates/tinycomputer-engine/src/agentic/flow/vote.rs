@@ -241,8 +241,7 @@ fn agrees(answers: &[Answer]) -> bool {
             (low.min(*belief), high.max(*belief))
         });
     picks.len() <= 1
-        && (beliefs.is_empty()
-            || ((low >= 0.5) == (high >= 0.5) && high - low <= SETTLED_SPREAD))
+        && (beliefs.is_empty() || ((low >= 0.5) == (high >= 0.5) && high - low <= SETTLED_SPREAD))
 }
 
 /// Each question's ballot averaged into one answer.

@@ -659,8 +659,8 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             let more = gathered
                 .iter()
                 .map(|(request, answered, _, _)| {
-                    let split = !answered.is_empty()
-                        && !vote::settled(&vote::ballots(answered), PAGE_KIND);
+                    let split =
+                        !answered.is_empty() && !vote::settled(&vote::ballots(answered), PAGE_KIND);
                     split.then(|| {
                         let framings = vote::framings_between(request, first, votes);
                         let handles = self.spawn(&framings);
