@@ -26,14 +26,19 @@ a host is supposed to see and do about it.
 | `NoSuchElement` | `NoSuchElement` | Take a fresh snapshot and choose again. |
 | `StaleRef` | `StaleRef` | Same remedy as above, spelled out explicitly: the ref belonged to an earlier reading of this page. |
 | `NotActionable` | `NotActionable` | The element exists but could not be acted on right now: covered, disabled, or off-document. The message names the obstruction where the browser could identify it. |
-| `Timeout` | `Timeout` | The operation ran out of time; retrying with a longer deadline is reasonable. |
+| `Timeout` | `Timeout` | The operation ran out of time. A click or a submission may already have landed, so look at the page (take a fresh snapshot) before retrying, perhaps with a longer deadline; never repeat it blind. |
 | `BlockedByPolicy` | `BlockedByPolicy` | Never retry. The session's `allowed_origins` refused this destination, and the answer will not change. |
 | `BrowserUnavailable` | `BrowserUnavailable` | Not something a caller can fix by choosing differently: this is a host or deployment problem (no browser could be launched or reached). |
-| `PageError` | `PageError` | The page itself raised a JavaScript exception, or the browser rejected a command. |
+| `PageError` | `PageError` | The page itself raised a JavaScript exception, or the browser rejected a command. As with a timeout, inspect the page before retrying. |
 | `NoSuchOutput` | `NoSuchOutput` | The held screenshot or PDF being asked for is unknown or has expired. |
 | `LimitExceeded` | `LimitExceeded` | A bound was hit: too many sessions, too many held outputs, or an output larger than the module will hold. |
 | `ConnectionLost` | `NoSuchSession` (same wire name as `NoSuchSession`) | Open a new session. Kept as its own Rust variant, rather than folded into `NoSuchSession` at construction time, because it says something more specific ("the transport died") that is useful for the crate's own diagnostics. A caller across the bus is told exactly the same thing either way: don't retry into a socket that will never answer, open a fresh session instead. |
 | `ModuleFailed` | `ModuleFailed` | Anything that does not fit the categories above. |
+
+`Error::envelope` marks only `NoSuchSession` and `NoSuchOutput` as
+`not_delivered`: they are decided by a local lookup before any command is
+sent. Every other variant can also arrive in the engine's reply to a command
+it received, so its delivery is left `unknown` rather than claimed.
 
 `errors::is_agent_recoverable` (in the bus crate) is the one further
 decision that gets made on top of this table: whether a model can plausibly
