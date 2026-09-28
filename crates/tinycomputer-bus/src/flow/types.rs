@@ -453,7 +453,7 @@ pub struct RunFlowRequest {
     /// Most desktop actions for the whole run; capped by the module at 120.
     pub max_actions: u32,
     /// Most Jev evaluations for the whole run; capped by the module at
-    /// 5000. Every framing of a voted decision counts as one.
+    /// 10000. Every framing of a voted decision counts as one.
     pub max_model_calls: u32,
     /// How many ways each decision is asked, concurrently, before its
     /// answers are averaged: 1 asks once. Jev calls are cheap, so accuracy
