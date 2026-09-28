@@ -18,6 +18,7 @@
 pub mod journal;
 pub mod lab;
 
+use tinycomputer_browser::Perception;
 use tinycomputer_bus::FlowStrategy;
 
 /// The flow strategy named by `TINYCOMPUTER_FLOW_STRATEGY` (`narrow` or
@@ -32,4 +33,30 @@ pub fn flow_strategy_from_env() -> Option<FlowStrategy> {
 #[must_use]
 pub fn parse_strategy(name: &str) -> Option<FlowStrategy> {
     serde_json::from_value(serde_json::Value::String(name.trim().to_owned())).ok()
+}
+
+/// How the live browser examples read a page, from
+/// `TINYCOMPUTER_BROWSER_PERCEPTION`: `tree` reads the accessibility tree
+/// alone; anything else, or nothing, reads by sight (the default).
+#[must_use]
+pub fn perception_from_env() -> Perception {
+    parse_perception(&std::env::var("TINYCOMPUTER_BROWSER_PERCEPTION").unwrap_or_default())
+}
+
+/// `tree` as [`Perception::Tree`]; anything else as [`Perception::Sight`].
+///
+/// ```
+/// use tinycomputer_browser::Perception;
+/// use tinycomputer_examples::parse_perception;
+///
+/// assert_eq!(parse_perception(" Tree "), Perception::Tree);
+/// assert_eq!(parse_perception(""), Perception::Sight);
+/// ```
+#[must_use]
+pub fn parse_perception(name: &str) -> Perception {
+    if name.trim().eq_ignore_ascii_case("tree") {
+        Perception::Tree
+    } else {
+        Perception::Sight
+    }
 }

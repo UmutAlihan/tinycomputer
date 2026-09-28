@@ -65,7 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ..SessionOptions::default()
         },
         tokio::runtime::Handle::current(),
-    );
+    )
+    .with_perception(tinycomputer_examples::perception_from_env());
     let tasks = Tasks::new(Arc::new(Fixture {
         workspace: Workspace::new(Some(Desktop::new()), Some(browser.clone())),
         jev,

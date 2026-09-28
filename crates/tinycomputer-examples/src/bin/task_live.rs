@@ -112,7 +112,8 @@ async fn main() -> Result<(), Failure> {
         },
         tokio::runtime::Handle::current(),
     )
-    .with_cursor(Arc::new(cursor()?));
+    .with_cursor(Arc::new(cursor()?))
+    .with_perception(tinycomputer_examples::perception_from_env());
     let tasks = Tasks::new(Arc::new(Live {
         workspace: Workspace::new(None, Some(surface.clone())),
         jev,
