@@ -1,6 +1,17 @@
 //! Tests for deterministic Jev desktop-control policy.
+//!
+//! This root holds the fake desktops and the scripted Jev every topic shares;
+//! the tests themselves live in `agentic_tests/`, one file per topic.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+mod continuation_tests;
+mod goal_tests;
+mod observation_tests;
+mod policy_tests;
+mod resolve_tests;
+mod scope_tests;
+mod waiting_tests;
 
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -372,11 +383,3 @@ fn backend(screen_count: usize) -> (FakeBackend, Arc<Mutex<Vec<JevOperation>>>) 
         operations,
     )
 }
-
-mod continuation_tests;
-mod goal_tests;
-mod observation_tests;
-mod policy_tests;
-mod resolve_tests;
-mod scope_tests;
-mod waiting_tests;
