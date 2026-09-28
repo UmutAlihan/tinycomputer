@@ -24,6 +24,7 @@ TinyBus members; this crate only holds the logic.
 | The task controller | `src/task/` | Runs a flow in the background as a long-lived task, and reports it as a status a calling model can act on: needs input, needs approval, checkpoint, needs a person, done, or failed. |
 | The planner | `src/planner/` | Turns a plain-language task into a flow, using a language model that never touches the screen. |
 | The rescuer | `src/rescue/` | Consulted only when a task's step fails; suggests replacement steps or gives up. |
+| The shaper | `src/shape/` | Turns a finished task's saved records into the JSON its caller asked for, one reasoning-model pass. See [output.md](output.md). |
 | The workspace | `src/workspace/` | Joins the desktop and the browser into one surface, so a flow can move between an application and a web page without the caller tracking which is which. |
 
 See [`docs/technical/jev-harness.md`](../../technical/jev-harness.md) for the
