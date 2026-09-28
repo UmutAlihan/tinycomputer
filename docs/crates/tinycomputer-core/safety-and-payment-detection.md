@@ -155,7 +155,7 @@ sees when a task stops for one of these reasons.
 
 ## Where these checks are enforced
 
-None of these functions click anything or block anything by themselves , 
+None of these functions click anything or block anything by themselves;
 they only classify. The engine's flow runtime is what actually reads a
 `Consequence` or a `PaymentEvidence` before a destructive click and decides
 whether to proceed, hold for approval, or refuse. See
