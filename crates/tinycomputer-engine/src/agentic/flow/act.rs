@@ -13,7 +13,8 @@
 //! A deliberating run (`docs/specs/jev-deliberation.md`) adds a loop around
 //! every press. Before it, the press's effect is predicted (`expect.rs`) and
 //! a checkpoint taken (`checkpoint.rs`); after it, the effect is checked, and
-//! the next judgement asks whether the press did what it was meant to. A
+//! when the screen contradicts it, the next judgement asks whether the press
+//! did what it was meant to. A
 //! mistake is undone back to the checkpoint — verified — and the next-best
 //! candidate grounding ranked is tried before grounding again. A judgement
 //! of "done" near its threshold is settled on its evidence (`escalate`), and
@@ -434,7 +435,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Judges one turn's screen the way the strategy asks: one wide request,
     /// or a narrow judge — on the first turn with grounding's first round
-    /// beside it. After a deliberating press it also asks whether the press
+    /// beside it. After a press whose effect was missed it also asks whether the press
     /// did what it was meant to.
     async fn judge_turn(
         &mut self,
