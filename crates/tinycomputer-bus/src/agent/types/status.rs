@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::browser::OutputRef;
 use super::TaskId;
+use crate::browser::OutputRef;
 
 /// A task's current state, as every call reports it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

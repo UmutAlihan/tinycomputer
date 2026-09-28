@@ -1,6 +1,5 @@
 //! The `Describe` reply: capabilities, surfaces, and member docs for a model.
 
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

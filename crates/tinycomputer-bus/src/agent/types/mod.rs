@@ -1,16 +1,16 @@
 //! Task payloads for the Agent interface.
 
-
-
-
+mod describe;
 mod reply;
+mod report;
 mod request;
 mod status;
-mod report;
-mod describe;
 
-pub use reply::{AgentResponse, AgentError};
-pub use request::{TaskId, SurfaceKind, StartTaskRequest, TaskOutput, TaskConstraints, PaymentMode, TaskBudget, AwaitTaskRequest, ContinueTaskRequest, TaskRef, PlanTaskRequest, TaskPlan};
-pub use status::{TaskView, StepView, TaskStatus, InputField, InputKind};
-pub use report::{TaskReport, Rescue, RescueOutcome};
-pub use describe::{Capabilities, SurfaceAvailability, MemberDoc, Example};
+pub use describe::{Capabilities, Example, MemberDoc, SurfaceAvailability};
+pub use reply::{AgentError, AgentResponse};
+pub use report::{Rescue, RescueOutcome, TaskReport};
+pub use request::{
+    AwaitTaskRequest, ContinueTaskRequest, PaymentMode, PlanTaskRequest, StartTaskRequest,
+    SurfaceKind, TaskBudget, TaskConstraints, TaskId, TaskOutput, TaskPlan, TaskRef,
+};
+pub use status::{InputField, InputKind, StepView, TaskStatus, TaskView};

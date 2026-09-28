@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use super::TaskView;
 use crate::browser::OutputRef;
 use crate::flow::{Flow, FlowStep, GroundingHint, JevExchange, StepReport};
-use super::TaskView;
 
 /// `TaskReport`: everything a task did.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

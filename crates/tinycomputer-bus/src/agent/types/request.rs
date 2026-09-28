@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::flow::{Flow, GroundingHint};
 use super::InputField;
+use crate::flow::{Flow, GroundingHint};
 
 /// A task's identity, handed out by `StartTask`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]

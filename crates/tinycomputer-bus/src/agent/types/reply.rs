@@ -1,8 +1,6 @@
 //! The reply envelope every Agent member returns, and its error.
 
-
 use serde::{Deserialize, Serialize};
-
 
 /// Every reply on the Agent interface: the value, or an error a caller can
 /// act on. Never a transport failure for something the caller did.
