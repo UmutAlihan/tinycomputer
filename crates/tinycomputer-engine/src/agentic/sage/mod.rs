@@ -20,6 +20,7 @@
 //! the journal apply exactly as they do to Jev.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Instant;
@@ -137,11 +138,12 @@ fn sage_question(id: &str, question: &Question) -> Result<DecisionQuestion, Stri
         Question::Noul(noul) => {
             let mut instructions = text(&noul.instructions);
             if let Some(criteria) = &noul.criteria {
-                instructions.push_str(&format!(
+                let _ = write!(
+                    instructions,
                     "\nYes means: {}\nNo means: {}",
                     text(&criteria.r#true),
                     text(&criteria.r#false)
-                ));
+                );
             }
             DecisionQuestion::YesNo {
                 id: id.to_owned(),
@@ -185,10 +187,11 @@ fn sage_question(id: &str, question: &Question) -> Result<DecisionQuestion, Stri
     })
 }
 
-/// The request level Sage's `level` (of five) stands for, among `count`.
+/// The request level Sage's `level` (of five) stands for, among `count`,
+/// rounded to the nearest.
 fn sampled(level: usize, count: usize) -> usize {
-    let last = count.saturating_sub(1);
-    ((level * last) as f64 / (SCALE_LEVELS - 1) as f64).round() as usize
+    let steps = SCALE_LEVELS - 1;
+    (2 * level * count.saturating_sub(1) + steps) / (2 * steps)
 }
 
 /// Sage's answers as the request's, keyed by its question ids.
@@ -269,22 +272,16 @@ fn answer_for(id: &str, question: &Question, result: &DecisionResponse) -> Resul
             })
         }
         (Question::Score(score), DecisionResponse::Scale { result, .. }) => {
-            let last = score.criteria.len().saturating_sub(1);
-            let position = (result.expectation.clamp(0.0, (SCALE_LEVELS - 1) as f64) * last as f64)
-                / (SCALE_LEVELS - 1) as f64;
-            let below = position.floor();
-            let above_share = position - below;
-            let below = below as usize;
-            let probabilities = (0..=last)
+            let levels = u32::try_from(score.criteria.len()).unwrap_or(u32::MAX);
+            let steps = f64::from(u32::try_from(SCALE_LEVELS - 1).unwrap_or(u32::MAX));
+            // Sage's expectation (0..=4) as a position on the request's own
+            // levels, shared between the two nearest.
+            let position =
+                result.expectation.clamp(0.0, steps) * f64::from(levels.saturating_sub(1)) / steps;
+            let probabilities = (0..levels)
                 .map(|level| {
-                    let probability = if level == below {
-                        1.0 - above_share
-                    } else if level == below + 1 {
-                        above_share
-                    } else {
-                        0.0
-                    };
-                    (level.to_string(), probability)
+                    let weight = (1.0 - (position - f64::from(level)).abs()).max(0.0);
+                    (level.to_string(), weight)
                 })
                 .collect();
             Answer::Score(ScoreAnswer {
