@@ -595,3 +595,45 @@ fn the_cursor_is_configured_or_refused() {
     }
     assert!(DesktopService::from_config(&json!({"cursor": "off"})).is_ok());
 }
+
+/// The members `dispatch.rs` marks `#[tinybus(confidential)]`, as wire names.
+///
+/// Read from the source for the same reason [`manifest_methods`] is: the
+/// macro keeps the flag inside the generated dispatch and exposes no way to
+/// ask for it.
+fn confidential_members() -> Vec<String> {
+    let source = include_str!("dispatch.rs");
+    let mut members = Vec::new();
+    let mut marked = false;
+    for line in source.lines().map(str::trim) {
+        if line == "#[tinybus(confidential)]" {
+            marked = true;
+        } else if let Some(rest) = line.strip_prefix("async fn ") {
+            if marked {
+                let name = rest.split('(').next().unwrap_or_default();
+                members.push(
+                    name.split('_')
+                        .map(|word| {
+                            let mut chars = word.chars();
+                            chars.next().map_or_else(String::new, |first| {
+                                first.to_ascii_uppercase().to_string() + chars.as_str()
+                            })
+                        })
+                        .collect::<String>(),
+                );
+            }
+            marked = false;
+        }
+    }
+    members
+}
+
+#[test]
+fn the_catalogue_marks_exactly_the_confidential_members() {
+    let catalogued = tinycomputer_bus::catalogue::MEMBERS
+        .iter()
+        .filter(|member| member.confidential)
+        .map(|member| member.name.to_owned())
+        .collect::<Vec<_>>();
+    assert_eq!(confidential_members(), catalogued);
+}
