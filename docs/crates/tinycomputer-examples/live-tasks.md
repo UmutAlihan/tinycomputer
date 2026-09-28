@@ -37,9 +37,9 @@ Each task folder holds three files:
 
 | File | What it is |
 |---|---|
-| `task.md` | the task in plain language, plus notes from researching the real site with `site_probe` beforehand — which sites actually serve results to an automated browser, what the booking widget's controls are called, what to decline |
+| `task.md` | the task in plain language, plus notes from researching the real site with `site_probe` beforehand: which sites actually serve results to an automated browser, what the booking widget's controls are called, what to decline |
 | `facts.json` | the facts the task needs, by name: a plain string, or `{"value": "...", "secret": true}` for one that should stay out of what Jev is shown as text (a card or passport number is treated as secret regardless of that flag) |
-| `plan.json` | the flow a run actually followed, saved from a real, working run — see the next section |
+| `plan.json` | the flow a run actually followed, saved from a real, working run (see the next section) |
 
 Reading `tasks/kashmir/task.md` is worth doing once even if you never run
 the example: it shows what research a task needs before you point an agent
@@ -48,7 +48,7 @@ serve an automated browser at all.
 
 ## Replaying a saved plan instead of planning a new one
 
-Planning costs an LLM call and is not perfectly repeatable — the planner
+Planning costs an LLM call and is not perfectly repeatable: the planner
 can write a slightly different flow each time. Set `FLOW_FILE` to skip
 planning and run an exact, saved flow instead:
 

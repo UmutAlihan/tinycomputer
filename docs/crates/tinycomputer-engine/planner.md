@@ -1,11 +1,11 @@
 # The planner
 
 The planner turns a plain-language task ("book the cheapest flight from
-Delhi to Srinagar next Sunday") into a flow, the step-by-step plan the
+Delhi to Srinagar next Sunday") into a flow: the step-by-step plan the
 task controller and flow runtime actually run. It lives in
 `crates/tinycomputer-engine/src/planner/`, and it is optional: a task
 started with a `flow` already written never touches it, and a module built
-without one simply cannot run a plain-language `task`, it pauses with
+without one simply cannot run a plain-language `task`; it pauses with
 `NeedsPlan` instead (see [tasks.md](tasks.md)).
 
 The one thing worth remembering about the planner: **it never acts, and it
