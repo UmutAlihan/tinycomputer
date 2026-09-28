@@ -115,4 +115,4 @@ fn verify_one(candidates: &[Candidate], predicate: &VisiblePredicate) -> JevPred
 }
 
 #[cfg(test)]
-mod test;
+mod verify_tests;

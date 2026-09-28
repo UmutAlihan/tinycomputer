@@ -440,4 +440,4 @@ fn outcome_word(outcome: RescueOutcome) -> &'static str {
 }
 
 #[cfg(test)]
-mod test;
+mod rescue_tests;
