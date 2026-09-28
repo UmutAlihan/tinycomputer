@@ -261,6 +261,24 @@ fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Cand
     }
 }
 
+/// A city list whose row takes no text, above the one real search field.
+fn city_rows(root: &str, candidates: &mut Vec<Candidate>) {
+    candidates.push(node(
+        "Mumbai",
+        "combobox",
+        &["Click", "SetValue"],
+        &[root, "list \"Cities\""],
+        200.0,
+    ));
+    candidates.push(node(
+        "Search",
+        "textfield",
+        &["SetValue"],
+        &[root, "group \"Where to\""],
+        210.0,
+    ));
+}
+
 /// The simulator's result list: each card's text as ref-less nodes, and its
 /// "Select" button among `candidates`, under an ordinal-labelled list item.
 fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<Candidate> {
@@ -382,20 +400,7 @@ impl App {
             booking_widget(&sim, booking, &root, &mut candidates);
         }
         if sim.has(Quirk::CityRows) {
-            candidates.push(node(
-                "Mumbai",
-                "combobox",
-                &["Click", "SetValue"],
-                &[&root, "list \"Cities\""],
-                200.0,
-            ));
-            candidates.push(node(
-                "Search",
-                "textfield",
-                &["SetValue"],
-                &[&root, "group \"Where to\""],
-                210.0,
-            ));
+            city_rows(&root, &mut candidates);
         }
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
