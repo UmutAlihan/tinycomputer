@@ -35,8 +35,6 @@ pub(super) const ATTENTION_FLOOR: f64 = 0.5;
 /// booking form's clear icons sat directly under `main`).
 pub(super) const MAX_DISTRACTION_SIZE: usize = 12;
 
-/// Labels of controls that dismiss what they sit on, least committal first:
-
 /// Something on screen that may need clearing before the step.
 #[derive(Debug, Clone)]
 pub(super) struct Distraction {

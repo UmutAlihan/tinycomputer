@@ -9,6 +9,7 @@ use crate::agentic::flow::view::{
 
 use super::{Distraction, ESCAPED, MAX_DISTRACTION_SIZE, MAX_DISTRACTIONS};
 
+/// Labels of controls that dismiss what they sit on, least committal first:
 /// their rank is their position.
 const CLOSERS: &[&[&str]] = &[
     &[
