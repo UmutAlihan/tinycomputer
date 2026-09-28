@@ -2850,7 +2850,7 @@ async fn pick_ranks_a_measurable_criterion_exactly_and_opens_the_winner() {
             flights(),
             json!({"app": "Mail", "steps": [
                 {"pick": {"from": "the flight results", "by": by, "into": "flight"}},
-                {"verify": "the page for ${flight} is open"}
+                {"verify": "the picked flight's page is open"}
             ]}),
         )
         .await;
@@ -2954,7 +2954,7 @@ fn pick_validates_its_fields_and_defines_its_variable() {
     assert!(
         check(json!({"app": "Mail", "steps": [
             {"pick": {"from": "results", "by": "cheapest", "into": "flight"}},
-            {"verify": "${flight} is shown"}
+            {"do": "book ${flight}"}
         ]}))
         .is_empty()
     );
@@ -3604,8 +3604,8 @@ fn a_variable_named_without_its_braces_is_rejected() {
         "app": "browser",
         "steps": [
             {"pick": {"from": "the flights", "by": "lowest price", "into": "cheapest_flight"}},
-            {"verify": "cheapest_flight shows a price"},
-            {"verify": "${cheapest_flight} shows a price"},
+            {"do": "book cheapest_flight"},
+            {"do": "book ${cheapest_flight}"},
             {"pick": {"from": "the fares", "by": "lowest price", "into": "fare"}},
             {"verify": "the fare is shown"}
         ]
