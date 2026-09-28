@@ -385,10 +385,14 @@ fn a_card_s_rich_text_body_is_gated_on_include_values_but_its_name_is_not() {
         .as_array()
         .unwrap()
         .clone();
-    assert_eq!(lines[0], "card 1: Doc 1");
+    let hidden_line = lines[0].as_str().unwrap();
     assert!(
-        !lines[0].as_str().unwrap().contains("body text"),
-        "a rich-text body must not leak when include_values is false: {lines:?}"
+        hidden_line.starts_with("card 1: Doc 1 →"),
+        "the card's name still shows: {hidden_line}"
+    );
+    assert!(
+        !hidden_line.contains("body text"),
+        "a rich-text body must not leak when include_values is false: {hidden_line}"
     );
 
     let shown = digest.render(
