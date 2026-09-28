@@ -20,7 +20,8 @@ use tinycomputer_bus::{
 };
 
 use super::interpret::app_at;
-use super::{FlowFuture, FlowRunner, MAX_TASKS, Tasks, capabilities, input_kind, next_calls};
+use super::publish::next_calls;
+use super::{FlowFuture, FlowRunner, MAX_TASKS, Tasks, capabilities, input_kind};
 
 /// Replies queued in order; a missing reply never resolves, like a flow
 /// still running.
@@ -1258,5 +1259,5 @@ async fn a_run_gets_the_callers_values_and_the_flow_keeps_its_own_definitions() 
     assert_eq!(request.flow.vars["first_name"], "${first name}");
 }
 
-mod output;
-mod rescue;
+mod output_tests;
+mod rescue_tests;
