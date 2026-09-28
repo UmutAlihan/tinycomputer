@@ -84,8 +84,8 @@ crates/tinycomputer/
 │       │   └── browser.rs     what the browser members share
 │       ├── config.rs          the `browser` and `cursor` configuration keys
 │       ├── runner.rs          the task runner: one workspace per task
-│       ├── tinybus_module_tests.rs  unit tests over the in-memory bus;
-│       ├── tinybus_module_tests/    topics in <topic>_tests.rs
+│       ├── tinybus_module_tests.rs  unit tests over the in-memory bus
+│       ├── tinybus_module_tests/    one <topic>_tests.rs per topic
 │       └── README.md          why the adapter is shaped the way it is
 └── tests/                     integration tests against the public API only
 ```
