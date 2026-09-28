@@ -12,9 +12,8 @@ use tinycomputer_bus::browser::{
     Viewport, WaitState, WaitUntil,
 };
 
-use super::{
-    action, allowed_domains, evaluate, launch, navigate, read, screenshot, snapshot, viewport,
-};
+use super::session::allowed_domains;
+use super::{action, evaluate, launch, navigate, read, screenshot, snapshot, viewport};
 use crate::error::Error;
 
 fn invalid(result: crate::Result<serde_json::Value>) -> String {

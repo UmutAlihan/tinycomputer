@@ -9,9 +9,6 @@
 //! function refuses with [`Error::InvalidInput`] naming the alternative, rather
 //! than approximating it silently.
 
-/// A distance that reaches either end of any page, for `top` and `bottom`.
-const TO_THE_END: u32 = 1_000_000;
-
 mod interaction;
 mod page;
 mod session;
@@ -19,6 +16,12 @@ mod session;
 pub(crate) use interaction::action;
 pub(crate) use page::{evaluate, navigate, read, screenshot, snapshot};
 pub(crate) use session::{launch, viewport};
+
+#[cfg(doc)]
+use crate::error::Error;
+
+/// A distance that reaches either end of any page, for `top` and `bottom`.
+const TO_THE_END: u32 = 1_000_000;
 
 #[cfg(test)]
 mod convert_tests;
