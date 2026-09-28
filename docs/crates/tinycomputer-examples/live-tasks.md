@@ -3,15 +3,15 @@
 `task_live` runs a whole plain-language task the same way an outside host
 would through the task API: give it a task and some facts, and it plans a
 flow, starts it, follows it until it stops, and reports what happened. The
-two examples saved under `tasks/` — booking a flight to Kashmir, and one to
-Dubai on Emirates — are real websites, not a fixture, so this is the closest
+two examples saved under `tasks/`, booking a flight to Kashmir, and one to
+Dubai on Emirates, are real websites, not a fixture, so this is the closest
 thing in the repository to what tinycomputer looks like doing actual work
 for someone. Neither example ever pays for anything: both stop at the
 payment checkpoint by design, and `task_live` treats reaching that
 checkpoint as its own success condition.
 
 If you have not read [giving it a task](../../giving-it-a-task.md) yet,
-start there — it explains the task API (`PlanTask`, `StartTask`,
+start there: it explains the task API (`PlanTask`, `StartTask`,
 `AwaitTask`, checkpoints, rescues) that this binary is just a command-line
 face on.
 
@@ -26,8 +26,7 @@ scripts/docker-lab -- crates/tinycomputer-examples/tasks/run kashmir
 sites are quick to turn away anything that announces itself as headless),
 and builds and runs `task_live`. Swap `kashmir` for `emirates` to run the
 other one. The task name becomes a path, so it is restricted to letters,
-digits, `_`, and `-` — nothing that could climb out of `tasks/` with `/` or
-`..`.
+digits, `_`, and `-`, so nothing can climb out of `tasks/` with `/` or `..`.
 
 Because this launches a real browser, run it through `scripts/docker-lab`,
 never directly on the host; see [Docker lab](docker-lab.md) for why.
