@@ -79,7 +79,7 @@ pub trait LanguageModel: Send + Sync + 'static {
 `Turn` is one message (`Role::System`, `Role::User`, or `Role::Assistant`)
 and its text; `Completion` is a boxed future resolving to the model's reply
 text or a failure string. Keeping the model behind this trait is what lets
-`planner/test.rs` script a fake model's answers deterministically, rather
+`planner/planner_tests.rs` script a fake model's answers deterministically, rather
 than every planner test needing a live API call.
 
 ## The OpenRouter adapter
