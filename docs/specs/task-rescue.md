@@ -25,7 +25,7 @@ controller first checks for a wall only a person can pass. If there is none
 and a rescuer is configured, it asks the rescuer for guidance before it
 fails the task.
 
-- **Briefing.** The goal, the running flow with the failed step marked, the
+- **Briefing.** The goal, the standing rules Jev is briefed with, the running flow with the failed step marked, the
   failure note, the step reports of the run, and earlier rescues with their
   outcomes. Also the screen's visible text, cut to 8,000 characters and
   wrapped as `untrusted_accessibility_data`, and the variable names, secret
