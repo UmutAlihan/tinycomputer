@@ -93,7 +93,7 @@ wire format, so what you see there is what actually goes over the wire).
 - [Writing flows, the wire format](flows.md): the `Flow` grammar as JSON, `RunFlowRequest`, and how a run reports itself.
 - [The goal loop](goal-loop.md): `RunGoal` and `ResolveIntent`, the bounded loop underneath flows.
 - [The Agent and task types](agent-and-tasks.md): `StartTask`, `ContinueTask`, `TaskStatus`, and the rest of the task API's wire shapes.
-- [Browser types](browser.md): sessions, snapshots, actions, and screenshots for the browser interface.
+- [Browser types](browser.md): sessions, snapshots, actions, and screenshots for the 13 browser members.
 - [Versioning and compatibility](versioning.md): `CONTRACT_VERSION`, `ENVELOPE_VERSION`, and the bind rule.
 
 For the cross-cutting story of how a task decides what to do, see
