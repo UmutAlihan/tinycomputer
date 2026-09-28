@@ -119,8 +119,8 @@ model's judgment call alone.
 ### Confirmation handles
 
 When the gate returns `ConfirmationRequired`, `run_goal` does not act. It
-stores the pending decision, the screen it was taken on, the exact target,
-how far the loop had already run, in the runtime's confirmation table (see
+stores the pending decision (the screen it was taken on, the exact target,
+how far the loop had already run) in the runtime's confirmation table (see
 [jev-runtime.md](jev-runtime.md)) and returns a `confirmation_id` instead of
 a result. The caller decides, then calls `run_goal` again with
 `RunGoalRequest.continuation` set to a `GoalContinuation { id, approve }`:
@@ -133,7 +133,7 @@ RunGoalRequest {
 ```
 
 Approving re-observes the screen first and checks the exact target is still
-there, unchanged, with the same available actions, before acting, a page
+there, unchanged, with the same available actions, before acting: a page
 that changed underneath the confirmation fails closed with `StaleTarget`
 rather than clicking whatever is now in that position. Declining returns
 `Cancelled` without touching the desktop. Either way the handle is consumed:
