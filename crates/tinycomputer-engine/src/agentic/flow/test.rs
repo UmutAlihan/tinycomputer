@@ -3459,6 +3459,50 @@ async fn a_secret_the_page_shows_back_is_masked_in_every_request() {
 }
 
 #[tokio::test]
+async fn a_secret_longer_than_the_display_clip_is_still_fully_masked() {
+    // A secret over 80 characters must still be masked whole: clipping the
+    // held value to a readable length before `FlowRun::mask` sees it would
+    // leave the first 80 characters — everything the exact-match and
+    // digit-run masking can no longer find — sitting unmasked in the state.
+    let long_secret = "4111".repeat(25); // 100 characters, all digits.
+    let run = run_with(
+        App::default(),
+        json!({
+            "app": "Mail",
+            "steps": [
+                {"open": "Mail"},
+                "start a new email message",
+                {"enter": {"message body": "${card number}"}},
+                {"verify": "the draft shows the body"}
+            ]
+        }),
+        |request| {
+            request.vars = BTreeMap::from([("card number".to_owned(), long_secret.clone())]);
+            request.facts = BTreeSet::from(["card number".to_owned()]);
+            request.include_values = true;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(run.app.sim().fields["Body"], long_secret);
+    let text = run
+        .requests
+        .iter()
+        .map(|request| serde_json::to_string(request).unwrap())
+        .collect::<String>();
+    assert!(
+        !text.contains(&long_secret[..80]),
+        "even the first 80 characters of a long secret must never appear unmasked"
+    );
+    assert!(
+        text.contains("${card number}"),
+        "the page's copy reads as its template"
+    );
+    let traced = serde_json::to_string(&run.result.trace).unwrap();
+    assert!(!traced.contains(&long_secret[..80]));
+}
+
+#[tokio::test]
 async fn a_shared_value_may_be_named_in_a_step_and_reaches_jev() {
     let run = run_with(
         App::default(),

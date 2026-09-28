@@ -90,6 +90,54 @@ fn a_toast_with_a_plain_close_is_a_distraction_without_any_telling_words() {
 }
 
 #[test]
+fn a_generic_ok_with_no_telling_words_is_never_a_distraction() {
+    // A destructive confirmation dialog ("Delete this booking?") whose
+    // affirmative control is worded only "OK": nothing marks its region as
+    // boilerplate, so — unlike "Close" above — it must not be offered as a
+    // distraction to clear, or `clear_the_way` could click through the
+    // deletion before the step's own `stop_before` ever sees it.
+    let mut candidates = content();
+    candidates.push(button(
+        "Delete this booking?",
+        &["main", "sheet \"Confirm\""],
+    ));
+    candidates.push(button("OK", &["main", "sheet \"Confirm\""]));
+    let found = distractions(
+        &screen(candidates),
+        "search for flights",
+        &[],
+        &BTreeSet::new(),
+    );
+    assert!(
+        found.is_empty(),
+        "a generic OK with no distraction wording is the step's own business: {found:?}"
+    );
+}
+
+#[test]
+fn an_ok_beside_telling_words_is_still_a_distraction() {
+    // The same generic word, but in a region the digest's own vocabulary
+    // marks as boilerplate: an "OK" newsletter prompt is still clearable.
+    let mut candidates = content();
+    candidates.push(button(
+        "Sign up for our newsletter",
+        &["main", "region \"Promo\""],
+    ));
+    candidates.push(button("OK", &["main", "region \"Promo\""]));
+    let found = distractions(
+        &screen(candidates),
+        "search for flights",
+        &[],
+        &BTreeSet::new(),
+    );
+    assert_eq!(found.len(), 1);
+    assert_eq!(
+        found[0].closer.as_ref().unwrap().name.as_deref(),
+        Some("OK")
+    );
+}
+
+#[test]
 fn ordinary_content_is_not_a_distraction() {
     let mut candidates = content();
     // "Accept" alone, in a region nothing marks as a distraction, is the

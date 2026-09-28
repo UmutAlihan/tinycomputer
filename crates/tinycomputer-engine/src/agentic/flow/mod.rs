@@ -714,6 +714,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         }
         self.brief_into(&mut request);
         self.mask(&mut request);
+        clip_masked_state(&mut request.state);
         fit(&mut request, MAX_REQUEST_BYTES);
         request
     }
@@ -1137,6 +1138,43 @@ fn mask_value(value: &mut Value, secrets: &Facts) {
             .for_each(|field| mask_value(field, secrets)),
         _ => {}
     }
+}
+
+/// Longest an `elements` line may be, once masked.
+const MAX_ELEMENT_CHARS: usize = 96;
+/// Longest a `field_contents` entry's `holds` may be, once masked.
+const MAX_HELD_CHARS: usize = 400;
+
+/// Clips the two places a held value can make `state` long — the `elements`
+/// lines built by `element_line`, and `field_contents`'s `holds` — down to a
+/// readable length.
+///
+/// Called only after [`FlowRun::mask`], never before: `Facts::mask` finds a
+/// secret by its exact, whole value, and a value already cut short would
+/// leave its unmasked prefix in the request instead of `${name}`.
+fn clip_masked_state(state: &mut Value) {
+    if let Some(elements) = untrusted_array_mut(state, "elements") {
+        for element in elements {
+            if let Value::String(text) = element {
+                *text = clip(text, MAX_ELEMENT_CHARS);
+            }
+        }
+    }
+    if let Some(fields) = untrusted_array_mut(state, "field_contents") {
+        for field in fields {
+            if let Some(Value::String(held)) = field.get_mut("holds") {
+                *held = clip(held, MAX_HELD_CHARS);
+            }
+        }
+    }
+}
+
+/// `state[family]["untrusted_accessibility_data"]`, when it is an array.
+fn untrusted_array_mut<'a>(state: &'a mut Value, family: &str) -> Option<&'a mut Vec<Value>> {
+    state
+        .get_mut(family)?
+        .get_mut("untrusted_accessibility_data")?
+        .as_array_mut()
 }
 
 /// A step's wire kind and its text with variables substituted.
