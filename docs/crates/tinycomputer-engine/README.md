@@ -16,9 +16,9 @@ TinyBus members; this crate only holds the logic.
 
 | Area | Module | What it does |
 |---|---|---|
-| The decision model's front door | `src/agentic/mod.rs` (`JevRuntime`) | Configures and calls Jev, and hosts the two native loops below. |
-| Point at one thing, maybe act | `src/agentic/mod.rs` (`resolve_intent`) | Grounds one described element on the live screen and optionally acts on it. |
-| Run a bounded goal | `src/agentic/mod.rs` (`run_goal`) | An observe-decide-act loop toward one visible end state, with a confirmation handle for anything hard to undo. |
+| The decision model's front door | `src/agentic/runtime.rs` (`JevRuntime`) | Configures and calls Jev, and hosts the two native loops below. |
+| Point at one thing, maybe act | `src/agentic/resolve.rs` (`resolve_intent`) | Grounds one described element on the live screen and optionally acts on it. |
+| Run a bounded goal | `src/agentic/goal.rs` and `src/agentic/task/` (`run_goal`) | An observe-decide-act loop toward one visible end state, with a confirmation handle for anything hard to undo. |
 | The high-level flow runtime | `src/agentic/flow/` | Runs a whole flow (the plain-language step language), one step at a time. Documented separately: see [flow/README.md](flow/README.md). |
 | The debug journal | `src/agentic/journal/` | Every Jev exchange and how long each part of a run took, written to disk, opt-in and inert when off. |
 | The task controller | `src/task/` | Runs a flow in the background as a long-lived task, and reports it as a status a calling model can act on: needs input, needs approval, checkpoint, needs a person, done, or failed. |
@@ -61,7 +61,7 @@ StartTask / ContinueTask / AwaitTask      (task/)
    flow runtime                            (agentic/flow/, see its own README)
         |
         v
-   JevRuntime::evaluate                     (agentic/mod.rs)
+   JevRuntime::evaluate                     (agentic/runtime.rs)
         |
         v
    Jev (tinyinference_decisions)
