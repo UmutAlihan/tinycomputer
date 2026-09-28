@@ -11,23 +11,28 @@ use serde_json::{Value, json};
 use tinycomputer_bus::agent::names::{CONFIDENTIAL, methods};
 use tinycomputer_bus::agent::{Capabilities, Example, MemberDoc, SurfaceAvailability};
 use tinycomputer_bus::browser::names::methods as browser;
-use tinycomputer_bus::{CONTRACT_VERSION, FLOW_GUIDE, STEP_KINDS};
+use tinycomputer_bus::{CONTRACT_VERSION, FLOW_GUIDE, JevConfiguration, STEP_KINDS};
 
-/// The capabilities reply for a module with these surfaces, whether Jev is
-/// configured, and what `tasks` has: a planner, a rescuer, a shaper.
+/// The capabilities reply for a module with these surfaces, the decision
+/// model it asks when one is configured, and what `tasks` has: a planner, a
+/// rescuer, a shaper, and the models behind them.
 #[must_use]
 pub fn capabilities(
     surfaces: Vec<SurfaceAvailability>,
-    jev_configured: bool,
+    decision_model: Option<&JevConfiguration>,
     tasks: &super::Tasks,
 ) -> Capabilities {
     Capabilities {
         contract_version: CONTRACT_VERSION,
         surfaces,
-        jev_configured,
+        jev_configured: decision_model.is_some(),
         planner_configured: tasks.planner_configured(),
         rescue_configured: tasks.rescue_configured(),
         output_configured: tasks.output_configured(),
+        decision_model: decision_model.cloned(),
+        planner_model: tasks.planner_model().cloned(),
+        rescue_model: tasks.rescue_model().cloned(),
+        output_model: tasks.output_model().cloned(),
         step_kinds: STEP_KINDS.iter().map(|kind| (*kind).to_owned()).collect(),
         guide: FLOW_GUIDE.to_owned(),
         members: members(),

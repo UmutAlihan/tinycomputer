@@ -2,7 +2,13 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Jev-compatible decision service selected by the host.
+/// The decision service, and so the decision model, selected by the host.
+///
+/// The first three are routes to Jev itself; `open_jev` is `OpenJEV`'s public
+/// Jev-compatible API, answering as the `openjev` model; `sage` puts Levanto
+/// Sage behind the same loops in place of Jev. Each has exactly one approved
+/// endpoint, which [`JevConfig::endpoint_url`] may only repeat (contract 2.8
+/// added `open_jev` and `sage`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum JevProvider {
@@ -13,6 +19,28 @@ pub enum JevProvider {
     OpenRouter,
     /// Tiny Humans' authenticated `OpenRouter` proxy.
     TinyHumansOpenRouter,
+    /// `OpenJEV`'s public System One API (`https://api.openjev.sh`), model
+    /// `openjev` unless [`JevConfig::model`] names another. `openjev` is
+    /// accepted as an alias on input.
+    #[serde(alias = "openjev")]
+    OpenJev,
+    /// Levanto Sage (`https://sage.levanto.ai/`), answering the loops' Jev
+    /// questions as its own calibrated decisions; see [`JevConfig::fast`].
+    Sage,
+}
+
+impl JevProvider {
+    /// The model this provider answers as when [`JevConfig::model`] is
+    /// absent: `jev-latest` for the Jev routes, `openjev` for `OpenJEV`, and
+    /// `levanto-sage` for Sage, which takes no model selection.
+    #[must_use]
+    pub const fn default_model(self) -> &'static str {
+        match self {
+            Self::TypeSafe | Self::OpenRouter | Self::TinyHumansOpenRouter => "jev-latest",
+            Self::OpenJev => "openjev",
+            Self::Sage => "levanto-sage",
+        }
+    }
 }
 
 /// Configures the Jev client retained by the loaded module.
@@ -28,14 +56,22 @@ pub struct JevConfig {
     /// Exact compatible endpoint, when the provider's conventional route is
     /// not desired.
     pub endpoint_url: Option<String>,
-    /// Jev model or alias. Absent means `jev-latest`.
+    /// Jev model or alias. Absent means the provider's
+    /// [`JevProvider::default_model`]. Sage takes no model selection and
+    /// ignores it.
     pub model: Option<String>,
-    /// Per-attempt HTTP timeout. Absent means the client default.
+    /// Per-attempt HTTP timeout. Absent means the client default. Ignored by
+    /// Sage.
     pub timeout_ms: Option<u64>,
-    /// Additional transient retries. Absent means the client default.
+    /// Additional transient retries. Absent means the client default. Ignored
+    /// by Sage.
     pub max_retries: Option<u32>,
     /// Host product attribution for the `TinyHumans` proxy only.
     pub sdk_name: Option<String>,
+    /// Sage only: score each choice in one pass rather than one pass per
+    /// option, trading some calibration for latency. Absent means `false`;
+    /// ignored by every other provider (contract 2.8).
+    pub fast: Option<bool>,
 }
 
 impl JevConfig {
@@ -66,11 +102,13 @@ impl std::fmt::Debug for JevConfig {
             .field("timeout_ms", &self.timeout_ms)
             .field("max_retries", &self.max_retries)
             .field("sdk_name", &self.sdk_name)
+            .field("fast", &self.fast)
             .finish()
     }
 }
 
-/// Non-secret summary of the retained Jev client.
+/// Non-secret summary of the retained decision client; `Describe` serves it
+/// as `Capabilities.decision_model`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JevConfiguration {
     /// Configured provider.
@@ -79,4 +117,14 @@ pub struct JevConfiguration {
     pub model: String,
     /// Exact endpoint override, when set.
     pub endpoint_url: Option<String>,
+    /// Whether Sage scores each choice in one pass. Always `false` for the
+    /// other providers, and left out of the wire form when `false`.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub fast: bool,
+}
+
+// `skip_serializing_if` passes the field by reference.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+const fn is_false(value: &bool) -> bool {
+    !*value
 }

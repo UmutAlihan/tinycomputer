@@ -82,15 +82,15 @@ text or a failure string. Keeping the model behind this trait is what lets
 `planner/planner_tests.rs` script a fake model's answers deterministically, rather
 than every planner test needing a live API call.
 
-## The OpenRouter adapter
+## The hosted adapter: OpenRouter or Tiny Humans
 
 The `planner` Cargo feature adds one concrete `LanguageModel`:
-`crates/tinycomputer-engine/src/planner/openrouter.rs`, built on
-`tinyinference_llm`'s OpenAI-compatible client pointed at OpenRouter. This is
-the only file in the crate that links a text-generating model at all: the
-key it is given in the module's private configuration never leaves this one
-adapter. It builds all three of the crate's language-model helpers, not
-just the planner:
+`crates/tinycomputer-engine/src/planner/hosted.rs`, built on
+`tinyinference_llm`'s OpenAI-compatible client pointed at the configured
+route. This is the only file in the crate that links a text-generating model
+at all: the keys it is given in the module's private configuration never
+leave this one adapter. It builds all three of the crate's language-model
+helpers, not just the planner:
 
 ```rust
 pub fn open_router(config: &PlannerConfig) -> Result<Planner, String>
@@ -98,16 +98,33 @@ pub fn open_router_rescuer(config: &PlannerConfig) -> Result<Rescuer, String>
 pub fn open_router_shaper(config: &PlannerConfig) -> Result<Shaper, String>
 ```
 
-`PlannerConfig` holds the OpenRouter `api_key`, an optional `model`
-(`PLANNER_MODEL`, `anthropic/claude-sonnet-5`, when unset), an optional
-`rescue_model` (`RESCUE_MODEL`, `openai/gpt-6-luna`; see [rescue.md](rescue.md)),
-and an optional `output_model` (`OUTPUT_MODEL`, also `openai/gpt-6-luna`;
-see [output.md](output.md)). All three are just OpenRouter chat
-completions with different settings: the planner's own model is asked for
-a JSON object response format at a low sampling temperature (0.2), because
-a plan should be reproducible rather than creative, while the rescuer and
-the shaper are reasoning models given a little room to think before they
-answer.
+The names predate the second route and are kept; each builds on whichever
+route `PlannerConfig` selects.
+
+`PlannerConfig` (`planner/config.rs`) holds a `route` (`ModelRoute`,
+flattened into the object: `api_key`, `provider`, `endpoint_url`,
+`sdk_name`), an optional `model` (`PLANNER_MODEL`,
+`anthropic/claude-sonnet-5`, when unset), an optional `rescue_model`
+(`RESCUE_MODEL`, `openai/gpt-6-luna`; see [rescue.md](rescue.md)), an
+optional `output_model` (`OUTPUT_MODEL`, also `openai/gpt-6-luna`; see
+[output.md](output.md)), and an optional `rescue_route`, a complete
+`ModelRoute` of the rescuer's own that inherits nothing from the planner's.
+
+`provider` is `tinycomputer_bus::agent::LanguageModelProvider`:
+`open_router` (the default, `OPEN_ROUTER_BASE_URL`,
+`https://openrouter.ai/api/v1`) or `tiny_humans` (`TINYHUMANS_BASE_URL`,
+`https://api.tinyhumans.ai/openai/v1`, with the host's TinyHumans bearer).
+`endpoint_url` may only repeat the selected route's base URL, the same
+allow-list principle as Jev's endpoint; `sdk_name` becomes an `x-sdk-name`
+header on the Tiny Humans route only.
+
+All three are chat completions with different settings: the planner's own
+model is asked for a JSON object response format at a low sampling
+temperature (0.2), because a plan should be reproducible rather than
+creative, while the rescuer and the shaper are reasoning models given a
+little room to think before they answer. Each reports its route and model
+(`LanguageModelConfiguration`) through `configuration()`, which `Describe`
+serves as `planner_model`, `rescue_model`, and `output_model`.
 
 ## Errors a caller sees
 
@@ -123,8 +140,10 @@ hand from `Describe`'s guide and pass it as `flow` instead of `task`.
 
 - `crates/tinycomputer-engine/src/planner/mod.rs`, `Planner`, the protocol
   text, `plan_for` (turning a flow into a `TaskPlan`).
-- `crates/tinycomputer-engine/src/planner/openrouter.rs`, the OpenRouter
-  `LanguageModel`, `PlannerConfig`, `open_router_rescuer`, `open_router_shaper`.
+- `crates/tinycomputer-engine/src/planner/config.rs`, `PlannerConfig`,
+  `ModelRoute`, the model defaults, and the route allow-list.
+- `crates/tinycomputer-engine/src/planner/hosted.rs`, the hosted
+  `LanguageModel`, `open_router`, `open_router_rescuer`, `open_router_shaper`.
 - `crates/tinycomputer-engine/src/agentic/flow/`, `check_flow` and
   `missing_inputs`, which the planner reuses unchanged.
 - [writing-flows.md](../../writing-flows.md), the flow language the

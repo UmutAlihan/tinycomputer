@@ -9,6 +9,8 @@ fn runtime_configuration_covers_all_providers_and_rejects_empty_keys() {
         JevProvider::TypeSafe,
         JevProvider::OpenRouter,
         JevProvider::TinyHumansOpenRouter,
+        JevProvider::OpenJev,
+        JevProvider::Sage,
     ] {
         let mut request = JevConfig::new("key");
         request.provider = provider;
@@ -17,13 +19,104 @@ fn runtime_configuration_covers_all_providers_and_rejects_empty_keys() {
         request.max_retries = Some(0);
         request.endpoint_url = Some("http://127.0.0.1:1/decisions".to_owned());
         let runtime = JevRuntime::configure(&request).expect("configuration is valid");
-        assert_eq!(runtime.configuration.provider, provider);
+        assert_eq!(runtime.configuration().provider, provider);
+        let mut keyless = JevConfig::default();
+        keyless.provider = provider;
+        assert!(JevRuntime::configure(&keyless).is_err(), "{provider:?}");
     }
     assert!(JevRuntime::configure(&JevConfig::default()).is_err());
     let mut untrusted = JevConfig::new("key");
     untrusted.provider = JevProvider::OpenRouter;
     untrusted.endpoint_url = Some("https://attacker.example/decisions".to_owned());
     assert!(JevRuntime::configure(&untrusted).is_err());
+}
+
+#[test]
+fn each_provider_selects_its_decision_model() {
+    let configured = |value: serde_json::Value| {
+        let request: JevConfig = serde_json::from_value(value).expect("the configuration decodes");
+        JevRuntime::configure(&request)
+            .expect("configuration is valid")
+            .configuration()
+            .clone()
+    };
+    let legacy = configured(serde_json::json!({"api_key": "k"}));
+    assert_eq!(legacy.provider, JevProvider::TypeSafe);
+    assert_eq!(legacy.model, "jev-latest");
+    assert!(!legacy.fast);
+
+    let openjev = configured(serde_json::json!({"api_key": "k", "provider": "open_jev"}));
+    assert_eq!(openjev.provider, JevProvider::OpenJev);
+    assert_eq!(openjev.model, "openjev", "OpenJEV answers as its own model");
+    let alias = configured(
+        serde_json::json!({"api_key": "k", "provider": "openjev", "model": "openjev-2"}),
+    );
+    assert_eq!(alias.provider, JevProvider::OpenJev);
+    assert_eq!(alias.model, "openjev-2");
+
+    let sage = configured(serde_json::json!({
+        "api_key": "k", "provider": "sage", "fast": true, "model": "ignored"
+    }));
+    assert_eq!(sage.provider, JevProvider::Sage);
+    assert_eq!(sage.model, "levanto-sage", "Sage takes no model selection");
+    assert!(sage.fast);
+    assert!(!configured(serde_json::json!({"api_key": "k", "provider": "sage"})).fast);
+    assert!(
+        !configured(serde_json::json!({"api_key": "k", "provider": "open_router", "fast": true}))
+            .fast,
+        "`fast` is Sage's alone"
+    );
+    // The constructor the examples use builds the same runtime.
+    assert_eq!(JevRuntime::sage("k", true).unwrap().configuration(), &sage);
+}
+
+#[test]
+fn only_each_providers_own_endpoint_is_approved() {
+    use crate::agentic::runtime::{approved_endpoint, trusted_endpoint};
+
+    let providers = [
+        JevProvider::TypeSafe,
+        JevProvider::OpenRouter,
+        JevProvider::TinyHumansOpenRouter,
+        JevProvider::OpenJev,
+        JevProvider::Sage,
+    ];
+    for provider in providers {
+        let mut request = JevConfig::new("key");
+        request.provider = provider;
+        request.endpoint_url = Some(approved_endpoint(provider).to_owned());
+        let runtime = JevRuntime::configure(&request).expect("the provider's own route");
+        assert_eq!(
+            runtime.configuration().endpoint_url.as_deref(),
+            Some(approved_endpoint(provider))
+        );
+        for other in providers.into_iter().filter(|other| *other != provider) {
+            assert!(
+                !trusted_endpoint(provider, approved_endpoint(other)),
+                "{provider:?} refuses {other:?}'s route"
+            );
+        }
+    }
+    assert_eq!(
+        approved_endpoint(JevProvider::OpenJev),
+        "https://api.openjev.sh/v1/systemone"
+    );
+    assert!(trusted_endpoint(
+        JevProvider::Sage,
+        "https://sage.levanto.ai"
+    ));
+    for refused in [
+        "https://sage.levanto.ai.evil.example/",
+        "https://sage.levanto.ai/v1/decide",
+        "http://sage.levanto.ai/",
+    ] {
+        assert!(!trusted_endpoint(JevProvider::Sage, refused), "{refused}");
+    }
+    let mut untrusted = JevConfig::new("key");
+    untrusted.provider = JevProvider::OpenJev;
+    untrusted.endpoint_url = Some("https://api.openjev.sh.evil.example/v1/systemone".to_owned());
+    let error = JevRuntime::configure(&untrusted).unwrap_err();
+    assert_eq!(error.code, "JEV_INVALID_CONFIG");
 }
 
 #[test]

@@ -48,9 +48,13 @@ exchange, whichever model answered it. `JevConfiguration` names a
 Sage-backed runtime by its model, `"levanto-sage"`, so a journal or a trace
 reading `model` can tell which one ran.
 
-`JevRuntime::sage` is not reachable over the bus. It exists for measuring
-Sage from the examples crate, not as a caller-selectable option on
-`StartTask` or `RunFlow`.
+A host selects Sage over the bus through the module's private `jev`
+configuration, `{"provider": "sage", "api_key": "...", "fast": false}`
+(contract 2.8), which `JevRuntime::configure` turns into this same runtime;
+`endpoint_url` may only repeat `https://sage.levanto.ai/`. `Describe` then
+reports `Capabilities.decision_model` as provider `sage`, model
+`levanto-sage`. `JevRuntime::sage` remains for building one directly in
+code.
 
 ## Latency modes
 
@@ -66,11 +70,11 @@ lever the eval names but has not yet measured.
 
 ## Switching an example to Sage
 
-No example does any more. The recorded eval ran `task_live` with a
-`TINYCOMPUTER_DECISIONS=sage` switch that built a `JevRuntime::sage` in
-process; `task_live` now drives the loaded module over the bus, and the
-module's configuration has no Sage setting, so Sage is reachable only from
-code that builds a `JevRuntime` itself.
+`task_live` reads `TINYCOMPUTER_DECISIONS`: set to `sage`, it hands the
+loaded module `{"provider": "sage", "api_key": $SAGE_API_KEY, "fast":
+$SAGE_FAST == 1}` as its `jev` configuration, so Sage takes every decision
+over the bus exactly as a host would select it. The planner and the rescuer
+still use `OPENROUTER_API_KEY`.
 
 ## What the live eval found
 

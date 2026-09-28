@@ -62,13 +62,41 @@ controls the *browser's* visibility for that one task.
 ```
 
 Only `api_key` is required inside this object; every other field falls back
-to a documented default. `provider` picks which response contract the client
-validates against: `type_safe` (the default, TypeSafe's first-party API),
-`open_router` (OpenRouter's Jev-compatible decisions endpoint), or
-`tiny_humans_open_router` (Tiny Humans' authenticated OpenRouter proxy).
-`endpoint_url` overrides the provider's own route, but only to another route
-the same provider publishes; it is not a way to point Jev at an arbitrary
-host. `model` defaults to `jev-latest` when omitted.
+to a documented default. `provider` picks the decision model and the route
+to it:
+
+| `provider` | Decision model | Approved `endpoint_url` | Default `model` |
+|---|---|---|---|
+| `type_safe` (default) | Jev, TypeSafe's first-party API | `https://api.typesafe.ai/v1/systemone` | `jev-latest` |
+| `open_router` | Jev, OpenRouter's decisions endpoint | `https://openrouter.ai/api/alpha/decisions` | `jev-latest` |
+| `tiny_humans_open_router` | Jev, Tiny Humans' authenticated OpenRouter proxy | `https://api.tinyhumans.ai/agent-integrations/openrouter/systemone` | `jev-latest` |
+| `open_jev` (alias `openjev`) | OpenJEV's Jev-compatible API | `https://api.openjev.sh/v1/systemone` | `openjev` |
+| `sage` | Levanto Sage, in place of Jev | `https://sage.levanto.ai/` | `levanto-sage` (fixed) |
+
+`endpoint_url` overrides the provider's own route, but only to exactly that
+route; it is not a way to point a decision model at an arbitrary host.
+OpenJEV and Sage have no Tiny Humans proxy route, so a host that wants its
+decisions to go through Tiny Humans uses `tiny_humans_open_router`.
+`sdk_name` is sent only to the Tiny Humans proxy.
+
+Sage answers the loops' questions as its own calibrated decisions
+([`../tinycomputer-engine/sage.md`](../tinycomputer-engine/sage.md)). It
+takes no model selection, so `model` is ignored, and neither `timeout_ms` nor
+`max_retries` applies to it. `fast: true` makes it score each choice in one
+pass rather than one pass per option, trading some calibration for latency;
+every other provider ignores `fast`.
+
+```json
+{ "jev": { "api_key": "openjev-...", "provider": "open_jev" } }
+```
+
+```json
+{ "jev": { "api_key": "sage-...", "provider": "sage", "fast": true } }
+```
+
+`Describe` reports what was configured as `Capabilities.decision_model`:
+`{"provider": "sage", "model": "levanto-sage", "endpoint_url": null, "fast":
+true}`, with `fast` left out when false. The key is never in it.
 
 ## What happens without `jev`
 
@@ -107,7 +135,7 @@ free-text `task`; a plain-language `task` with no planner configured pauses
 immediately asking the caller to supply a flow (`needs_plan`), because there
 is nothing to turn the words into a plan.
 
-`api_key` and everything else here is an OpenRouter credential and model
+`api_key` and everything else here is a language-model credential and model
 selection, not a TypeSafe or Jev one; the planner and Jev are configured
 separately even though they might point at the same underlying provider.
 `model` is the model the planner drafts a flow with; leave it out and the
@@ -122,7 +150,57 @@ default is also 5). Leave `rescue_model` out and the engine's default
 request to turn rescues off for that one task without touching this
 configuration.
 [`../../technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md)
-covers the rescue mechanism itself.
+covers the rescue mechanism itself. `output_model` (default
+`openai/gpt-6-luna`) shapes a finished task's answer the same way.
+
+### Routes: OpenRouter or Tiny Humans
+
+The planner, the rescuer, and the shaper call an OpenAI-compatible route.
+`provider` picks it:
+
+| `provider` | Route | Approved `endpoint_url` | `api_key` |
+|---|---|---|---|
+| `open_router` (default) | OpenRouter | `https://openrouter.ai/api/v1` | an OpenRouter key |
+| `tiny_humans` | Tiny Humans' OpenAI-compatible gateway | `https://api.tinyhumans.ai/openai/v1` | the host's TinyHumans bearer (session token or API key) |
+
+Both take the same `vendor/model` ids, so the defaults work on either.
+`endpoint_url` may only repeat the route's approved base URL (with or without
+a trailing slash); anything else fails the configuration. `sdk_name` is sent
+as `x-sdk-name` to the Tiny Humans gateway only, sanitized the way the Jev
+client sanitizes its own.
+
+```json
+{
+  "planner": {
+    "api_key": "<tinyhumans bearer>",
+    "provider": "tiny_humans",
+    "sdk_name": "openhuman",
+    "model": "anthropic/claude-sonnet-5",
+    "rescue_model": "openai/gpt-6-luna",
+    "output_model": "openai/gpt-6-luna"
+  }
+}
+```
+
+The rescuer takes the planner's route unless `rescue_route` gives it one of
+its own. A `rescue_route` is a complete route — `api_key` (required),
+`provider`, `endpoint_url`, `sdk_name` — and inherits nothing, so a key is
+never sent to a provider it was not given for:
+
+```json
+{
+  "planner": {
+    "api_key": "<tinyhumans bearer>",
+    "provider": "tiny_humans",
+    "rescue_model": "openai/gpt-6-luna-pro",
+    "rescue_route": { "api_key": "sk-or-...", "provider": "open_router" }
+  }
+}
+```
+
+`Describe` reports each model and its route as `Capabilities.planner_model`,
+`rescue_model`, and `output_model`, for example `{"provider": "tiny_humans",
+"model": "anthropic/claude-sonnet-5"}`; no key is ever in them.
 
 ## `browser`
 
