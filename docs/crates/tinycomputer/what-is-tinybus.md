@@ -52,8 +52,9 @@ socket.
   on `DesktopService` in `crates/tinycomputer/src/tinybus_module/dispatch.rs`
   is what turns a plain `impl` block into that interface.
 - **Methods.** Typed request in, typed response out, over the wire as
-  serialized JSON-shaped payloads. `Click`, `Snapshot`, `RunGoal`, and 64
-  others. See [members.md](members.md) for the full list.
+  serialized JSON-shaped payloads. `Click`, `Snapshot`, `RunGoal`,
+  `BrowserNavigate`, and 76 others. See [members.md](members.md) for the full
+  list.
 - **Confidential delivery.** Some methods, `RunGoal` and the task-starting
   calls among them, are marked `#[tinybus(confidential)]`. TinyBus treats
   those calls, and the module's own configuration, as sensitive host-control
