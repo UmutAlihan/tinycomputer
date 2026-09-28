@@ -103,7 +103,7 @@ placed after every readable one, in its original order, so a caller always
 gets back a full, stable ordering rather than a filtered list.
 
 `rank` returns `None`, not an empty ranking, when *no* record in the whole
-set could be read for that criterion, the same "hand this to a model
+set could be read for that criterion: the same "hand this to a model
 instead" signal `Criterion::parse` gives for wording it does not recognize.
 That is the whole point of the module: ranking by an unambiguous criterion
 never needs a model, but the moment the data genuinely cannot support it,
@@ -122,7 +122,7 @@ first or last with a numeric month (`2000-01-31`, `2000/1/1`), or any order
 once the month is spelled out, even abbreviated (`31 Jan 2000`,
 `January 31, 2000`). A form like `01/02/2000`, which genuinely means
 different days depending on the country reading it, is deliberately never
-read, guessing wrong there is worse than not guessing.
+read: guessing wrong there is worse than not guessing.
 
 ```rust
 use tinycomputer_core::{Date, parse_date};
