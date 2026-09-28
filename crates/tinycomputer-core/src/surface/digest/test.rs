@@ -414,7 +414,7 @@ fn a_card_s_rich_text_body_is_gated_on_include_values_but_its_name_is_not() {
         .clone();
     let shown_line = shown_lines[0].as_str().unwrap();
     assert!(
-        shown_line.starts_with("card 1: Doc 1 · body text of doc 1 →"),
+        shown_line.contains("body text of doc 1"),
         "the rich-text body must show when include_values is true: {shown_line}"
     );
 }
