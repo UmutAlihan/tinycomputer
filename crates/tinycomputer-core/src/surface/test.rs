@@ -458,6 +458,58 @@ fn only_pointer_operations_use_the_pointer() {
 }
 
 #[test]
+fn a_named_element_keeps_the_description_that_tells_it_apart() {
+    // A calendar draws each day as its number; only the page's label says
+    // which month it belongs to.
+    let day = |description: &str| Candidate {
+        role: "button".to_owned(),
+        name: Some("18".to_owned()),
+        description: Some(description.to_owned()),
+        available_actions: vec!["Click".to_owned()],
+        ..Candidate::default()
+    };
+    let september = day("Friday, 18 September 2026");
+    let october = day("Sunday, 18 October 2026");
+    assert_eq!(
+        element_line(&october, false),
+        "button \"18\" (Sunday, 18 October 2026)"
+    );
+    assert_ne!(
+        element_line(&september, false),
+        element_line(&october, false)
+    );
+    assert_eq!(
+        describe(&october, false)["untrusted_accessibility_data"]["says"],
+        "Sunday, 18 October 2026"
+    );
+
+    let echoed = Candidate {
+        name: Some("Close dialog".to_owned()),
+        description: Some("Close".to_owned()),
+        ..october.clone()
+    };
+    assert_eq!(
+        element_line(&echoed, false),
+        "button \"Close dialog\"",
+        "a description the name already says adds nothing"
+    );
+    assert!(
+        describe(&echoed, false)["untrusted_accessibility_data"]
+            .get("says")
+            .is_none()
+    );
+    let unnamed = Candidate {
+        name: None,
+        ..october
+    };
+    assert_eq!(
+        element_line(&unnamed, false),
+        "button \"Sunday, 18 October 2026\"",
+        "an unnamed element is labelled by its description once"
+    );
+}
+
+#[test]
 fn an_unnamed_element_is_told_apart_by_the_named_container_it_sits_in() {
     let search = Candidate {
         role: "combobox".to_owned(),

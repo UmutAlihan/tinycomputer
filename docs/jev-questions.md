@@ -101,7 +101,11 @@ so a bias toward a position or a label shows up as disagreement.
 An element with no name of its own carries `near`, the nearest named
 container it sits in (`button "destinationCity …"`), and its state line
 reads `combobox in button "destinationCity …"`: on a booking widget that is
-all that tells one unnamed search box from another dropdown's. Elements whose
+all that tells one unnamed search box from another dropdown's. A named
+element whose page description says more than its name carries `says`, and
+its state line reads `button "18" (Sunday, 18 October 2026)`: a calendar
+names each day by its number, and without the description the 18th of this
+month and of the next are the same button to Jev. Elements whose
 descriptions match, bounds aside, are offered once — the first in page order
 — because lookalikes side by side split a voted answer below its floor.
 

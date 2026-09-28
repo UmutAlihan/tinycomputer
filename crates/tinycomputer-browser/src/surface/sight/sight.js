@@ -47,8 +47,12 @@
   const MODAL_SELECTOR = 'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
   const tag = (element) => element.tagName.toLowerCase();
   const role = (element) => (element.getAttribute('role') || '').toLowerCase().split(' ')[0];
+  // A page that greys a control out by style alone says so only in its class:
+  // a calendar's past day is `rdrDay rdrDayDisabled`, pressable but inert.
+  const DISABLED_CLASS = /disabled$/i;
   const disabled = (element) =>
-    element.disabled === true || element.getAttribute('aria-disabled') === 'true';
+    element.disabled === true || element.getAttribute('aria-disabled') === 'true'
+    || [...element.classList].some((name) => DISABLED_CLASS.test(name));
 
   const insideText = (element) => {
     for (let parent = element; parent; parent = parent.parentElement) {
@@ -222,6 +226,17 @@
     return squash(parts.join(' '));
   };
 
+  // The page's label on the one element inside a control that carries the
+  // words it shows: a calendar day drawn as "18" whose inner span says
+  // "Sunday, 18 October 2026". Several labels inside make it a container,
+  // whose labels belong to what it holds.
+  const innerLabel = (element, text) => {
+    const labelled = [...element.querySelectorAll('[aria-label]')];
+    if (labelled.length !== 1) return '';
+    const said = squash(labelled[0].getAttribute('aria-label'));
+    return said.includes(text) ? said : '';
+  };
+
   // What a person reads as the element's name, and a description when the
   // page says more about it than it shows.
   const naming = (element, what) => {
@@ -241,7 +256,8 @@
     }
     const text = ownText(element);
     if (text) {
-      const description = aria && aria !== text && !text.includes(aria) ? clip(aria, limits.name) : '';
+      const said = aria || innerLabel(element, text);
+      const description = said && said !== text && !text.includes(said) ? clip(said, limits.name) : '';
       return { name: clip(text, limits.name), description };
     }
     const pictured = [...element.querySelectorAll('img[alt], svg title')]

@@ -112,6 +112,9 @@ pub fn describe(node: &Candidate, include_values: bool) -> Value {
     if let Some(near) = near(node) {
         value["near"] = Value::String(near);
     }
+    if let Some(says) = says(node) {
+        value["says"] = Value::String(says);
+    }
     if node.name.is_none()
         && node.description.is_none()
         && node.value.is_none()
@@ -177,12 +180,36 @@ fn near(node: &Candidate) -> Option<String> {
     Some(clipped)
 }
 
-/// One element as a line of the state Jev reads: its label, where an
-/// unnamed element sits, what it holds when `include_values` is set (up to
-/// 80 characters), and its states.
+/// Longest description shown beside a name, in characters.
+const SAYS_CHARS: usize = 80;
+
+/// For a named element, the page's description when it says more than the
+/// name, clipped: a calendar names each day by its number, and only the
+/// description ("Sunday, 18 October 2026") tells the 18th of one month from
+/// the 18th of the next. `None` when the name already says it, or for an
+/// unnamed element, whose label is its description.
+fn says(node: &Candidate) -> Option<String> {
+    let name = node.name.as_deref()?;
+    let description = node.description.as_deref()?.trim();
+    if description.is_empty() || name.contains(description) {
+        return None;
+    }
+    let mut clipped = description.chars().take(SAYS_CHARS).collect::<String>();
+    if description.chars().count() > SAYS_CHARS {
+        clipped.push('…');
+    }
+    Some(clipped)
+}
+
+/// One element as a line of the state Jev reads: its label, what its
+/// description adds to its name, where an unnamed element sits, what it
+/// holds when `include_values` is set (up to 80 characters), and its states.
 #[must_use]
 pub fn element_line(node: &Candidate, include_values: bool) -> String {
     let mut line = label(node);
+    if let Some(says) = says(node) {
+        let _ = write!(line, " ({says})");
+    }
     if let Some(near) = near(node) {
         let _ = write!(line, " in {near}");
     }
