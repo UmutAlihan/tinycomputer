@@ -14,7 +14,7 @@ use serde_json::json;
 use tinybus::broker::Broker;
 use tinybus::transport::memory::MemoryBus;
 use tinybus::{Connection, Interface};
-use tinycomputer_bus::browser::names::methods as browser;
+use tinycomputer_bus::browser::names::methods as browser_methods;
 use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
 
 /// The `methods = [...]` list `module_export!` was handed, read back out of
@@ -257,27 +257,27 @@ fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
         (names::methods::VERSION, nothing.clone()),
         (names::methods::STATUS, nothing.clone()),
         (names::methods::PERMISSIONS, empty),
-        (browser::CLOSE_SESSION, no_session.clone()),
-        (browser::LIST_SESSIONS, nothing),
+        (browser_methods::CLOSE_SESSION, no_session.clone()),
+        (browser_methods::LIST_SESSIONS, nothing),
         (
-            browser::NAVIGATE,
+            browser_methods::NAVIGATE,
             json!([{ "session": "s-0", "url": "https://example.com" }]),
         ),
-        (browser::SNAPSHOT, no_session.clone()),
+        (browser_methods::SNAPSHOT, no_session.clone()),
         (
-            browser::PERFORM,
+            browser_methods::PERFORM,
             json!([{ "session": "s-0", "action": "press", "key": "Tab" }]),
         ),
-        (browser::READ_PAGE, no_session.clone()),
+        (browser_methods::READ_PAGE, no_session.clone()),
         (
-            browser::EVALUATE,
+            browser_methods::EVALUATE,
             json!([{ "session": "s-0", "expression": "1" }]),
         ),
-        (browser::SCREENSHOT, no_session.clone()),
-        (browser::READ_OUTPUT, no_output.clone()),
-        (browser::RELEASE_OUTPUT, no_output),
-        (browser::LIST_DOWNLOADS, no_session.clone()),
-        (browser::WAIT_DOWNLOAD, no_session),
+        (browser_methods::SCREENSHOT, no_session.clone()),
+        (browser_methods::READ_OUTPUT, no_output.clone()),
+        (browser_methods::RELEASE_OUTPUT, no_output),
+        (browser_methods::LIST_DOWNLOADS, no_session.clone()),
+        (browser_methods::WAIT_DOWNLOAD, no_session),
     ]
 }
 
@@ -307,7 +307,7 @@ fn the_wire_sweep_covers_every_member_except_the_one_with_no_safe_input() {
             &names::methods::TASK_REPORT,
             &names::methods::LIST_TASKS,
             &names::methods::CLIPBOARD_CLEAR,
-            &browser::OPEN_SESSION,
+            &browser_methods::OPEN_SESSION,
         ],
         "the task members answer in their own reply shape; see the agent tests below"
     );
