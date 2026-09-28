@@ -395,14 +395,15 @@ fn holds_a_list(screen: &Screen, members: &[usize]) -> bool {
 
 fn region(screen: &Screen, members: Vec<usize>, list: Option<(usize, Vec<String>)>) -> Region {
     let name = region_name(screen, &members);
-    // Every member's own path, not just the first in document order: a
-    // region's noise verdict must not depend on which member the
-    // accessibility tree happened to list first.
-    let noisy = members.iter().filter_map(|index| screen.candidates.get(*index)).any(|candidate| {
+    // The ancestor labels every member shares (the same prefix `region_name`
+    // reports), not just the first member's whole path in document order: a
+    // region's noise verdict must depend on the structure every member of it
+    // sits under, not on which member the accessibility tree happened to
+    // list first.
+    let noisy = shared_path(screen, &members).is_some_and(|shared| {
         // The root is the window or page itself: its title says nothing
         // about which part of it is noise.
-        candidate
-            .path
+        shared
             .iter()
             .skip(1)
             .any(|label| words(label).any(|word| NOISE_WORDS.contains(&word.as_str())))
