@@ -917,6 +917,15 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let started = Instant::now();
         let reply = self.backend_call(call).await;
         let acted_ms = millis(started.elapsed());
+        if let Some(url) = reply
+            .data
+            .as_ref()
+            .and_then(|data| data.get("url"))
+            .and_then(Value::as_str)
+            .filter(|url| !url.is_empty())
+        {
+            self.location = Some(url.to_owned());
+        }
         let note = match (&reply.error, &reply.data) {
             (Some(error), _) => error.code.clone(),
             (None, Some(data)) => data
