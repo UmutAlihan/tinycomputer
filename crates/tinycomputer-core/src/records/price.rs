@@ -1,7 +1,5 @@
 //! Reading a price as shown: its amount, its currency, and its separators.
 
-use std::collections::BTreeMap;
-
 /// A price as shown: an amount and, when shown, its currency.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Price {

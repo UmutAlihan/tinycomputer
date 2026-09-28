@@ -16,15 +16,13 @@
 //!   surface-agnostic [`Screen`](crate::surface::Screen), so every surface's
 //!   destructive-click gate can apply the same page-level check.
 
-use crate::surface::{Candidate, Screen};
-
 mod consequence;
-mod payment;
 mod gates;
+mod payment;
 
 pub use consequence::{Consequence, adjusts_a_count, consequence};
-pub use payment::{FieldHint, PaymentEvidence, payment_evidence, screen_payment_evidence};
 pub use gates::human_needed;
+pub use payment::{FieldHint, PaymentEvidence, payment_evidence, screen_payment_evidence};
 
 /// Lower-case words separated by single spaces, padded so whole-word phrases
 /// can be matched with `contains`.

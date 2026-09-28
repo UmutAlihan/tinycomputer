@@ -1,8 +1,8 @@
 //! Whether a page is a payment step, from its fields, URL, and controls.
 
-use crate::surface::{Candidate, Screen};
 use super::{Consequence, consequence};
-use super::{contains_any, has_phrase, normalize};
+use super::{has_phrase, normalize};
+use crate::surface::{Candidate, Screen};
 
 /// One form field as a page describes it.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

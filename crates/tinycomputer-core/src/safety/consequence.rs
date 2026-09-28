@@ -1,7 +1,6 @@
 //! Classifying a control by its label: payment, irreversible, or reversible.
 
-use crate::surface::{Candidate, Screen};
-use super::{contains_any, has_phrase, normalize};
+use super::{contains_any, normalize};
 
 /// What pressing a control commits the user to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

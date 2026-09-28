@@ -1,8 +1,7 @@
 //! What "best" means when picking from records, and ranking by it.
 
-use std::collections::BTreeMap;
-use super::{parse_clock, parse_duration, parse_price, parse_stops};
 use super::Record;
+use super::{parse_clock, parse_duration, parse_price, parse_stops};
 
 /// What "best" means when picking from records.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

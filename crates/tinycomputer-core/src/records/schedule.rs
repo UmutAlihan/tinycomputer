@@ -1,7 +1,5 @@
 //! Reading clock times, durations, and stop counts.
 
-use std::collections::BTreeMap;
-
 /// Reads a clock time as minutes after midnight: `06:45`, `6:45 PM`, `18:05`.
 ///
 /// ```

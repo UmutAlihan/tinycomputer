@@ -1,7 +1,6 @@
 //! What only a person can get past: captchas, one-time codes, login walls.
 
-use crate::surface::{Candidate, Screen};
-use super::{contains_any, has_phrase, normalize};
+use super::{has_phrase, normalize};
 
 /// What only a person can get past, by the words a page shows for it.
 const HUMAN_GATES: &[(&str, &str)] = &[

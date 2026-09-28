@@ -9,12 +9,12 @@
 use std::collections::BTreeMap;
 
 mod price;
-mod schedule;
 mod rank;
+mod schedule;
 
 pub use price::{Price, parse_price};
-pub use schedule::{parse_clock, parse_duration, parse_stops};
 pub use rank::{Criterion, rank};
+pub use schedule::{parse_clock, parse_duration, parse_stops};
 
 /// One extracted item: field name to the text shown for it.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
