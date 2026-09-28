@@ -1,14 +1,18 @@
-# Documentation
+# Technical reference
 
-This directory holds documentation that does not belong in rustdoc: the shape
-of the system, the reasoning behind it, and the constraints a reader needs
-before touching the code. API reference lives in doc comments next to the code,
-where it cannot drift.
+This directory holds the engineering documentation that does not belong in
+rustdoc: the shape of the system, the reasoning behind it, and the
+constraints a reader needs before touching the code. API reference lives in
+doc comments next to the code, where it cannot drift.
+
+New to the project? Start with the plain-language guides in
+[`../README.md`](../README.md), which explain the same system for users of
+the module, and come back here when you are changing the code.
 
 ## Layout
 
 ```text
-docs/
+docs/technical/
 ├── README.md      # this index
 ├── architecture.md, decision-loops.md, tasks.md   # how the system works
 ├── jev-harness.md, jev-journal.md                  # the Jev stack; debugging it

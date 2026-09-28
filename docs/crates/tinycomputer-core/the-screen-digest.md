@@ -47,7 +47,7 @@ model should see first too.
 
 A region is `Noise` when every one of its members shares an ancestor whose
 label contains a word like `ads`, `advert`, `sponsored`, `promoted`,
-`footer`, `contentinfo`, or `copyright`, again skipping the very root.
+`footer`, `contentinfo`, or `copyright`. Again, the root is skipped.
 Unlike a front region, noise is collapsed by default: shown as one line
 naming the region, how many elements it holds, and a few examples, unless a
 relevance score explicitly rescues it (see below).
