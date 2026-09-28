@@ -94,7 +94,7 @@ Every run writes to `target/lab-runs/<scenario>/<mode>-<timestamp>/`:
 |---|---|
 | `request.json`, `result.json` | the exact request sent and the result returned |
 | `timeline.txt` | each step, its outcome, how many turns and Jev calls it took, which decision loops contributed, and every action with its target |
-| `jev.jsonl` | one line per Jev decision: the state Jev saw, the question it was asked, the answer it gave — the file to read when a run picked the wrong thing |
+| `jev.jsonl` | one line per Jev decision: the state Jev saw, the question it was asked, the answer it gave. The file to read when a run picked the wrong thing |
 | `verdict.json` | the checker's PASS/FAIL and why, read from the application's real state, never from the run's own report |
 | `authored-N.json` | in `authored` mode, each flow the LLM wrote, one per round |
 

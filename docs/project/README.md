@@ -1,8 +1,13 @@
 # Repository layout
 
-A map of every top-level folder and file in tinycomputer, and where to read
-more about each. If you are looking for how the system behaves rather than
-where its pieces live, start at
+tinycomputer is a decision model (Jev) based harness for desktop and browser
+automation, written in Rust. Jev makes every choice about what to press by
+answering small closed questions; the harness does everything else: it reads
+the screen, asks, checks answers, acts, verifies, and enforces safety.
+
+This page is a map of every top-level folder and file in tinycomputer, and
+where to read more about each. If you are looking for how the system behaves
+rather than where its pieces live, start at
 [`docs/how-it-works.md`](../how-it-works.md) or
 [`docs/technical/architecture.md`](../technical/architecture.md) instead.
 
