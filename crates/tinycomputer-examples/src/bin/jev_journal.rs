@@ -66,6 +66,7 @@ fn list(root: &std::path::Path) -> std::io::Result<()> {
 }
 
 /// What `show` prints about one run.
+#[derive(Clone, Copy)]
 enum View {
     Summary,
     Json,
