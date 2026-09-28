@@ -496,6 +496,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             backend.execute(JevOperation::TypeText, None, Some(text))
         })
         .await?;
+        self.filtered = true;
         self.history
             .push("typed into the focused field to filter it".to_owned());
         Ok(())
@@ -534,6 +535,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 })
                 .await?;
             self.typed.insert(element_kind(&target));
+            self.filtered = true;
             if reply.ok {
                 self.history
                     .push(format!("typed into {} to filter it", label(&target)));
@@ -1103,9 +1105,12 @@ pub(super) fn already_holds(
 const SELECTABLE_ROLES: &[&str] = &["tab", "radio", "radiobutton", "option", "menuitemradio"];
 
 /// Why `screen` plainly shows `option` not chosen: the tab or radio named
-/// exactly `option` is not selected while a sibling of its kind is. `None`
-/// when no such control settles it, and Jev is asked instead.
-pub(super) fn left_unchosen(screen: &Screen, option: &str) -> Option<String> {
+/// exactly `option` is not selected while a sibling of its kind is; or, when
+/// the step typed to filter a list (`filtered`), the option it pressed is
+/// still offered there unselected — a press that took closes the list or
+/// marks the option. `None` when nothing on screen settles it, and Jev is
+/// asked instead.
+pub(super) fn left_unchosen(screen: &Screen, option: &str, filtered: bool) -> Option<String> {
     let wanted = plain(option);
     if wanted.is_empty() {
         return None;
@@ -1127,6 +1132,9 @@ pub(super) fn left_unchosen(screen: &Screen, option: &str) -> Option<String> {
         })?;
     if is_checked(asked) {
         return None;
+    }
+    if filtered && asked.role.eq_ignore_ascii_case("option") {
+        return Some(format!("{} is still offered, unselected", label(asked)));
     }
     let other = screen
         .candidates

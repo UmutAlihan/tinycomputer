@@ -255,6 +255,9 @@ pub(super) struct FlowRun<'r, B> {
     /// field holding text the flow typed shows no choice the page made
     /// (`steps::already_holds`).
     pub(super) typed: BTreeSet<String>,
+    /// Whether this step typed to filter a list: the option it then pressed
+    /// should leave the list, or show selected (`steps::left_unchosen`).
+    pub(super) filtered: bool,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -358,6 +361,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             read: Vec::new(),
             refused: BTreeSet::new(),
             typed: BTreeSet::new(),
+            filtered: false,
         }
     }
 
@@ -392,6 +396,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         self.step.clone_from(&path);
         self.ledger.begin();
         self.refused.clear();
+        self.filtered = false;
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let result = self.reflected(&mut log, &action, &text, result).await;

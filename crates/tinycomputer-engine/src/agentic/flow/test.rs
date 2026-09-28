@@ -5147,7 +5147,7 @@ fn a_selected_sibling_plainly_contradicts_the_option() {
         "nothing selected settles nothing: Jev is asked"
     );
     assert!(
-        steps::left_unchosen(&screen(vec![tab("Return", true)]), "Srinagar").is_none(),
+        steps::left_unchosen(&screen(vec![tab("Return", true)]), "Srinagar", false).is_none(),
         "an option no tab names is not settled here"
     );
 }
@@ -5187,4 +5187,40 @@ async fn a_tab_click_the_page_ignored_is_caught_even_when_jev_says_it_took() {
         ["One way", "One way"],
         "pressed again by the repair"
     );
+}
+
+#[test]
+fn an_option_still_offered_after_filtering_was_not_taken() {
+    let option = node(
+        "Dubai, United Arab Emirates Dubai International Airport DXB",
+        "option",
+        &["Click"],
+        &["main", "listbox"],
+        1.0,
+    );
+    let screen = Screen {
+        app: "browser".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: vec![option.clone()],
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    let asked = "Dubai, United Arab Emirates Dubai International Airport DXB";
+    assert!(
+        steps::left_unchosen(&screen, asked, true)
+            .is_some_and(|why| why.ends_with("is still offered, unselected"))
+    );
+    assert!(
+        steps::left_unchosen(&screen, asked, false).is_none(),
+        "a list the step did not filter keeps its options on screen"
+    );
+    let mut chosen = option;
+    chosen.states = vec!["selected".to_owned()];
+    let screen = Screen {
+        candidates: vec![chosen],
+        ..screen
+    };
+    assert!(steps::left_unchosen(&screen, asked, true).is_none());
 }

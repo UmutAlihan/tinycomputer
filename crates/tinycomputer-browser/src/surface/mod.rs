@@ -73,9 +73,9 @@ const SELECT_JS: &str = r"(element => {
 })";
 
 /// Roles a click selects rather than toggles, and that a page marks as
-/// selected once it took.
+/// selected once it took — or, for a list's option, closes the list over.
 fn selects_on_click(node: &Candidate) -> bool {
-    ["tab", "radio"].contains(&node.role.as_str())
+    ["tab", "radio", "option"].contains(&node.role.as_str())
         && !node
             .states
             .iter()
@@ -228,8 +228,8 @@ impl BrowserSurface {
     /// Clicks the middle of `reference` even though something covers it,
     /// but only when the cover is part of the same result card, so a banner
     /// or dialog in front still blocks the click. `None` when it is not.
-    /// Presses a tab or radio again through the DOM when the click left it
-    /// unselected: a page can ignore a trusted click it has not yet wired up
+    /// Presses a tab, radio, or option again through the DOM when the click
+    /// left it on screen unselected: a page can ignore a trusted click it has not yet wired up
     /// (Emirates' trip tabs, freshly loaded) while its own `click()` works.
     /// Selecting is idempotent, so pressing an already selected one is
     /// harmless; a checkbox, which toggles, is never pressed twice.

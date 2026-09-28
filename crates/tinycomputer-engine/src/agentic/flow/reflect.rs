@@ -85,7 +85,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ) -> Result<f64, Halt> {
         log.used(FlowLoop::Reflection);
         let screen = self.look().await?;
-        if let Some(why) = left_unchosen(&screen, option) {
+        if let Some(why) = left_unchosen(&screen, option, self.filtered) {
             self.history.push(format!("reflection: {why}"));
             self.runtime.journal.record(
                 "reflect",
