@@ -49,7 +49,8 @@ screen shows; the step does two things and must be split; what it needs is furth
 or behind a tab; the page has not loaded or needs a different entry point. Write short, \
 concrete steps, one action each. Every step must change something on the screen: to leave \
 an offer, an add-on, or a field as it is, write no step for it and move on to the control \
-that continues. Refer to the person's details only as ${name} variables \
+that continues. To pass an optional page (seats, meals, extras) without buying \
+anything, press its Skip or No thanks control: its Next often waits for a choice. Refer to the person's details only as ${name} variables \
 from the names you are given, never invent a new one, and use a secret only as an `enter` \
 value. Never pay, submit, send, book, or delete: put a stop_before in front of anything \
 irreversible. Give up when no step can help: the site blocks or withholds data, a person \
@@ -76,6 +77,8 @@ pub struct Briefing {
     pub earlier: Vec<Rescue>,
     /// The screen's visible text now.
     pub screen: Vec<String>,
+    /// The standing rules the task runs under, as Jev is briefed with them.
+    pub rules: Vec<String>,
     /// Every variable name the steps may use.
     pub known: BTreeSet<String>,
     /// The secret ones among them, only ever an `enter` value.
@@ -265,6 +268,11 @@ fn render(briefing: &Briefing) -> String {
     let mut lines = Vec::new();
     if !briefing.goal.trim().is_empty() {
         lines.push(format!("Goal: {}\n", briefing.goal.trim()));
+    }
+    if !briefing.rules.is_empty() {
+        lines.push("Rules the task runs under, which your steps must keep:".to_owned());
+        lines.extend(briefing.rules.iter().map(|rule| format!("- {rule}")));
+        lines.push(String::new());
     }
     lines.push(format!("The flow, on {}:", briefing.flow.app));
     for (index, step) in briefing.flow.steps.iter().enumerate() {
