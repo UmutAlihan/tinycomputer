@@ -1,21 +1,15 @@
 //! Tests for fingerprints, change notes, exact names, target payloads, pointer
 //! operations, and the descriptions that tell elements apart.
 
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex},
-};
+use tinycomputer_bus::JevOperation;
 
-use serde_json::json;
-use tinycomputer_bus::{DesktopResponse, JevOperation};
-
-use crate::surface::{
-    Candidate, Depth, Screen, Surface, change_note, deliver_text, describe, element_line,
-    exact_named_match, fingerprint, holds, result_families, result_groups, target_payload,
-    tokenized, uses_pointer,
-};
 use super::{clickable_screen, two_candidate_screen};
+use crate::surface::{
+    Candidate, change_note, describe, element_line, exact_named_match, fingerprint, target_payload,
+    uses_pointer,
+};
 
+#[test]
 fn a_fingerprint_ignores_ref_churn_between_snapshots() {
     let first = clickable_screen();
     let mut second = clickable_screen();

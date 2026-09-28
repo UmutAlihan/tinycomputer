@@ -1,19 +1,9 @@
 //! Tests for turning repeated cards and runs of leaf siblings into records.
 
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex},
-};
-
 use serde_json::json;
-use tinycomputer_bus::{DesktopResponse, JevOperation};
 
-use crate::surface::{
-    Candidate, Depth, Screen, Surface, change_note, deliver_text, describe, element_line,
-    exact_named_match, fingerprint, holds, result_families, result_groups, target_payload,
-    tokenized, uses_pointer,
-};
 use super::clickable_screen;
+use crate::surface::{Candidate, Screen, result_families, result_groups};
 
 fn card(text: &[&str], button: &str, container: &str, order: usize) -> Vec<(Candidate, bool)> {
     let path = vec!["main".to_owned(), "list".to_owned(), container.to_owned()];
