@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
+use tinycomputer_bus::browser::OutputRef;
 use tinycomputer_bus::agent::{
     AgentResponse, Rescue, StartTaskRequest, TaskBudget, TaskConstraints, TaskId, TaskOutput,
     TaskStatus, TaskView,
@@ -56,6 +57,8 @@ pub(super) struct State {
     pub(super) rescues: Vec<Rescue>,
     /// The shape the caller wants the answer in, if any.
     pub(super) output: Option<TaskOutput>,
+    /// Screenshots taken each time a run stopped, oldest first.
+    pub(super) artifacts: Vec<OutputRef>,
 }
 
 /// A task's cumulative spend against its [`TaskBudget`], across every run.
@@ -111,6 +114,7 @@ impl Tasks {
                 spent: Spent::default(),
                 rescues: Vec::new(),
                 output: request.output.clone(),
+                artifacts: Vec::new(),
             }),
             worker: Mutex::new(None),
             rescuer: self.rescuer.clone(),
