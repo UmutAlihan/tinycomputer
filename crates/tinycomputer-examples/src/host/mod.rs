@@ -54,7 +54,9 @@ struct AbortOnDrop(Option<tokio::task::JoinHandle<tinybus::Result<()>>>);
 impl AbortOnDrop {
     /// The task, no longer aborted on drop, for a host that loaded.
     fn disarm(mut self) -> tokio::task::JoinHandle<tinybus::Result<()>> {
-        self.0.take().expect("the broker task is held until disarmed")
+        self.0
+            .take()
+            .expect("the broker task is held until disarmed")
     }
 }
 

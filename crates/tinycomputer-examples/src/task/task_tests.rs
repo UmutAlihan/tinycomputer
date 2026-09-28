@@ -71,7 +71,10 @@ fn a_pause_is_answered_only_when_every_field_is_known() {
         inputs_for(&[field("phone")], &answers),
         Some(answers.clone())
     );
-    assert_eq!(inputs_for(&[field("phone"), field("email")], &answers), None);
+    assert_eq!(
+        inputs_for(&[field("phone"), field("email")], &answers),
+        None
+    );
 }
 
 #[test]
