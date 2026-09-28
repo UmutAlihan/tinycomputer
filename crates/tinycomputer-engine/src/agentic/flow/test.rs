@@ -544,7 +544,7 @@ fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<C
 /// covers the New Message button.
 fn overlays(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
     if sim.has(Quirk::Covered) {
-        for candidate in &mut candidates {
+        for candidate in candidates.iter_mut() {
             if candidate.name.as_deref() == Some("New Message") {
                 candidate.states = vec!["covered".to_owned()];
             }
