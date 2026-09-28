@@ -53,11 +53,15 @@ that continues. To pass an optional page without choosing anything on it, press 
 Skip or No thanks control: its Next often waits for a choice. Refer to the person's details only as ${name} variables \
 from the names you are given, never invent a new one, and use a secret only as an `enter` \
 value. Never pay, submit, send, book, or delete: put a stop_before in front of anything \
-irreversible. Give up when no step can help: the site blocks or withholds data, a person \
+irreversible. When the screen is already past the failed step (its work is done, or a later \
+step's page is showing), skip it instead of retrying: `covers` then counts the further steps \
+the screen is already past, never a stop_before, and the flow goes on from the next one. \
+Give up when no step can help: the site blocks or withholds data, a person \
 must act, or the goal cannot be reached from here. Reply with exactly one JSON object and \
 nothing else: {\"action\": \"retry\", \"reason\": \"<what went wrong, in one sentence>\", \
 \"steps\": [<1 to 6 flow steps>], \"covers\": <how many following steps they also do, \
-usually 0>} or {\"action\": \"give_up\", \"reason\": \"<why>\"}.";
+usually 0>}, {\"action\": \"skip\", \"reason\": \"<why>\", \"covers\": <how many following \
+steps the screen is also past>}, or {\"action\": \"give_up\", \"reason\": \"<why>\"}.";
 
 /// What the rescuer is told about a failure, with every fact value already
 /// redacted.
@@ -162,8 +166,11 @@ fn judge(reply: &str, briefing: &Briefing) -> Result<Guidance, String> {
         .unwrap_or_default()
         .trim()
         .to_owned();
-    match value.get("action").and_then(Value::as_str) {
-        Some("give_up") => Ok(Guidance::GiveUp { reason }),
+    let steps = match value.get("action").and_then(Value::as_str) {
+        Some("give_up") => return Ok(Guidance::GiveUp { reason }),
+        // The screen is already past the failed step: nothing runs in its
+        // place, and the flow goes on from the next step not covered.
+        Some("skip") => Vec::new(),
         Some("retry") => {
             let steps: Vec<FlowStep> = value
                 .get("steps")
@@ -178,35 +185,39 @@ fn judge(reply: &str, briefing: &Briefing) -> Result<Guidance, String> {
                     steps.len()
                 ));
             }
-            let failed_guards = briefing.flow.steps.get(briefing.failed).is_some_and(guards);
-            if failed_guards && !steps.iter().any(guards) {
-                return Err(
-                    "The failed step is a stop_before, which guards an irreversible action: \
-                     your steps must end in front of it with a stop_before too."
-                        .to_owned(),
-                );
-            }
-            let covers = covered(&value, briefing)?;
-            let errors = crate::agentic::check_flow(
-                &resumed(briefing, steps.clone(), covers),
-                &briefing.known,
-                &briefing.secrets,
-            )
-            .errors;
-            if errors.is_empty() {
-                Ok(Guidance::Retry {
-                    reason,
-                    steps,
-                    covers,
-                })
-            } else {
-                Err(format!(
-                    "Those steps are invalid:\n- {}",
-                    errors.join("\n- ")
-                ))
-            }
+            steps
         }
-        _ => Err("Set `action` to \"retry\" or \"give_up\".".to_owned()),
+        _ => return Err("Set `action` to \"retry\", \"skip\", or \"give_up\".".to_owned()),
+    };
+    let failed_guards = briefing.flow.steps.get(briefing.failed).is_some_and(guards);
+    if failed_guards && !steps.iter().any(guards) {
+        return Err(
+            "The failed step is a stop_before, which guards an irreversible action: \
+             never skip it, and your steps must end in front of it with a stop_before too."
+                .to_owned(),
+        );
+    }
+    let covers = covered(&value, briefing)?;
+    let flow = resumed(briefing, steps.clone(), covers);
+    if flow.steps.is_empty() {
+        return Err(
+            "That leaves nothing to run: skip only to a step that is still to be done, \
+             or give up."
+                .to_owned(),
+        );
+    }
+    let errors = crate::agentic::check_flow(&flow, &briefing.known, &briefing.secrets).errors;
+    if errors.is_empty() {
+        Ok(Guidance::Retry {
+            reason,
+            steps,
+            covers,
+        })
+    } else {
+        Err(format!(
+            "Those steps are invalid:\n- {}",
+            errors.join("\n- ")
+        ))
     }
 }
 

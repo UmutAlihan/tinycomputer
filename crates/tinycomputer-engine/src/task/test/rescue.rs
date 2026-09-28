@@ -355,7 +355,11 @@ async fn a_skip_resumes_at_the_next_step_with_the_guard_kept() {
         TaskStatus::Done { .. }
     ));
     let steps = script.requests.lock().unwrap()[1].flow.steps.clone();
-    assert_eq!(steps, [flow(flights()).steps[3].clone()], "only the guard is left");
+    assert_eq!(
+        steps,
+        [flow(flights()).steps[3].clone()],
+        "only the guard is left"
+    );
     let rescue = &tasks.report(&view.id).data.unwrap().rescues[0];
     assert!(rescue.steps.is_empty());
     assert_eq!(rescue.covers, 1);

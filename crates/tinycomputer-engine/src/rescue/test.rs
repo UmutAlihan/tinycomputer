@@ -310,7 +310,11 @@ async fn a_screen_already_past_the_failed_step_skips_to_what_is_left() {
     };
     assert!(steps.is_empty());
     let flow = resumed(&briefing, steps, covers);
-    assert_eq!(flow.steps, briefing.flow.steps[3..], "the stop_before is next");
+    assert_eq!(
+        flow.steps,
+        briefing.flow.steps[3..],
+        "the stop_before is next"
+    );
 
     // A skip never drops a guard, and never leaves nothing to run.
     let past_the_guard = r#"{"action": "skip", "reason": "x", "covers": 2}"#;
@@ -321,7 +325,10 @@ async fn a_screen_already_past_the_failed_step_skips_to_what_is_left() {
     briefing.failed = 3;
     let (rescuer, _) = scripted(&[Ok(r#"{"action": "skip", "reason": "x"}"#); 3]);
     let error = rescuer.guide(&briefing).await.unwrap_err();
-    assert!(error.contains("stop_before"), "a failed guard is never skipped: {error}");
+    assert!(
+        error.contains("stop_before"),
+        "a failed guard is never skipped: {error}"
+    );
     briefing.flow.steps.truncate(3);
     briefing.failed = 2;
     let (rescuer, _) = scripted(&[Ok(r#"{"action": "skip", "reason": "x"}"#); 3]);
