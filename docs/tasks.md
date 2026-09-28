@@ -140,10 +140,15 @@ share that workspace, so a resumed task picks up on the page the last run left.
 A task's `TaskBudget` (`max_actions`, `max_model_calls`, `max_elapsed_ms`)
 bounds the whole task, not one run. An approval or a human step splits a task
 into several runs, and each run gets only what the task has not spent yet, so
-resuming never refills the budget. Unset fields default to 120 actions and 3000
-Jev calls, and each decision is voted five ways. `budget.strategy` picks how
+resuming never refills the budget. Unset fields default to 120 actions and 6000
+Jev calls, and each decision is voted seven ways. `budget.strategy` picks how
 decisions are asked: `narrow` (the default) or `wide`, one request per turn
 over a digest of the screen ([`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)).
+`budget.deliberation` picks how much each decision is deliberated before it
+is acted on: `deep` (the default), `standard`, or `off`
+([`specs/jev-deliberation.md`](specs/jev-deliberation.md)). Deliberation
+spends calls only where the evidence is thin, and degrades rung by rung when
+the budget runs short rather than failing the run.
 The flow runtime has no clock, so `max_elapsed_ms` is enforced by
 the controller, which times out a run that would go past what is left. Time
 spent waiting for the caller does not count.
