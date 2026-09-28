@@ -200,6 +200,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         pending: &mut BTreeSet<usize>,
     ) -> Result<(), Halt> {
         let mut revealed = false;
+        // Fields that refused the text this step: a `div` a page labels a
+        // combobox, or a field that would not hold what was typed. Offered
+        // again, the same wrong field wins again.
+        let mut struck = BTreeSet::new();
         for _ in 0..3 {
             if pending.is_empty() {
                 break;
@@ -208,7 +212,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             if editable(&screen).len() < pending.len() && !screen.unexplored.is_empty() {
                 self.explore(&mut screen).await;
             }
-            let fields = editable(&screen);
+            let fields = editable(&screen)
+                .into_iter()
+                .filter(|field| !struck.contains(&signature(field)))
+                .collect::<Vec<_>>();
             let assignments = if fields.is_empty() {
                 Vec::new()
             } else {
@@ -238,10 +245,18 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
             for assignment in assignments {
                 let slot = &slots[assignment.slot];
-                if self
+                let filled = self
                     .fill(log, slot, &assignment.field, &screen.context)
-                    .await?
-                {
+                    .await?;
+                if !filled {
+                    struck.insert(signature(&assignment.field));
+                    self.ledger.tried(format!(
+                        "{} did not take the {}",
+                        label(&assignment.field),
+                        slot.slot
+                    ));
+                }
+                if filled {
                     pending.remove(&assignment.slot);
                     learn(
                         &mut self.learned,

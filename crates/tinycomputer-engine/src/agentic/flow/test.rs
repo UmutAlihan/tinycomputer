@@ -61,6 +61,9 @@ enum Quirk {
     Drawer,
     /// Every click is refused: the element is not visible.
     Unclickable,
+    /// A list of cities whose rows carry a `combobox` role but take no
+    /// text, above the one real search field.
+    CityRows,
 }
 
 #[derive(Debug, Default)]
@@ -378,6 +381,22 @@ impl App {
         if let Some(booking) = &sim.booking {
             booking_widget(&sim, booking, &root, &mut candidates);
         }
+        if sim.has(Quirk::CityRows) {
+            candidates.push(node(
+                "Mumbai",
+                "combobox",
+                &["Click", "SetValue"],
+                &[&root, "list \"Cities\""],
+                200.0,
+            ));
+            candidates.push(node(
+                "Search",
+                "textfield",
+                &["SetValue"],
+                &[&root, "group \"Where to\""],
+                210.0,
+            ));
+        }
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
         if sim.obstacle {
@@ -475,6 +494,9 @@ impl AgentBackend for App {
                 ),
             );
         }
+        if name == "Mumbai" && operation == JevOperation::TypeText {
+            return not_a_text_field();
+        }
         match operation {
             JevOperation::Click => {
                 if let Some(reference) = target
@@ -515,6 +537,9 @@ impl AgentBackend for App {
     }
 
     fn paste(&self, _app: &str, target: &Candidate, text: &str) -> DesktopResponse {
+        if target.name.as_deref() == Some("Mumbai") {
+            return not_a_text_field();
+        }
         self.sim()
             .fields
             .insert(target.name.clone().unwrap_or_default(), text.to_owned());
@@ -561,6 +586,13 @@ impl AgentBackend for App {
         sim.navigated.push(url.to_owned());
         DesktopResponse::ok("navigate", json!({"url": url, "title": "Flights"}))
     }
+}
+
+fn not_a_text_field() -> DesktopResponse {
+    DesktopResponse::err(
+        "type-text",
+        tinycomputer_bus::DesktopError::new("NOT_A_TEXT_FIELD", "no input takes the text"),
+    )
 }
 
 // ------------------------------------------------------------------ oracle
@@ -4595,4 +4627,52 @@ fn lookalikes_are_offered_once_and_the_first_in_page_order_is_kept() {
     );
     let refs = pool.iter().map(|c| c.ref_id.as_str()).collect::<Vec<_>>();
     assert_eq!(refs, ["@s:search-1", "@s:Pax Selection"]);
+}
+
+#[tokio::test]
+async fn a_field_that_refuses_the_text_is_struck_and_the_real_one_is_used() {
+    // A page gives each suggested city a `combobox` role; Jev picks one as
+    // "the destination search", it refuses the text, and the step must not
+    // offer it again.
+    let run = run_with(
+        App::quirky(Quirk::CityRows),
+        json!({"app": "Mail", "steps": [{"enter": {"destination search": "Srinagar"}}]}),
+        |_| {},
+        |id, question, _| {
+            id.starts_with("slot_").then(|| {
+                let offered = serde_json::to_string(question).unwrap();
+                pick(
+                    question,
+                    if offered.contains("Mumbai") {
+                        "Mumbai"
+                    } else {
+                        "Search"
+                    },
+                    0.9,
+                )
+            })
+        },
+    )
+    .await;
+    let step = &run.result.steps[0];
+    assert_eq!(step.outcome, StepOutcome::Done, "{}", step.note);
+    let fills = step
+        .actions
+        .iter()
+        .map(|action| {
+            (
+                action.target.as_ref().and_then(|t| t.name.clone()),
+                action.ok,
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        fills,
+        [
+            (Some("Mumbai".to_owned()), false),
+            (Some("Search".to_owned()), true)
+        ],
+        "one refusal, then the real field"
+    );
+    assert_eq!(run.app.sim().fields["Search"], "Srinagar");
 }
