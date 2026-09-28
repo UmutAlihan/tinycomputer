@@ -43,7 +43,6 @@
 //! inside a shadow root, or a large frame in front, which a CSS selector from
 //! the page cannot address.
 
-use serde::Deserialize;
 use serde_json::{Value, json};
 use tinycomputer_core::surface::{Candidate, Screen};
 
@@ -65,33 +64,6 @@ const MAX_NAME: usize = 120;
 const MAX_TEXT: usize = 160;
 /// The most context lines kept, as the tree keeps.
 const MAX_CONTEXT_LINES: usize = 60;
-
-/// One reading of a page, as `sight.js` returns it.
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
-struct Reading {
-    ok: bool,
-    title: String,
-    surface: String,
-    unreachable: usize,
-    nodes: Vec<Node>,
-}
-
-/// A control (with an `id`) or a block of text (with `text`).
-#[derive(Debug, Default, Deserialize)]
-#[serde(default)]
-struct Node {
-    id: Option<String>,
-    role: String,
-    name: String,
-    description: String,
-    value: String,
-    states: Vec<String>,
-    #[serde(rename = "box")]
-    bounds: Vec<f64>,
-    path: Vec<String>,
-    text: Option<String>,
-}
 
 /// The expression that reads the page, or the part of it under `root` — a
 /// ref from an earlier screen.
@@ -128,69 +100,99 @@ pub(crate) fn selector(reference: &str) -> String {
 /// or saw a control it cannot reach, so the tree is read instead.
 #[must_use]
 pub(crate) fn screen(result: &Value) -> Option<Screen> {
-    let reading = Reading::deserialize(result).ok()?;
-    if !reading.ok || reading.unreachable > 0 {
+    let text = |value: &Value, key: &str| {
+        value
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let strings = |value: &Value, key: &str| {
+        value
+            .get(key)
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    };
+    let unreachable = result
+        .get("unreachable")
+        .and_then(Value::as_u64)
+        .unwrap_or_default();
+    if result.get("ok") != Some(&Value::Bool(true)) || unreachable > 0 {
         return None;
     }
     let mut candidates = Vec::new();
     let mut text_nodes = Vec::new();
     let mut context = Vec::new();
-    for (order, node) in reading.nodes.into_iter().enumerate() {
-        if let Some(text) = node.text {
-            if context.len() < MAX_CONTEXT_LINES && !context.contains(&text) {
-                context.push(text.clone());
+    let nodes = result.get("nodes").and_then(Value::as_array)?;
+    for (order, node) in nodes.iter().enumerate() {
+        let path = strings(node, "path");
+        if let Some(shown) = node.get("text").and_then(Value::as_str) {
+            if context.len() < MAX_CONTEXT_LINES && !context.iter().any(|line| line == shown) {
+                context.push(shown.to_owned());
             }
             text_nodes.push(Candidate {
                 role: "text".to_owned(),
-                name: Some(text),
-                path: node.path,
+                name: Some(shown.to_owned()),
+                path,
                 order,
                 ..Candidate::default()
             });
-        } else if let Some(id) = node.id {
-            candidates.push(control(node, format!("{PREFIX}{id}"), order));
+        } else if let Some(id) = node.get("id").and_then(Value::as_str) {
+            let role = text(node, "role");
+            let available_actions = match role.as_str() {
+                "textbox" | "searchbox" => vec!["Click".to_owned(), "SetValue".to_owned()],
+                "checkbox" | "radio" | "switch" => vec!["Click".to_owned(), "Check".to_owned()],
+                _ => vec!["Click".to_owned()],
+            };
+            let bounds = node
+                .get("box")
+                .and_then(Value::as_array)
+                .map(|numbers| numbers.iter().filter_map(Value::as_f64).collect::<Vec<_>>())
+                .and_then(|numbers| match numbers[..] {
+                    [x, y, width, height] => {
+                        Some(json!({"x": x, "y": y, "width": width, "height": height}))
+                    }
+                    _ => None,
+                });
+            candidates.push(Candidate {
+                ref_id: format!("{PREFIX}{id}"),
+                role,
+                name: Some(text(node, "name")).filter(|name| !name.is_empty()),
+                description: Some(text(node, "description"))
+                    .filter(|description| !description.is_empty()),
+                value: Some(text(node, "value"))
+                    .filter(|value| !value.is_empty())
+                    .map(Value::String),
+                states: strings(node, "states"),
+                available_actions,
+                bounds,
+                path,
+                order,
+                ..Candidate::default()
+            });
         }
     }
+    let surface = text(result, "surface");
     Some(Screen {
         app: "browser".to_owned(),
-        window: Some(reading.title).filter(|title| !title.is_empty()),
-        surface: if reading.surface.is_empty() {
+        window: Some(text(result, "title")).filter(|title| !title.is_empty()),
+        surface: if surface.is_empty() {
             "window".to_owned()
         } else {
-            reading.surface
+            surface
         },
         candidates,
         context,
         unexplored: Vec::new(),
         text_nodes,
     })
-}
-
-fn control(node: Node, ref_id: String, order: usize) -> Candidate {
-    let available_actions = match node.role.as_str() {
-        "textbox" | "searchbox" => vec!["Click".to_owned(), "SetValue".to_owned()],
-        "checkbox" | "radio" | "switch" => vec!["Click".to_owned(), "Check".to_owned()],
-        _ => vec!["Click".to_owned()],
-    };
-    let bounds = match node.bounds[..] {
-        [x, y, width, height] => Some(json!({"x": x, "y": y, "width": width, "height": height})),
-        _ => None,
-    };
-    Candidate {
-        ref_id,
-        role: node.role,
-        name: Some(node.name).filter(|name| !name.is_empty()),
-        description: Some(node.description).filter(|description| !description.is_empty()),
-        value: Some(node.value)
-            .filter(|value| !value.is_empty())
-            .map(Value::String),
-        states: node.states,
-        available_actions,
-        bounds,
-        path: node.path,
-        order,
-        ..Candidate::default()
-    }
 }
 
 #[cfg(test)]
