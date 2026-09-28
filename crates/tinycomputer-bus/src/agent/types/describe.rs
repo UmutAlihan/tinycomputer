@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::SurfaceKind;
+use super::{LanguageModelConfiguration, SurfaceKind};
+use crate::JevConfiguration;
 
 /// `Describe`: how to use this module, in one reply.
 // Each `*_configured` flag is an independent fact a model reads by name;
@@ -27,6 +28,19 @@ pub struct Capabilities {
     /// Whether a task may ask for its answer in a shape (`output`).
     #[serde(default)]
     pub output_configured: bool,
+    /// The decision model the loops ask — its provider, model, and endpoint
+    /// override — when one is configured (contract 2.8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub decision_model: Option<JevConfiguration>,
+    /// The planner's route and model, when a planner is configured (2.8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub planner_model: Option<LanguageModelConfiguration>,
+    /// The rescuer's route and model, when rescues are configured (2.8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rescue_model: Option<LanguageModelConfiguration>,
+    /// The shaper's route and model, when output shapes are configured (2.8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_model: Option<LanguageModelConfiguration>,
     /// The flow step kinds.
     pub step_kinds: Vec<String>,
     /// The flow authoring guide.

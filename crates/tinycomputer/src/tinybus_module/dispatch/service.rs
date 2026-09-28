@@ -50,14 +50,15 @@ impl DesktopService {
             })
             .transpose()?;
         // The planner's configuration also brings the rescuer, on the same
-        // key: a failed step is handed to it before a task fails.
+        // route unless it names its own `rescue_route`: a failed step is
+        // handed to it before a task fails.
         let planner = config
             .as_object()
             .and_then(|object| object.get("planner"))
             .map(|value| {
                 let invalid = || crate::Error::ConfigFieldType {
                     field: "planner",
-                    expected: "a planner configuration object with an api_key",
+                    expected: "a planner configuration object with an api_key and an approved route",
                 };
                 let config: agentic::PlannerConfig =
                     serde_json::from_value(value.clone()).map_err(|_| invalid())?;
@@ -118,7 +119,7 @@ impl DesktopService {
             .map_err(|error| TinyBusError::failed(format!("task call failed: {error}")))
     }
 
-    pub(super) fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
+    pub(in crate::tinybus_module) fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
         self.jev.clone()
     }
 }

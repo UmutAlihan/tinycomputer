@@ -7,8 +7,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tinycomputer_bus::agent::{
-    AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, PaymentMode, PlanTaskRequest,
-    StartTaskRequest, TaskId, TaskPlan, TaskReport, TaskReportRequest, TaskStatus, TaskView,
+    AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, LanguageModelConfiguration,
+    PaymentMode, PlanTaskRequest, StartTaskRequest, TaskId, TaskPlan, TaskReport,
+    TaskReportRequest, TaskStatus, TaskView,
 };
 use tinycomputer_core::Facts;
 
@@ -90,6 +91,24 @@ impl Tasks {
     #[must_use]
     pub fn planner_configured(&self) -> bool {
         self.planner.is_some()
+    }
+
+    /// The planner's route and model, when a planner is configured and says.
+    #[must_use]
+    pub fn planner_model(&self) -> Option<&LanguageModelConfiguration> {
+        self.planner.as_ref()?.configuration()
+    }
+
+    /// The rescuer's route and model, when a rescuer is configured and says.
+    #[must_use]
+    pub fn rescue_model(&self) -> Option<&LanguageModelConfiguration> {
+        self.rescuer.as_ref()?.configuration()
+    }
+
+    /// The shaper's route and model, when a shaper is configured and says.
+    #[must_use]
+    pub fn output_model(&self) -> Option<&LanguageModelConfiguration> {
+        self.shaper.as_ref()?.configuration()
     }
 
     /// Drafts a flow for a plain-language task without acting.

@@ -238,8 +238,9 @@ not a scripted one.
 ## Configuring a rescuer
 
 Like the planner, the rescuer is behind the same `LanguageModel` trait (see
-[planner.md](planner.md)), and the `planner` feature's OpenRouter adapter
-builds both from one `PlannerConfig`:
+[planner.md](planner.md)), and the `planner` feature's hosted adapter
+(OpenRouter or Tiny Humans) builds both from one `PlannerConfig`, the
+rescuer on its own `rescue_route` when one is given:
 
 ```rust
 pub fn open_router_rescuer(config: &PlannerConfig) -> Result<Rescuer, String>

@@ -35,6 +35,10 @@
 //!   may rescue (0 to 5, default 5; 0 turns rescues off).
 //! - `TINYCOMPUTER_RESCUE_MODEL` — optional: the `OpenRouter` model that
 //!   rescues them (`openai/gpt-6-luna` by default).
+//! - `TINYCOMPUTER_DECISIONS` — optional: `sage` makes Levanto Sage take
+//!   every decision in place of Jev, with `SAGE_API_KEY`, through the
+//!   module's `jev` configuration; `SAGE_FAST=1` scores each choice in one
+//!   pass. The planner and the rescuer still use `OPENROUTER_API_KEY`.
 //! - `TINYCOMPUTER_BROWSER_EXECUTABLE`, `TINYCOMPUTER_BROWSER_USER_AGENT`, and
 //!   `TINYCOMPUTER_BROWSER_ARGS` (space-separated) — how the browser
 //!   launches, and `TINYCOMPUTER_BROWSER_PERCEPTION` (`sight` or `tree`) how
@@ -156,7 +160,7 @@ fn module_config() -> Result<Value, LabError> {
         );
     }
     Ok(json!({
-        "jev": jev_config(key.clone(), None)?,
+        "jev": decisions(&key)?,
         "planner": {
             "api_key": key,
             "model": optional("TINYCOMPUTER_PLANNER_MODEL"),
@@ -166,6 +170,19 @@ fn module_config() -> Result<Value, LabError> {
         "cursor": optional("TASK_CURSOR").unwrap_or_else(|| "natural".to_owned()),
         "browser": browser,
     }))
+}
+
+/// Who takes the flow's decisions, as the module's `jev` configuration:
+/// Levanto Sage when `TINYCOMPUTER_DECISIONS` is `sage`, else Jev on
+/// `OpenRouter` with `key`.
+fn decisions(key: &str) -> Result<Value, LabError> {
+    if std::env::var("TINYCOMPUTER_DECISIONS").as_deref() == Ok("sage") {
+        let sage = std::env::var("SAGE_API_KEY")
+            .map_err(|_| std::io::Error::other("TINYCOMPUTER_DECISIONS=sage needs SAGE_API_KEY"))?;
+        let fast = std::env::var("SAGE_FAST").is_ok_and(|value| value == "1");
+        return Ok(json!({"api_key": sage, "provider": "sage", "fast": fast}));
+    }
+    jev_config(key.to_owned(), None)
 }
 
 /// The surface the task runs on, from `TASK_SURFACE`.

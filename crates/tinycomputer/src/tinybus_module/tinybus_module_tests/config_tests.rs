@@ -79,6 +79,78 @@ fn a_planner_is_configured_from_private_configuration_only_with_a_key() {
 }
 
 #[test]
+fn the_planner_rescuer_and_shaper_route_through_tiny_humans_or_open_router() {
+    use tinycomputer_bus::agent::LanguageModelProvider;
+
+    let service = DesktopService::from_config(&json!({"planner": {
+        "api_key": "th-bearer",
+        "provider": "tiny_humans",
+        "endpoint_url": "https://api.tinyhumans.ai/openai/v1",
+        "sdk_name": "openhuman",
+        "rescue_model": "openai/gpt-6-luna-pro",
+        "rescue_route": {"api_key": "sk-or", "provider": "open_router"}
+    }}))
+    .unwrap();
+    let planner = service.tasks.planner_model().unwrap();
+    assert_eq!(planner.provider, LanguageModelProvider::TinyHumans);
+    assert_eq!(planner.model, "anthropic/claude-sonnet-5");
+    let rescue = service.tasks.rescue_model().unwrap();
+    assert_eq!(rescue.provider, LanguageModelProvider::OpenRouter);
+    assert_eq!(rescue.model, "openai/gpt-6-luna-pro");
+    let output = service.tasks.output_model().unwrap();
+    assert_eq!(output.provider, LanguageModelProvider::TinyHumans);
+
+    for refused in [
+        json!({"planner": {"api_key": "k", "provider": "tiny_humans",
+            "endpoint_url": "https://openrouter.ai/api/v1"}}),
+        json!({"planner": {"api_key": "k", "endpoint_url": "https://attacker.example/v1"}}),
+        json!({"planner": {"api_key": "k", "provider": "anthropic"}}),
+        json!({"planner": {"api_key": "k", "rescue_route": {"api_key": ""}}}),
+    ] {
+        assert!(DesktopService::from_config(&refused).is_err(), "{refused}");
+    }
+}
+
+#[test]
+fn each_decision_model_is_selected_from_private_configuration() {
+    use tinycomputer_bus::JevProvider;
+
+    for (jev, provider, model) in [
+        (json!({"api_key": "k"}), JevProvider::TypeSafe, "jev-latest"),
+        (
+            json!({"api_key": "k", "provider": "tiny_humans_open_router", "sdk_name": "openhuman"}),
+            JevProvider::TinyHumansOpenRouter,
+            "jev-latest",
+        ),
+        (
+            json!({"api_key": "k", "provider": "open_jev"}),
+            JevProvider::OpenJev,
+            "openjev",
+        ),
+        (
+            json!({"api_key": "k", "provider": "sage", "fast": true}),
+            JevProvider::Sage,
+            "levanto-sage",
+        ),
+    ] {
+        let service = DesktopService::from_config(&json!({ "jev": jev })).unwrap();
+        let configured = service.jev_runtime().unwrap().configuration().clone();
+        assert_eq!(configured.provider, provider);
+        assert_eq!(configured.model, model);
+    }
+    for refused in [
+        json!({"jev": {"api_key": "k", "provider": "sage",
+            "endpoint_url": "https://api.openjev.sh/v1/systemone"}}),
+        json!({"jev": {"api_key": "k", "provider": "open_jev",
+            "endpoint_url": "https://attacker.example/v1/systemone"}}),
+        json!({"jev": {"api_key": "", "provider": "sage"}}),
+        json!({"jev": {"api_key": "k", "provider": "levanto"}}),
+    ] {
+        assert!(DesktopService::from_config(&refused).is_err(), "{refused}");
+    }
+}
+
+#[test]
 fn the_browser_configuration_is_read_or_refused() {
     use crate::tinybus_module::config::BrowserDefaults;
     use tinycomputer_browser::Perception;

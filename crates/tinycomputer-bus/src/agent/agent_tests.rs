@@ -316,3 +316,45 @@ fn a_report_request_always_carries_its_trace_flag() {
         serde_json::from_value(json!({"id": "t-1", "trace": false})).unwrap();
     assert!(!lean.trace);
 }
+
+#[test]
+fn capabilities_from_before_model_summaries_still_decode() {
+    use super::{Capabilities, LanguageModelConfiguration, LanguageModelProvider};
+
+    let older = json!({
+        "contract_version": [2, 6],
+        "surfaces": [],
+        "jev_configured": true,
+        "planner_configured": true,
+        "step_kinds": [],
+        "guide": "",
+        "members": [],
+        "examples": []
+    });
+    let decoded: Capabilities = serde_json::from_value(older).unwrap();
+    assert!(decoded.decision_model.is_none());
+    assert!(decoded.planner_model.is_none());
+    assert!(decoded.rescue_model.is_none());
+    assert!(decoded.output_model.is_none());
+
+    let rescue = LanguageModelConfiguration {
+        provider: LanguageModelProvider::TinyHumans,
+        model: "openai/gpt-6-luna".into(),
+        endpoint_url: None,
+    };
+    assert_eq!(
+        serde_json::to_value(&rescue).unwrap(),
+        json!({"provider": "tiny_humans", "model": "openai/gpt-6-luna"})
+    );
+    let routed: LanguageModelConfiguration = serde_json::from_value(json!({
+        "provider": "open_router",
+        "model": "anthropic/claude-sonnet-5",
+        "endpoint_url": "https://openrouter.ai/api/v1"
+    }))
+    .unwrap();
+    assert_eq!(routed.provider, LanguageModelProvider::OpenRouter);
+    assert_eq!(
+        LanguageModelProvider::default(),
+        LanguageModelProvider::OpenRouter
+    );
+}

@@ -102,11 +102,13 @@ fails the task.
 
 ## Configuration
 
-The planner's private configuration brings the rescuer, on the same
-OpenRouter key. Its model is `rescue_model`, with default `openai/gpt-6-luna`
+The planner's private configuration brings the rescuer, on the same route
+and key (OpenRouter, or Tiny Humans' gateway with `provider: "tiny_humans"`)
+unless `rescue_route` gives it a complete route of its own (contract 2.8). Its model is `rescue_model`, with default `openai/gpt-6-luna`
 (`RESCUE_MODEL`). It is asked with `reasoning.effort = low`, no temperature,
 JSON-object replies, and at most 8,000 output tokens. `Describe` reports
-`rescue_configured`.
+`rescue_configured`, and since 2.8 `rescue_model`: the rescuer's provider and
+model.
 
 ## Contract
 

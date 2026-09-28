@@ -154,12 +154,16 @@ impl std::fmt::Debug for JevConfig {
 }
 ```
 
-`JevProvider` names which Jev-compatible service to talk to: `TypeSafe` (the
-default, `TypeSafe`'s own System One API), `OpenRouter`, or
-`TinyHumansOpenRouter` (Tiny Humans' authenticated OpenRouter proxy).
-`JevConfiguration` is the non-secret summary of a retained client (provider,
-model, endpoint override) a caller can ask for without ever seeing the key
-back. The Jev client itself lives upstream in `vendor/tinyinference`, not in
+`JevProvider` names the decision service, and so the decision model, to talk
+to: `TypeSafe` (the default, `TypeSafe`'s own System One API), `OpenRouter`,
+or `TinyHumansOpenRouter` (Tiny Humans' authenticated OpenRouter proxy) for
+Jev; `OpenJev` (`open_jev`, OpenJEV's Jev-compatible API, model `openjev`);
+or `Sage` (Levanto Sage in place of Jev, with `JevConfig::fast`), both added
+in contract 2.8. `JevProvider::default_model` names the model each answers as
+when `model` is absent. `JevConfiguration` is the non-secret summary of a
+retained client (provider, model, endpoint override, Sage's `fast`) a caller
+can ask for without ever seeing the key back; `Describe` serves it as
+`Capabilities.decision_model`. The Jev client itself lives upstream in `vendor/tinyinference`, not in
 this crate, see the root `CLAUDE.md`'s "Read The Right Document First"
 table.
 

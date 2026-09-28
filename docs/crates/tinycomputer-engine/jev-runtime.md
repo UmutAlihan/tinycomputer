@@ -33,12 +33,17 @@ The configuration (`JevConfig`, in `tinycomputer-bus`) names:
 
 | Field | What it controls |
 |---|---|
-| `provider` | Which Jev-compatible API to call. See below. |
+| `provider` | Which decision model, through which API. See below. |
 | `api_key` | The credential for that provider. Never printed; `JevRuntime`'s `Debug` implementation shows `"[configured]"` in its place. |
 | `endpoint_url` | An exact endpoint to use instead of the provider's own route, checked against an allow-list (see below). |
-| `model` | The Jev model or alias to ask for. Defaults to `"jev-latest"`. |
-| `timeout_ms` / `max_retries` | Per-attempt HTTP timeout and how many transient retries the client makes. |
+| `model` | The Jev model or alias to ask for. Defaults to the provider's `JevProvider::default_model()`: `"jev-latest"`, `"openjev"` for OpenJEV, and the fixed `"levanto-sage"` for Sage. |
+| `timeout_ms` / `max_retries` | Per-attempt HTTP timeout and how many transient retries the client makes. Sage ignores both. |
 | `sdk_name` | Attribution sent only to the TinyHumans proxy, so it knows which host is calling. |
+| `fast` | Sage only: score each choice in one pass rather than one per option. |
+
+`JevRuntime::configuration()` returns the non-secret summary
+(`JevConfiguration`: provider, model, endpoint override, `fast`), which the
+module serves as `Describe`'s `Capabilities.decision_model`.
 
 Once built, a `JevRuntime` is cheap to clone: cloning shares the same
 underlying HTTP client, the same pending-confirmation table, and the same
@@ -46,25 +51,29 @@ journal handle. The module clones it per call rather than rebuilding it.
 
 ### Providers
 
-Three providers are recognised, each with one approved endpoint that
+Five providers are recognised, each with one approved endpoint that
 `JevRuntime::configure` checks `endpoint_url` against before it will use it:
 
-- **`TypeSafe`**, TypeSafe's own System One API, the default.
-- **`OpenRouter`**, OpenRouter's Jev-compatible decisions API.
-- **`TinyHumansOpenRouter`**, Tiny Humans' authenticated OpenRouter proxy,
-  the only one that takes an `sdk_name`.
+| Provider | Wire name | Approved endpoint |
+|---|---|---|
+| **`TypeSafe`**, TypeSafe's own System One API, the default | `type_safe` | `https://api.typesafe.ai/v1/systemone` |
+| **`OpenRouter`**, OpenRouter's Jev-compatible decisions API | `open_router` | `https://openrouter.ai/api/alpha/decisions` |
+| **`TinyHumansOpenRouter`**, Tiny Humans' authenticated OpenRouter proxy, the only one that takes an `sdk_name` | `tiny_humans_open_router` | `https://api.tinyhumans.ai/agent-integrations/openrouter/systemone` |
+| **`OpenJev`**, OpenJEV's public System One API | `open_jev` (or `openjev`) | `https://api.openjev.sh/v1/systemone` |
+| **`Sage`**, Levanto Sage in place of Jev | `sage` | `https://sage.levanto.ai/` (trailing slash optional) |
 
 Passing an `endpoint_url` that is not the provider's own approved route
 returns a `JEV_INVALID_CONFIG` error rather than silently sending credentials
-somewhere unexpected. In tests, endpoints on `http://127.0.0.1:*` are also
-accepted, so a scripted Jev server can stand in for the real one.
+somewhere unexpected. `tinyinference-decisions` has no Tiny Humans proxy route
+for OpenJEV or Sage, so none is approved. In tests, endpoints on
+`http://127.0.0.1:*` are also accepted, so a scripted Jev server can stand in
+for the real one.
 
-A fourth constructor, `JevRuntime::sage(api_key, fast)`, builds a runtime
-that answers the same loops with Levanto Sage instead of Jev, for measuring
-one decision model against the other behind identical code. It is not
-reachable over the bus, and every call still goes through
-`JevRuntime::evaluate` below, exactly as a Jev-backed runtime's would. See
-[sage.md](sage.md).
+The `sage` provider builds a runtime that answers the same loops with Levanto
+Sage instead of Jev; `JevRuntime::sage(api_key, fast)` builds the same one
+directly, for measuring one decision model against the other behind
+identical code. Every call still goes through `JevRuntime::evaluate` below,
+exactly as a Jev-backed runtime's would. See [sage.md](sage.md).
 
 ### Why a Jev call can fail
 

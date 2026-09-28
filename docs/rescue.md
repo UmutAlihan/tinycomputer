@@ -126,11 +126,13 @@ The details are in
 
 ## Setting it up
 
-The rescuer comes with the planner configuration and uses the same OpenRouter
-key. Its model is `rescue_model`, `openai/gpt-6-luna` by default, asked with
+The rescuer comes with the planner configuration and uses the same route and
+key — OpenRouter, or Tiny Humans' gateway — unless you give it its own
+`rescue_route`. Its model is `rescue_model`, `openai/gpt-6-luna` by default, asked with
 low reasoning effort. Without a planner configuration there are no rescues,
 and a failed step fails the task right away. `Describe` tells you whether
-rescues are available (`rescue_configured`).
+rescues are available (`rescue_configured`) and which model and route they
+use (`rescue_model`).
 
 ## Where to find out more
 

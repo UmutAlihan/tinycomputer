@@ -9,10 +9,14 @@
 //! questions for the caller.
 //!
 //! The model is behind [`LanguageModel`], so this logic is tested with
-//! scripted answers; the `planner` feature adds an `OpenRouter` adapter.
+//! scripted answers; the `planner` feature adds the hosted adapter, on
+//! `OpenRouter` or Tiny Humans' OpenAI-compatible gateway (`config.rs`,
+//! `hosted.rs`).
 
 #[cfg(feature = "planner")]
-mod openrouter;
+mod config;
+#[cfg(feature = "planner")]
+mod hosted;
 
 use std::collections::BTreeSet;
 use std::future::Future;
@@ -20,15 +24,17 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use serde_json::Value;
-use tinycomputer_bus::agent::{InputField, SurfaceKind, TaskPlan};
+use tinycomputer_bus::agent::{InputField, LanguageModelConfiguration, SurfaceKind, TaskPlan};
 use tinycomputer_bus::{FLOW_GUIDE, Flow};
 use tinycomputer_core::is_sensitive_name;
 
 #[cfg(feature = "planner")]
-pub use openrouter::{
-    OUTPUT_MODEL, PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer,
-    open_router_shaper,
+pub use config::{
+    ModelRoute, OPEN_ROUTER_BASE_URL, OUTPUT_MODEL, PLANNER_MODEL, PlannerConfig, RESCUE_MODEL,
+    TINYHUMANS_BASE_URL,
 };
+#[cfg(feature = "planner")]
+pub use hosted::{open_router, open_router_rescuer, open_router_shaper};
 
 /// Validation repairs a plan gets.
 pub const REPAIRS: usize = 2;
@@ -100,6 +106,7 @@ sending, deleting, publishing, or submitting with a stop_before step.";
 #[derive(Clone)]
 pub struct Planner {
     model: Arc<dyn LanguageModel>,
+    configuration: Option<LanguageModelConfiguration>,
 }
 
 impl std::fmt::Debug for Planner {
@@ -112,7 +119,24 @@ impl Planner {
     /// A planner asking `model`.
     #[must_use]
     pub fn new(model: Arc<dyn LanguageModel>) -> Self {
-        Self { model }
+        Self {
+            model,
+            configuration: None,
+        }
+    }
+
+    /// This planner, reporting `configuration` as its route and model in
+    /// `Describe`.
+    #[must_use]
+    pub fn with_configuration(mut self, configuration: LanguageModelConfiguration) -> Self {
+        self.configuration = Some(configuration);
+        self
+    }
+
+    /// The route and model this planner was configured with, when known.
+    #[must_use]
+    pub fn configuration(&self) -> Option<&LanguageModelConfiguration> {
+        self.configuration.as_ref()
     }
 
     /// Drafts a flow for `task`.
