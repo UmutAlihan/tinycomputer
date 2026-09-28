@@ -800,6 +800,39 @@ fn an_unnamed_control_is_named_by_what_it_shows_but_a_field_never_is() {
     assert_eq!(described("e14"), None, "a named control keeps its name");
 }
 
+#[test]
+fn a_combobox_s_own_value_never_becomes_an_ancestors_description() {
+    // An unnamed wrapper (a `div role="combobox"` some pages give a whole
+    // autocomplete widget) around a nested combobox that already holds a
+    // typed or selected value: the wrapper must not inherit that value as
+    // its own description, even though it is itself named by what it shows.
+    let tree = r#"- main
+  - combobox [ref=e20]
+    - combobox [ref=e21]: Springfield, IL
+    - text: label
+"#;
+    let parsed = screen(tree, "Flights");
+    let outer = parsed
+        .candidates
+        .iter()
+        .find(|candidate| candidate.ref_id == "e20")
+        .unwrap();
+    assert_eq!(
+        outer.description.as_deref(),
+        Some("label"),
+        "the wrapper is still named by ordinary text, just not by the nested value"
+    );
+    assert!(
+        !outer
+            .description
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Springfield"),
+        "a nested combobox's own value must never reach an ancestor's description: {:?}",
+        outer.description
+    );
+}
+
 /// A page read by sight: one field and one result link a card covers.
 fn sighted_fake() -> Fake {
     Fake::scripted(|command| match command["action"].as_str().unwrap() {
