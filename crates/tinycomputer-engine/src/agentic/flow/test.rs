@@ -140,6 +140,12 @@ fn press_booking(sim: &mut Sim, name: &str) {
     };
     match name {
         "Going to?" => booking.searching = true,
+        // Choosing a suggestion closes the list over the chosen city.
+        "Srinagar, SXR" if booking.searching => {
+            booking.searching = false;
+            sim.fields
+                .insert("Destination".to_owned(), "Srinagar, SXR".to_owned());
+        }
         "Departure" => booking.calendar = Some(8),
         "Next Month" => booking.calendar = booking.calendar.map(|month| (month + 1) % 12),
         // The calendar's own aggregated-label container also ends with

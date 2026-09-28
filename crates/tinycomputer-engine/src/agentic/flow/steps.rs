@@ -496,7 +496,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             backend.execute(JevOperation::TypeText, None, Some(text))
         })
         .await?;
-        self.filtered = true;
+        log.filtered = true;
         self.history
             .push("typed into the focused field to filter it".to_owned());
         Ok(())
@@ -535,7 +535,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 })
                 .await?;
             self.typed.insert(element_kind(&target));
-            self.filtered = true;
+            log.filtered = true;
             if reply.ok {
                 self.history
                     .push(format!("typed into {} to filter it", label(&target)));
