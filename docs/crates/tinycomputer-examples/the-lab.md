@@ -82,7 +82,7 @@ at you.
   runs it. Afterward the author is shown a summary of what happened —
   including anything a `read` step captured — and gets up to three rounds to
   either declare it done or write a follow-up flow for what is left. The
-  model is `TINYCOMPUTER_LAB_MODEL` (default `anthropic/claude-sonnet-5|`,
+  model is `TINYCOMPUTER_LAB_MODEL` (default `anthropic/claude-sonnet-5`,
   called through the vendored `tinyinference` client), and every LLM call
   this mode makes is counted separately from Jev calls in the scorecard.
 
