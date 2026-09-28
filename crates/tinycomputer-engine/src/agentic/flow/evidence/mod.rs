@@ -222,6 +222,19 @@ pub(super) fn mean(values: &[f64]) -> f64 {
     values.iter().sum::<f64>() / count(values.len())
 }
 
+/// The median of `values`: the middle one, or the mean of the middle two;
+/// 0 for none.
+pub(super) fn median(values: &[f64]) -> f64 {
+    let mut sorted = values.to_vec();
+    sorted.sort_by(f64::total_cmp);
+    let middle = sorted.len() / 2;
+    match sorted.len() {
+        0 => 0.0,
+        length if length % 2 == 1 => sorted[middle],
+        _ => f64::midpoint(sorted[middle - 1], sorted[middle]),
+    }
+}
+
 /// The population standard deviation of `values`; 0 for fewer than two.
 fn deviation(values: &[f64]) -> f64 {
     if values.len() < 2 {

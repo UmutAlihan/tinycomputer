@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use tinyinference_decisions::{Answer, ChoiceAnswer, NoulAnswer};
 
 use super::{
-    ABSTAIN_FLOOR, Bar, UNDECIDED_BAND, Verdict, belief_verdict, choice_verdict, mean, of_beliefs,
-    of_choice,
+    ABSTAIN_FLOOR, Bar, UNDECIDED_BAND, Verdict, belief_verdict, choice_verdict, mean, median,
+    of_beliefs, of_choice,
 };
 
 fn choice(winner: &str, probabilities: &[(&str, f64)]) -> Answer {
@@ -136,4 +136,13 @@ fn verdicts_have_wire_names() {
     assert_eq!(Verdict::Accept.name(), "accept");
     assert_eq!(Verdict::Deliberate.name(), "deliberate");
     assert_eq!(Verdict::Abstain.name(), "abstain");
+}
+
+#[test]
+fn one_dissenting_view_neither_passes_nor_vetoes() {
+    // The live One Way case: the judge and the changes view say done, the
+    // screen alone cannot tell.
+    assert!((median(&[0.72, 0.82, 0.12]) - 0.72).abs() < 1e-9);
+    assert!((median(&[0.3, 0.9]) - 0.6).abs() < 1e-9);
+    assert!(median(&[]).abs() < 1e-9);
 }

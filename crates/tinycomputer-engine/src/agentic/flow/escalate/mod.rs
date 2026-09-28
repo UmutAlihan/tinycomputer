@@ -12,8 +12,11 @@
 //!    element?" beside "is this only something similar or next to it?".
 //! 4. **Views** (deep only): a yes/no judgement asked again over other
 //!    renderings of the screen — the screen alone, without the history that
-//!    can lead it, and what changed since the step began. Views that fall on
-//!    both sides of the threshold keep the judgement open.
+//!    can lead it, and what changed since the step began. The readings are
+//!    combined by their median, so one dissenting view neither passes nor
+//!    vetoes a judgement: the screen alone cannot show that a radio already
+//!    selected was selected by this step, and must not overrule the views
+//!    that can.
 //!
 //! Every rung is one `FlowRun::ask`, so the budget, masking, voting, and
 //! journal all apply, and every rung first checks the budget has room: a
@@ -247,14 +250,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             seen.iter()
                 .filter_map(|answers| ask::calibrated(answers, belief.yes, belief.no)),
         );
-        let above = readings
-            .iter()
-            .filter(|reading| **reading >= belief.threshold);
-        let settled = if above.count() % readings.len() == 0 {
-            evidence::mean(&readings)
-        } else {
-            readings.iter().copied().fold(f64::INFINITY, f64::min)
-        };
+        let settled = evidence::median(&readings);
         self.climbed(
             log,
             belief.site,
