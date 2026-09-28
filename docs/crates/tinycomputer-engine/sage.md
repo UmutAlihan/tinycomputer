@@ -48,9 +48,13 @@ exchange, whichever model answered it. `JevConfiguration` names a
 Sage-backed runtime by its model, `"levanto-sage"`, so a journal or a trace
 reading `model` can tell which one ran.
 
-`JevRuntime::sage` is not reachable over the bus. It exists for measuring
-Sage from the examples crate, not as a caller-selectable option on
-`StartTask` or `RunFlow`.
+A host selects Sage over the bus through the module's private `jev`
+configuration, `{"provider": "sage", "api_key": "...", "fast": false}`
+(contract 2.7), which `JevRuntime::configure` turns into this same runtime;
+`endpoint_url` may only repeat `https://sage.levanto.ai/`. `Describe` then
+reports `Capabilities.decision_model` as provider `sage`, model
+`levanto-sage`. `JevRuntime::sage` remains for building one directly, as
+the examples crate does when measuring.
 
 ## Latency modes
 
