@@ -116,9 +116,9 @@ from a less technical angle:
   stack end to end, with latency levers.
 - [`docs/technical/tasks.md`](../../technical/tasks.md), the task API's
   formal contract.
-- [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md)
- , the rescuer's spec.
-- [`docs/technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md)
- , where the browser joins the desktop.
+- [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md),
+  the rescuer's spec.
+- [`docs/technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md),
+  where the browser joins the desktop.
 - [`docs/technical/jev-journal.md`](../../technical/jev-journal.md), reading
   and summarising a journal.
