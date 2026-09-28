@@ -218,17 +218,16 @@ impl Error {
         }
     }
 
-    /// Whether this failure was decided before any command reached the
-    /// browser.
+    /// Whether this failure is always decided before any command reaches
+    /// the browser: a session or an output looked up locally and not found.
+    ///
+    /// Every other variant can also come back in the engine's reply to a
+    /// command it received — a stale ref, a refused origin, invalid input —
+    /// so its delivery stays unknown rather than claimed.
     fn refused_before_delivery(&self) -> bool {
         matches!(
             self,
-            Self::InvalidInput { .. }
-                | Self::NoSuchSession { .. }
-                | Self::StaleRef { .. }
-                | Self::BlockedByPolicy { .. }
-                | Self::NoSuchOutput { .. }
-                | Self::LimitExceeded { .. }
+            Self::NoSuchSession { .. } | Self::NoSuchOutput { .. }
         )
     }
 
