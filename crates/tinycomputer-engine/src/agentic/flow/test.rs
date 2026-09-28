@@ -171,6 +171,23 @@ fn passenger_steppers(adults: u8, root: &str, candidates: &mut Vec<Candidate>) {
     }
 }
 
+/// Trip-type tabs, `selected` marked as the page marks it.
+fn trip_tabs(selected: &str, root: &str, candidates: &mut Vec<Candidate>) {
+    for (index, tab) in ["Return", "One way", "Multi-city"].into_iter().enumerate() {
+        let mut tab_node = node(
+            tab,
+            "tab",
+            &["Click"],
+            &[root, "tablist \"Trip\""],
+            280.0 + f64::from(u8::try_from(index).unwrap()),
+        );
+        if tab == selected {
+            tab_node.states = vec!["selected".to_owned()];
+        }
+        candidates.push(tab_node);
+    }
+}
+
 /// The preselected fare radio, when the simulator shows one.
 fn checked_fare(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
     if let Some(fare) = sim.checked_fare {
@@ -457,19 +474,8 @@ impl App {
             passenger_steppers(adults, &root, &mut candidates);
         }
         if let Some((selected, _)) = sim.trip {
-            for (index, tab) in ["Return", "One way", "Multi-city"].into_iter().enumerate() {
-                let mut node = node(
-                    tab,
-                    "tab",
-                    &["Click"],
-                    &[&root, "tablist \"Trip\""],
-                    280.0 + f64::from(u8::try_from(index).unwrap()),
-                );
-                if tab == selected {
-                    node.states = vec!["selected".to_owned()];
-                }
-                candidates.push(node);
-            }
+            trip_tabs(selected, &root, &mut candidates);
+        }
         }
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
