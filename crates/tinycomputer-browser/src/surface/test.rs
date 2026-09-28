@@ -14,7 +14,7 @@ use tinycomputer_cursor::{CursorPace, OverlayCommand, OverlaySink, ScreenCursor}
 
 use super::cursor::viewport_origin;
 use super::tree::{parse_line, screen};
-use super::{BrowserSurface, browser_key};
+use super::{BrowserSurface, Perception, browser_key};
 use crate::fake::{Fake, failure, ok};
 use crate::sessions::Browser;
 
@@ -335,7 +335,10 @@ fn a_click_covered_by_its_own_card_lands_on_the_card() {
     let reply = surface.execute(JevOperation::Click, Some(select), None);
     assert!(reply.ok, "{:?}", reply.error);
     let script = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
-    assert!(script.ends_with(r#"(60, 40, "Select flight")"#), "{script}");
+    assert!(
+        script.ends_with(r#"(60, 40, "Select flight", null)"#),
+        "{script}"
+    );
     let mouse = fake
         .actions()
         .iter()
@@ -795,4 +798,75 @@ fn an_unnamed_control_is_named_by_what_it_shows_but_a_field_never_is() {
         "a control holding a value is a field"
     );
     assert_eq!(described("e14"), None, "a named control keeps its name");
+}
+
+/// A page read by sight: one field and one result link a card covers.
+fn sighted_fake() -> Fake {
+    Fake::scripted(|command| match command["action"].as_str().unwrap() {
+        "evaluate" if command["script"].as_str().unwrap().contains("data-tc-seen") => {
+            Some(ok(&json!({"result": {
+                "ok": true,
+                "title": "Flights",
+                "surface": "window",
+                "unreachable": 0,
+                "nodes": [
+                    {"id": "1", "role": "textbox", "name": "To", "states": [], "path": []},
+                    {"id": "2", "role": "link", "name": "", "states": [], "path": []}
+                ]
+            }})))
+        }
+        "click" => Some(failure(
+            "Element is covered by <div.layer> at its click point, so the input would land on that element instead.",
+        )),
+        "boundingbox" => Some(ok(
+            &json!({"x": 10.0, "y": 20.0, "width": 100.0, "height": 40.0}),
+        )),
+        "evaluate" => Some(ok(&json!({"result": true}))),
+        _ => None,
+    })
+}
+
+#[test]
+fn sight_reads_the_page_and_its_refs_reach_their_marks() {
+    let Harness { fake, surface, .. } = harness("sight", sighted_fake());
+    let screen = surface.observe("flights", None, Depth::Skeleton).unwrap();
+    assert!(!fake.actions().iter().any(|action| action == "snapshot"));
+    assert_eq!(screen.app, "flights");
+    let field = screen.candidates[0].clone();
+    assert_eq!(field.ref_id, "seen:1");
+
+    let typed = surface.execute(JevOperation::TypeText, Some(field), Some("Srinagar".to_owned()));
+    assert!(typed.ok, "{:?}", typed.error);
+    let fill = fake.last("fill");
+    assert_eq!(fill["selector"], r#"[data-tc-seen="1"]"#, "{fill}");
+    assert_eq!(fake.last("focus")["selector"], r#"[data-tc-seen="1"]"#);
+
+    // An unnamed link a card covers is still clicked through its card: its
+    // mark names it exactly.
+    let link = screen.candidates[1].clone();
+    let reply = surface.execute(JevOperation::Click, Some(link), None);
+    assert!(reply.ok, "{:?}", reply.error);
+    let script = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
+    assert!(
+        script.ends_with(r#"(60, 40, "", "[data-tc-seen=\"2\"]")"#),
+        "{script}"
+    );
+
+    surface.observe("", Some("seen:1"), Depth::Full).unwrap();
+    let scoped = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
+    assert!(scoped.contains(r#"("[data-tc-seen=\"1\"]", {"#));
+}
+
+#[test]
+fn the_tree_is_read_when_sight_fails_or_is_turned_off() {
+    let Harness { fake, surface, .. } = harness("sight-fallback", page_fake());
+    let screen = surface.observe("", None, Depth::Full).unwrap();
+    assert_eq!(screen.candidates[0].ref_id, "e1");
+    assert!(fake.actions().iter().any(|action| action == "evaluate"));
+
+    let Harness { fake, surface, .. } = harness("sight-off", sighted_fake());
+    let surface = surface.with_perception(Perception::Tree);
+    surface.observe("", None, Depth::Full).unwrap();
+    assert!(!fake.actions().iter().any(|action| action == "evaluate"));
+    assert!(format!("{surface:?}").contains("Tree"));
 }
