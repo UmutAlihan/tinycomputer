@@ -324,11 +324,11 @@ silently cut.
    remembered element is looked up by role, name, and the last two ancestor
    labels (never by ref, which changes every snapshot). It is confirmed with
    one Noul and used if the answer is at least 0.5.
-2. **Narrowing.** A pool over 20 is grouped by ancestor. Jev is shown the
-   regions ("toolbar, 12 elements, e.g. New Message, Reply, Delete") and picks
-   one, for up to three rounds, going one level deeper each time. If regions
-   stop splitting the pool, a **knockout** asks one Choice per group of 20 in a
-   single request and keeps each group's winner.
+2. **Narrowing.** A pool over 20 is grouped by ancestor, and one round trip
+   asks two requests: which region ("toolbar, 12 elements, e.g. New Message,
+   Reply, Delete") holds the element, and a **knockout** of one Choice per
+   group of 20, the groups cut along the regions. The chosen region's
+   winners go on to the Choice; all winners do if it holds none.
 3. **Choice.** One Choice over what is left.
 4. **Consistency and corroboration.** A pick at 0.70 or above (`ACT`) is used
    straight away, and so is one at 0.45 or above whose name appears word for
