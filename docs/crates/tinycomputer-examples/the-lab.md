@@ -129,7 +129,7 @@ loop's cold-start cost specifically. See
    flow runtime's test suite, fix it there, then re-run the scenario to
    confirm.
 5. Worth recording, record it in
-   [`docs/technical/evals/`](../../technical/evals/) — see the existing
+   [`docs/technical/evals/`](../../technical/evals/); see the existing
    files there for the format.
 
 ## The scenarios today

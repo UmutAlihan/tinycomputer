@@ -76,9 +76,9 @@ every event kind goes through. Two kinds matter most:
   attempts, request_id, model, input_tokens, output_tokens, answers}` or
   `{"ok": false, latency_ms, attempts, error}`.
 
-The exact field list for every event kind, including the ones the flow
+The exact field list for every event kind (including the ones the flow
 runtime and its grounding, voting, and deliberation logic add on top of
-these two, is catalogued in
+these two) is catalogued in
 [`docs/technical/jev-journal.md`](../../technical/jev-journal.md); this page
 only covers the two written from inside `JevRuntime` itself.
 
@@ -89,7 +89,7 @@ the caller's own goal or task text. Facts are masked before a request is
 ever built (see [tasks.md](tasks.md#facts-and-secrets)), so a secret value
 is not in a journal, but ordinary personal data visible on screen can be.
 `.jev-journal/`, the default directory, is git-ignored for exactly that
-reason, and a journal, a trace, or a transcript should never be pasted into
+reason. A journal, a trace, or a transcript should never be pasted into
 a commit, an issue, or a pull request.
 
 ## Source
