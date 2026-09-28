@@ -855,7 +855,7 @@ async fn an_enter_with_no_form_on_screen_stops_after_the_first_missing_picker() 
     assert!(
         three.result.steps[0]
             .note
-            .contains("no field that takes text was found for: shoe size, hat size, glove size"),
+            .contains("no field that takes text was found for: glove size, hat size, shoe size"),
         "{}",
         three.result.steps[0].note
     );
