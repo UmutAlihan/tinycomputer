@@ -5,7 +5,7 @@
 
 use serde_json::json;
 
-use super::{is_seen, screen, script, selector};
+use super::{Denoised, denoised, is_seen, screen, script, selector};
 
 /// A booking widget as sight reads it: a cookie dialog in front, a field
 /// named by the words above it, a city row a page marked `combobox`, and an
@@ -119,4 +119,34 @@ fn the_script_is_called_with_its_root_and_limits() {
         "{}",
         &under[under.len() - 120..]
     );
+}
+
+#[test]
+fn denoised_summary_parses_and_defaults() {
+    let mut read = reading();
+    read["denoised"] = json!({"ads": 3, "empty": 2, "hidden": 1});
+    assert_eq!(
+        denoised(&read),
+        Denoised {
+            ads: 3,
+            empty: 2,
+            hidden: 1
+        }
+    );
+    assert!(screen(&read).is_some(), "the summary does not change the screen");
+
+    assert_eq!(
+        denoised(&reading()),
+        Denoised::default(),
+        "a reading from before denoising"
+    );
+    assert_eq!(
+        denoised(&json!({"ok": true, "nodes": [], "denoised": {"ads": 4, "hidden": "x"}})),
+        Denoised {
+            ads: 4,
+            ..Denoised::default()
+        },
+        "a missing or malformed count is zero"
+    );
+    assert_eq!(denoised(&json!(42)), Denoised::default());
 }
