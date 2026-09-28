@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use tinycomputer_bus::RunFlowRequest;
 use tinycomputer_bus::agent::{TaskConstraints, TaskStatus};
 
+use super::artifact::captured;
 use super::brief::brief;
 use super::names::fact_names;
 use super::publish::{publish, stopped_summary};
@@ -74,7 +75,9 @@ pub(super) fn run_request(
 /// Ends a task outright with `status`, without a flow run to interpret: its
 /// time budget ran out before a run of it could even start, or a run of it
 /// had to be cut off mid-flight to keep from spending past what remains.
-pub(super) fn stop_task(cell: &Cell, runner: &dyn FlowRunner, status: TaskStatus) {
+pub(super) async fn stop_task(cell: &Cell, runner: &dyn FlowRunner, status: TaskStatus) {
+    // A task cut off by its time budget still leaves its last screen.
+    let status = captured(cell, runner, status).await;
     let summary = stopped_summary(&status);
     publish(cell, status, &summary);
     runner.release(&cell.view.borrow().id);

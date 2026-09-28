@@ -91,8 +91,11 @@ pub trait FlowRunner: Send + Sync + 'static {
     }
 
     /// A screenshot of the task's surface as it stands, held for the caller
-    /// to read. Taken when a run stops, before the task's surfaces are
-    /// released, so a finished or failed task still leaves one. `None` by
+    /// to read. Taken whenever a run stops on its own — paused, finished,
+    /// failed, or cut off by its time budget — before the task's surfaces
+    /// are released, so a finished or failed task still leaves one.
+    /// `CancelTask` releases at once without one: the caller chose to stop,
+    /// and can take its own with `BrowserScreenshot` first. `None` by
     /// default, and whenever the surface cannot take one.
     fn capture(&self, _task: &TaskId) -> CaptureFuture {
         Box::pin(async { None })

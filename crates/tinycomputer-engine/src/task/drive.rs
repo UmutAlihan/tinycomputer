@@ -97,7 +97,7 @@ pub(super) async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Ve
             return;
         };
         if time_left == Some(0) {
-            stop_task(&cell, runner.as_ref(), elapsed_budget_failed());
+            stop_task(&cell, runner.as_ref(), elapsed_budget_failed()).await;
             return;
         }
         let id = cell.view.borrow().id.clone();
@@ -105,7 +105,7 @@ pub(super) async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Ve
         let run_call = runner.run(&id, &constraints, request);
         let reply = if let Some(ms) = time_left {
             let Ok(reply) = tokio::time::timeout(Duration::from_millis(ms), run_call).await else {
-                stop_task(&cell, runner.as_ref(), elapsed_budget_failed());
+                stop_task(&cell, runner.as_ref(), elapsed_budget_failed()).await;
                 return;
             };
             reply

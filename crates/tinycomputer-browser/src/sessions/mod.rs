@@ -129,7 +129,7 @@ impl Browser {
     pub async fn open_session(&self, options: SessionOptions) -> Result<SessionInfo> {
         // Checked and reserved under the table's lock, so the check and the
         // claim are one step for every concurrent caller.
-        let _reservation = {
+        let reservation = {
             let sessions = self.lock_sessions()?;
             if sessions.len() + self.opening.load(Ordering::SeqCst) >= MAX_SESSIONS {
                 return Err(Error::LimitExceeded {
@@ -162,8 +162,12 @@ impl Browser {
         session.info.url = page.url;
         session.info.title = page.title;
         let info = session.info.clone();
-        self.lock_sessions()?
-            .insert(id, Arc::new(tokio::sync::Mutex::new(session)));
+        // The slot moves from the reservation to the table in one step under
+        // the lock, so no concurrent check ever counts this launch twice.
+        let mut sessions = self.lock_sessions()?;
+        sessions.insert(id, Arc::new(tokio::sync::Mutex::new(session)));
+        drop(reservation);
+        drop(sessions);
         Ok(info)
     }
 
