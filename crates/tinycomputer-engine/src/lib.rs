@@ -19,6 +19,8 @@
 //! [`Tasks`] is the controller behind the Agent interface: it runs a task's
 //! flow in the background and reports it as a status a model can act on,
 //! pausing for missing values, irreversible actions, and always at payment.
+//! With a [`Rescuer`], a failed step is first handed to a reasoning model
+//! for guidance, up to five times a task (`docs/specs/task-rescue.md`).
 //!
 //! A [`Workspace`] joins the desktop and the browser into one surface, so a
 //! flow's `browse` and `open` steps move it between a web page and an
@@ -30,6 +32,7 @@
 
 mod agentic;
 mod planner;
+mod rescue;
 mod task;
 mod workspace;
 
@@ -39,7 +42,8 @@ pub use agentic::{
 };
 pub use planner::{Completion, LanguageModel, Planner, REPAIRS, Role, Turn};
 #[cfg(feature = "planner")]
-pub use planner::{PLANNER_MODEL, PlannerConfig, open_router};
+pub use planner::{PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer};
+pub use rescue::{Briefing, Guidance, MAX_RESCUE_STEPS, MAX_RESCUES, Rescuer, SCREEN_CHARS};
 pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks, TextFuture, capabilities};
 pub use tinycomputer_bus::DesktopResponse;
 use tinycomputer_desktop::Desktop;

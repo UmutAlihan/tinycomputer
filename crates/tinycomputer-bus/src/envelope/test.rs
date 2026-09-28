@@ -14,7 +14,7 @@ use serde_json::json;
 
 #[test]
 fn the_envelope_version_matches_the_engine() {
-    assert_eq!(ENVELOPE_VERSION, "2.3");
+    assert_eq!(ENVELOPE_VERSION, "2.4");
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn a_successful_reply_serializes_without_an_error_key() {
     assert_eq!(
         value,
         json!({
-            "version": "2.3",
+            "version": "2.4",
             "ok": true,
             "command": "list-apps",
             "data": { "apps": [] },
@@ -45,7 +45,7 @@ fn a_failed_reply_serializes_without_a_data_key() {
     assert_eq!(
         value,
         json!({
-            "version": "2.3",
+            "version": "2.4",
             "ok": false,
             "command": "click",
             "error": {
@@ -63,7 +63,7 @@ fn an_engine_reply_round_trips_through_the_envelope() {
     // Verbatim output of `agent-desktop click @s1:e2 --json` on a stale ref,
     // which is what a host actually has to parse.
     let wire = json!({
-        "version": "2.3",
+        "version": "2.4",
         "ok": false,
         "command": "click",
         "error": {

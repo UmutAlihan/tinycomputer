@@ -9,6 +9,16 @@
 //! The moves are generic on purpose: a flow names no UI, so the next move is
 //! picked from things every application offers — pressing a visible control,
 //! a standard shortcut, scrolling, waiting.
+//!
+//! A deliberating run (`docs/specs/jev-deliberation.md`) adds a loop around
+//! every press. Before it, the press's effect is predicted (`expect.rs`) and
+//! a checkpoint taken (`checkpoint.rs`); after it, the effect is checked, and
+//! when the screen contradicts it the next judgement asks whether the press
+//! did what it was meant to. A mistake is undone back to the checkpoint —
+//! verified — and the next-best
+//! candidate grounding ranked is tried before grounding again. A judgement
+//! of "done" near its threshold is settled on its evidence (`escalate`), and
+//! a screen that returns to where it was two turns ago bans both presses.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -17,12 +27,17 @@ use std::{
 
 use serde_json::json;
 use tinycomputer_bus::{FlowLoop, JevOperation, StepOutcome};
-use tinyinference_decisions::Answer;
+use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
-    ground::Opening,
+    attention::Cleared,
+    checkpoint::{Checkpoint, Reversibility, classify},
+    denoise,
+    escalate::Belief,
+    expect::{self, Effect, Outcome},
+    ground::{AGREED, Grounded, Opening},
     memory::{learn, remember},
     view::{
         Candidate, Screen, change_note, element_kind, fingerprint, is_destructive, label, signature,
@@ -52,6 +67,22 @@ const MAX_IDLE_WAITS: u32 = 2;
 const MAX_OBSTACLES: u32 = 2;
 /// Undos per step at most.
 const MAX_UNDOS: u32 = 2;
+/// Belief that a press did what it was meant to under which a press whose
+/// effect the screen contradicts is taken for a mistake.
+pub(super) const MISTAKE: f64 = 0.5;
+/// Belief under which any press is taken for a mistake, whatever the
+/// screen shows of its effect.
+pub(super) const CLEAR_MISTAKE: f64 = 0.25;
+/// Next-best candidates a `do` step backtracks into at most, deep and
+/// standard.
+pub(super) const MAX_BRANCHES: (u32, u32) = (3, 1);
+/// The view of the screen alone, without the history that can lead a
+/// judgement.
+pub(super) const SCREEN_VIEW: &str =
+    "Judge only from the screen as it is shown now; no history of actions is given.";
+/// The view of what changed since the step began.
+const CHANGES_VIEW: &str =
+    "Judge from what changed on screen since the step began, and the actions taken.";
 
 /// Generic moves every application offers, with what each is for.
 const MOVES: &[(&str, &str)] = &[
@@ -117,6 +148,19 @@ struct LastAction {
     progress: Option<f64>,
     /// Whether the action was a wait rather than a press or a shortcut.
     waited: bool,
+    /// Under deliberation: what the press should have changed, and where it
+    /// started.
+    expected: Option<Expected>,
+    /// How the screen after the press bears out `expected`.
+    outcome: Option<Outcome>,
+}
+
+/// What a deliberating press expects, and the checkpoint it can be undone
+/// back to.
+#[derive(Debug, Clone)]
+pub(super) struct Expected {
+    effect: Effect,
+    checkpoint: Checkpoint,
 }
 
 /// Bookkeeping across the turns of one `do` step.
@@ -132,6 +176,18 @@ struct DoState {
     idle_waits: u32,
     obstacles: u32,
     undos: u32,
+    /// Under deliberation: each turn's screen fingerprint, oldest first, and
+    /// the element pressed on the turn before the last, for oscillations.
+    seen: Vec<String>,
+    pressed_before: Option<Candidate>,
+    /// The screen the step began on, for the judge's changes view.
+    first: Option<Screen>,
+    /// Next-best candidates tried after mistakes so far.
+    branches: u32,
+    /// The candidate a backtrack tries next.
+    branch: Option<Candidate>,
+    /// Distractions cleared this step (`attention.rs`).
+    cleared: Cleared,
 }
 
 /// What a move did.
@@ -139,8 +195,8 @@ struct DoState {
 enum Move {
     /// The step is over.
     Ended(Ended),
-    /// An action ran, on this element if it had one.
-    Acted(Option<Box<Candidate>>),
+    /// An action ran, on this element if it had one, expecting this.
+    Acted(Option<Box<Candidate>>, Option<Box<Expected>>),
     /// Nothing ran this turn.
     Skipped,
 }
@@ -284,6 +340,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             log.turns = log.turns.saturating_add(1);
             let screen = self.look().await?;
             self.note_change(state, &screen)?;
+            self.note_oscillation(log, state, &screen);
+            if state.first.is_none() {
+                state.first = Some(screen.clone());
+            }
             if let Some(ended) = state
                 .last
                 .as_ref()
@@ -291,21 +351,20 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             {
                 return Ok(ended);
             }
-            let last = state
-                .last
-                .as_ref()
-                .and_then(|last| last.target.as_ref())
-                .map(label);
-            let mut judged = if self.wide() {
-                let pressed = state.last.as_ref().and_then(|last| last.target.clone());
-                self.judge_wide(log, &screen, intent, pressed.as_ref(), &state.banned)
-                    .await?
-            } else if state.last.is_none() {
-                self.judge_speculating(log, &screen, intent, &state.banned)
-                    .await?
-            } else {
-                self.judge(log, &screen, intent, last.as_deref()).await?
-            };
+            // The root of the turn's tree: what needs attention first. A
+            // distraction cleared means a fresh look before judging.
+            if self
+                .attend(log, &screen, intent, &mut state.cleared)
+                .await?
+            {
+                state.last = None;
+                continue;
+            }
+            self.check_expectation(log, state, &screen);
+            let judged = self.judge_turn(log, state, &screen, intent).await?;
+            let mut judged = self
+                .settle_done(log, state, &screen, intent, judged, turn)
+                .await?;
             if judged.next == "finished"
                 && judged.done.is_some_and(|done| done < finish_floor(turn))
             {
@@ -338,17 +397,21 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 );
                 continue;
             }
+            let branch = state.branch.take();
             match self
-                .make_move(log, &screen, intent, &judged, &state.banned)
+                .make_move(log, &screen, intent, &judged, &state.banned, branch)
                 .await?
             {
                 Move::Ended(ended) => return Ok(ended),
-                Move::Acted(target) => {
+                Move::Acted(target, expected) => {
+                    state.pressed_before = state.last.as_ref().and_then(|last| last.target.clone());
                     state.last = Some(LastAction {
                         target: target.map(|target| *target),
                         before: screen,
                         progress: judged.progress,
                         waited: judged.next == "wait",
+                        expected: expected.map(|expected| *expected),
+                        outcome: None,
                     });
                 }
                 Move::Skipped => {}
@@ -368,6 +431,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             return Ok(ended);
         }
         let judged = self.judge(log, &screen, intent, None).await?;
+        let judged = self
+            .settle_done(log, state, &screen, intent, judged, max_turns)
+            .await?;
         if judged.done.unwrap_or_default() >= DONE {
             return Ok(Ended::new(
                 StepOutcome::Done,
@@ -377,6 +443,47 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Err(Halt::Failed(format!(
             "not accomplished after {max_turns} turns"
         )))
+    }
+
+    /// Judges one turn's screen the way the strategy asks: one wide request,
+    /// or a narrow judge — on the first turn with grounding's first round
+    /// beside it. After a press whose effect was missed it also asks
+    /// whether the press did what it was meant to.
+    async fn judge_turn(
+        &mut self,
+        log: &mut StepLog,
+        state: &DoState,
+        screen: &Screen,
+        intent: &str,
+    ) -> Result<Judgement, Halt> {
+        let last = state
+            .last
+            .as_ref()
+            .and_then(|last| last.target.as_ref())
+            .map(label);
+        self.expecting = state.last.as_ref().and_then(|last| {
+            let target = last.target.as_ref()?;
+            let expected = last.expected.as_ref()?;
+            let missed = matches!(last.outcome, Some(Outcome::Missed(_)));
+            missed.then(|| {
+                (
+                    format!("pressed {}", label(target)),
+                    expected.effect.meant(&label(target)),
+                )
+            })
+        });
+        let judged = if self.wide() {
+            let pressed = state.last.as_ref().and_then(|last| last.target.clone());
+            self.judge_wide(log, screen, intent, pressed.as_ref(), &state.banned)
+                .await
+        } else if state.last.is_none() {
+            self.judge_speculating(log, screen, intent, &state.banned)
+                .await
+        } else {
+            self.judge(log, screen, intent, last.as_deref()).await
+        };
+        self.expecting = None;
+        judged
     }
 
     /// Records what the last action changed, banning an element that changed
@@ -462,7 +569,26 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     previous.target.clone(),
                 )
             });
-        let Some((why, target)) = regressed.or(unhelpful) else {
+        let mistaken = state
+            .last
+            .as_ref()
+            .filter(|previous| previous.target.is_some())
+            .zip(judged.intended)
+            .filter(|(previous, intended)| {
+                *intended < CLEAR_MISTAKE
+                    || (*intended < MISTAKE && matches!(previous.outcome, Some(Outcome::Missed(_))))
+            })
+            .map(|(previous, intended)| {
+                let seen = match &previous.outcome {
+                    Some(Outcome::Missed(why)) => format!("{why}; "),
+                    _ => String::new(),
+                };
+                (
+                    format!("{seen}it did not do what it was meant to (confidence {intended:.2})"),
+                    previous.target.clone(),
+                )
+            });
+        let Some((why, target)) = mistaken.or(regressed).or(unhelpful) else {
             return Ok(false);
         };
         if !self.enabled(FlowLoop::Undo) || state.undos >= MAX_UNDOS {
@@ -477,6 +603,41 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 label(target)
             ));
         }
+        self.undo(log, state, &why, target.as_ref()).await?;
+        self.plan_branch(state);
+        state.last = None;
+        Ok(true)
+    }
+
+    /// Undoes the last press, which `why` says was a mistake: back to its
+    /// checkpoint, verified, under deliberation; with Escape otherwise.
+    async fn undo(
+        &mut self,
+        log: &mut StepLog,
+        state: &DoState,
+        why: &str,
+        target: Option<&Candidate>,
+    ) -> Result<(), Halt> {
+        let expected = state
+            .last
+            .as_ref()
+            .and_then(|last| last.expected.clone())
+            .filter(|_| self.deliberates(FlowLoop::Checkpoint));
+        if let Some(expected) = expected {
+            let restore = self
+                .restore(log, &expected.checkpoint, target, Some(&expected.effect))
+                .await?;
+            self.history.push(format!(
+                "that was a mistake ({why}); undid it ({}){}",
+                restore.rungs.join(", then "),
+                if restore.restored {
+                    " and the screen is back where it was"
+                } else {
+                    ", though the screen is not quite back where it was"
+                }
+            ));
+            return Ok(());
+        }
         let app = self.app.clone();
         self.act(log, "press escape (undo)", None, move |backend| {
             backend.press(&app, "escape")
@@ -485,8 +646,171 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         self.history.push(format!(
             "that made things worse ({why}); undid it and will try something else"
         ));
-        state.last = None;
-        Ok(true)
+        Ok(())
+    }
+
+    /// After an undo, the candidate to try next: the best runner-up of the
+    /// grounding that chose the mistake, not banned, while the step has
+    /// branches left.
+    fn plan_branch(&self, state: &mut DoState) {
+        if !self.deliberates(FlowLoop::Backtrack) {
+            return;
+        }
+        let limit = if self.deep() {
+            MAX_BRANCHES.0
+        } else {
+            MAX_BRANCHES.1
+        };
+        if state.branches >= limit {
+            return;
+        }
+        state.branch = self
+            .frontier
+            .iter()
+            .find(|candidate| !state.banned.contains(&signature(candidate)))
+            .cloned();
+    }
+
+    /// Checks the last press's expected effect against `screen`.
+    fn check_expectation(&self, log: &mut StepLog, state: &mut DoState, screen: &Screen) {
+        let Some(last) = state.last.as_mut() else {
+            return;
+        };
+        let (Some(target), Some(expected)) = (&last.target, &last.expected) else {
+            return;
+        };
+        log.used(FlowLoop::Expectation);
+        let moved =
+            expected.checkpoint.location.is_some() && expected.checkpoint.location != self.location;
+        let outcome = expect::check(&expected.effect, target, &last.before, screen, moved);
+        self.runtime.journal.record("expect", || {
+            json!({
+                "step": self.step,
+                "target": label(target),
+                "effect": format!("{:?}", expected.effect),
+                "outcome": match &outcome {
+                    Outcome::Met => "met".to_owned(),
+                    Outcome::Missed(why) => format!("missed: {why}"),
+                    Outcome::Unclear => "unclear".to_owned(),
+                },
+            })
+        });
+        last.outcome = Some(outcome);
+    }
+
+    /// Bans both presses that took the screen back to where it was two
+    /// turns ago: pressed in turn, they undo each other.
+    fn note_oscillation(&mut self, log: &mut StepLog, state: &mut DoState, screen: &Screen) {
+        if !self.deliberates(FlowLoop::Denoise) {
+            return;
+        }
+        let now = fingerprint(screen);
+        if denoise::oscillates(&state.seen, &now) {
+            let pair = [
+                state.last.as_ref().and_then(|last| last.target.clone()),
+                state.pressed_before.clone(),
+            ];
+            let banned = pair
+                .iter()
+                .flatten()
+                .map(|target| {
+                    state.banned.insert(signature(target));
+                    label(target)
+                })
+                .collect::<Vec<_>>();
+            if !banned.is_empty() {
+                log.used(FlowLoop::Denoise);
+                self.ledger.tried(format!(
+                    "pressed {}: the screen went back and forth",
+                    banned.join(" and ")
+                ));
+                self.history.push(format!(
+                    "the screen returned to where it was two turns ago; not pressing {} again",
+                    banned.join(" or ")
+                ));
+                self.runtime.journal.record(
+                    "denoise",
+                    || json!({"step": self.step, "oscillation": banned}),
+                );
+            }
+        }
+        state.seen.push(now);
+    }
+
+    /// `judged` with its completion settled on the evidence
+    /// (`escalate::settle_belief`): at the deep level asked again over the
+    /// screen alone and over what changed since the step began.
+    async fn settle_done(
+        &mut self,
+        log: &mut StepLog,
+        state: &DoState,
+        screen: &Screen,
+        intent: &str,
+        mut judged: Judgement,
+        turn: u32,
+    ) -> Result<Judgement, Halt> {
+        let Some(request) = judged.request.clone() else {
+            return Ok(judged);
+        };
+        if judged.done.is_none() || !self.deliberates(FlowLoop::Evidence) {
+            return Ok(judged);
+        }
+        let views = if self.deep() {
+            self.done_views(state, screen, intent)
+        } else {
+            Vec::new()
+        };
+        let belief = Belief {
+            site: "done",
+            yes: "done",
+            no: "not_done",
+            top: Some("progress"),
+            threshold: threshold(turn),
+        };
+        let mut answers = judged.answers.clone();
+        let settled = self
+            .settle_belief(log, belief, &request, &mut answers, views)
+            .await?;
+        judged.reread(&answers);
+        judged.done = settled;
+        Ok(judged)
+    }
+
+    /// The other views a deep run judges completion over: the screen alone,
+    /// without the history that can lead it, and what changed since the
+    /// step began.
+    fn done_views(&self, state: &DoState, screen: &Screen, intent: &str) -> Vec<EvaluationRequest> {
+        let questions = |view: &str| {
+            Questions::default()
+                .with("done", ask::viewed(completion(intent), view))
+                .with("not_done", ask::viewed(ask::unfinished(intent), view))
+        };
+        let mut views = vec![ask::request(
+            self.model(),
+            ask::state(screen, intent, &[], self.include_values),
+            questions(SCREEN_VIEW),
+        )];
+        if let Some(first) = &state.first {
+            let changed = fingerprint(first) != fingerprint(screen);
+            views.push(ask::request(
+                self.model(),
+                json!({
+                    "app": screen.app,
+                    "window": screen.window,
+                    "current_step": intent,
+                    "changes_since_step_began": change_note(first, screen, changed),
+                    "recent_actions": denoise::compact(&self.history)
+                        .iter()
+                        .rev()
+                        .take(12)
+                        .rev()
+                        .collect::<Vec<_>>(),
+                    "visible_text": super::view::untrusted_context(screen),
+                }),
+                questions(CHANGES_VIEW),
+            ));
+        }
+        views
     }
 
     /// Carries out the move Jev chose.
@@ -497,6 +821,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         intent: &str,
         judged: &Judgement,
         banned: &BTreeSet<String>,
+        branch: Option<Candidate>,
     ) -> Result<Move, Halt> {
         match judged.next.as_str() {
             "finished" if creates_new(intent) && log.actions.is_empty() => {
@@ -510,7 +835,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     },
                     ..judged.clone()
                 };
-                Box::pin(self.make_move(log, screen, intent, &next, banned)).await
+                Box::pin(self.make_move(log, screen, intent, &next, banned, branch)).await
             }
             "finished" => Ok(Move::Ended(Ended::new(
                 StepOutcome::Done,
@@ -524,7 +849,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     backend.execute(JevOperation::Wait, None, None)
                 })
                 .await?;
-                Ok(Move::Acted(None))
+                Ok(Move::Acted(None, None))
             }
             "shortcut" => {
                 let Some((combo, name)) = judged.shortcut else {
@@ -547,13 +872,19 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .await?;
                 self.history
                     .push(format!("pressed {combo} ({name}), ok={}", reply.ok));
-                Ok(Move::Acted(None))
+                Ok(Move::Acted(None, None))
             }
-            operation @ ("activate" | "expand" | "scroll") => Ok(Move::Acted(
-                self.activate(log, screen, intent, operation, banned, judged)
-                    .await?
-                    .map(Box::new),
-            )),
+            operation @ ("activate" | "expand" | "scroll") => {
+                let pressed = self
+                    .activate(log, screen, intent, operation, (banned, branch), judged)
+                    .await?;
+                Ok(match pressed {
+                    Some((target, expected)) => {
+                        Move::Acted(Some(Box::new(target)), expected.map(Box::new))
+                    }
+                    None => Move::Acted(None, None),
+                })
+            }
             other => {
                 // A malformed or prompt-injected answer must fail closed
                 // rather than default to a click: only the moves above are
@@ -584,16 +915,20 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .collect()
     }
 
-    /// Grounds and performs an `activate`, `expand`, or `scroll` move.
+    /// Grounds and performs an `activate`, `expand`, or `scroll` move; the
+    /// element pressed, and under deliberation what the press expects.
+    ///
+    /// A `branch` left by a backtrack is tried first, confirmed with one
+    /// yes/no question, before anything is grounded afresh.
     async fn activate(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
         intent: &str,
         operation: &str,
-        banned: &BTreeSet<String>,
+        (banned, branch): (&BTreeSet<String>, Option<Candidate>),
         judged: &Judgement,
-    ) -> Result<Option<Candidate>, Halt> {
+    ) -> Result<Option<(Candidate, Option<Expected>)>, Halt> {
         let (capability, jev_operation, verb) = match operation {
             "expand" => ("Expand", JevOperation::Expand, "expand"),
             "scroll" => ("Scroll", JevOperation::Scroll, "scroll"),
@@ -602,9 +937,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let purpose = activate_purpose(verb, intent);
         let prepared = judged.prepared.get(operation);
         let speculated = judged.speculated.clone();
-        let grounded = match (prepared, speculated) {
-            (Some(prepared), _) => self.resolve(log, screen, &purpose, prepared).await?,
-            (None, Some(speculated)) if operation == "activate" => {
+        let branched = match branch {
+            Some(branch) if operation == "activate" => {
+                self.try_branch(log, screen, &purpose, branch).await?
+            }
+            _ => None,
+        };
+        let grounded = match (branched, prepared, speculated) {
+            (Some(branched), _, _) => Some(branched),
+            (None, Some(prepared), _) => self.resolve(log, screen, &purpose, prepared).await?,
+            (None, None, Some(speculated)) if operation == "activate" => {
                 self.resume(log, screen, speculated.opening, Some(speculated.answers))
                     .await?
             }
@@ -633,6 +975,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 label(&target)
             )));
         }
+        let expected = self.expect(log, operation, &target, screen);
         let reply = self
             .press_uncovering(log, verb, &target, jev_operation)
             .await?;
@@ -641,7 +984,82 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if reply.ok {
             learn(&mut self.learned, remember(&self.app, intent, &target));
         }
-        Ok(Some(target))
+        Ok(Some((target, expected)))
+    }
+
+    /// What pressing `target` with `operation` on `screen` should change,
+    /// and the checkpoint it can be undone back to, when the run
+    /// deliberates on effects.
+    fn expect(
+        &self,
+        log: &mut StepLog,
+        operation: &str,
+        target: &Candidate,
+        screen: &Screen,
+    ) -> Option<Expected> {
+        if !self.deliberates(FlowLoop::Expectation) {
+            return None;
+        }
+        let effect = expect::predict(operation, target);
+        let checkpoint = Checkpoint::of(screen, self.location.as_deref());
+        let reversibility = classify(&effect, target, screen, &self.stop_before);
+        if reversibility == Reversibility::Restorable && self.deliberates(FlowLoop::Checkpoint) {
+            self.checkpointed(log, target, reversibility);
+        }
+        Some(Expected { effect, checkpoint })
+    }
+
+    /// The backtrack's `branch`, when it is still on `screen` and one yes/no
+    /// question confirms it serves `purpose`.
+    async fn try_branch(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        purpose: &str,
+        branch: Candidate,
+    ) -> Result<Option<Grounded>, Halt> {
+        let Some(present) = screen
+            .candidates
+            .iter()
+            .find(|candidate| signature(candidate) == signature(&branch))
+            .cloned()
+        else {
+            return Ok(None);
+        };
+        log.used(FlowLoop::Backtrack);
+        let answers = self
+            .ask(
+                log,
+                ask::request(
+                    self.model(),
+                    self.state(screen, purpose),
+                    Questions::default().with(
+                        "confirm",
+                        ask::corroborate(purpose, &present, self.include_values),
+                    ),
+                ),
+            )
+            .await?;
+        let confirmed = probability(&answers, "confirm").unwrap_or_default();
+        let accepted = confirmed >= AGREED;
+        self.runtime.journal.record("backtrack", || {
+            json!({
+                "step": self.step,
+                "candidate": label(&present),
+                "confirmed": confirmed,
+                "accepted": accepted,
+            })
+        });
+        Ok(accepted.then(|| {
+            self.history.push(format!(
+                "backtracking: trying the next-best candidate, {}",
+                label(&present)
+            ));
+            Grounded {
+                candidate: present,
+                confidence: confirmed,
+            }
+        }))
     }
 
     /// Performs `operation` on an already-vetted `target`. When the click
@@ -780,11 +1198,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             pool,
             true,
         );
-        let mut requests = vec![ask::request(
-            self.model(),
-            self.state(screen, intent),
-            questions,
-        )];
+        let judging = ask::request(self.model(), self.state(screen, intent), questions);
+        let mut requests = vec![judging.clone()];
         let speculative = opening.requests();
         let wanted = speculative.len();
         requests.extend(speculative);
@@ -794,6 +1209,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .ok_or_else(|| Halt::Failed("no Jev evaluation completed".to_owned()))?;
         let rest = answers.collect::<Vec<_>>();
         let mut judged = Judgement::read(&judged);
+        judged.request = Some(judging);
         if rest.len() == wanted {
             judged.speculated = Some(Speculated {
                 opening,
@@ -814,13 +1230,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if questions.is_empty() {
             return Ok(Judgement::activate());
         }
-        let answers = self
-            .ask(
-                log,
-                ask::request(self.model(), self.state(screen, intent), questions),
-            )
-            .await?;
-        Ok(Judgement::read(&answers))
+        let request = ask::request(self.model(), self.state(screen, intent), questions);
+        let answers = self.ask(log, request.clone()).await?;
+        let mut judged = Judgement::read(&answers);
+        judged.request = Some(request);
+        Ok(judged)
     }
 
     /// The questions that judge a turn: completion and its negation,
@@ -849,6 +1263,14 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             && let Some(last) = last
         {
             questions = questions.with("helped", ask::helped(intent, &format!("pressed {last}")));
+        }
+        if self.deliberates(FlowLoop::Expectation)
+            && let Some((action, meant)) = &self.expecting
+        {
+            log.used(FlowLoop::Expectation);
+            questions = questions
+                .with("intended", ask::intended(intent, action, meant))
+                .with("unintended", ask::unintended(intent, action, meant));
         }
         if self.enabled(FlowLoop::Moves) {
             log.used(FlowLoop::Moves);
@@ -901,6 +1323,13 @@ pub(super) struct Judgement {
     /// Under the narrow strategy: the `activate` target's first grounding
     /// round, asked in the same round trip as the judge.
     pub(super) speculated: Option<Speculated>,
+    /// Under deliberation: whether the last press did what it was meant to,
+    /// calibrated against its negation.
+    pub(super) intended: Option<f64>,
+    /// The request that asked the judgement, and its answers, for a
+    /// deliberating run to widen.
+    pub(super) request: Option<EvaluationRequest>,
+    pub(super) answers: BTreeMap<String, Answer>,
 }
 
 /// Grounding's first round for an `activate` move, asked alongside the
@@ -937,7 +1366,24 @@ impl Judgement {
             prepared: BTreeMap::new(),
             dismissal: None,
             speculated: None,
+            intended: ask::calibrated(answers, "intended", "unintended"),
+            request: None,
+            answers: answers.clone(),
         }
+    }
+
+    /// Reads `answers` afresh — a widened ballot — keeping the targets,
+    /// dismissal, and speculation already prepared.
+    pub(super) fn reread(&mut self, answers: &BTreeMap<String, Answer>) {
+        let fresh = Self::read(answers);
+        self.done = fresh.done;
+        self.progress = fresh.progress;
+        self.blocked = fresh.blocked;
+        self.helped = fresh.helped;
+        self.next = fresh.next;
+        self.shortcut = fresh.shortcut;
+        self.intended = fresh.intended;
+        self.answers = fresh.answers;
     }
 
     /// The judgement when every judging loop is disabled: just press something.
@@ -952,6 +1398,9 @@ impl Judgement {
             prepared: BTreeMap::new(),
             dismissal: None,
             speculated: None,
+            intended: None,
+            request: None,
+            answers: BTreeMap::new(),
         }
     }
 }

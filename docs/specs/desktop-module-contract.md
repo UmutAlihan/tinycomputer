@@ -29,7 +29,10 @@ engine's argument types, the permission preflight, and the bus surface.
   secrets, and the payment mode 1.8; 2.0 renamed the interface and object
   path from `tinydesktop` to `tinycomputer`; 2.1 added the flow `strategy`
   and the `survey` and `digest` loops, `specs/jev-wide-turns.md`; 2.2 added
-  the `reflection` loop, `specs/flow-reflection.md`) return an
+  the `reflection` loop, `specs/flow-reflection.md`; 2.3 added the flow
+  `deliberation` level and its eight loops, `specs/jev-deliberation.md`; 2.4
+  added task rescues, `budget.max_rescues`, `TaskReport.rescues`, and
+  `Capabilities.rescue_configured`, `specs/task-rescue.md`) return an
   `AgentResponse` instead — see [`unified-agent.md`](unified-agent.md). They
   share this interface because a TinyBus module exports one interface.
 - Members are named in `PascalCase`, matching the engine's command names where
@@ -83,7 +86,7 @@ engine's argument types, the permission preflight, and the bus surface.
   hint, platform detail, structured details, and delivery disposition. None of
   those may be flattened into the message.
 - The envelope's wire form is byte-identical to the `agent-desktop` CLI's stdout
-  envelope, version `2.3`, so a host needs one parser rather than two.
+  envelope, version `2.4`, so a host needs one parser rather than two.
 
 ### The contract crate
 

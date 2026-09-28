@@ -7,7 +7,7 @@
 
 pub(in crate::agentic) use tinycomputer_core::surface::{
     Candidate, Depth, Digest, MAX_CANDIDATES, Region, RegionKind, Rendering, Screen, change_note,
-    describe, digest, element_line, exact_named_match, fingerprint, label, signature,
+    describe, difference, digest, element_line, exact_named_match, fingerprint, label, signature,
     target_payload, untrusted_context,
 };
 

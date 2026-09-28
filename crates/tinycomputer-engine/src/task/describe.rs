@@ -7,19 +7,21 @@ use tinycomputer_bus::agent::names::{CONFIDENTIAL, methods};
 use tinycomputer_bus::agent::{Capabilities, Example, MemberDoc, SurfaceAvailability};
 use tinycomputer_bus::{CONTRACT_VERSION, FLOW_GUIDE, STEP_KINDS};
 
-/// The capabilities reply for a module with these surfaces and whether Jev
-/// is configured.
+/// The capabilities reply for a module with these surfaces and whether Jev,
+/// the planner, and the rescuer are configured.
 #[must_use]
 pub fn capabilities(
     surfaces: Vec<SurfaceAvailability>,
     jev_configured: bool,
     planner_configured: bool,
+    rescue_configured: bool,
 ) -> Capabilities {
     Capabilities {
         contract_version: CONTRACT_VERSION,
         surfaces,
         jev_configured,
         planner_configured,
+        rescue_configured,
         step_kinds: STEP_KINDS.iter().map(|kind| (*kind).to_owned()).collect(),
         guide: FLOW_GUIDE.to_owned(),
         members: members(),

@@ -55,10 +55,22 @@ impl Surface for Recorder {
             app: app.to_owned(),
             window: None,
             surface: "window".to_owned(),
-            candidates: vec![Candidate {
-                name: Some(format!("{} control", self.name)),
-                ..Candidate::default()
-            }],
+            candidates: vec![
+                Candidate {
+                    name: Some(format!("{} control", self.name)),
+                    ..Candidate::default()
+                },
+                Candidate {
+                    name: Some("Email".to_owned()),
+                    value: Some(serde_json::json!("asha@example.com")),
+                    ..Candidate::default()
+                },
+                Candidate {
+                    name: Some("Phone".to_owned()),
+                    value: Some(serde_json::json!("  ")),
+                    ..Candidate::default()
+                },
+            ],
             context: vec![format!("{} text", self.name)],
             unexplored: Vec::new(),
             text_nodes: Vec::new(),
@@ -97,6 +109,10 @@ impl Surface for Recorder {
 
     fn navigate(&self, _url: &str) -> DesktopResponse {
         self.note("navigate")
+    }
+
+    fn back(&self, _app: &str) -> DesktopResponse {
+        self.note("back")
     }
 }
 
@@ -171,6 +187,23 @@ fn unnamed_calls_follow_the_side_last_observed_or_opened() {
 }
 
 #[test]
+fn going_back_follows_the_active_side() {
+    let (workspace, calls) = workspace(true);
+    workspace.back("Mail");
+    workspace.navigate("https://flights.test");
+    workspace.back("browser");
+    assert_eq!(
+        drain(&calls),
+        ["desktop:back", "browser:navigate", "browser:back"]
+    );
+    let bare: Workspace<Recorder, Recorder> = Workspace::new(None, None);
+    assert_eq!(
+        bare.back("browser").error.unwrap().code,
+        "BROWSER_NOT_AVAILABLE"
+    );
+}
+
+#[test]
 fn a_failed_open_leaves_the_active_side_alone() {
     let calls = Arc::new(Mutex::new(Vec::new()));
     let mut browser = Recorder::new("browser", &calls);
@@ -232,12 +265,23 @@ fn visible_text_rereads_whatever_was_last_looked_at() {
     workspace.launch("Mail");
     assert_eq!(
         workspace.visible_text(),
-        ["desktop text", "desktop control"]
+        [
+            "desktop text",
+            "desktop control",
+            "Email = \"asha@example.com\"",
+            "Phone"
+        ],
+        "a field reads with what it holds"
     );
     workspace.navigate("https://flights.test");
     assert_eq!(
         workspace.visible_text(),
-        ["browser text", "browser control"]
+        [
+            "browser text",
+            "browser control",
+            "Email = \"asha@example.com\"",
+            "Phone"
+        ]
     );
     workspace.observe("Notes", None, Depth::Full).unwrap();
     assert_eq!(workspace.visible_text()[0], "desktop text");

@@ -14,9 +14,16 @@
 //!   [`PaymentMode::FillThenApprove`] the payment form is filled and pressing
 //!   it waits for `needs_approval`.
 //!
+//! - **a failed step** — when a rescuer is configured, a step that fails is
+//!   first handed to it ([`crate::Rescuer`]), up to five times a task: its
+//!   steps run in place of the failed one and the task carries on. Only when
+//!   it gives up, or the rescues are spent, does the task fail.
+//!
 //! Facts reach the flow as variables, so they are typed locally. Shared ones
 //! also brief Jev by value ([`FlowBrief`]); secret ones reach Jev only as
-//! `${name}`. The flow runs with `include_values` off, and every summary is
+//! `${name}`. The flow runs with `include_values` on, so Jev reads what a
+//! field holds and can check what was typed; the flow runtime masks every
+//! secret value, there too, before anything reaches Jev. Every summary is
 //! redacted of every fact.
 //!
 //! How a flow actually runs is behind [`FlowRunner`], so this controller is
@@ -25,7 +32,7 @@
 mod describe;
 mod interpret;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -34,18 +41,19 @@ use std::time::{Duration, Instant};
 
 use tinycomputer_bus::agent::{
     AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputField, InputKind,
-    PaymentMode, PlanTaskRequest, StartTaskRequest, StepView, TaskBudget, TaskConstraints, TaskId,
-    TaskPlan, TaskReport, TaskStatus, TaskView,
+    PaymentMode, PlanTaskRequest, Rescue, RescueOutcome, StartTaskRequest, StepView, TaskBudget,
+    TaskConstraints, TaskId, TaskPlan, TaskReport, TaskStatus, TaskView,
 };
 use tinycomputer_bus::{
     DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowStep, GroundingHint, JevExchange,
-    RunFlowRequest, StepReport,
+    RunFlowRequest, StepOutcome, StepReport,
 };
 use tinycomputer_core::Facts;
 use tokio::sync::watch;
 
 pub use describe::capabilities;
 
+use crate::rescue::{Briefing, Guidance, MAX_RESCUES, Rescuer, resumed};
 use interpret::{Next, Resume, finished, run_outcome};
 
 /// The future a [`FlowRunner`] returns: the flow runtime's reply envelope.
@@ -84,15 +92,19 @@ pub const MAX_AWAIT_MS: u64 = 60_000;
 
 /// Jev evaluations a task may spend when its budget does not say. Jev is
 /// cheap, so this is generous: every decision is voted on several ways.
-pub(crate) const DEFAULT_MODEL_CALLS: u32 = 3000;
+pub(crate) const DEFAULT_MODEL_CALLS: u32 = 6000;
 
 /// How many ways each decision is asked when a task's budget does not say.
-pub(crate) const DEFAULT_VOTES: u32 = 5;
+pub(crate) const DEFAULT_VOTES: u32 = 7;
+
+/// The longest one rescue may think before the task fails without it.
+pub(crate) const RESCUE_TIMEOUT_MS: u64 = 120_000;
 
 /// The task controller.
 pub struct Tasks {
     runner: Arc<dyn FlowRunner>,
     planner: Option<crate::planner::Planner>,
+    rescuer: Option<Rescuer>,
     cells: Mutex<BTreeMap<u64, Arc<Cell>>>,
     counter: AtomicU64,
 }
@@ -108,6 +120,8 @@ struct Cell {
     view: watch::Sender<TaskView>,
     state: Mutex<State>,
     worker: Mutex<Option<tokio::task::AbortHandle>>,
+    /// Who a failed step is handed to before the task fails.
+    rescuer: Option<Rescuer>,
 }
 
 struct State {
@@ -130,6 +144,8 @@ struct State {
     /// human intervention that splits a task into several runs still cannot
     /// exceed its declared budget by starting each run with a fresh one.
     spent: Spent,
+    /// Every rescue so far, in order.
+    rescues: Vec<Rescue>,
 }
 
 /// A task's cumulative spend against its [`TaskBudget`], across every run.
@@ -144,6 +160,9 @@ struct Spent {
 struct Run {
     flow: Flow,
     allow_destructive: bool,
+    /// The rescue whose guidance opens this run, by its index in
+    /// `State::rescues`.
+    rescue: Option<usize>,
 }
 
 impl Tasks {
@@ -153,6 +172,7 @@ impl Tasks {
         Self {
             runner,
             planner: None,
+            rescuer: None,
             cells: Mutex::new(BTreeMap::new()),
             counter: AtomicU64::new(0),
         }
@@ -164,6 +184,20 @@ impl Tasks {
     pub fn with_planner(mut self, planner: crate::planner::Planner) -> Self {
         self.planner = Some(planner);
         self
+    }
+
+    /// This controller, handing a failed step to `rescuer` for guidance
+    /// before the task fails.
+    #[must_use]
+    pub fn with_rescuer(mut self, rescuer: Rescuer) -> Self {
+        self.rescuer = Some(rescuer);
+        self
+    }
+
+    /// Whether a rescuer is configured.
+    #[must_use]
+    pub fn rescue_configured(&self) -> bool {
+        self.rescuer.is_some()
     }
 
     /// Whether a planner is configured.
@@ -265,6 +299,7 @@ impl Tasks {
                 vec![Run {
                     allow_destructive: request.constraints.allow_destructive,
                     flow,
+                    rescue: None,
                 }],
             );
         } else {
@@ -359,6 +394,7 @@ impl Tasks {
             artifacts: Vec::new(),
             learned: state.learned.clone(),
             trace: state.exchanges.clone(),
+            rescues: state.rescues.clone(),
         })
     }
 
@@ -417,6 +453,7 @@ impl Tasks {
         let run = Run {
             flow: state.flow.clone(),
             allow_destructive: state.constraints.allow_destructive,
+            rescue: None,
         };
         drop(state);
         self.spawn(cell, vec![run]);
@@ -447,6 +484,7 @@ impl Tasks {
                     steps: vec![FlowStep::Action(FlowAction::StopBefore(phrase))],
                 },
                 allow_destructive: true,
+                rescue: None,
             }];
             if !rest.is_empty() {
                 runs.push(Run {
@@ -456,6 +494,7 @@ impl Tasks {
                         steps: rest,
                     },
                     allow_destructive: allow,
+                    rescue: None,
                 });
             }
             self.spawn(cell, runs);
@@ -485,6 +524,7 @@ impl Tasks {
                 vec![Run {
                     flow: Flow { app, vars, steps },
                     allow_destructive: allow,
+                    rescue: None,
                 }],
             );
         }
@@ -519,8 +559,10 @@ impl Tasks {
                 finished: 0,
                 resume: None,
                 spent: Spent::default(),
+                rescues: Vec::new(),
             }),
             worker: Mutex::new(None),
+            rescuer: self.rescuer.clone(),
         });
         let mut tasks = self.cells.lock().ok()?;
         while tasks.len() >= MAX_TASKS {
@@ -645,6 +687,7 @@ async fn plan_then_drive(
             vec![Run {
                 flow: plan.flow,
                 allow_destructive: allow,
+                rescue: None,
             }],
         )
         .await;
@@ -695,11 +738,14 @@ fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraint
             vars,
             facts,
             allow_destructive: run.allow_destructive,
-            include_values: false,
+            // Jev must read what the fields hold to check what was typed.
+            // Secret values are masked in everything the runtime sends Jev.
+            include_values: true,
             max_actions,
             max_model_calls,
             votes: state.budget.votes.unwrap_or(DEFAULT_VOTES),
             strategy: state.budget.strategy.unwrap_or_default(),
+            deliberation: state.budget.deliberation.unwrap_or_default(),
             brief: brief(&state),
             memory: state.memory.clone(),
             trace: state.trace,
@@ -761,7 +807,8 @@ fn brief(state: &State) -> FlowBrief {
 /// inside — so it is enforced here instead, by timing out a run that would
 /// otherwise run past what remains of it.
 async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
-    for run in runs {
+    let mut runs = VecDeque::from(runs);
+    while let Some(run) = runs.pop_front() {
         let Some((request, constraints, time_left)) = run_request(&cell, &run) else {
             return;
         };
@@ -783,11 +830,17 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         };
         let spent_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
         let (next, result) = run_outcome(&run.flow, &reply, constraints.payment);
+        let reached = result
+            .as_ref()
+            .map_or_else(Vec::new, |result| result.steps.clone());
         let redacted = {
             let Ok(mut state) = cell.state.lock() else {
                 return;
             };
             state.spent.elapsed_ms = state.spent.elapsed_ms.saturating_add(spent_ms);
+            if let Some(rescue) = run.rescue.and_then(|index| state.rescues.get_mut(index)) {
+                rescue.outcome = rescue_outcome(&reached, rescue.steps.len());
+            }
             if let Some(result) = result {
                 state.spent.actions = state.spent.actions.saturating_add(result.actions);
                 state.spent.model_calls =
@@ -809,6 +862,13 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         };
         if let Next::Stop { status, .. } = next {
             let status = human_wall(&cell, runner.as_ref(), *status).await;
+            let status = match rescued(&cell, runner.as_ref(), &run, status, reached).await {
+                Ok(status) => status,
+                Err(rescued) => {
+                    runs.push_front(rescued);
+                    continue;
+                }
+            };
             let summary = redacted.redact(&stopped_summary(&status));
             let ended = matches!(
                 status,
@@ -821,6 +881,11 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
             return;
         }
     }
+    finish(&cell, runner.as_ref());
+}
+
+/// Every run finished: the task is done, with what it read.
+fn finish(cell: &Cell, runner: &dyn FlowRunner) {
     let answer = {
         let Ok(state) = cell.state.lock() else {
             return;
@@ -842,7 +907,7 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         (state.facts.redact(&answer), records(&state.reads))
     };
     publish(
-        &cell,
+        cell,
         TaskStatus::Done {
             answer: answer.0.clone(),
             records: answer.1,
@@ -850,6 +915,209 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         &answer.0,
     );
     runner.release(&cell.view.borrow().id);
+}
+
+/// A recoverable failure of a top-level step is first rescued: `Err` holds
+/// the run the guidance makes, to run next. Anything else, or a rescue that
+/// gave up or was not tried, is the status to publish.
+async fn rescued(
+    cell: &Cell,
+    runner: &dyn FlowRunner,
+    run: &Run,
+    status: TaskStatus,
+    reached: Vec<StepReport>,
+) -> Result<TaskStatus, Run> {
+    let TaskStatus::Failed {
+        step: Some(failed),
+        reason,
+        hint,
+        recoverable: true,
+    } = status
+    else {
+        return Ok(status);
+    };
+    let hint = match rescue(cell, runner, run, failed, &reason, reached).await {
+        Rescued::Run(rescued) => return Err(rescued),
+        Rescued::GaveUp(why) => {
+            format!("the rescuer gave up: {why}; reword the step, split it, or take over")
+        }
+        Rescued::Skipped => hint,
+    };
+    Ok(TaskStatus::Failed {
+        step: Some(failed),
+        reason,
+        hint,
+        recoverable: true,
+    })
+}
+
+/// What a rescue came to.
+enum Rescued {
+    /// Run this next: the guidance, then the rest of the failed run.
+    Run(Run),
+    /// The rescuer gave up, failed, or gave no valid guidance, for this
+    /// reason.
+    GaveUp(String),
+    /// No rescue was tried: none is configured, or the task's are spent.
+    Skipped,
+}
+
+/// Hands the step `failed` of `run`, which failed for `failure`, to the
+/// task's rescuer, with what the run reached and the screen now — every
+/// fact value redacted. Returns the run its guidance makes, or why not.
+async fn rescue(
+    cell: &Cell,
+    runner: &dyn FlowRunner,
+    run: &Run,
+    failed: usize,
+    failure: &str,
+    reached: Vec<StepReport>,
+) -> Rescued {
+    let Some(rescuer) = cell.rescuer.clone() else {
+        return Rescued::Skipped;
+    };
+    let (facts, goal, earlier, limit, time_left, brief_rules) = {
+        let Ok(state) = cell.state.lock() else {
+            return Rescued::Skipped;
+        };
+        let limit = state
+            .budget
+            .max_rescues
+            .unwrap_or(MAX_RESCUES)
+            .min(MAX_RESCUES);
+        let used = u32::try_from(state.rescues.len()).unwrap_or(u32::MAX);
+        if used >= limit {
+            return Rescued::Skipped;
+        }
+        let time_left = state
+            .budget
+            .max_elapsed_ms
+            .map(|max| max.saturating_sub(state.spent.elapsed_ms));
+        (
+            state.facts.clone(),
+            state.goal.clone(),
+            state.rescues.clone(),
+            limit,
+            time_left,
+            brief(&state).rules,
+        )
+    };
+    let attempt = earlier.len() + 1;
+    let id = cell.view.borrow().id.clone();
+    let screen = runner
+        .visible_text(&id)
+        .await
+        .iter()
+        .map(|line| facts.redact(&facts.mask(line)))
+        .collect();
+    let briefing = Briefing {
+        goal: facts.redact(&goal),
+        flow: run.flow.clone(),
+        failed,
+        failure: facts.redact(failure),
+        steps: reached
+            .into_iter()
+            .map(|mut step| {
+                step.text = facts.redact(&step.text);
+                step.note = facts.redact(&step.note);
+                step
+            })
+            .collect(),
+        earlier,
+        screen,
+        rules: brief_rules,
+        known: known_names(&run.flow, &facts),
+        secrets: fact_names(&facts),
+    };
+    publish(
+        cell,
+        TaskStatus::Running,
+        &format!(
+            "Step {} failed; asking for guidance (rescue {attempt} of {limit}).",
+            failed + 1
+        ),
+    );
+    let started = Instant::now();
+    let wait = time_left.map_or(RESCUE_TIMEOUT_MS, |left| left.min(RESCUE_TIMEOUT_MS));
+    let answer = tokio::time::timeout(Duration::from_millis(wait), rescuer.guide(&briefing))
+        .await
+        .unwrap_or_else(|_| Err("the rescuer took too long".to_owned()));
+    let spent_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+    let (record, guided) = record(failed, briefing.failure.clone(), answer);
+    let guided = guided.map(|steps| resumed(&briefing, steps, record.covers));
+    let reason = facts.redact(&record.reason);
+    let index = {
+        let Ok(mut state) = cell.state.lock() else {
+            return Rescued::Skipped;
+        };
+        state.spent.elapsed_ms = state.spent.elapsed_ms.saturating_add(spent_ms);
+        state.rescues.push(record);
+        state.rescues.len() - 1
+    };
+    let Some(flow) = guided else {
+        return Rescued::GaveUp(reason);
+    };
+    publish(
+        cell,
+        TaskStatus::Running,
+        &format!("Rescue {attempt} of {limit}: {reason}"),
+    );
+    Rescued::Run(Run {
+        flow,
+        allow_destructive: run.allow_destructive,
+        rescue: Some(index),
+    })
+}
+
+/// The record of a rescue of step `failed`, and the guidance's steps when
+/// it gave any.
+fn record(
+    failed: usize,
+    failure: String,
+    answer: Result<Guidance, String>,
+) -> (Rescue, Option<Vec<FlowStep>>) {
+    let (reason, steps, covers, outcome) = match answer {
+        Ok(Guidance::Retry {
+            reason,
+            steps,
+            covers,
+        }) => (reason, steps, covers, RescueOutcome::Running),
+        Ok(Guidance::GiveUp { reason }) | Err(reason) => {
+            (reason, Vec::new(), 0, RescueOutcome::GaveUp)
+        }
+    };
+    let guided = (outcome == RescueOutcome::Running).then(|| steps.clone());
+    (
+        Rescue {
+            step: failed,
+            failure,
+            reason,
+            steps,
+            covers,
+            outcome,
+        },
+        guided,
+    )
+}
+
+/// How a rescue went, from the steps its run reached: recovered when each
+/// of the `count` guidance steps (the run's first top-level steps) finished
+/// or reached its approval.
+fn rescue_outcome(reached: &[StepReport], count: usize) -> RescueOutcome {
+    let finished = (1..=count).all(|number| {
+        reached.iter().any(|step| {
+            step.path == number.to_string()
+                && matches!(
+                    step.outcome,
+                    StepOutcome::Done | StepOutcome::AlreadyDone | StepOutcome::Gated
+                )
+        })
+    });
+    if finished {
+        RescueOutcome::Recovered
+    } else {
+        RescueOutcome::FailedAgain
+    }
 }
 
 /// A recoverable failure in front of something only a person can pass — a

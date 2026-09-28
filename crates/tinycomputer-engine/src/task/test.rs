@@ -193,11 +193,14 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
 
     let request = &script.requests.lock().unwrap()[0];
     assert_eq!(request.vars["email"], "asha@example.com");
-    assert!(!request.include_values, "field values never leave for Jev");
+    assert!(
+        request.include_values,
+        "Jev reads what fields hold; the runtime masks secrets"
+    );
     assert!(!request.allow_destructive);
     assert_eq!(
         (request.max_actions, request.max_model_calls, request.votes),
-        (120, 3000, 5)
+        (120, 6000, 7)
     );
     assert!(request.facts.is_empty(), "an email is shared, not secret");
     assert_eq!(request.brief.details["email"], "asha@example.com");
@@ -939,7 +942,7 @@ fn the_app_in_front_is_the_last_opened_before_a_step() {
 
 #[tokio::test]
 async fn describe_documents_every_member_and_its_examples_really_work() {
-    let described = capabilities(Vec::new(), true, false);
+    let described = capabilities(Vec::new(), true, false, false);
     let names = described
         .members
         .iter()
@@ -955,6 +958,8 @@ async fn describe_documents_every_member_and_its_examples_really_work() {
     assert_eq!(confidential, tinycomputer_bus::agent::names::CONFIDENTIAL);
     assert!(described.step_kinds.iter().any(|kind| kind == "browse"));
     assert!(!described.planner_configured);
+    assert!(!described.rescue_configured);
+    assert!(capabilities(Vec::new(), true, true, true).rescue_configured);
 
     let flight = &described.examples[0];
     assert_eq!(flight.member, "StartTask");
@@ -1248,3 +1253,5 @@ async fn a_run_gets_the_callers_values_and_the_flow_keeps_its_own_definitions() 
     );
     assert_eq!(request.flow.vars["first_name"], "${first name}");
 }
+
+mod rescue;

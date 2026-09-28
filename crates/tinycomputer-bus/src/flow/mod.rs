@@ -9,10 +9,10 @@
 mod types;
 
 pub use types::{
-    ChooseStep, Flow, FlowAction, FlowActionRecord, FlowBrief, FlowLoop, FlowRunResult, FlowStep,
-    FlowStopReason, FlowStrategy, FlowValidation, GroundingHint, IfStep, JevExchange, PickStep,
-    ReadStep, RepeatStep, RunFlowRequest, STEP_KINDS, Slot, Slots, StepOutcome, StepReport,
-    ValidateFlowRequest,
+    ChooseStep, Deliberation, Flow, FlowAction, FlowActionRecord, FlowBrief, FlowLoop,
+    FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, FlowValidation, GroundingHint, IfStep,
+    JevExchange, PickStep, ReadStep, RepeatStep, RunFlowRequest, STEP_KINDS, Slot, Slots,
+    StepOutcome, StepReport, ValidateFlowRequest,
 };
 
 /// How to write a flow: the grammar, rules of thumb, and worked examples.

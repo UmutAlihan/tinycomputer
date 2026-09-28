@@ -3,8 +3,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{
-    FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowLoop, FlowStep, FlowStopReason, FlowStrategy,
-    GroundingHint, RunFlowRequest, Slot, Slots, StepOutcome,
+    Deliberation, FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowLoop, FlowStep, FlowStopReason,
+    FlowStrategy, GroundingHint, RunFlowRequest, Slot, Slots, StepOutcome,
 };
 use serde_json::json;
 
@@ -117,11 +117,12 @@ fn run_requests_default_to_safe_bounded_runs() {
     assert!(!request.allow_destructive && !request.include_values);
     assert_eq!(
         (request.max_actions, request.max_model_calls, request.votes),
-        (60, 1500, 5)
+        (60, 3000, 7)
     );
     assert!(request.brief.is_empty());
     assert!(request.disabled_loops.is_empty() && request.memory.is_empty() && !request.trace);
     assert_eq!(request.strategy, FlowStrategy::Narrow);
+    assert_eq!(request.deliberation, Deliberation::Deep);
     assert_eq!(
         request,
         RunFlowRequest {
@@ -186,9 +187,43 @@ fn a_brief_pins_its_wire_form_and_defaults_empty() {
         (FlowLoop::Survey, "survey"),
         (FlowLoop::Digest, "digest"),
         (FlowLoop::Reflection, "reflection"),
+        (FlowLoop::Evidence, "evidence"),
+        (FlowLoop::Escalation, "escalation"),
+        (FlowLoop::Duel, "duel"),
+        (FlowLoop::TreeGrounding, "tree_grounding"),
+        (FlowLoop::Denoise, "denoise"),
+        (FlowLoop::Expectation, "expectation"),
+        (FlowLoop::Checkpoint, "checkpoint"),
+        (FlowLoop::Backtrack, "backtrack"),
+        (FlowLoop::Attention, "attention"),
     ] {
         assert_eq!(serde_json::to_value(flow_loop).unwrap(), json!(wire));
     }
+}
+
+#[test]
+fn a_deliberation_level_pins_its_wire_spelling_and_round_trips() {
+    for (level, wire) in [
+        (Deliberation::Off, "off"),
+        (Deliberation::Standard, "standard"),
+        (Deliberation::Deep, "deep"),
+    ] {
+        assert_eq!(serde_json::to_value(level).unwrap(), json!(wire));
+        let request: RunFlowRequest = serde_json::from_value(json!({
+            "flow": {"app": "Mail", "steps": ["x"]},
+            "deliberation": wire
+        }))
+        .unwrap();
+        assert_eq!(request.deliberation, level);
+    }
+    assert!(
+        serde_json::from_value::<RunFlowRequest>(json!({
+            "flow": {"app": "Mail", "steps": ["x"]},
+            "deliberation": "maximum"
+        }))
+        .is_err(),
+        "an unknown deliberation level is refused, never read as a default"
+    );
 }
 
 #[test]

@@ -125,6 +125,7 @@ fn request(base: &str) -> Result<StartTaskRequest, serde_json::Error> {
         trace: true,
         budget: tinycomputer_bus::agent::TaskBudget {
             strategy: tinycomputer_examples::flow_strategy_from_env(),
+            deliberation: tinycomputer_examples::flow_deliberation_from_env(),
             ..tinycomputer_bus::agent::TaskBudget::default()
         },
         ..StartTaskRequest::default()

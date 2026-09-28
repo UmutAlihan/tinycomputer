@@ -1,0 +1,162 @@
+{
+  "app": "browser",
+  "vars": {
+    "destination": "Srinagar (SXR)",
+    "origin": "Delhi (DEL)",
+    "travel_date": "Sunday 18 October 2026"
+  },
+  "steps": [
+    {
+      "browse": "https://www.google.com/travel/flights?q=Flights%20to%20SXR%20from%20DEL%20on%202026-10-18%20oneway&curr=INR&hl=en&gl=IN"
+    },
+    {
+      "wait_for": "a list of one-way flight results from ${origin} to ${destination} is showing"
+    },
+    {
+      "pick": {
+        "from": "the flight results",
+        "by": "lowest price",
+        "into": "cheapest_flight"
+      }
+    },
+    {
+      "verify": "flight results with prices are showing"
+    },
+    {
+      "browse": "https://www.goindigo.in/"
+    },
+    {
+      "if": {
+        "condition": "a cookie banner is visible",
+        "then": [
+          "dismiss the cookie banner by accepting essential cookies only"
+        ],
+        "else": []
+      }
+    },
+    "choose the One Way trip type",
+    "confirm the source city is ${origin}",
+    {
+      "choose": {
+        "what": "the destination city selector",
+        "option": "Srinagar"
+      }
+    },
+    {
+      "choose": {
+        "what": "the departure date calendar",
+        "option": "18 October 2026"
+      }
+    },
+    "search for flights",
+    {
+      "wait_for": "a list of flights for ${travel_date} from ${origin} to ${destination} is showing"
+    },
+    {
+      "pick": {
+        "from": "the IndiGo flight results",
+        "by": "lowest price",
+        "into": "selected_flight"
+      }
+    },
+    {
+      "choose": {
+        "what": "the fare type for the selected flight",
+        "option": "Saver"
+      }
+    },
+    {
+      "repeat_until": {
+        "condition": "a passenger details form with first name and last name fields is showing",
+        "steps": [
+          "continue to passenger details"
+        ],
+        "max": 3
+      }
+    },
+    {
+      "enter": {
+        "first and middle name": "${first name}",
+        "last name": "${last name}",
+        "date of birth": "${date of birth}"
+      }
+    },
+    {
+      "if": {
+        "condition": "a passenger title field is shown",
+        "then": [
+          {
+            "choose": {
+              "what": "the passenger title",
+              "option": "${title}"
+            }
+          }
+        ],
+        "else": []
+      }
+    },
+    {
+      "choose": {
+        "what": "the passenger gender",
+        "option": "${gender}"
+      }
+    },
+    {
+      "enter": {
+        "contact email": "${email}",
+        "contact mobile number": "${mobile number}"
+      }
+    },
+    {
+      "if": {
+        "condition": "an unticked checkbox agreeing to the airline's Conditions of Carriage is shown",
+        "then": [
+          "tick the Conditions of Carriage checkbox"
+        ],
+        "else": []
+      }
+    },
+    {
+      "repeat_until": {
+        "condition": "the add-ons page is showing",
+        "steps": [
+          "continue to the add-ons page"
+        ],
+        "max": 3
+      }
+    },
+    {
+      "repeat_until": {
+        "condition": "the seat selection page is showing",
+        "steps": [
+          "continue past the add-ons page without adding anything"
+        ],
+        "max": 3
+      }
+    },
+    {
+      "if": {
+        "condition": "a free window seat is offered",
+        "then": [
+          "choose a free window seat"
+        ],
+        "else": []
+      }
+    },
+    {
+      "repeat_until": {
+        "condition": "the payment page is showing",
+        "steps": [
+          "continue to the payment page, pressing Skip when no seat is chosen"
+        ],
+        "max": 3
+      }
+    },
+    {
+      "verify": "the trip summary shows 1 Adult, ${origin} to ${destination}, on ${travel_date}"
+    },
+    {
+      "stop_before": "paying for the booking"
+    }
+  ]
+}

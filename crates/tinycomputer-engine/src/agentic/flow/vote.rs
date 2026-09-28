@@ -18,6 +18,12 @@
 //! with the winner), a Noul by its probability, a Score by its per-level
 //! probabilities. Framing 0 is always the request as built, so voting once
 //! is exactly asking once.
+//!
+//! Each framing's own answer is kept too, under the original keys, as the
+//! question's ballot: how many framings agreed with the winner, and by how
+//! much, is the evidence deliberation (`evidence.rs`) decides on. A
+//! deliberating decision may later be asked in further framings (`widen`),
+//! whose answers join the same ballot.
 
 use std::collections::BTreeMap;
 
@@ -45,7 +51,13 @@ pub(super) struct Framing {
 
 /// `count` framings of `request`, the first being `request` itself.
 pub(super) fn framings(request: &EvaluationRequest, count: u32) -> Vec<Framing> {
-    (0..count.clamp(1, MAX_VOTES))
+    framings_between(request, 0, count.clamp(1, MAX_VOTES))
+}
+
+/// Framings `from` up to, not including, `to` of `request`, at most
+/// [`MAX_VOTES`] in all: the further framings a widened decision is asked in.
+pub(super) fn framings_between(request: &EvaluationRequest, from: u32, to: u32) -> Vec<Framing> {
+    (from..to.min(MAX_VOTES))
         .map(|index| frame(request, index as usize))
         .collect()
 }
@@ -150,9 +162,11 @@ fn keys_for(count: usize, index: usize) -> Vec<String> {
         .collect()
 }
 
-/// The answers of every framing that came back, merged per question under
-/// the original keys.
-pub(super) fn merge(answered: &[(Framing, BTreeMap<String, Answer>)]) -> BTreeMap<String, Answer> {
+/// Every framing's answer to each question, under the original keys, in
+/// framing order: the question's ballot.
+pub(super) fn ballots(
+    answered: &[(Framing, BTreeMap<String, Answer>)],
+) -> BTreeMap<String, Vec<Answer>> {
     let Some((first, _)) = answered.first() else {
         return BTreeMap::new();
     };
@@ -160,15 +174,24 @@ pub(super) fn merge(answered: &[(Framing, BTreeMap<String, Answer>)]) -> BTreeMa
         .request
         .questions
         .keys()
-        .filter_map(|id| {
+        .map(|id| {
             let answers = answered
                 .iter()
                 .filter_map(|(framing, answers)| {
                     Some(original(framing, id, answers.get(id)?.clone()))
                 })
                 .collect::<Vec<_>>();
-            Some((id.clone(), average(&answers)?))
+            (id.clone(), answers)
         })
+        .filter(|(_, answers)| !answers.is_empty())
+        .collect()
+}
+
+/// Each question's ballot averaged into one answer.
+pub(super) fn tally(ballots: &BTreeMap<String, Vec<Answer>>) -> BTreeMap<String, Answer> {
+    ballots
+        .iter()
+        .filter_map(|(id, answers)| Some((id.clone(), average(answers)?)))
         .collect()
 }
 

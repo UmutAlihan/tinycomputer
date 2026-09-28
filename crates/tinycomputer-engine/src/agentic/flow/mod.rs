@@ -20,6 +20,12 @@
 //!   the screen, carrying the judgement, the obstacle, and every move's
 //!   target; `survey` ranks a crowded screen's regions first, and `ledger`
 //!   is the working memory every wide question sees.
+//! - Deliberation (`docs/specs/jev-deliberation.md`) decides on evidence
+//!   rather than one probability: `evidence` reads a question's ballot into
+//!   accept, deliberate, or abstain; `escalate` asks a close call more ways,
+//!   `duel` settles close candidates two at a time; `denoise` ranks what is
+//!   in view first; `expect` checks an action did what it should; and
+//!   `checkpoint` undoes a mistake and verifies the undo.
 //!
 //! Every request carries the run's brief — the goal, whom it is for, the
 //! plan and where the run is in it, what it has chosen so far, and what kind
@@ -31,8 +37,15 @@
 
 mod act;
 mod ask;
+mod attention;
 mod backend;
+mod checkpoint;
+mod denoise;
+mod duel;
 mod enter;
+mod escalate;
+mod evidence;
+mod expect;
 mod ground;
 mod ledger;
 mod memory;
@@ -58,9 +71,10 @@ use std::{
 
 use serde_json::{Value, json};
 use tinycomputer_bus::{
-    DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowBrief,
-    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint, JevExchange,
-    JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
+    Deliberation, DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord,
+    FlowBrief, FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint,
+    JevExchange, JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport,
+    ValidateFlowRequest,
 };
 use tinycomputer_core::Facts;
 use tinyinference_decisions::{Answer, EvaluationRequest, Question};
@@ -75,7 +89,7 @@ use view::{Candidate, Depth, Screen, target_payload};
 const MAX_ACTIONS: u32 = 120;
 /// Upper bound on [`RunFlowRequest::max_model_calls`]. Jev is cheap, and
 /// every framing of a voted decision is one evaluation.
-const MAX_CALLS: u32 = 5000;
+const MAX_CALLS: u32 = 10_000;
 /// Choices, picks, and entries remembered for the brief's `so_far`.
 const MAX_SO_FAR: usize = 12;
 /// Longest goal the brief carries, in characters.
@@ -258,6 +272,28 @@ pub(super) struct FlowRun<'r, B> {
     /// field holding text the flow typed shows no choice the page made
     /// (`steps::already_holds`).
     pub(super) typed: BTreeSet<String>,
+    /// How much the run deliberates before acting on a decision.
+    deliberation: Deliberation,
+    /// Every framing's own answer to each question, under the original
+    /// keys, from the latest decision that asked it: the evidence a
+    /// deliberating decision reads (`evidence.rs`) and widens (`escalate`).
+    ballots: BTreeMap<String, Vec<tinyinference_decisions::Answer>>,
+    /// The address the surface last reported, on a surface that has them:
+    /// a checkpoint's location, and how a navigation is noticed.
+    pub(super) location: Option<String>,
+    /// The runners-up of the step's latest grounding, best first: the
+    /// branches a backtrack tries next (`checkpoint.rs`).
+    pub(super) frontier: Vec<Candidate>,
+    /// The last press and what it was meant to do, while the turn after it
+    /// is judged: the judge then asks whether it did (`expect.rs`).
+    pub(super) expecting: Option<(String, String)>,
+    /// The address the current step began at, to return to when the step
+    /// is found to have gone wrong.
+    pub(super) step_location: Option<String>,
+    /// What the current step cleared out of the way (`attention.rs`), by
+    /// control signature, across every loop that attends within it: an
+    /// Escape or a close that did not clear it once will not the next time.
+    pub(super) step_cleared: BTreeSet<String>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -361,6 +397,13 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             read: Vec::new(),
             refused: BTreeSet::new(),
             typed: BTreeSet::new(),
+            deliberation: request.deliberation,
+            ballots: BTreeMap::new(),
+            location: None,
+            frontier: Vec::new(),
+            expecting: None,
+            step_location: None,
+            step_cleared: BTreeSet::new(),
         }
     }
 
@@ -392,11 +435,9 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let action = step.action();
         let (kind, text) = describe_step(&action, &self.vars, &self.facts);
         let mut log = StepLog::default();
-        self.step.clone_from(&path);
-        self.ledger.begin();
-        self.refused.clear();
+        self.begin_step(&path);
         let started = Instant::now();
-        let result = steps::run(self, &mut log, &action, &text, &path).await;
+        let result = self.run_action(&mut log, &action, &text, &path).await;
         let result = self.reflected(&mut log, &action, &text, result).await;
         let wall_ms = millis(started.elapsed());
         let (ended, halt) = match result {
@@ -489,8 +530,57 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         }
     }
 
+    /// Runs one step's action. A step that grounds an element first clears
+    /// what is in the way (`attention.rs`); a `do` step attends every turn.
+    async fn run_action(
+        &mut self,
+        log: &mut StepLog,
+        action: &FlowAction,
+        text: &str,
+        path: &str,
+    ) -> Result<Ended, Halt> {
+        if matches!(
+            action,
+            FlowAction::Choose(_)
+                | FlowAction::Enter(_)
+                | FlowAction::Pick(_)
+                | FlowAction::Read(_)
+                | FlowAction::Extract(_)
+                | FlowAction::StopBefore(_)
+        ) {
+            self.clear_the_way(log, text).await?;
+        }
+        steps::run(self, log, action, text, path).await
+    }
+
+    /// Resets what one step keeps, before step `path` runs.
+    fn begin_step(&mut self, path: &str) {
+        path.clone_into(&mut self.step);
+        self.ledger.begin();
+        self.refused.clear();
+        self.frontier.clear();
+        self.step_location.clone_from(&self.location);
+        self.step_cleared.clear();
+    }
+
     pub(super) fn enabled(&self, flow_loop: FlowLoop) -> bool {
         !self.disabled.contains(&flow_loop)
+    }
+
+    /// Whether the run deliberates on evidence at all, and `flow_loop` —
+    /// one of deliberation's loops — is on.
+    pub(super) fn deliberates(&self, flow_loop: FlowLoop) -> bool {
+        self.deliberation != Deliberation::Off && self.enabled(flow_loop)
+    }
+
+    /// Whether the run deliberates at the deep level.
+    pub(super) fn deep(&self) -> bool {
+        self.deliberation == Deliberation::Deep
+    }
+
+    /// Jev evaluations the run may still make.
+    pub(super) fn room(&self) -> u32 {
+        self.max_calls.saturating_sub(self.metrics.calls)
     }
 
     pub(super) fn model(&self) -> &str {
@@ -545,26 +635,10 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         }
         let batched = requests.len();
         let mut asked = Vec::with_capacity(batched);
-        for mut request in requests {
-            if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
-                log.used(FlowLoop::PageKind);
-                request
-                    .questions
-                    .insert(PAGE_KIND.to_owned(), ask::page_kind());
-            }
-            self.brief_into(&mut request);
-            self.mask(&mut request);
-            fit(&mut request, MAX_REQUEST_BYTES);
+        for request in requests {
+            let request = self.outgoing(log, request);
             let framings = vote::framings(&request, votes);
-            let handles = framings
-                .iter()
-                .map(|framing| {
-                    let runtime = self.runtime.clone();
-                    let step = self.step.clone();
-                    let request = framing.request.clone();
-                    tokio::spawn(async move { runtime.evaluate(Some(&step), &request).await })
-                })
-                .collect::<Vec<_>>();
+            let handles = self.spawn(&framings);
             asked.push((request, framings, handles));
         }
         self.rounds = self.rounds.saturating_add(1);
@@ -592,7 +666,12 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 (true, None) => {
                     return Err(Halt::Failed("no Jev evaluation completed".to_owned()));
                 }
-                _ => vote::merge(&answered),
+                _ => {
+                    let ballots = vote::ballots(&answered);
+                    let merged = vote::tally(&ballots);
+                    self.ballots.extend(ballots);
+                    merged
+                }
             };
             // The decision's wall time: its framings run at once, and the
             // batch's requests with them, so this is the slowest framing so
@@ -624,6 +703,44 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         Ok(replies)
     }
 
+    /// `request` as it leaves for Jev: with the page-kind question on a web
+    /// page, briefed, masked, and fitted to size.
+    fn outgoing(&self, log: &mut StepLog, mut request: EvaluationRequest) -> EvaluationRequest {
+        if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
+            log.used(FlowLoop::PageKind);
+            request
+                .questions
+                .insert(PAGE_KIND.to_owned(), ask::page_kind());
+        }
+        self.brief_into(&mut request);
+        self.mask(&mut request);
+        fit(&mut request, MAX_REQUEST_BYTES);
+        request
+    }
+
+    /// Sends every framing to Jev at once.
+    fn spawn(
+        &self,
+        framings: &[vote::Framing],
+    ) -> Vec<
+        tokio::task::JoinHandle<
+            Result<
+                tinyinference_decisions::EvaluationResult,
+                tinyinference_decisions::EvaluationFailure,
+            >,
+        >,
+    > {
+        framings
+            .iter()
+            .map(|framing| {
+                let runtime = self.runtime.clone();
+                let step = self.step.clone();
+                let request = framing.request.clone();
+                tokio::spawn(async move { runtime.evaluate(Some(&step), &request).await })
+            })
+            .collect()
+    }
+
     /// Adds the run's brief — the goal, whom it is for, the plan with this
     /// step marked, what has been chosen so far, and the kind of page showing
     /// — to the questions that choose: which element, option, move, field,
@@ -640,7 +757,11 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         for (id, question) in &mut request.questions {
             let instructions = match question {
                 Question::Choice(choice) if id != PAGE_KIND => &mut choice.instructions,
-                Question::Noul(noul) if BRIEFED_NOULS.contains(&id.as_str()) => {
+                Question::Noul(noul)
+                    if BRIEFED_NOULS.contains(&id.as_str())
+                        || id.starts_with("is_")
+                        || id.starts_with("only_near_") =>
+                {
                     &mut noul.instructions
                 }
                 _ => continue,
@@ -839,6 +960,15 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let started = Instant::now();
         let reply = self.backend_call(call).await;
         let acted_ms = millis(started.elapsed());
+        if let Some(url) = reply
+            .data
+            .as_ref()
+            .and_then(|data| data.get("url"))
+            .and_then(Value::as_str)
+            .filter(|url| !url.is_empty())
+        {
+            self.location = Some(url.to_owned());
+        }
         let note = match (&reply.error, &reply.data) {
             (Some(error), _) => error.code.clone(),
             (None, Some(data)) => data

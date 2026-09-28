@@ -22,5 +22,7 @@ What we found when we researched the sites for an automated browser:
 Plan: compare fares on Google Flights, pick the cheapest, then book the
 cheapest IndiGo flight for that date on goindigo.in as a guest. Choose the
 lowest fare type (e.g. "Saver"), continue, fill the passenger and contact
-details from the facts, decline seats, meals, insurance and every other paid
-extra, and stop before paying.
+details from the facts, decline meals, insurance and every other paid extra,
+and stop before paying. Never pay for anything but the fare. On the seat page,
+take a free window seat if one is shown; if no free seat is shown, skip seat
+selection with its "Skip" button (its "Next" waits for a seat).

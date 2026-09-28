@@ -1,0 +1,150 @@
+{
+  "app": "browser",
+  "vars": {
+    "destination_airport": "Dubai, United Arab Emirates Dubai International Airport DXB",
+    "origin_airport": "Mumbai (Bombay), India Chhatrapati Shivaji International BOM",
+    "travel_date": "18 October 2026"
+  },
+  "steps": [
+    {
+      "browse": "https://www.emirates.com/in/english/book/"
+    },
+    {
+      "if": {
+        "condition": "a cookie consent sheet is showing",
+        "then": [
+          "dismiss the cookie consent sheet by accepting it"
+        ],
+        "else": []
+      }
+    },
+    {
+      "choose": {
+        "what": "the trip-type tabs",
+        "option": "One way"
+      }
+    },
+    {
+      "enter": {
+        "departure airport search box": "Mumbai"
+      }
+    },
+    {
+      "choose": {
+        "what": "the departure airport suggestion list",
+        "option": "${origin_airport}"
+      }
+    },
+    {
+      "enter": {
+        "arrival airport search box": "Dubai"
+      }
+    },
+    {
+      "choose": {
+        "what": "the arrival airport suggestion list",
+        "option": "${destination_airport}"
+      }
+    },
+    {
+      "choose": {
+        "what": "the departing date calendar",
+        "option": "${travel_date}"
+      }
+    },
+    {
+      "choose": {
+        "what": "the passengers box",
+        "option": "1 Adult"
+      }
+    },
+    {
+      "choose": {
+        "what": "the class button",
+        "option": "Economy"
+      }
+    },
+    "search for flights",
+    {
+      "wait_for": "flight results are listed"
+    },
+    "open the economy fare options of the lowest-priced flight",
+    "continue with the selected fare",
+    {
+      "wait_for": "the passenger details page is showing"
+    },
+    {
+      "choose": {
+        "what": "the title field",
+        "option": "${title}"
+      }
+    },
+    {
+      "enter": {
+        "date of birth": "${date of birth}",
+        "first name": "${first name}",
+        "last name": "${last name}"
+      }
+    },
+    {
+      "choose": {
+        "what": "the gender field",
+        "option": "${gender}"
+      }
+    },
+    {
+      "choose": {
+        "what": "the nationality field",
+        "option": "${nationality}"
+      }
+    },
+    {
+      "enter": {
+        "email address": "${email}",
+        "mobile number": "${mobile number}"
+      }
+    },
+    {
+      "if": {
+        "condition": "a seat selection option is offered",
+        "then": [
+          "decline the seat selection"
+        ],
+        "else": []
+      }
+    },
+    {
+      "if": {
+        "condition": "a meal selection option is offered",
+        "then": [
+          "decline the meal selection"
+        ],
+        "else": []
+      }
+    },
+    {
+      "if": {
+        "condition": "a travel insurance option is offered",
+        "then": [
+          "decline the travel insurance"
+        ],
+        "else": []
+      }
+    },
+    {
+      "if": {
+        "condition": "any other paid extra is offered",
+        "then": [
+          "decline the paid extra"
+        ],
+        "else": []
+      }
+    },
+    {
+      "verify": "the passenger name, contact email, and mobile number are shown correctly"
+    },
+    {
+      "stop_before": "proceeding to the payment step"
+    }
+  ]
+}

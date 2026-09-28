@@ -495,7 +495,24 @@ fn the_desktop_is_available_only_with_accessibility() {
 
 #[test]
 fn a_planner_is_configured_from_private_configuration_only_with_a_key() {
-    assert!(DesktopService::from_config(&json!({"planner": {"api_key": "k"}})).is_ok());
+    let service = DesktopService::from_config(&json!({"planner": {"api_key": "k"}})).unwrap();
+    assert!(service.tasks.planner_configured());
+    assert!(
+        service.tasks.rescue_configured(),
+        "the planner's key brings the rescuer"
+    );
+    assert!(
+        DesktopService::from_config(
+            &json!({"planner": {"api_key": "k", "rescue_model": "openai/gpt-6-luna-pro"}})
+        )
+        .is_ok()
+    );
+    assert!(
+        !DesktopService::from_config(&json!({}))
+            .unwrap()
+            .tasks
+            .rescue_configured()
+    );
     assert!(DesktopService::from_config(&json!({"planner": {"api_key": " "}})).is_err());
     assert!(DesktopService::from_config(&json!({"planner": {"model": "m"}})).is_err());
 }

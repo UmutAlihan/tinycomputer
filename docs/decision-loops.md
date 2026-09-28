@@ -150,8 +150,8 @@ A step ends one of four ways:
 - A budget ran out: `ActionBudget` or `ModelBudget`.
 
 Two budgets bound every run. `max_actions` is capped at 120 and
-`max_model_calls` at 5000, whatever the request asks for (the defaults are 60
-and 1500). Every framing of a voted decision counts as one call; see
+`max_model_calls` at 10000, whatever the request asks for (the defaults are 60
+and 3000). Every framing of a voted decision counts as one call; see
 [`jev-harness.md`](jev-harness.md) for voting. Every action goes
 through `FlowRun::act` and every Jev request through `FlowRun::ask`, and both
 check the budget before doing anything, so no loop can overspend.
@@ -495,6 +495,6 @@ Reproduce it in the simulator (`agentic/flow/test.rs`), then fix it.
 are asked: one request per `do` turn over a digest of the screen, carrying
 the judgement, `dismiss` for whatever is in front, and a target for every
 move; a crowded screen is surveyed first for which regions matter; and every
-question sees the run's working memory in place of the flat history
-([`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)). Every constant a
-decision is thresholded on is in [`decision-thresholds.md`](decision-thresholds.md).
+question sees the run's working memory ([`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)).
+Deliberation replaces these bars with evidence gates and verified undo
+([`specs/jev-deliberation.md`](specs/jev-deliberation.md)); constants: [`decision-thresholds.md`](decision-thresholds.md).

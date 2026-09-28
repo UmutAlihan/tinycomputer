@@ -14,7 +14,7 @@ use tinycomputer_cursor::{CursorPace, OverlayCommand, OverlaySink, ScreenCursor}
 
 use super::cursor::viewport_origin;
 use super::tree::{parse_line, screen};
-use super::{BrowserSurface, Perception, browser_key};
+use super::{BrowserSurface, Denoised, Perception, browser_key};
 use crate::fake::{Fake, failure, ok};
 use crate::sessions::Browser;
 
@@ -472,6 +472,10 @@ fn pressing_launching_settling_and_navigating() {
     assert_eq!(fake.last("wait")["timeout"], 400);
     let loaded = surface.navigate("https://flights.test/search");
     assert_eq!(loaded.data.unwrap()["url"], "https://flights.test/search");
+    let back = surface.back("browser");
+    assert!(back.ok, "{:?}", back.error);
+    assert_eq!(fake.last("back")["action"], "back");
+    assert!(back.data.unwrap().get("url").is_some());
     let refused = Fake::scripted(|command| {
         (command["action"] == "navigate")
             .then(|| failure("Domain 'evil.test' is not in the allowed domains list"))
@@ -847,6 +851,7 @@ fn sighted_fake() -> Fake {
                 "title": "Flights",
                 "surface": "window",
                 "unreachable": 0,
+                "denoised": {"ads": 2, "empty": 1, "hidden": 0},
                 "nodes": [
                     {"id": "1", "role": "textbox", "name": "To", "states": [], "path": []},
                     {"id": "2", "role": "link", "name": "", "states": [], "path": []}
@@ -897,6 +902,29 @@ fn sight_reads_the_page_and_its_refs_reach_their_marks() {
     surface.observe("", Some("seen:1"), Depth::Full).unwrap();
     let scoped = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
     assert!(scoped.contains(r#"("[data-tc-seen=\"1\"]", {"#));
+}
+
+#[test]
+fn the_surface_keeps_what_its_last_sight_reading_left_out_as_noise() {
+    let Harness { surface, .. } = harness("sight-denoised", sighted_fake());
+    assert_eq!(surface.denoised(), Denoised::default(), "nothing read yet");
+    surface.observe("", None, Depth::Full).unwrap();
+    assert_eq!(
+        surface.denoised(),
+        Denoised {
+            ads: 2,
+            empty: 1,
+            hidden: 0
+        }
+    );
+
+    let Harness { surface, .. } = harness("tree-denoised", page_fake());
+    surface.observe("", None, Depth::Full).unwrap();
+    assert_eq!(
+        surface.denoised(),
+        Denoised::default(),
+        "a page read by the tree was not denoised"
+    );
 }
 
 #[test]

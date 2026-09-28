@@ -21,8 +21,8 @@ use std::{
 
 use serde_json::{Value, json};
 use tinycomputer_bus::{
-    DesktopResponse, Flow, FlowLoop, FlowRunResult, FlowStopReason, GroundingHint, JevOperation,
-    RunFlowRequest, StepOutcome, ValidateFlowRequest,
+    Deliberation, DesktopResponse, Flow, FlowLoop, FlowRunResult, FlowStopReason, GroundingHint,
+    JevExchange, JevOperation, RunFlowRequest, StepOutcome, ValidateFlowRequest,
 };
 use tinyinference_decisions::{
     Answer, ChoiceAnswer, EvaluationFailure, EvaluationRequest, EvaluationResponse,
@@ -69,6 +69,18 @@ enum Quirk {
     /// A list of cities whose rows carry a `combobox` role but take no
     /// text, above the one real search field.
     CityRows,
+    /// The shop's history is stuck: going back or loading an address
+    /// reports success and changes nothing.
+    StuckHistory,
+    /// The Archive button shows disabled.
+    DisabledArchive,
+    /// A promo toast with a Close button sits over the page until closed.
+    PromoToast,
+    /// Text typed with no target lands at the end of the field typed into
+    /// last, as a browser keeps the focus there.
+    FocusStays,
+    /// Something Escape does not close covers the New Message button.
+    Covered,
 }
 
 #[derive(Debug, Default)]
@@ -99,12 +111,131 @@ struct Sim {
     /// Trip-type tabs: the selected one, and how many clicks on the others
     /// the page ignores first, as a page still loading its scripts does.
     trip: Option<(&'static str, u8)>,
+    /// A web shop's page stack, newest last; empty for the mail app.
+    pages: Vec<&'static str>,
+    /// The shop's extras checked: "Travel insurance", "Seat protection".
+    checked: BTreeSet<&'static str>,
+    /// Times the shop went back a page.
+    backs: u32,
+    /// The field typed or pasted into last: where the focus stays.
+    focused: Option<String>,
     quirks: BTreeSet<Quirk>,
 }
 
 impl Sim {
     fn has(&self, quirk: Quirk) -> bool {
         self.quirks.contains(&quirk)
+    }
+
+    /// The shop page showing, or `None` for the mail app.
+    fn page(&self) -> Option<&'static str> {
+        self.pages.last().copied()
+    }
+
+    /// A reply carrying the shop's address, as a browser's does.
+    fn located(&self, command: &str) -> DesktopResponse {
+        DesktopResponse::ok(
+            command,
+            self.page()
+                .map_or_else(|| json!({}), |page| json!({"url": page})),
+        )
+    }
+}
+
+/// The shop's pages.
+const EXTRAS: &str = "https://shop.test/extras";
+const TERMS: &str = "https://shop.test/terms";
+const REVIEW: &str = "https://shop.test/review";
+/// The shop's two extras.
+const INSURANCE: &str = "Travel insurance";
+const PROTECTION: &str = "Seat protection";
+
+/// The shop's screen: an extras page with two checkboxes, a terms link, and
+/// Continue; the terms and review pages beyond it.
+fn shop_screen(sim: &Sim) -> Screen {
+    let page = sim.page().unwrap_or(EXTRAS);
+    let (window, candidates, context) = match page {
+        TERMS => (
+            "Insurance terms",
+            vec![node(
+                "Download terms",
+                "link",
+                &["Click"],
+                &["main \"Terms\""],
+                100.0,
+            )],
+            vec!["Terms and conditions of travel insurance".to_owned()],
+        ),
+        REVIEW => (
+            "Review",
+            vec![node(
+                "Pay",
+                "button",
+                &["Click"],
+                &["main \"Review\""],
+                100.0,
+            )],
+            vec!["Review your booking".to_owned()],
+        ),
+        _ => {
+            let checkbox = |name: &str, checked: bool, y: f64| {
+                let mut box_node = node(name, "checkbox", &["Click"], &["form \"Extras\""], y);
+                if checked {
+                    box_node.states = vec!["checked".to_owned()];
+                }
+                box_node
+            };
+            (
+                "Extras",
+                vec![
+                    checkbox(PROTECTION, sim.checked.contains(PROTECTION), 100.0),
+                    checkbox(INSURANCE, sim.checked.contains(INSURANCE), 140.0),
+                    node(
+                        "Insurance terms",
+                        "link",
+                        &["Click"],
+                        &["form \"Extras\""],
+                        180.0,
+                    ),
+                    node(
+                        "Continue",
+                        "button",
+                        &["Click"],
+                        &["form \"Extras\""],
+                        260.0,
+                    ),
+                ],
+                vec!["Choose your extras".to_owned()],
+            )
+        }
+    };
+    Screen {
+        app: "browser".to_owned(),
+        window: Some(window.to_owned()),
+        surface: "window".to_owned(),
+        candidates,
+        context,
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    }
+}
+
+/// What pressing `name` does in the shop.
+fn press_shop(sim: &mut Sim, name: &str) {
+    match name {
+        PROTECTION | INSURANCE => {
+            let extra = if name == PROTECTION {
+                PROTECTION
+            } else {
+                INSURANCE
+            };
+            if !sim.checked.remove(extra) {
+                sim.checked.insert(extra);
+            }
+        }
+        "Insurance terms" => sim.pages.push(TERMS),
+        "Continue" => sim.pages.push(REVIEW),
+        _ => {}
     }
 }
 
@@ -409,9 +540,29 @@ fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<C
     text_nodes
 }
 
+/// What lies over the simulated page: a promo toast, or something that
+/// covers the New Message button.
+fn overlays(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
+    if sim.has(Quirk::Covered) {
+        for candidate in candidates.iter_mut() {
+            if candidate.name.as_deref() == Some("New Message") {
+                candidate.states = vec!["covered".to_owned()];
+            }
+        }
+    }
+    if sim.has(Quirk::PromoToast) {
+        let toast = [root, "region \"Unlimited date changes\""];
+        candidates.push(node("Close", "button", &["Click"], &toast, 700.0));
+        candidates.push(node("Learn more", "link", &["Click"], &toast, 720.0));
+    }
+}
+
 impl App {
     fn screen(&self) -> Screen {
         let sim = self.sim();
+        if sim.page().is_some() {
+            return shop_screen(&sim);
+        }
         let window = if sim.compose_open {
             "New Message"
         } else {
@@ -450,13 +601,11 @@ impl App {
                 &[&root, "toolbar"],
                 40.0,
             ));
-            candidates.push(node(
-                "Archive",
-                "button",
-                &["Click"],
-                &[&root, "toolbar"],
-                40.0,
-            ));
+            let mut archive = node("Archive", "button", &["Click"], &[&root, "toolbar"], 40.0);
+            if sim.has(Quirk::DisabledArchive) {
+                archive.states = vec!["disabled".to_owned()];
+            }
+            candidates.push(archive);
             for index in 0..sim.extra_buttons {
                 let region = if sim.has(Quirk::OneRegion) {
                     "list \"Messages\"".to_owned()
@@ -485,6 +634,7 @@ impl App {
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
         }
+        overlays(&sim, &root, &mut candidates);
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
         if sim.obstacle {
@@ -582,6 +732,14 @@ impl AgentBackend for App {
                     sim.picked.push(reference);
                 }
                 sim.clicks.push(name.clone());
+                if name == "Close" && sim.has(Quirk::PromoToast) {
+                    sim.quirks.remove(&Quirk::PromoToast);
+                    return DesktopResponse::ok("click", json!({}));
+                }
+                if sim.page().is_some() {
+                    press_shop(&mut sim, &name);
+                    return sim.located("click");
+                }
                 match name.as_str() {
                     "New Message" => sim.compose_open = true,
                     "Send" => sim.sent = true,
@@ -611,6 +769,14 @@ impl AgentBackend for App {
                 }
             }
             JevOperation::TypeText if name == "Mumbai, BOM" => {}
+            JevOperation::TypeText if target.is_none() && sim.has(Quirk::FocusStays) => {
+                if let Some(field) = sim.focused.clone() {
+                    sim.fields
+                        .entry(field)
+                        .or_default()
+                        .push_str(&text.unwrap_or_default());
+                }
+            }
             // Text with no target goes to the focused field: the booking
             // form's search box once it is open.
             JevOperation::TypeText if target.is_none() => {
@@ -618,6 +784,7 @@ impl AgentBackend for App {
                     .insert("Search city".to_owned(), text.unwrap_or_default());
             }
             JevOperation::TypeText if !(name == "Body" && sim.has(Quirk::BodyIgnoresSetValue)) => {
+                sim.focused = Some(name.clone());
                 sim.fields.insert(name, text.unwrap_or_default());
             }
             _ => {}
@@ -634,9 +801,10 @@ impl AgentBackend for App {
         if is_city_row(Some(target)) {
             return not_a_text_field();
         }
-        self.sim()
-            .fields
-            .insert(target.name.clone().unwrap_or_default(), text.to_owned());
+        let mut sim = self.sim();
+        let name = target.name.clone().unwrap_or_default();
+        sim.focused = Some(name.clone());
+        sim.fields.insert(name, text.to_owned());
         DesktopResponse::ok("paste", json!({}))
     }
 
@@ -657,9 +825,27 @@ impl AgentBackend for App {
         DesktopResponse::ok("press", json!({}))
     }
 
+    fn back(&self, _app: &str) -> DesktopResponse {
+        let mut sim = self.sim();
+        if sim.page().is_none() {
+            return DesktopResponse::err(
+                "back",
+                tinycomputer_bus::DesktopError::new("ACTION_NOT_SUPPORTED", "no history"),
+            );
+        }
+        sim.backs += 1;
+        if !sim.has(Quirk::StuckHistory) && sim.pages.len() > 1 {
+            sim.pages.pop();
+        }
+        sim.located("back")
+    }
+
     fn launch(&self, app: &str) -> DesktopResponse {
         let mut sim = self.sim();
         sim.launched.push(app.to_owned());
+        if sim.page().is_some() {
+            return sim.located("launch");
+        }
         if sim.has(Quirk::FailLaunch) {
             return DesktopResponse::err(
                 "launch",
@@ -678,6 +864,11 @@ impl AgentBackend for App {
             );
         }
         sim.navigated.push(url.to_owned());
+        if !sim.has(Quirk::StuckHistory)
+            && let Some(at) = sim.pages.iter().position(|page| *page == url)
+        {
+            sim.pages.truncate(at + 1);
+        }
         DesktopResponse::ok("navigate", json!({"url": url, "title": "Flights"}))
     }
 }
@@ -755,10 +946,14 @@ impl Oracle {
         question: &Question,
         sim: &Sim,
     ) -> Answer {
+        let near = id
+            .strip_prefix("only_near_")
+            .map(|index| format!("is_{index}"));
         let twin = match id {
             "not_done" => Some("done"),
             "negated" | "coverage" => Some("holds"),
-            _ => None,
+            "unintended" => Some("intended"),
+            _ => near.as_deref(),
         };
         if let Some(twin) = twin
             && let Some(positive) = request.questions.get(twin)
@@ -848,6 +1043,47 @@ fn pick(question: &Question, needle: &str, probability: f64) -> Answer {
     })
 }
 
+/// A Choice answer putting `weights` on the options whose key or description
+/// holds each needle, the rest of the probability spread evenly over the
+/// other options; the winner is the heaviest.
+fn weighted(question: &Question, weights: &[(&str, f64)]) -> Answer {
+    let Question::Choice(choice) = question else {
+        panic!("weighted needs a choice question");
+    };
+    let mut probabilities = BTreeMap::new();
+    for (needle, weight) in weights {
+        if let Some((key, _)) = choice.criteria.iter().find(|(key, description)| {
+            !probabilities.contains_key(*key)
+                && (*key == needle
+                    || description
+                        .as_ref()
+                        .is_some_and(|description| description.to_string().contains(needle)))
+        }) {
+            probabilities.insert(key.clone(), *weight);
+        }
+    }
+    let rest = choice.criteria.len().saturating_sub(probabilities.len());
+    let left = (1.0 - probabilities.values().sum::<f64>()).max(0.0);
+    for key in choice.criteria.keys() {
+        if !probabilities.contains_key(key) {
+            probabilities.insert(
+                key.clone(),
+                left / f64::from(u32::try_from(rest.max(1)).unwrap()),
+            );
+        }
+    }
+    let winner = probabilities
+        .iter()
+        .max_by(|left, right| left.1.total_cmp(right.1))
+        .map(|(key, _)| key.clone())
+        .unwrap();
+    Answer::Choice(ChoiceAnswer {
+        choice: winner,
+        probabilities,
+        confidence: 0.5,
+    })
+}
+
 fn needle_for(purpose: &str) -> &'static str {
     if purpose.contains("send") {
         "Send"
@@ -895,7 +1131,9 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         "shortcut" => pick(question, "new_item", 0.9),
         // Every action helps and no field shows an error, unless a test says.
         // A press left what the step asked for, unless a test says.
-        "confirm" | "helped" | "dismiss_known" | "reflects" => noul(0.9),
+        "confirm" | "helped" | "dismiss_known" | "reflects" | "intended" => noul(0.9),
+        // A contrasted finalist is the element, unless a test says.
+        _ if id.starts_with("is_") => noul(0.9),
         _ if id.starts_with("known_") => noul(0.9),
         // A survey finds the step in "Region 1" and nothing distracting.
         _ if id.starts_with("relevance_") => {
@@ -1274,10 +1512,12 @@ async fn one_crowded_region_falls_back_to_a_knockout() {
 
 #[tokio::test]
 async fn a_low_confidence_choice_is_used_only_when_the_re_ask_agrees() {
+    // The legacy re-ask and corroboration path: a deliberating run settles
+    // a low pick with its evidence ladder instead (`test/deliberation.rs`).
     let agreed = run_with(
         App::default(),
         json!({"app": "Mail", "steps": ["start a new email message"]}),
-        |_| {},
+        |request| request.deliberation = Deliberation::Off,
         |id, question, _| match id {
             "move" => Some(pick(question, "activate", 0.9)),
             "target" => Some(pick(question, "New Message", 0.5)),
@@ -1292,7 +1532,10 @@ async fn a_low_confidence_choice_is_used_only_when_the_re_ask_agrees() {
     let disagreed = run_with(
         App::default(),
         json!({"app": "Mail", "steps": ["start a new email message"]}),
-        |request| request.max_actions = 3,
+        |request| {
+            request.max_actions = 3;
+            request.deliberation = Deliberation::Off;
+        },
         |id, question, _| match id {
             "move" => Some(pick(question, "activate", 0.9)),
             "target" => Some(pick(question, "New Message", 0.5)),
@@ -3492,7 +3735,7 @@ fn merged_answers_average_under_the_original_keys() {
             answer(&framings[1], "option 7", 0.5, 2),
         ),
     ];
-    let merged = vote::merge(&answered);
+    let merged = vote::tally(&vote::ballots(&answered));
     let Answer::Choice(target) = &merged["target"] else {
         panic!()
     };
@@ -3502,7 +3745,7 @@ fn merged_answers_average_under_the_original_keys() {
     assert!((ask::probability(&merged, "done").unwrap() - 0.7).abs() < 1e-9);
     assert!((ask::top_level(&merged, "progress").unwrap() - 0.5).abs() < 1e-9);
 
-    let split = vote::merge(&[
+    let split = vote::tally(&vote::ballots(&[
         (
             framings[0].clone(),
             answer(&framings[0], "option 7", 0.9, 4),
@@ -3511,12 +3754,12 @@ fn merged_answers_average_under_the_original_keys() {
             framings[1].clone(),
             answer(&framings[1], "option 9", 0.9, 4),
         ),
-    ]);
+    ]));
     let Answer::Choice(split) = &split["target"] else {
         panic!()
     };
     assert!((split.confidence - 0.5).abs() < 1e-9, "one of two agreed");
-    assert!(vote::merge(&[]).is_empty());
+    assert!(vote::tally(&vote::ballots(&[])).is_empty());
 }
 
 #[tokio::test]
@@ -5233,3 +5476,5 @@ fn an_option_still_offered_after_filtering_was_not_taken() {
     };
     assert!(steps::left_unchosen(&screen, asked, true).is_none());
 }
+
+mod deliberation;

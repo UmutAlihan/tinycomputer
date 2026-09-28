@@ -75,12 +75,14 @@
   };
 
   // The hidden checkbox or radio a label stands in for: pages draw their own
-  // box and hide the real one, and the label is what a person clicks.
+  // box and hide the real one — out of sight, or clipped away — and the
+  // label is what a person clicks.
   const standIn = (element) => {
     if (tag(element) !== 'label') return null;
     const input = element.control;
     if (!input || tag(input) !== 'input' || !['checkbox', 'radio'].includes(input.type)) return null;
-    return shown(input) ? null : input;
+    const dropped = noiseRoot(input);
+    return shown(input) && !(dropped && element.contains(dropped)) ? null : input;
   };
 
   const pointer = (element) => style(element).cursor === 'pointer';
@@ -169,6 +171,8 @@
       seen = parent;
       if (!shown(parent) || insideText(parent)) continue;
       if (parent.closest(NESTED)) continue;
+      const dropped = noiseRoot(parent);
+      if (dropped && noiseKinds.get(dropped) === 'ads') continue;
       const text = clip(parent.innerText || node.data, 80);
       if (text) words.push({ element: parent, text, rect: box(parent) });
     }
@@ -313,6 +317,161 @@
     return rect.width * rect.height >= width * height * 0.3 ? 'dialog' : 'popover';
   };
 
+  // Noise: what a person skips or never sees. Ads — frames and links to ad
+  // servers, blocks the page names as ads, blocks labelled "Advertisement"
+  // or "Sponsored", tracking pixels — and content the page hides: marked
+  // `aria-hidden` or `inert`, or clipped out of sight for screen readers.
+  // A noise block is left out whole; `denoised` counts the blocks that held
+  // something sight would otherwise have returned.
+  const AD_HOSTS = [
+    'doubleclick.net', 'googlesyndication.com', 'googleadservices.com', 'amazon-adsystem.com',
+    'taboola.com', 'outbrain.com', 'adnxs.com', 'moatads.com', 'pubmatic.com',
+    'rubiconproject.com', 'scorecardresearch.com',
+  ];
+  const AD_HOST_NAMES = /(^|\.)(adservice\.google|criteo)\.[a-z]{2,}(\.[a-z]{2,})?$/;
+  // The words of a class or id, split at `-` and `_` only: `ad`, not the
+  // `ad` in `header`, `shadow`, `download`, or `adults`, nor in a generated
+  // class such as `css-1ad4k9`; `AdSlot` reads as `adslot`. A short word
+  // counts alone (`ads`) or beside a real word (`top-ad`, `div-gpt-ad-1`),
+  // in one case: Google's generated `gb_Ad` and `gb_ad` are not ads.
+  const AD_SHORT = /^(ad|ads|dfp|AD|ADS|DFP)$/;
+  const AD_WORD = /^(adsbygoogle|ad(slot|unit|box|zone|space|container|wrapper|banner|frame|holder|placement)s?|advert\w*|sponsor\w*)$/i;
+  const AD_LABEL = /^(advertisement|sponsored|ad)$/i;
+  // Words that mark a cookie, consent, or newsletter banner, which the
+  // obstacle loop must see to close: no ad rule ever drops one.
+  const BOILERPLATE = /cookie|consent|gdpr|privacy|newsletter|subscri/i;
+  const adHost = (address) => {
+    if (!address) return false;
+    let host = '';
+    try { host = new URL(address, location.href).hostname.toLowerCase(); } catch (error) { return false; }
+    return AD_HOSTS.some((name) => host === name || host.endsWith(`.${name}`)) || AD_HOST_NAMES.test(host);
+  };
+  const classText = (element) => (typeof element.className === 'string' ? element.className
+    : (element.className && element.className.baseVal) || '');
+  const adToken = (token) => {
+    const words = token.split(/[_-]+/).filter(Boolean);
+    if (words.some((word) => AD_WORD.test(word))) return true;
+    if (!words.some((word) => AD_SHORT.test(word))) return false;
+    return words.length === 1 || words.some((word) => /^[a-z]{3,}$/i.test(word) && !AD_SHORT.test(word));
+  };
+  const adWords = (element) => `${classText(element)} ${element.id || ''}`
+    .split(/\s+/)
+    .some(adToken);
+  const boilerplate = (element) => BOILERPLATE.test(
+    `${classText(element)} ${element.id || ''} ${element.getAttribute('aria-label') || ''} `
+    + (element.textContent || '').slice(0, 600),
+  );
+  // Whether the element floats above the page, or sits in something that
+  // does: an ad in front is an obstacle a person must close, not noise.
+  const floats = (element) => {
+    for (let parent = element; parent && parent !== document.documentElement; parent = parent.parentElement) {
+      if (layer(parent)) return true;
+    }
+    return false;
+  };
+  const pixel = (element) => {
+    if (tag(element) !== 'img' || !element.complete || element.naturalWidth < 1) return false;
+    const rect = box(element);
+    return rect.width <= 1 && rect.height <= 1 && element.naturalWidth <= 1 && element.naturalHeight <= 1;
+  };
+  const advert = (element) => {
+    const address = element.getAttribute('src') || (tag(element) === 'a' && element.getAttribute('href'));
+    const marked = adHost(address) || pixel(element) || adWords(element)
+      || element.hasAttribute('data-ad-slot') || element.hasAttribute('data-ad-client')
+      || element.hasAttribute('data-google-query-id');
+    return marked && !boilerplate(element) && !floats(element);
+  };
+  // Clipped out of sight but still laid out: the visually-hidden text
+  // pages keep for screen readers.
+  const clipped = (element) => {
+    const computed = style(element);
+    if (computed.position !== 'absolute' && computed.position !== 'fixed') return false;
+    if (computed.clip === 'rect(0px, 0px, 0px, 0px)' || computed.clipPath === 'inset(50%)') return true;
+    const rect = box(element);
+    return rect.width <= 1 && rect.height <= 1 && computed.overflow === 'hidden';
+  };
+  const inFront = (element) => {
+    const rect = box(element);
+    const x = Math.min(Math.max((rect.left + rect.right) / 2, 0), width - 1);
+    const y = Math.min(Math.max((rect.top + rect.bottom) / 2, 0), height - 1);
+    const hit = document.elementFromPoint(x, y);
+    return hit === element || (hit && element.contains(hit));
+  };
+  // Whether a person sees what the page marks `aria-hidden`: pages mark
+  // plenty they draw — a custom list's shown label, a pill below the fold,
+  // a page a modal library forgot to unmark. Only what is slid out
+  // sideways (a carousel's clones) or sits behind something in the
+  // viewport (the page behind a dialog) is out of their sight.
+  const plainlySeen = (element) => {
+    const rect = box(element);
+    if (rect.width < 1 || rect.height < 1) return true;
+    if (rect.right <= 0 || rect.left >= width) return false;
+    if (rect.bottom <= 0 || rect.top >= height) return true;
+    return inFront(element);
+  };
+  // Blocks labelled as ads, found once up front: the label and the nearest
+  // block around it that holds the ad, but never a landmark, a form, a
+  // dialog, a banner a person must answer, or much of the page.
+  const labelledAds = new Set();
+  const HOLDS = `${NESTED}, img, iframe, video, picture, canvas`;
+  const enclosable = (element) => element !== base && element !== document.body
+    && element.parentElement !== null
+    && !element.matches(`main, form, header, nav, footer, [role="main"], [role="form"], [role="navigation"], [role="banner"], [role="contentinfo"], ${MODAL_SELECTOR}`)
+    && !element.querySelector(`main, form, input:not([type="hidden"]), select, textarea, ${MODAL_SELECTOR}`)
+    && box(element).width * box(element).height <= width * height * 0.4
+    && !boilerplate(element) && !floats(element);
+  const findLabelledAds = () => {
+    const walker = document.createTreeWalker(base, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const said = squash(node.data);
+      const label = node.parentElement;
+      if (!label || !AD_LABEL.test(said) || squash(label.innerText) !== said || !shown(label)) continue;
+      // A control named "Ad" by itself is a control, not a label.
+      const control = label.closest(NESTED);
+      if (control && squash(control.innerText) === said) continue;
+      let block = null;
+      for (let parent = label; parent && enclosable(parent); parent = parent.parentElement) {
+        if (squash(parent.textContent) !== said || parent.querySelector(HOLDS)) {
+          block = parent;
+          break;
+        }
+      }
+      if (block) labelledAds.add(block);
+    }
+  };
+  // What kind of noise the element itself is, or null.
+  const noise = (element) => {
+    if (element === base) return null;
+    if (element.hasAttribute('inert')) return 'hidden';
+    if (element.getAttribute('aria-hidden') === 'true' && !plainlySeen(element)) return 'hidden';
+    if (labelledAds.has(element) || advert(element)) return 'ads';
+    return clipped(element) ? 'hidden' : null;
+  };
+  const noiseRoots = new Map();
+  const noiseKinds = new Map();
+  // The outermost noise block the element is in (or is), or null.
+  const noiseRoot = (element) => {
+    if (noiseRoots.has(element)) return noiseRoots.get(element);
+    let root = null;
+    if (element !== base && base.contains(element)) {
+      root = element.parentElement && noiseRoot(element.parentElement);
+      const own = root ? null : noise(element);
+      if (own) {
+        root = element;
+        noiseKinds.set(element, own);
+      }
+    }
+    noiseRoots.set(element, root);
+    return root;
+  };
+  const denoised = { ads: 0, empty: 0, hidden: 0 };
+  const tallied = new Set();
+  const tally = (root) => {
+    if (tallied.has(root)) return;
+    tallied.add(root);
+    denoised[noiseKinds.get(root)] += 1;
+  };
+
   const containers = new Map();
   const unnamed = new Map();
   // The container label a person would see `element` as, or null.
@@ -429,6 +588,7 @@
     return id;
   };
 
+  findLabelledAds();
   collectWords();
   const nodes = [];
   const controls = new Set();
@@ -462,13 +622,10 @@
     }
     return false;
   };
-  const inFront = (element) => {
-    const rect = box(element);
-    const x = Math.min(Math.max((rect.left + rect.right) / 2, 0), width - 1);
-    const y = Math.min(Math.max((rect.top + rect.bottom) / 2, 0), height - 1);
-    const hit = document.elementFromPoint(x, y);
-    return hit === element || (hit && element.contains(hit));
-  };
+  const NATIVE = ['a', 'button', 'summary', 'input', 'select', 'textarea', 'label', 'img', 'svg'];
+  const blank = (element) => !NATIVE.includes(tag(element))
+    && !ROLES.includes(role(element)) && !TEXT_ROLES.includes(role(element))
+    && !element.querySelector(`${NESTED}, img, svg, picture, canvas, video`);
 
   const walker = document.createTreeWalker(base, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
     acceptNode: (node) => {
@@ -488,19 +645,34 @@
       if (controls.has(parent) || insideControl(parent) || insideText(parent) || !shown(parent)) continue;
       const rect = box(parent);
       if (rect.bottom < -height || rect.top > 2 * height) continue;
+      const dropped = noiseRoot(parent);
+      if (dropped) {
+        tally(dropped);
+        continue;
+      }
       lastText = parent;
       texts += 1;
       nodes.push({ text: clip(parent.innerText || node.data, limits.text), path: pathOf(parent) });
       continue;
     }
     const element = node;
+    const dropped = noiseRoot(element);
+    // An ad's own frame or picture is an ad whether or not it shows words.
+    if (dropped === element && ['iframe', 'img'].includes(tag(element))
+      && element.getClientRects().length > 0 && noiseKinds.get(element) === 'ads') {
+      tally(element);
+    }
     if (element.shadowRoot && shown(element)
       && element.shadowRoot.querySelector('a[href], button, input, select, textarea, [role], [tabindex]')) {
-      unreachable += 1;
+      if (dropped) tally(dropped);
+      else unreachable += 1;
     }
     if (tag(element) === 'iframe' && shown(element) && !offscreen(element) && inFront(element)) {
       const rect = box(element);
-      if (rect.width * rect.height >= width * height * 0.2) unreachable += 1;
+      if (rect.width * rect.height >= width * height * 0.2) {
+        if (dropped) tally(dropped);
+        else unreachable += 1;
+      }
     }
     if (controls.size >= limits.controls || disabled(element)) continue;
     const what = kind(element, insideControl(element));
@@ -509,7 +681,17 @@
       // Drawn by its label instead: the label stands in for it.
       if ([...(element.labels || [])].some((label) => standIn(label) === element)) continue;
     }
+    if (dropped) {
+      tally(dropped);
+      continue;
+    }
     const { name, description } = naming(element, what);
+    // A blank box that is clickable only by its cursor, tab stop, or click
+    // handler: no words, no name, no picture, nothing inside to act on.
+    if (!name && !description && blank(element)) {
+      denoised.empty += 1;
+      continue;
+    }
     // Two elements drawn as one box are one control to a person: the one
     // that takes text, or else the first, with the other's words kept.
     const twin = seen.find((other) => same(other, element, what));
@@ -551,5 +733,5 @@
     if (floating === 'alertdialog') { surface = 'alert'; break; }
     if (floating === 'dialog') { surface = 'sheet'; break; }
   }
-  return { ok: true, title: document.title, surface, unreachable, nodes };
+  return { ok: true, title: document.title, surface, unreachable, nodes, denoised };
 })

@@ -95,7 +95,8 @@ The worker runs a list of flow runs in order (`drive`). Usually that list has
 one entry, the whole flow. For each run it:
 
 1. builds a `RunFlowRequest` (`run_request`) with the facts as variables, the
-   fact names marked private, `include_values` off, the task's grounding memory,
+   fact names marked private, `include_values` on (so Jev can check what was
+   typed; secrets are masked), the task's grounding memory,
    and what is left of the budget;
 2. hands it to the `FlowRunner`, which runs it on the task's workspace;
 3. reads the result (`interpret::run_outcome`) and decides whether to carry
@@ -131,7 +132,8 @@ share that workspace, so a resumed task picks up on the page the last run left.
   visible text. If it shows a captcha, "verify you are human", a one-time code,
   two-factor authentication, or "sign in to continue", the status becomes
   `needs_human` and `ContinueTask` reruns the failed step and the rest once
-  the person has got past it. If not, it stays `failed`.
+  the person has got past it. If not, and a rescuer is configured, the failure
+  is rescued (below). Otherwise it stays `failed`.
 - **A budget ran out, or the flow was invalid.** `failed`, with a hint such as
   "raise budget.max_actions".
 
@@ -140,10 +142,16 @@ share that workspace, so a resumed task picks up on the page the last run left.
 A task's `TaskBudget` (`max_actions`, `max_model_calls`, `max_elapsed_ms`)
 bounds the whole task, not one run. An approval or a human step splits a task
 into several runs, and each run gets only what the task has not spent yet, so
-resuming never refills the budget. Unset fields default to 120 actions and 3000
-Jev calls, and each decision is voted five ways. `budget.strategy` picks how
+resuming never refills the budget. Unset fields default to 120 actions and 6000
+Jev calls, and each decision is voted seven ways. `budget.strategy` picks how
 decisions are asked: `narrow` (the default) or `wide`, one request per turn
 over a digest of the screen ([`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)).
+`budget.deliberation` picks how much each decision is deliberated before it
+is acted on: `deep` (the default), `standard`, or `off`
+([`specs/jev-deliberation.md`](specs/jev-deliberation.md)). Deliberation
+spends calls only where the evidence is thin, and degrades rung by rung when
+the budget runs short rather than failing the run.
+`budget.max_rescues` caps how many failed steps are rescued (below).
 The flow runtime has no clock, so `max_elapsed_ms` is enforced by
 the controller, which times out a run that would go past what is left. Time
 spent waiting for the caller does not count.
@@ -173,8 +181,12 @@ Facts are the caller's own details: names, email, phone, date of birth. The
 controller keeps them in a `Facts` store (`tinycomputer-core/src/facts/`) and
 follows three rules:
 
-1. Values stay local: Jev and the planner see fact names only. A value is
-   looked up at the moment it is typed into a field. Summaries, step intents
+1. Secret values never leave: Jev sees a secret only as `${name}`,
+   including when a field on screen holds it, and the planner and the
+   rescuer see fact names only. Shared values brief Jev, and Jev reads them
+   back from the fields they were typed into (`include_values` is on), so a
+   `verify` of typed details can pass. A value is looked up at the moment it
+   is typed into a field. Summaries, step intents
    in the view, and the final answer go through `Facts::redact`, which
    replaces each value with `‹name›`.
 2. Facts are only typed: a flow may use `${fact}` only as an `enter` step's
@@ -244,10 +256,34 @@ questions, which the task reports as `needs_input` before anything runs.
 `PlanTask` is the dry run: it returns the flow and the questions without
 starting anything, so a caller can inspect or edit the plan first.
 
-The planner does not rewrite the plan when a step fails partway through a
-run. A failed step ends the task as `failed` (or `needs_human`), and a caller
-that wants to try again starts a new task with a corrected flow. The lab's
-`authored` mode does the multi-round version outside the module.
+## Rescues
+
+When a top-level step fails and no person is needed, the task asks a
+reasoning model for guidance before it fails
+([`specs/task-rescue.md`](specs/task-rescue.md)). The rescuer
+(`crates/tinycomputer-engine/src/rescue/`) is briefed with the goal, the flow
+with the failed step marked, what the run reached, earlier rescues, the
+screen's visible text as untrusted data, and the fact names — every fact value
+redacted. It answers with up to six steps to run in place of the failed one,
+checked by the flow validator, with a skip when the screen is already past the
+failed step, or gives up. Its `covers` count drops as many
+of the steps right after the failed one when its steps already do them, but
+never a step holding a `stop_before`, and guidance for a failed `stop_before`
+must hold one itself. The task then runs the guidance and
+every remaining step unchanged, `stop_before` included, from what the budget
+has left.
+
+A task gets five rescues at most (`budget.max_rescues`, 0 to 5; 0 turns them
+off), and one rescue may think for two minutes. A rescue that gives up, fails,
+or gives no valid guidance leaves the task `failed`, with the rescuer's reason
+in the `hint`. `TaskReport.rescues` lists each one with its outcome:
+`recovered` when its steps all finished, `failed_again`, or `gave_up`.
+
+The planner's configuration brings the rescuer, on the same key: an optional
+`rescue_model` (default `openai/gpt-6-luna`, asked with low reasoning effort).
+`Describe` reports it as `rescue_configured`. A plain `RunFlow` is not
+rescued: rescues belong to the task controller, and the flow runtime asks
+only Jev.
 
 ## Where the code is
 
@@ -257,6 +293,7 @@ that wants to try again starts a new task with a corrected flow. The lab's
 | `task/interpret.rs` | what a finished run means: continue, pause, or stop, and how to resume |
 | `task/describe.rs` | `Describe`: capabilities, schemas, and examples |
 | `planner/mod.rs` | the planning protocol, validation, and repairs |
-| `planner/openrouter.rs` | the OpenRouter `LanguageModel` (feature `planner`) |
+| `planner/openrouter.rs` | the OpenRouter `LanguageModel`s for the planner and the rescuer (feature `planner`) |
+| `rescue/mod.rs` | the rescue protocol, the briefing, validation, and repairs |
 | `workspace/mod.rs` | the desktop and the browser as one surface |
 | `tinycomputer/src/tinybus_module/runner.rs` | the module's `FlowRunner`: one workspace and browser session per task |

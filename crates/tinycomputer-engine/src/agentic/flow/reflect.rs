@@ -3,7 +3,8 @@
 //!
 //! A press can succeed and still leave the wrong thing: a stepper whose label
 //! names "1 Adult" adds a second adult. `docs/specs/flow-reflection.md` is the
-//! contract.
+//! contract. A deliberating run whose step left the page it began on goes
+//! back there, verified, before it repairs (`checkpoint.rs`).
 
 use serde_json::json;
 use tinycomputer_bus::{FlowAction, FlowLoop, StepOutcome};
@@ -11,6 +12,7 @@ use tinycomputer_bus::{FlowAction, FlowLoop, StepOutcome};
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions},
+    checkpoint::Checkpoint,
     steps::left_unchosen,
     validate::substitute_safe,
 };
@@ -54,6 +56,17 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         self.history.push(format!(
             "reflection: the screen does not show the step's choice ({intent}); correcting it"
         ));
+        if self.deliberates(FlowLoop::Checkpoint)
+            && self.step_location.is_some()
+            && self.location != self.step_location
+        {
+            // The step left the page it began on: go back there first, so
+            // the repair corrects the choice rather than a page past it.
+            let start = Checkpoint::at(self.step_location.as_deref());
+            self.restore(log, &start, None, None).await?;
+            self.history
+                .push("reflection: went back to the page the step began on".to_owned());
+        }
         let repair = format!(
             "correct the previous step so the screen shows: choose {intent}; undo anything it changed that was not asked for"
         );

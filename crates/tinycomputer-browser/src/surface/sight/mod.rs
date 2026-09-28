@@ -32,6 +32,14 @@
 //! - **Containers are what a person sees a control in:** dialogs and fixed
 //!   layers, landmarks, named sections, and the cards of a list with their
 //!   ordinal, so result cards group as they do from the tree.
+
+//! - **Noise is left out:** ads (frames and links to ad servers, blocks
+//!   named or labelled as ads, tracking pixels), blank clickable boxes, and
+//!   what the page hides from people (`inert`, clipped screen-reader text,
+//!   and `aria-hidden` content slid out sideways or behind a dialog). An ad
+//!   in front, and a cookie, consent, or newsletter banner, is never noise:
+//!   a person has to answer it. The reply's `denoised` counts what went, by
+//!   kind ([`Denoised`]).
 //!
 //! Each control is marked with a `data-tc-seen` attribute the first time it
 //! is seen, and keeps it for as long as the element lives: a ref
@@ -97,6 +105,43 @@ pub(crate) fn selector(reference: &str) -> String {
         || format!("@{}", reference.trim_start_matches('@')),
         |id| format!("[data-tc-seen={}]", Value::String(id.to_owned())),
     )
+}
+
+/// What one sight reading left out as noise, by kind: each count is a
+/// block that held something sight would otherwise have returned.
+///
+/// The screen carries no trace of it; the surface keeps the last reading's
+/// summary ([`BrowserSurface::denoised`](super::BrowserSurface::denoised)).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Denoised {
+    /// Advertising: frames and links to ad servers, blocks the page marks
+    /// as ads, blocks labelled "Advertisement" or "Sponsored", and tracking
+    /// pixels.
+    pub ads: u64,
+    /// Blank clickable boxes: no words, no name, no picture, nothing inside
+    /// to act on.
+    pub empty: u64,
+    /// Content the page hides from people: `aria-hidden`, `inert`, and
+    /// visually hidden (clipped) text.
+    pub hidden: u64,
+}
+
+/// The `denoised` summary of a reading; zero for a count that is missing,
+/// as in a reading from before sight denoised.
+#[must_use]
+pub(crate) fn denoised(result: &Value) -> Denoised {
+    let count = |key: &str| {
+        result
+            .get("denoised")
+            .and_then(|summary| summary.get(key))
+            .and_then(Value::as_u64)
+            .unwrap_or_default()
+    };
+    Denoised {
+        ads: count("ads"),
+        empty: count("empty"),
+        hidden: count("hidden"),
+    }
 }
 
 /// What `evaluate` returned as a [`Screen`]; `None` when the reading failed

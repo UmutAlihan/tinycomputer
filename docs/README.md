@@ -78,7 +78,14 @@ memory — in [`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)
 surface reads a page by what is drawn rather than by its ARIA markup is in
 [`specs/browser-sight.md`](specs/browser-sight.md), and how a `choose` checks
 and repairs what its press left in
-[`specs/flow-reflection.md`](specs/flow-reflection.md).
+[`specs/flow-reflection.md`](specs/flow-reflection.md). How every decision is
+deliberated on its evidence — escalated, dueled, checked after acting, and
+undone and retried when wrong — is in
+[`specs/jev-deliberation.md`](specs/jev-deliberation.md)
+([`plans/jev-deliberation.md`](plans/jev-deliberation.md)). How a failed step
+is handed to a reasoning model for guidance before a task fails is in
+[`specs/task-rescue.md`](specs/task-rescue.md)
+([`plans/task-rescue.md`](plans/task-rescue.md)).
 
 ## Conventions
 

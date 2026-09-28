@@ -15,7 +15,13 @@
 //! - `TASK_OUT` — optional: where the plan, report, and final screenshot go
 //!   (default `target/task-live`).
 //! - `TINYCOMPUTER_FLOW_STRATEGY` — optional: `narrow` (default) or `wide`.
+//! - `TINYCOMPUTER_FLOW_DELIBERATION` — optional: `deep` (default),
+//!   `standard`, or `off`.
 //! - `TASK_MAX_MINUTES` — optional: cancel the task after this long (20).
+//! - `TASK_RESCUES` — optional: how many failed steps the reasoning model
+//!   may rescue (0 to 5, default 5; 0 turns rescues off).
+//! - `TINYCOMPUTER_RESCUE_MODEL` — optional: the `OpenRouter` model that
+//!   rescues them (`openai/gpt-6-luna` by default).
 //! - `TINYCOMPUTER_BROWSER_EXECUTABLE`, `TINYCOMPUTER_BROWSER_USER_AGENT`, and
 //!   `TINYCOMPUTER_BROWSER_ARGS` (space-separated) — how the browser launches.
 //! - `TASK_CURSOR` — optional: the agent's on-screen cursor pace (`off`,
@@ -48,6 +54,7 @@ use tinycomputer_bus::agent::{
 use tinycomputer_bus::{Flow, JevConfig, RunFlowRequest};
 use tinycomputer_engine::{
     FlowFuture, FlowRunner, JevRuntime, PlannerConfig, Tasks, TextFuture, Workspace, open_router,
+    open_router_rescuer,
 };
 
 type Failure = Box<dyn std::error::Error>;
@@ -97,6 +104,7 @@ async fn main() -> Result<(), Failure> {
     let planner: PlannerConfig = serde_json::from_value(json!({
         "api_key": key,
         "model": std::env::var("TINYCOMPUTER_PLANNER_MODEL").ok(),
+        "rescue_model": std::env::var("TINYCOMPUTER_RESCUE_MODEL").ok(),
     }))?;
     let browser = Arc::new(Browser::new(Arc::new(AgentBrowser)));
     let surface = BrowserSurface::new(
@@ -118,7 +126,8 @@ async fn main() -> Result<(), Failure> {
         workspace: Workspace::new(None, Some(surface.clone())),
         jev,
     }))
-    .with_planner(open_router(&planner)?);
+    .with_planner(open_router(&planner)?)
+    .with_rescuer(open_router_rescuer(&planner)?);
 
     let flow = match std::env::var("FLOW_FILE") {
         Ok(path) => serde_json::from_str(&std::fs::read_to_string(path)?)?,
@@ -140,6 +149,10 @@ async fn main() -> Result<(), Failure> {
             max_elapsed_ms: None,
             votes: None,
             strategy: tinycomputer_examples::flow_strategy_from_env(),
+            deliberation: tinycomputer_examples::flow_deliberation_from_env(),
+            max_rescues: std::env::var("TASK_RESCUES")
+                .ok()
+                .and_then(|value| value.trim().parse().ok()),
         },
         trace: true,
         ..StartTaskRequest::default()

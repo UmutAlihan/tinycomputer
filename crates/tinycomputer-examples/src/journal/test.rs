@@ -6,7 +6,9 @@ use std::path::PathBuf;
 
 use serde_json::{Value, json};
 
-use super::{events, find, percentile, render, runs, summarize, transcript};
+use super::{
+    calibration, events, find, percentile, render, render_calibration, runs, summarize, transcript,
+};
 
 fn flow_events() -> Vec<Value> {
     vec![
@@ -213,4 +215,49 @@ fn a_strategy_is_parsed_by_its_wire_name() {
         Some(tinycomputer_bus::FlowStrategy::Narrow)
     );
     assert_eq!(crate::parse_strategy("fastest"), None);
+}
+
+#[test]
+fn calibration_tallies_verdicts_against_how_steps_ended() {
+    let events = vec![
+        json!({"event": "evidence", "step": "1", "site": "target", "p": 0.9, "agreement": 1.0, "verdict": "accept"}),
+        json!({"event": "evidence", "step": "2", "site": "target", "p": 0.5, "agreement": 0.6, "verdict": "deliberate"}),
+        json!({"event": "evidence", "step": "2", "site": "target", "p": 0.7, "agreement": 0.8, "verdict": "deliberate"}),
+        json!({"event": "escalate", "step": "2", "site": "target", "rung": "framings"}),
+        json!({"event": "duel", "step": "2", "champion": 1}),
+        json!({"event": "duel", "step": "2", "champion": null}),
+        json!({"event": "expect", "step": "2", "outcome": "missed: it left the page"}),
+        json!({"event": "expect", "step": "1", "outcome": "met"}),
+        json!({"event": "restore", "step": "2", "restored": true}),
+        json!({"event": "backtrack", "step": "2", "accepted": false}),
+        json!({"event": "step", "step": "1", "outcome": "done"}),
+        json!({"event": "step", "step": "2", "outcome": "failed"}),
+    ];
+    let tally = calibration(&events);
+    assert_eq!(tally.verdicts.len(), 2);
+    let accepted = &tally.verdicts[0];
+    assert_eq!(
+        (
+            accepted.verdict.as_str(),
+            accepted.count,
+            accepted.step_done
+        ),
+        ("accept", 1, 1)
+    );
+    let deliberated = &tally.verdicts[1];
+    assert_eq!((deliberated.count, deliberated.step_failed), (2, 2));
+    assert!((deliberated.mean_p - 0.6).abs() < 1e-9);
+    assert!((deliberated.mean_agreement - 0.7).abs() < 1e-9);
+    assert_eq!(tally.rungs["framings"], 1);
+    assert_eq!((tally.duels, tally.champions), (2, 1));
+    assert_eq!(
+        (tally.expectations["missed"], tally.expectations["met"]),
+        (1, 1)
+    );
+    assert_eq!((tally.restores, tally.restored), (1, 1));
+    assert_eq!((tally.backtracks, tally.branched), (1, 0));
+    let table = render_calibration(&tally);
+    assert!(table.contains("deliberate"));
+    assert!(table.contains("duels: 2 (1 with a champion)"));
+    assert!(render_calibration(&calibration(&[])).contains("undos: 0"));
 }

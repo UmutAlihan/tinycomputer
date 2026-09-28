@@ -8,6 +8,7 @@
 //! cargo run -p tinycomputer-examples --bin jev_journal -- latest        # summary
 //! cargo run -p tinycomputer-examples --bin jev_journal -- <id> --json   # summary as JSON
 //! cargo run -p tinycomputer-examples --bin jev_journal -- <id> --transcript
+//! cargo run -p tinycomputer-examples --bin jev_journal -- <id> --calibration
 //! ```
 //!
 //! `<id>` is `latest`, any unique part of a run id, or a run directory.
@@ -20,12 +21,20 @@ use tinycomputer_examples::journal;
 fn main() -> ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     let json = args.iter().any(|arg| arg == "--json");
-    let transcript = args.iter().any(|arg| arg == "--transcript");
+    let view = if args.iter().any(|arg| arg == "--transcript") {
+        View::Transcript
+    } else if args.iter().any(|arg| arg == "--calibration") {
+        View::Calibration
+    } else if json {
+        View::Json
+    } else {
+        View::Summary
+    };
     let name = args.iter().find(|arg| !arg.starts_with("--"));
     let root = journal::root();
     let outcome = match name {
         None => list(&root),
-        Some(name) => show(&root, name, json, transcript),
+        Some(name) => show(&root, name, view, json),
     };
     match outcome {
         Ok(()) => ExitCode::SUCCESS,
@@ -56,20 +65,38 @@ fn list(root: &std::path::Path) -> std::io::Result<()> {
     Ok(())
 }
 
-fn show(root: &std::path::Path, name: &str, json: bool, transcript: bool) -> std::io::Result<()> {
+/// What `show` prints about one run.
+#[derive(Clone, Copy)]
+enum View {
+    Summary,
+    Json,
+    Transcript,
+    Calibration,
+}
+
+fn show(root: &std::path::Path, name: &str, view: View, json: bool) -> std::io::Result<()> {
     let dir = journal::find(root, name)?;
     let events = journal::events(&dir)?;
-    if transcript {
-        print!("{}", journal::transcript(&events));
-    } else if json {
-        let summary = journal::summarize(&events);
-        println!(
+    match view {
+        View::Transcript => print!("{}", journal::transcript(&events)),
+        View::Calibration if json => println!(
             "{}",
-            serde_json::to_string_pretty(&summary).map_err(std::io::Error::other)?
-        );
-    } else {
-        println!("{}", dir.display());
-        print!("{}", journal::render(&journal::summarize(&events)));
+            serde_json::to_string_pretty(&journal::calibration(&events))
+                .map_err(std::io::Error::other)?
+        ),
+        View::Calibration => print!(
+            "{}",
+            journal::render_calibration(&journal::calibration(&events))
+        ),
+        View::Json => println!(
+            "{}",
+            serde_json::to_string_pretty(&journal::summarize(&events))
+                .map_err(std::io::Error::other)?
+        ),
+        View::Summary => {
+            println!("{}", dir.display());
+            print!("{}", journal::render(&journal::summarize(&events)));
+        }
     }
     Ok(())
 }

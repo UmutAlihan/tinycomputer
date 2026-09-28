@@ -93,20 +93,26 @@ framing of every request together: one round trip. In order:
 6. **Fit.** A request over 100 KB of JSON (`MAX_REQUEST_BYTES`) is shrunk:
    the brief is kept on one question only, then the longest element and text
    lists lose their tails. Jev rejects requests past its token limit outright.
-7. **Frame.** `vote::framings` makes `votes` copies (default 5, at most 9):
+7. **Frame.** `vote::framings` makes `votes` copies (default 7, at most 9):
    label-keyed Choices are shuffled and relabelled, and each copy gets a
    different one-line perspective. Framing 0 is the request as built.
 8. **Evaluate.** All framings go to `JevRuntime::evaluate` at once, each on
    its own task. Each call is charged to the budget.
-9. **Merge.** Answers are mapped back to the original keys and averaged per
-   question (`vote::merge`). A Choice's `confidence` becomes the share of
-   framings that agreed with the winner.
+9. **Merge.** Answers are mapped back to the original keys, kept per
+   framing as each question's ballot (`vote::ballots`), and averaged
+   (`vote::tally`). A Choice's `confidence` becomes the share of framings
+   that agreed with the winner.
 10. **Record.** The merged exchange goes into the result's `trace` when the
     request set `trace: true`; each raw framing, and the decision's wall
     time, go to the debug journal when it is on.
 
 The step's code then thresholds the merged answers (see
-[`decision-thresholds.md`](decision-thresholds.md)).
+[`decision-thresholds.md`](decision-thresholds.md)). A deliberating run
+first reads the ballot's evidence — lead and agreement, not one number — and
+when it is thin asks again: more framings (`FlowRun::widen`, which joins the
+same ballot), a duel, a contrast, other views of the screen
+([`specs/jev-deliberation.md`](specs/jev-deliberation.md)). Every rung goes
+through the same door, so steps 2–10 apply to each.
 
 ## Where the time goes
 

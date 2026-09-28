@@ -15,7 +15,7 @@ Question ids, their types, and their thresholds are defined in
 ## What each step kind costs
 
 A rough guide to the decisions (Jev requests) each step makes when things go
-well. Each decision is `votes` calls (5 by default) running concurrently.
+well. Each decision is `votes` calls (7 by default) running concurrently.
 
 | Step | Decisions when all goes well | Where they come from |
 |---|---|---|
@@ -242,6 +242,11 @@ What is different on the web:
 | `note: that made things worse; undid it` in history | progress fell a quarter, or `helped` came back under 0.2 | the turn after the action: its `progress` and `helped` |
 | a click on the wrong element | a low-confidence `target` that `again` + `confirm` let through, or a wrong memory hint | the grounding exchanges for that step: `target`, `again`, `confirm` |
 | `no field that takes text was found for: …` | a slot matched no field at 0.40, and `asks_…` said the form does ask; "… refused the text" when a page offered list rows or buttons as fields (`NOT_A_TEXT_FIELD`) | the `slot_*` answers and the element list in `request.state`; the refused `fill` actions in the step report |
+| `that was a mistake (…); undid it (back)` in history | an expectation check missed and `intended` came back low; the undo went back a page and the screen matched its checkpoint | `expect`, `restore`, then `backtrack` events |
+| `failed: undid a mistake (…) but the screen does not match where it started` | a restoring undo could not be verified, so the step failed closed | the `restore` event's `similarity` and `rungs` |
+| `failed: will not press … irreversibly on uncertain evidence` | a deep `stop_before` vouched under 0.85 | the `is_0`/`only_near_0` answers in its exchanges |
+| a close call pressed at its best ranking | the evidence gate deliberated, and neither the duel nor the contrast settled it; the runners-up are kept for a backtrack | `evidence`, `escalate`, `duel` events for the step; `jev_journal --calibration` |
+| `the step typed into … by mistake; put its text back` in history | a `choose` found no option and typed it to filter; the text went into the focused field, and the failed step retyped the field's previous text | the `restore` event (`rungs: ["retype"]`) |
 | `the Jev call budget ran out` (stop `ModelBudget`) | the call budget ran out | `jev_journal` summary: calls per step; voting multiplies them |
 
 Start from the step report, find that step's events in the journal

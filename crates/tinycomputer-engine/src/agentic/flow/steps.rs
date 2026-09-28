@@ -14,9 +14,10 @@ use crate::workspace::BROWSER;
 
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
-    act::DONE,
+    act::{DONE, SCREEN_VIEW},
     ask::{self, Questions, chosen, condition, numbered},
     backend::deliver_text,
+    escalate::Belief,
     ground::Grounded,
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute_safe},
@@ -33,6 +34,9 @@ const WINDOW_CHECKS: u32 = 10;
 const WAIT_CHECKS: u32 = 10;
 /// Most characters of a picked item's text kept in its variable.
 const MAX_PICK_SUMMARY: usize = 400;
+/// Least belief a deep run needs that a control is the one a `stop_before`
+/// names before it presses it irreversibly.
+pub(super) const IRREVERSIBLE_FLOOR: f64 = 0.85;
 /// Least probability a `read` or `stop_before` target needs.
 const LOCATE_FLOOR: f64 = 0.5;
 
@@ -164,6 +168,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Judges one condition on the current screen.
+    ///
+    /// A deliberating run settles a judgement near [`DONE`] on its evidence
+    /// (`escalate::settle_belief`), at the deep level also asking it over
+    /// the screen alone, without the history that can lead it.
     pub(super) async fn holds(
         &mut self,
         log: &mut StepLog,
@@ -171,24 +179,40 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ) -> Result<f64, Halt> {
         log.used(FlowLoop::Completion);
         let screen = self.look().await?;
-        let answers = self
-            .ask(
-                log,
-                ask::request(
-                    self.model(),
-                    self.state(&screen, condition_text),
-                    Questions::default()
-                        .with("holds", condition(condition_text))
-                        .with("negated", ask::negated(condition_text))
-                        .with("coverage", ask::coverage(condition_text)),
-                ),
-            )
-            .await?;
-        let held = ask::combined(
-            ask::calibrated(&answers, "holds", "negated"),
-            ask::top_level(&answers, "coverage"),
-        )
-        .unwrap_or_default();
+        let request = ask::request(
+            self.model(),
+            self.state(&screen, condition_text),
+            Questions::default()
+                .with("holds", condition(condition_text))
+                .with("negated", ask::negated(condition_text))
+                .with("coverage", ask::coverage(condition_text)),
+        );
+        let mut answers = self.ask(log, request.clone()).await?;
+        let belief = Belief {
+            site: "holds",
+            yes: "holds",
+            no: "negated",
+            top: Some("coverage"),
+            threshold: DONE,
+        };
+        let views = if self.deep() {
+            vec![ask::request(
+                self.model(),
+                ask::state(&screen, condition_text, &[], self.include_values),
+                Questions::default()
+                    .with("holds", ask::viewed(condition(condition_text), SCREEN_VIEW))
+                    .with(
+                        "negated",
+                        ask::viewed(ask::negated(condition_text), SCREEN_VIEW),
+                    ),
+            )]
+        } else {
+            Vec::new()
+        };
+        let held = self
+            .settle_belief(log, belief, &request, &mut answers, views)
+            .await?
+            .unwrap_or_default();
         log.confidence = Some(held);
         Ok(held)
     }
@@ -248,7 +272,107 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// opened autocomplete expects. `enter` turns that off for a slot with
     /// no field: the focus there is the field it just filled for another
     /// slot, and typing into it would spoil that value.
+    ///
+    /// A deliberating run records every text field's value first, and puts
+    /// back any the attempts changed when the step fails: typing the option
+    /// to filter a list lands wherever the focus is, and on a form with no
+    /// such list that is the field filled last (live on Emirates, `Female`
+    /// for a gender the form never asked for turned `Raina` into
+    /// `RainaFemale`).
     pub(super) async fn pick_option(
+        &mut self,
+        log: &mut StepLog,
+        what: &str,
+        option: &str,
+        private: bool,
+        into_focus: bool,
+    ) -> Result<Ended, Halt> {
+        let before = if self.deliberates(FlowLoop::Checkpoint) {
+            Some(held_text(&self.look().await?))
+        } else {
+            None
+        };
+        let result = self
+            .try_option(log, what, option, private, into_focus)
+            .await;
+        if let (Some(before), Err(Halt::Failed(_))) = (before, &result) {
+            self.restore_text(log, &before).await?;
+        }
+        result
+    }
+
+    /// Puts back every field of `before` whose text the step changed.
+    async fn restore_text(
+        &mut self,
+        log: &mut StepLog,
+        before: &[(Candidate, String)],
+    ) -> Result<(), Halt> {
+        let screen = self.look().await?;
+        let alike = |screen_candidates: &[Candidate], kind: &str| {
+            screen_candidates
+                .iter()
+                .filter(|candidate| element_kind(candidate) == kind)
+                .count()
+        };
+        let before_candidates = before
+            .iter()
+            .map(|(field, _)| field.clone())
+            .collect::<Vec<_>>();
+        for (field, text) in before {
+            let kind = element_kind(field);
+            // Only a field told apart by its kind alone is put back: rows of
+            // a list share one, and a field that refused text takes none.
+            if self.refused.contains(&kind)
+                || alike(&before_candidates, &kind) != 1
+                || alike(&screen.candidates, &kind) != 1
+            {
+                continue;
+            }
+            let Some(now) = screen
+                .candidates
+                .iter()
+                .find(|candidate| element_kind(candidate) == kind)
+                .cloned()
+            else {
+                continue;
+            };
+            let current = now
+                .value
+                .as_ref()
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .trim()
+                .to_owned();
+            if current == text.trim() {
+                continue;
+            }
+            log.used(FlowLoop::Checkpoint);
+            let app = self.app.clone();
+            let target = now.clone();
+            let previous = text.clone();
+            let reply = self
+                .act(log, "retype (undo)", Some(&now), move |backend| {
+                    deliver_text(&backend, &app, &target, &previous)
+                })
+                .await?;
+            self.history.push(format!(
+                "the step typed into {} by mistake; put its text back, ok={}",
+                label(&now),
+                reply.ok
+            ));
+            self.runtime.journal.record("restore", || {
+                json!({
+                    "step": self.step,
+                    "rungs": ["retype"],
+                    "restored": reply.ok,
+                    "target": label(&now),
+                })
+            });
+        }
+        Ok(())
+    }
+
+    async fn try_option(
         &mut self,
         log: &mut StepLog,
         what: &str,
@@ -818,6 +942,21 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             ));
             return Err(Halt::Stop(FlowStopReason::StoppedBeforeDestructive));
         }
+        if self.deep()
+            && self.deliberates(FlowLoop::Evidence)
+            && grounded.confidence < IRREVERSIBLE_FLOOR
+        {
+            // Nothing undoes this press: the bar is higher than for any
+            // other, and a pick short of it is vouched for once more.
+            let vouched = self.vouch(log, &screen, &purpose, &target).await?;
+            log.confidence = Some(vouched);
+            if vouched < IRREVERSIBLE_FLOOR {
+                return Err(Halt::Failed(format!(
+                    "will not press {} irreversibly on uncertain evidence (confidence {vouched:.2})",
+                    label(&target)
+                )));
+            }
+        }
         let clicked = target.clone();
         let reply = self
             .act(log, "click (irreversible)", Some(&target), move |backend| {
@@ -915,6 +1054,25 @@ const MONTHS: &[&str] = &[
     "november",
     "december",
 ];
+
+/// Every text field on `screen` that holds text, with that text: what a
+/// failed `choose` puts back.
+fn held_text(screen: &Screen) -> Vec<(Candidate, String)> {
+    screen
+        .candidates
+        .iter()
+        .filter(|candidate| {
+            candidate
+                .available_actions
+                .iter()
+                .any(|action| action == "SetValue" || action == "TypeText")
+        })
+        .filter_map(|candidate| {
+            let text = candidate.value.as_ref()?.as_str()?.trim();
+            (!text.is_empty()).then(|| (candidate.clone(), text.to_owned()))
+        })
+        .collect()
+}
 
 /// Whether `option` names a calendar day: a month name and a day number that
 /// is a real day of that month (a year, when given, decides February's 28th
