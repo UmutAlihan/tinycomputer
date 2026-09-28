@@ -46,7 +46,7 @@ the `DesktopResponse` envelope, the error converted by
 configured `browser.executable` when the request names neither an executable
 nor an endpoint.
 
-`test/browser.rs` drives them over the in-memory bus against a scripted
+`tinybus_module_tests/browser_tests.rs` drives them over the in-memory bus against a scripted
 engine, so no browser is launched.
 
 ## Configuration
