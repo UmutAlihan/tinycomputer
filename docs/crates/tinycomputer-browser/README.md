@@ -55,14 +55,21 @@ the wire shapes those members carry.
 
 ## A tour, start to finish
 
-1. A caller opens a session (`Browser::open_session`). That either launches a
-   fresh Chrome or attaches to one already running, depending on the
-   options given. See [sessions.md](sessions.md).
+1. A caller opens a session (`Browser::open_session`), or, over the bus,
+   calls `BrowserOpenSession`. That either launches a fresh Chrome or
+   attaches to one already running, depending on the options given. See
+   [sessions.md](sessions.md).
 2. The caller drives the session directly (navigate, click, read, screenshot)
-   through `Browser`'s methods, or hands the session to
-   `tinycomputer-engine` as a `BrowserSurface`, which drives it the same way
-   a decision loop drives a desktop application. See
+   through `Browser`'s methods, or the `BrowserNavigate` / `BrowserPerform` /
+   `BrowserReadPage` / `BrowserScreenshot` bus members that wrap them, or
+   hands the session to `tinycomputer-engine` as a `BrowserSurface`, which
+   drives it the same way a decision loop drives a desktop application. See
    [surface.md](surface.md).
+
+   ```json
+   // BrowserPerform request, over the bus, clicking a snapshot ref
+   {"session": "s-1", "action": "click", "target": {"kind": "ref", "value": "e3"}}
+   ```
 3. Every "what's on the page" question is answered by *sight*: a script run
    in the page that reads it the way a person would, rather than trusting
    whatever roles and labels the page's own markup claims. When sight can't
