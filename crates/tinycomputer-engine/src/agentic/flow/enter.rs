@@ -122,8 +122,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 },
             ))
         } else {
+            let refused = if self.refused.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "; {} element(s) the page offered as fields refused the text",
+                    self.refused.len()
+                )
+            };
             Err(Halt::Failed(format!(
-                "no field was found for: {}",
+                "no field that takes text was found for: {}{refused}",
                 names(&slots, &pending)
             )))
         }
