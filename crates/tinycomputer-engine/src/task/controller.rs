@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tinycomputer_bus::agent::{
-    AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, PaymentMode, PlanTaskRequest,
+    AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, LanguageModelConfiguration, PaymentMode, PlanTaskRequest,
     StartTaskRequest, TaskId, TaskPlan, TaskReport, TaskStatus, TaskView,
 };
 use tinycomputer_core::Facts;
