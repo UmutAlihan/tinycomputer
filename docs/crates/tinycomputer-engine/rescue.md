@@ -247,10 +247,10 @@ completion.
 - `crates/tinycomputer-engine/src/task/mod.rs`, `rescue`, `rescued`,
   `rescue_outcome`, where the rescuer is actually invoked from.
 - `crates/tinycomputer-bus/src/agent/types.rs`, `Rescue`, `RescueOutcome`.
-- [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md)
- , the formal spec.
-- [`docs/technical/evals/2026-09-28-rescue.md`](../../technical/evals/2026-09-28-rescue.md)
- , the live eval this page's examples are drawn from.
+- [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md),
+  the formal spec.
+- [`docs/technical/evals/2026-09-28-rescue.md`](../../technical/evals/2026-09-28-rescue.md),
+  the live eval this page's examples are drawn from.
 - [rescue.md](../../rescue.md) (top-level guide) and
   [catching-mistakes.md](../../catching-mistakes.md), the less technical
   version of this page.

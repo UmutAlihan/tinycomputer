@@ -123,8 +123,8 @@ Three kinds of pause exist, and each resumes differently:
   captured as a `Resume::Approval` when the flow stopped. `ContinueTask
   { approve: true }` runs the guarded action first, on its own
   (`allow_destructive: true`, for just that one step), then the rest of the
-  flow, if any, as a second run. `approve: false` cancels the task outright
- , the action was declined, so there is nothing left to do, and releases
+  flow, if any, as a second run. `approve: false` cancels the task outright:
+  the action was declined, so there is nothing left to do, and releases
   whatever surface it held.
 - **`NeedsHuman`.** The failed step and everything after it were captured as
   a `Resume::Retry`. Any `ContinueTask` call while paused here re-runs from
