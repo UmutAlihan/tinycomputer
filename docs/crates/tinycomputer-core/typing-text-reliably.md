@@ -26,7 +26,7 @@ field back after acting on it.
      field like this can never be read back and compared, so it is reported
      as unverified rather than as a failure.
    - If nothing could be read at all, same thing: unverified, not failed.
-3. Otherwise, fall back to `paste(app, target, text)`, put the text on the
+3. Otherwise, fall back to `paste(app, target, text)`: put the text on the
    clipboard, focus the field, paste, and restore whatever the clipboard held
    before. Read the field back again the same way.
 4. If even that read-back does not hold the text, return a real error:
