@@ -4644,9 +4644,10 @@ fn lookalikes_are_offered_once_and_the_first_in_page_order_is_kept() {
 
 #[tokio::test]
 async fn a_field_that_refuses_the_text_is_struck_and_the_real_one_is_used() {
-    // A page gives each suggested city a `combobox` role; Jev picks one as
-    // "the destination search", it refuses the text, and the step must not
-    // offer it again.
+    // A page gives each suggested city a `combobox` role and no name, each
+    // holding its city as a value; Jev takes one for "the destination
+    // search", as it did live. It refuses the text, and the step must strike
+    // every row of its kind, not try them one by one.
     let run = run_with(
         App::quirky(Quirk::CityRows),
         json!({"app": "Mail", "steps": [{"enter": {"destination search": "Srinagar"}}]}),
@@ -4654,15 +4655,12 @@ async fn a_field_that_refuses_the_text_is_struck_and_the_real_one_is_used() {
         |id, question, _| {
             id.starts_with("slot_").then(|| {
                 let offered = serde_json::to_string(question).unwrap();
-                pick(
-                    question,
-                    if offered.contains("Mumbai") {
-                        "Mumbai"
-                    } else {
-                        "Search"
-                    },
-                    0.9,
-                )
+                let needle = if offered.contains(r#""what":"combobox""#) {
+                    r#""what":"combobox""#
+                } else {
+                    "Search"
+                };
+                pick(question, needle, 0.9)
             })
         },
     )
@@ -4672,20 +4670,15 @@ async fn a_field_that_refuses_the_text_is_struck_and_the_real_one_is_used() {
     let fills = step
         .actions
         .iter()
-        .map(|action| {
-            (
-                action.target.as_ref().and_then(|t| t.name.clone()),
-                action.ok,
-            )
-        })
+        .map(|action| (action.target.as_ref().unwrap().ref_id.clone(), action.ok))
         .collect::<Vec<_>>();
     assert_eq!(
         fills,
         [
-            (Some("Mumbai".to_owned()), false),
-            (Some("Search".to_owned()), true)
+            ("@s:city-0".to_owned(), false),
+            ("@s:Search".to_owned(), true)
         ],
-        "one refusal, then the real field"
+        "one refusal strikes every row of its kind, then the real field"
     );
     assert_eq!(run.app.sim().fields["Search"], "Srinagar");
 }
