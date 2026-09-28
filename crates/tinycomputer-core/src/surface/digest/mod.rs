@@ -259,8 +259,10 @@ fn relevance(region: &Region, rendering: &Rendering<'_>) -> f64 {
 }
 
 /// One line per card of the list under `parent`, then a count of the rest.
-fn card_lines(screen: &Screen, depth: usize, parent: &[String]) -> Vec<String> {
-    let cards = groups::cards_at(screen, depth, parent);
+/// `include_values` gates a card's field content exactly as
+/// [`super::screen::element_line`] gates an ordinary element's held value.
+fn card_lines(screen: &Screen, depth: usize, parent: &[String], include_values: bool) -> Vec<String> {
+    let cards = groups::cards_at(screen, depth, parent, include_values);
     let index_of = |target: &Candidate| {
         screen
             .candidates
