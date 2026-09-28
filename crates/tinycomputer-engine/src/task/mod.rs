@@ -877,6 +877,11 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
             return;
         }
     }
+    finish(&cell, runner.as_ref());
+}
+
+/// Every run finished: the task is done, with what it read.
+fn finish(cell: &Cell, runner: &dyn FlowRunner) {
     let answer = {
         let Ok(state) = cell.state.lock() else {
             return;
@@ -898,7 +903,7 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         (state.facts.redact(&answer), records(&state.reads))
     };
     publish(
-        &cell,
+        cell,
         TaskStatus::Done {
             answer: answer.0.clone(),
             records: answer.1,
