@@ -22,7 +22,10 @@
 
 mod types;
 
-pub use types::{ImageFormat, OutputChunk, OutputId, OutputRef, ScreenshotRequest};
+pub use types::{
+    ImageFormat, OutputChunk, OutputId, OutputRef, OutputRequest, ReadOutputRequest,
+    ScreenshotRequest,
+};
 
 #[cfg(test)]
 mod test;

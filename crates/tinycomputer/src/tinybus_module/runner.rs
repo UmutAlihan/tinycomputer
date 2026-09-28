@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use tinycomputer_browser::{AgentBrowser, Browser, BrowserSurface, ScreenCursor, SessionOptions};
+use tinycomputer_browser::{Browser, BrowserSurface, ScreenCursor, SessionOptions};
 use tinycomputer_bus::DesktopResponse;
 use tinycomputer_bus::agent::{SurfaceKind, TaskConstraints, TaskId};
 use tinycomputer_engine::{FlowFuture, FlowRunner, JevRuntime, TextFuture, Workspace};
@@ -30,13 +30,14 @@ pub(super) struct WorkspaceRunner {
 }
 
 impl WorkspaceRunner {
-    /// A runner with no task workspaces yet, launching browsers through the
-    /// linked agent-browser.
-    pub(super) fn new(desktop: Desktop, jev: Option<JevRuntime>) -> Self {
+    /// A runner with no task workspaces yet, opening each task's browser
+    /// session on `browser` — the one the browser members serve, so a
+    /// caller can inspect a task's session and read what it captured.
+    pub(super) fn new(desktop: Desktop, jev: Option<JevRuntime>, browser: Arc<Browser>) -> Self {
         Self {
             desktop,
             jev,
-            browser: Arc::new(Browser::new(Arc::new(AgentBrowser))),
+            browser,
             executable: None,
             cursor: Arc::new(ScreenCursor::off()),
             workspaces: Mutex::new(HashMap::new()),

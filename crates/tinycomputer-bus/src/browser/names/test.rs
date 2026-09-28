@@ -1,4 +1,4 @@
-//! Tests for the module's bus identity.
+//! Tests for the browser members' bus identity.
 //!
 //! These pin strings a host spells from this crate and a module answers to. A
 //! change to one of them is a wire break, so it should have to be made twice —
@@ -9,14 +9,9 @@
 use super::{INTERFACE, METHODS, OBJECT_PATH, methods};
 
 #[test]
-fn interface_is_the_published_name() {
-    assert_eq!(INTERFACE, "ai.tinyhumans.tinycomputer.Browser");
-}
-
-#[test]
-fn object_path_is_the_interface_in_path_form() {
-    assert_eq!(OBJECT_PATH, "/ai/tinyhumans/tinycomputer/Browser");
-    assert_eq!(OBJECT_PATH, format!("/{}", INTERFACE.replace('.', "/")));
+fn browser_members_share_the_module_interface() {
+    assert_eq!(INTERFACE, crate::names::INTERFACE);
+    assert_eq!(OBJECT_PATH, crate::names::OBJECT_PATH);
 }
 
 #[test]
@@ -27,17 +22,26 @@ fn methods_lists_every_member_once() {
     sorted.dedup();
 
     assert_eq!(sorted.len(), count, "METHODS contains a duplicate");
-    assert_eq!(count, 14);
+    assert_eq!(count, 13);
 }
 
 #[test]
-fn method_constants_are_pascal_case_on_the_wire() {
+fn every_browser_member_carries_the_browser_prefix() {
     for member in METHODS {
-        let first = member.chars().next().expect("member name is not empty");
-        assert!(first.is_ascii_uppercase(), "{member} is not PascalCase");
+        assert!(member.starts_with("Browser"), "{member} lacks the prefix");
         assert!(
             member.chars().all(|c| c.is_ascii_alphanumeric()),
             "{member} is not a bare identifier"
+        );
+    }
+}
+
+#[test]
+fn browser_members_are_served_on_the_module_interface() {
+    for member in METHODS {
+        assert!(
+            crate::names::METHODS.contains(member),
+            "{member} is missing from the module's member list"
         );
     }
 }
@@ -58,7 +62,6 @@ fn every_member_constant_appears_in_methods() {
         methods::RELEASE_OUTPUT,
         methods::LIST_DOWNLOADS,
         methods::WAIT_DOWNLOAD,
-        methods::CONTRACT_VERSION,
     ] {
         assert!(
             METHODS.contains(&member),

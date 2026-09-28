@@ -189,3 +189,49 @@ pub struct SessionInfo {
     /// The title of that page, empty if it has none yet.
     pub title: String,
 }
+
+/// A session named in a request that carries nothing else.
+///
+/// Every browser member takes one JSON object, like the desktop members, so a
+/// model calling it as a tool spells the session by name rather than by
+/// position: `{"session": "s-1"}`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SessionRef {
+    /// The session, as [`SessionInfo::id`] reported it.
+    pub session: SessionId,
+}
+
+/// A request addressed to one session: the session, and the member's own
+/// fields beside it in the same object.
+///
+/// The request's fields are flattened, so a navigation is
+/// `{"session": "s-1", "url": "https://example.com"}` and a click is
+/// `{"session": "s-1", "action": "click", "target": {"kind": "ref", "value": "e3"}}`
+/// — one flat object a model can write, not a positional pair.
+///
+/// # Examples
+///
+/// ```
+/// # use tinycomputer_bus::browser::{NavigateRequest, SessionId, SessionRequest};
+/// let request = SessionRequest::new(SessionId::new("s-1"), NavigateRequest::new("https://example.com"));
+/// let wire = serde_json::to_value(&request)?;
+/// assert_eq!(wire["session"], "s-1");
+/// assert_eq!(wire["url"], "https://example.com");
+/// # Ok::<(), serde_json::Error>(())
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SessionRequest<T> {
+    /// The session, as [`SessionInfo::id`] reported it.
+    pub session: SessionId,
+    /// The member's own request.
+    #[serde(flatten)]
+    pub request: T,
+}
+
+impl<T> SessionRequest<T> {
+    /// Addresses `request` to `session`.
+    #[must_use]
+    pub fn new(session: SessionId, request: T) -> Self {
+        Self { session, request }
+    }
+}

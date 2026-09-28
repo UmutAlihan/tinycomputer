@@ -24,8 +24,8 @@ fn every_member_name_is_listed_exactly_once() {
 }
 
 #[test]
-fn the_member_list_has_the_sixty_seven_members_the_contract_documents() {
-    assert_eq!(METHODS.len(), 67);
+fn the_member_list_has_the_eighty_members_the_contract_documents() {
+    assert_eq!(METHODS.len(), 80);
 }
 
 #[test]
@@ -51,7 +51,10 @@ fn the_families_appear_in_the_documented_order() {
     // Agentic goal members come first because they compose the primitive
     // families below. The list is also the asserted dispatch order.
     assert_eq!(METHODS.first(), Some(&methods::RESOLVE_INTENT));
-    assert_eq!(METHODS.last(), Some(&methods::PERMISSIONS));
+    assert_eq!(
+        METHODS.last(),
+        Some(&crate::browser::names::methods::WAIT_DOWNLOAD)
+    );
 }
 
 #[test]
@@ -66,4 +69,10 @@ fn the_four_reserved_hold_members_are_served_rather_than_omitted() {
     ] {
         assert!(METHODS.contains(&reserved), "{reserved} must be served");
     }
+}
+
+#[test]
+fn the_browser_members_close_the_list_in_their_own_order() {
+    let browser = crate::browser::names::METHODS;
+    assert_eq!(&METHODS[METHODS.len() - browser.len()..], browser);
 }

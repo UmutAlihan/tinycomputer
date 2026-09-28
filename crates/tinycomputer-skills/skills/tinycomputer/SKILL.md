@@ -9,7 +9,7 @@ tinycomputer runs a task for you on the person's computer: in a browser, in desk
 
 ## The loop
 
-1. `Describe` once. It returns what is available (desktop, browser, planner), the flow guide, every member's input schema, and worked examples.
+1. `Describe` once. It returns what is available (desktop, browser, planner), the flow guide, every task member's input schema, worked examples, and `catalogue`: every member the module serves, with its family and one sentence on what it is for.
 2. `StartTask` with the task. It returns at once with a task id.
 3. `AwaitTask` until the status is not `running`.
 4. Act on the status (below), then go back to step 3 until the status is final.
@@ -39,6 +39,15 @@ Every reply is `{ok, data}` or `{ok: false, error: {code, message, hint, recover
 | `needs_plan` | plain-language task, no planner | write a flow with `guide` and start again with `flow` |
 | `done` | finished | report `answer`, or `result` when you passed `output`; `records` holds anything read or extracted |
 | `failed` | could not finish; a configured rescuer already tried up to five times | explain `reason`; if `recoverable`, try again changed as `hint` says |
+
+## Looking closer, or driving the browser yourself
+
+Tasks are the way in; the primitives are there when you need to look or act directly. They reply `{ok, command, data}` or `{ok: false, error: {code, message, suggestion, recovery}}`, the same on the desktop and in the browser: `STALE_REF` always means take a fresh snapshot and choose again, and a `recovery` with `retryable: false` means do not repeat the call as it was.
+
+- `BrowserListSessions` shows every open browser session, a running task's included.
+- `BrowserOpenSession`, then `BrowserNavigate` and `BrowserSnapshot` with `{"session": id, …}`; act on a ref with `BrowserPerform`, such as `{"session": "s-1", "action": "click", "target": {"kind": "ref", "value": "e3"}}`.
+- `BrowserScreenshot` returns an output id, not an image: read it with `BrowserReadOutput` from `offset` 0 until `eof`, then `BrowserReleaseOutput`. The same works for a screenshot a task view names.
+- `BrowserCloseSession` when you are done with a session you opened; leave a task's session to the task.
 
 ## Writing flows that work
 

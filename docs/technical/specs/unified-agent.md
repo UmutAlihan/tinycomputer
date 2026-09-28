@@ -58,14 +58,15 @@ Dependencies point one way:
 A TinyBus module manifest declares one bus name and one object path, and
 `module_export!` attaches its member list to the first interface only. Until
 TinyBus serves several interfaces per module, the members below share
-`ai.tinyhumans.tinycomputer.Desktop` (their names do not collide; browser
-members that would collide take a `Browser` prefix). The table is the logical
-split.
+`ai.tinyhumans.tinycomputer.Desktop`; every browser member takes a `Browser`
+prefix, so the family is obvious in a flat list and none collides with a
+desktop member. The table is the logical split, and `Describe` serves it as
+`Capabilities.catalogue`.
 
 | Interface | For | Members |
 |---|---|---|
 | `ai.tinyhumans.tinycomputer.Agent` | external agents | `Describe`, `PlanTask`, `StartTask`, `AwaitTask`, `ContinueTask`, `CancelTask`, `TaskReport`, `ListTasks` |
-| `ai.tinyhumans.tinycomputer.Browser` | power users | sessions, navigate, snapshot, perform, read, screenshot, outputs, downloads, tabs, cookies and storage state, upload, dialog, find, wait, plus a policy-checked `Command` |
+| `Browser…` members | power users | served (2.6): sessions, navigate, snapshot, perform, read, evaluate, screenshot, outputs, downloads. Planned: tabs, cookies and storage state, upload, dialog, find, and a policy-checked `Command` |
 | `ai.tinyhumans.tinycomputer.Desktop` | power users | the existing 59 members, unchanged |
 
 ### Agent API rules

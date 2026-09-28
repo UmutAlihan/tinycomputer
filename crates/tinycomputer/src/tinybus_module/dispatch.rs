@@ -1,8 +1,10 @@
 //! The served interface: one `async fn` per member of the contract.
 //!
-//! Every method has the same body — hand a copy of the engine to a blocking
-//! thread and return the envelope it produces — so the file is long and
-//! uninteresting on purpose. What matters is that the order below is the order
+//! Every desktop method has the same body — hand a copy of the engine to a
+//! blocking thread and return the envelope it produces — and every browser
+//! method the same other body — await the shared [`Browser`] and wrap its
+//! result in that same envelope — so the file is long and uninteresting on
+//! purpose. What matters is that the order below is the order
 //! of [`tinycomputer_bus::names::METHODS`]; `test.rs` asserts the generated
 //! dispatch table against that list, so a member added in one place and not the
 //! other fails the build.
@@ -34,19 +36,32 @@ use tinycomputer_bus::agent::{
 
 use super::runner::{WorkspaceRunner, jev_not_configured};
 use crate::{Desktop, Result};
-use tinycomputer_browser::{CursorPace, ScreenCursor};
+use tinycomputer_browser::{
+    Action, AgentBrowser, Browser, CursorPace, DownloadWaitRequest, EvaluateRequest,
+    NavigateRequest, OutputRequest, ReadOutputRequest, ReadRequest, ScreenCursor,
+    ScreenshotRequest as BrowserScreenshotRequest, SessionOptions, SessionRef, SessionRequest,
+    SnapshotRequest as BrowserSnapshotRequest,
+};
 use tinycomputer_engine as agentic;
 
 /// The object served at [`tinycomputer_bus::names::OBJECT_PATH`].
 ///
-/// It holds the configured engine and nothing else. Cloning it is cheap, which
+/// It holds the configured engines and nothing else. Cloning it is cheap, which
 /// is what lets every member hand a copy to a blocking thread instead of
 /// borrowing one across an `await`.
+///
+/// The [`Browser`] is the one the task runner opens its sessions on, so the
+/// browser members see a task's session and can read the screenshots its
+/// views name, and one session limit covers both.
 #[derive(Debug, Clone)]
 pub(crate) struct DesktopService {
     desktop: Desktop,
     jev: Option<agentic::JevRuntime>,
     pub(super) tasks: Arc<agentic::Tasks>,
+    browser: Arc<Browser>,
+    /// The configured `browser.executable`, used by a `BrowserOpenSession`
+    /// that names none.
+    executable: Option<String>,
 }
 
 impl DesktopService {
@@ -56,6 +71,16 @@ impl DesktopService {
     ///
     /// Propagates whatever [`Desktop::from_config`] rejects.
     pub(crate) fn from_config(config: &serde_json::Value) -> Result<Self> {
+        Self::with_browser(config, Arc::new(Browser::new(Arc::new(AgentBrowser))))
+    }
+
+    /// Builds the service from the module configuration blob, opening browser
+    /// sessions on `browser`.
+    ///
+    /// # Errors
+    ///
+    /// Propagates whatever [`Desktop::from_config`] rejects.
+    pub(crate) fn with_browser(config: &serde_json::Value, browser: Arc<Browser>) -> Result<Self> {
         let cursor = Arc::new(cursor_config(config)?);
         let desktop = Desktop::from_config(config)?.with_cursor(cursor.clone());
         let jev = config
@@ -92,8 +117,9 @@ impl DesktopService {
                 Ok::<_, crate::Error>((planner, rescuer, shaper))
             })
             .transpose()?;
-        let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone());
-        runner.executable = browser_executable(config)?;
+        let executable = browser_executable(config)?;
+        let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone(), browser.clone());
+        runner.executable.clone_from(&executable);
         runner.cursor = cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
         if let Some((planner, rescuer, shaper)) = planner {
@@ -107,6 +133,8 @@ impl DesktopService {
             desktop,
             jev,
             tasks,
+            browser,
+            executable,
         })
     }
 
@@ -526,6 +554,168 @@ impl DesktopService {
     async fn permissions(&self, request: PermissionsRequest) -> TinyBusResult<DesktopResponse> {
         self.run(move |desktop| desktop.permissions(request)).await
     }
+
+    /// Launches or attaches a browser and returns its session.
+    async fn browser_open_session(
+        &self,
+        mut options: SessionOptions,
+    ) -> TinyBusResult<DesktopResponse> {
+        if options.executable.is_none() && options.endpoint.is_none() {
+            options.executable.clone_from(&self.executable);
+        }
+        Ok(browser_reply(
+            "browser-open-session",
+            self.browser.open_session(options).await,
+        ))
+    }
+
+    /// Closes a session and everything it owns.
+    async fn browser_close_session(&self, request: SessionRef) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-close-session",
+            self.browser
+                .close_session(&request.session)
+                .await
+                .map(|()| serde_json::json!({"session": request.session, "closed": true})),
+        ))
+    }
+
+    /// Lists the browser sessions this module holds.
+    async fn browser_list_sessions(&self) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-list-sessions",
+            self.browser.list_sessions().await,
+        ))
+    }
+
+    /// Navigates a session's active page.
+    async fn browser_navigate(
+        &self,
+        request: SessionRequest<NavigateRequest>,
+    ) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-navigate",
+            self.browser
+                .navigate(&request.session, request.request)
+                .await,
+        ))
+    }
+
+    /// Captures the active page's accessibility tree with element refs.
+    async fn browser_snapshot(
+        &self,
+        request: SessionRequest<BrowserSnapshotRequest>,
+    ) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-snapshot",
+            self.browser
+                .snapshot(&request.session, request.request)
+                .await,
+        ))
+    }
+
+    /// Performs one interaction on the active page.
+    async fn browser_perform(
+        &self,
+        request: SessionRequest<Action>,
+    ) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-perform",
+            self.browser
+                .perform(&request.session, request.request)
+                .await,
+        ))
+    }
+
+    /// Extracts the active page as text.
+    async fn browser_read_page(
+        &self,
+        request: SessionRequest<ReadRequest>,
+    ) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-read-page",
+            self.browser
+                .read_page(&request.session, request.request)
+                .await,
+        ))
+    }
+
+    /// Evaluates JavaScript in the active page.
+    async fn browser_evaluate(
+        &self,
+        request: SessionRequest<EvaluateRequest>,
+    ) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-evaluate",
+            self.browser
+                .evaluate(&request.session, request.request)
+                .await,
+        ))
+    }
+
+    /// Captures a screenshot and holds it for `BrowserReadOutput`.
+    async fn browser_screenshot(
+        &self,
+        request: SessionRequest<BrowserScreenshotRequest>,
+    ) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-screenshot",
+            self.browser
+                .screenshot(&request.session, request.request)
+                .await,
+        ))
+    }
+
+    /// Reads one chunk of a held output.
+    async fn browser_read_output(
+        &self,
+        request: ReadOutputRequest,
+    ) -> TinyBusResult<DesktopResponse> {
+        self.on_outputs(move |browser| {
+            browser_reply(
+                "browser-read-output",
+                browser.read_output(&request.output, request.offset, request.max_len),
+            )
+        })
+        .await
+    }
+
+    /// Releases a held output before it expires.
+    async fn browser_release_output(
+        &self,
+        request: OutputRequest,
+    ) -> TinyBusResult<DesktopResponse> {
+        self.on_outputs(move |browser| {
+            browser_reply(
+                "browser-release-output",
+                browser
+                    .release_output(&request.output)
+                    .map(|()| serde_json::json!({"output": request.output, "released": true})),
+            )
+        })
+        .await
+    }
+
+    /// Lists a session's retained downloads.
+    async fn browser_list_downloads(&self, request: SessionRef) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-list-downloads",
+            self.browser.list_downloads(&request.session).await,
+        ))
+    }
+
+    /// Waits for a session's next download to finish.
+    async fn browser_wait_download(
+        &self,
+        request: SessionRequest<DownloadWaitRequest>,
+    ) -> TinyBusResult<DesktopResponse> {
+        Ok(browser_reply(
+            "browser-wait-download",
+            self.browser
+                .wait_download(&request.session, request.request)
+                .await,
+        ))
+    }
 }
 
 impl DesktopService {
@@ -543,8 +733,39 @@ impl DesktopService {
             .map_err(|error| TinyBusError::failed(format!("task call failed: {error}")))
     }
 
+    /// Runs a held-output call on a blocking thread: encoding a chunk of up
+    /// to four mebibytes is work the dispatch task should not wait on.
+    async fn on_outputs<F>(&self, call: F) -> TinyBusResult<DesktopResponse>
+    where
+        F: FnOnce(&Browser) -> DesktopResponse + Send + 'static,
+    {
+        let browser = self.browser.clone();
+        tokio::task::spawn_blocking(move || call(&browser))
+            .await
+            .map_err(|error| TinyBusError::failed(format!("output call failed: {error}")))
+    }
+
     fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
         self.jev.clone()
+    }
+}
+
+/// A browser call's result as the envelope every member replies with.
+///
+/// A value that will not serialize is a module fault, not the caller's, and
+/// travels as `INTERNAL` like any other.
+fn browser_reply<T: serde::Serialize>(
+    command: &str,
+    result: tinycomputer_browser::Result<T>,
+) -> DesktopResponse {
+    let data = result.and_then(|value| {
+        serde_json::to_value(value).map_err(|error| {
+            tinycomputer_browser::Error::failed(format!("reply did not serialize: {error}"))
+        })
+    });
+    match data {
+        Ok(data) => DesktopResponse::ok(command, data),
+        Err(error) => DesktopResponse::err(command, error.envelope()),
     }
 }
 
