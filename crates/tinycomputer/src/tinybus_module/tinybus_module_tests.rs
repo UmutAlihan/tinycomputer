@@ -557,7 +557,7 @@ fn the_browser_executable_is_configured_or_refused() {
 
 #[test]
 fn the_cursor_is_configured_or_refused() {
-    use super::dispatch::cursor_config;
+    use super::config::cursor_config;
     use tinycomputer_browser::CursorPace;
     assert_eq!(
         cursor_config(&json!({})).unwrap().pace(),
