@@ -85,6 +85,7 @@ Each turn of the loop:
 | `NeedsText` | The chosen operation types text, and no caller-supplied value remains. |
 | `ActionBudget` / `ModelBudget` / `TimeBudget` | A budget ran out. |
 | `ActionUncertain` / `ActionFailed` | The action itself did not clearly succeed. |
+| `VerificationFailed` | The loop ended before the goal's visible conditions were actually satisfied. |
 | `ScopeChanged` | The screen moved outside the request's declared window while a confirmed action was in flight. |
 | `Stalled` | Three actions in a row changed nothing. |
 
