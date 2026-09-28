@@ -43,7 +43,7 @@ Otherwise, one voted decision is asked:
 
 ## What happens with the answer
 
-At or above 0.50 (`REFLECT_FLOOR`), the step stands as `Done`. Below that,
+At or above 0.50 (`REFLECT_FLOOR`), the step's `Done` outcome holds. Below that,
 the runtime writes the finding into the run's history, then runs a short
 `do` loop, at most 4 turns (`REPAIR_TURNS`), with the intent "correct the
 previous step so the screen shows: ...; undo anything it changed that was
