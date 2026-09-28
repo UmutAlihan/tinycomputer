@@ -173,6 +173,17 @@ impl BrowserSurface {
         Ok(info.id)
     }
 
+    fn debug_field(&self, label: &str, target: &Candidate) {
+        if std::env::var("TC_DEBUG_FIELD").is_err() { return; }
+        let Ok(id) = self.ensure_session() else { return; };
+        let selector = format!("@{}", target.ref_id.trim_start_matches('@'));
+        let bbox = self.block(self.browser.command(&id, json!({"action": "boundingbox", "selector": selector})));
+        let value = self.block(self.browser.command(&id, json!({"action": "inputvalue", "selector": selector})));
+        let script = r#"(() => { const a=document.activeElement; const ins=[...document.querySelectorAll('input')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0}); return JSON.stringify({active: a&&(a.tagName+' ph='+a.getAttribute('placeholder')+' val='+JSON.stringify(a.value)+' cls='+String(a.className).slice(0,40)), visibleInputs: ins.map(e=>e.getAttribute('placeholder')+'|'+e.getAttribute('aria-label')+'|'+JSON.stringify(e.value)+'|'+Math.round(e.getBoundingClientRect().y))}); })()"#;
+        let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
+        eprintln!("TCDBG {label} {} bbox={:?} value={:?} page={:?}", selector, bbox.map(|v| v.to_string()), value.map(|v| v.to_string()), page.map(|v| v.get("result").cloned()));
+    }
+
     /// Clicks the middle of `reference` even though something covers it,
     /// but only when the cover is part of the same result card, so a banner
     /// or dialog in front still blocks the click. `None` when it is not.
@@ -385,6 +396,7 @@ impl Surface for BrowserSurface {
     }
 
     fn read_value(&self, target: &Candidate) -> Option<String> {
+        self.debug_field("read", target);
         if target.ref_id.is_empty() {
             return None;
         }
@@ -414,6 +426,7 @@ impl Surface for BrowserSurface {
                 DesktopError::new("INVALID_TARGET", "paste needs a target"),
             );
         }
+        self.debug_field("paste-before", target);
         let focused = self.perform(
             "focus",
             Action::Focus {
