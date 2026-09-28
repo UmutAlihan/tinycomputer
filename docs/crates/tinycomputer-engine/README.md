@@ -23,10 +23,8 @@ TinyBus members; this crate only holds the logic.
 | The rescuer | `src/rescue/` | Consulted only when a task's step fails; suggests replacement steps or gives up. |
 | The workspace | `src/workspace/` | Joins the desktop and the browser into one surface, so a flow can move between an application and a web page without the caller tracking which is which. |
 
-See also [`crates/tinycomputer-engine/src/agentic/README.md`](../../../crates/tinycomputer-engine/src/agentic/README.md)
-for `RunGoal` and `ResolveIntent` from the implementer's side, and
-[`docs/technical/jev-harness.md`](../../technical/jev-harness.md) for the Jev
-stack underneath all of it.
+See [`docs/technical/jev-harness.md`](../../technical/jev-harness.md) for the
+Jev stack underneath all of it, described from the implementer's side.
 
 ## How the pieces fit
 
