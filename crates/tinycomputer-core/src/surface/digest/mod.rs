@@ -166,12 +166,22 @@ impl Digest {
         let mut in_front = Vec::new();
         let mut shown = Vec::new();
         let mut collapsed = Vec::new();
+        let mut omitted = 0;
         for region in self.ordered(rendering) {
             let lines = Self::lines(screen, region, rendering.include_values);
             let cost = lines.iter().map(|line| line.len() + 4).sum::<usize>() + 40;
             let muted = Self::muted(region, rendering);
             if muted || spent + cost > rendering.budget {
-                let summary = summary(screen, region);
+                // A collapsed summary still spends the same budget: bounded
+                // in length on its own, and stopped once summaries alone
+                // would run the total well past it, so a page split into
+                // many small regions cannot inflate the digest without
+                // limit.
+                if spent > rendering.budget + COLLAPSED_SLACK {
+                    omitted += 1;
+                    continue;
+                }
+                let summary = clip(&summary(screen, region), SUMMARY_CHARS);
                 spent += summary.len() + 4;
                 collapsed.push(summary);
                 continue;
