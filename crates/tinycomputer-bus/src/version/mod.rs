@@ -22,8 +22,8 @@ pub const CONTRACT_VERSION: (u32, u32) = (2, 3);
 /// ```
 /// # use tinycomputer_bus::{is_compatible, CONTRACT_VERSION};
 /// assert!(is_compatible(CONTRACT_VERSION));
-/// assert!(is_compatible((2, 2)));
-/// assert!(!is_compatible((2, 1)));
+/// assert!(is_compatible((2, 3)));
+/// assert!(!is_compatible((2, 2)));
 /// assert!(!is_compatible((1, 8)));
 /// ```
 #[must_use]
