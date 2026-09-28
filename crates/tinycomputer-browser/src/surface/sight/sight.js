@@ -461,7 +461,7 @@
       const parent = node.parentElement;
       if (!parent || !squash(node.data) || texts >= limits.texts) continue;
       if (lastText && lastText.contains(parent)) continue;
-      if (insideControl(parent) || insideText(parent) || !shown(parent)) continue;
+      if (controls.has(parent) || insideControl(parent) || insideText(parent) || !shown(parent)) continue;
       const rect = box(parent);
       if (rect.bottom < -height || rect.top > 2 * height) continue;
       lastText = parent;
