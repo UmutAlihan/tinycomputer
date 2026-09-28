@@ -21,7 +21,7 @@ use serde_json::{Value, json};
 use tinybus::{Connection, broker::Broker, module::ModuleHost, transport::memory::MemoryBus};
 use tinycomputer_bus::agent::{
     AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, PlanTaskRequest,
-    StartTaskRequest, TaskId, TaskPlan, TaskRef, TaskReport, TaskView,
+    StartTaskRequest, TaskId, TaskPlan, TaskRef, TaskReport, TaskReportRequest, TaskView,
 };
 use tinycomputer_bus::browser::{
     OutputChunk, OutputRef, OutputRequest, ReadOutputRequest, ScreenshotRequest, SessionId,
@@ -274,7 +274,7 @@ impl Host {
     ///
     /// Fails on a transport error or an error reply.
     pub async fn task_report(&self, id: &TaskId) -> Result<TaskReport, LabError> {
-        let request = TaskRef { id: id.clone() };
+        let request = TaskReportRequest::new(id.clone());
         agent(
             self.proxy
                 .call_confidential(names::methods::TASK_REPORT, (request,))

@@ -31,7 +31,8 @@ use std::sync::Arc;
 
 use tinycomputer_bus::agent::{
     AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, PlanTaskRequest,
-    StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport, TaskView,
+    StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport,
+    TaskReportRequest, TaskView,
 };
 
 use super::browser_defaults::BrowserDefaults;

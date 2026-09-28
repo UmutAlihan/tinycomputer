@@ -42,7 +42,8 @@ use std::time::{Duration, Instant};
 use tinycomputer_bus::agent::{
     AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputField, InputKind,
     PaymentMode, PlanTaskRequest, Rescue, RescueOutcome, StartTaskRequest, StepView, TaskBudget,
-    TaskConstraints, TaskId, TaskOutput, TaskPlan, TaskReport, TaskStatus, TaskView,
+    TaskConstraints, TaskId, TaskOutput, TaskPlan, TaskReport, TaskReportRequest, TaskStatus,
+    TaskView,
 };
 use tinycomputer_bus::{
     DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowStep, GroundingHint, JevExchange,
