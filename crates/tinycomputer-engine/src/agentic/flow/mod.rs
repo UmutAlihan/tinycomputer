@@ -20,6 +20,12 @@
 //!   the screen, carrying the judgement, the obstacle, and every move's
 //!   target; `survey` ranks a crowded screen's regions first, and `ledger`
 //!   is the working memory every wide question sees.
+//! - Deliberation (`docs/specs/jev-deliberation.md`) decides on evidence
+//!   rather than one probability: `evidence` reads a question's ballot into
+//!   accept, deliberate, or abstain; `escalate` asks a close call more ways,
+//!   `duel` settles close candidates two at a time; `denoise` ranks what is
+//!   in view first; `expect` checks an action did what it should; and
+//!   `checkpoint` undoes a mistake and verifies the undo.
 //!
 //! Every request carries the run's brief — the goal, whom it is for, the
 //! plan and where the run is in it, what it has chosen so far, and what kind
@@ -32,7 +38,13 @@
 mod act;
 mod ask;
 mod backend;
+mod checkpoint;
+mod denoise;
+mod duel;
 mod enter;
+mod escalate;
+mod evidence;
+mod expect;
 mod ground;
 mod ledger;
 mod memory;
@@ -58,9 +70,10 @@ use std::{
 
 use serde_json::{Value, json};
 use tinycomputer_bus::{
-    DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowBrief,
-    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint, JevExchange,
-    JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
+    Deliberation, DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord,
+    FlowBrief, FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint,
+    JevExchange, JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport,
+    ValidateFlowRequest,
 };
 use tinycomputer_core::Facts;
 use tinyinference_decisions::{Answer, EvaluationRequest, Question};
@@ -258,6 +271,18 @@ pub(super) struct FlowRun<'r, B> {
     /// field holding text the flow typed shows no choice the page made
     /// (`steps::already_holds`).
     pub(super) typed: BTreeSet<String>,
+    /// How much the run deliberates before acting on a decision.
+    deliberation: Deliberation,
+    /// Every framing's own answer to each question, under the original
+    /// keys, from the latest decision that asked it: the evidence a
+    /// deliberating decision reads (`evidence.rs`) and widens (`escalate`).
+    ballots: BTreeMap<String, Vec<tinyinference_decisions::Answer>>,
+    /// The address the surface last reported, on a surface that has them:
+    /// a checkpoint's location, and how a navigation is noticed.
+    pub(super) location: Option<String>,
+    /// The runners-up of the step's latest grounding, best first: the
+    /// branches a backtrack tries next (`checkpoint.rs`).
+    pub(super) frontier: Vec<Candidate>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -361,6 +386,10 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             read: Vec::new(),
             refused: BTreeSet::new(),
             typed: BTreeSet::new(),
+            deliberation: request.deliberation,
+            ballots: BTreeMap::new(),
+            location: None,
+            frontier: Vec::new(),
         }
     }
 
@@ -395,6 +424,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         self.step.clone_from(&path);
         self.ledger.begin();
         self.refused.clear();
+        self.frontier.clear();
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let result = self.reflected(&mut log, &action, &text, result).await;
@@ -493,6 +523,22 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         !self.disabled.contains(&flow_loop)
     }
 
+    /// Whether the run deliberates on evidence at all, and `flow_loop` —
+    /// one of deliberation's loops — is on.
+    pub(super) fn deliberates(&self, flow_loop: FlowLoop) -> bool {
+        self.deliberation != Deliberation::Off && self.enabled(flow_loop)
+    }
+
+    /// Whether the run deliberates at the deep level.
+    pub(super) fn deep(&self) -> bool {
+        self.deliberation == Deliberation::Deep
+    }
+
+    /// Jev evaluations the run may still make.
+    pub(super) fn room(&self) -> u32 {
+        self.max_calls.saturating_sub(self.metrics.calls)
+    }
+
     pub(super) fn model(&self) -> &str {
         &self.runtime.configuration.model
     }
@@ -545,26 +591,10 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         }
         let batched = requests.len();
         let mut asked = Vec::with_capacity(batched);
-        for mut request in requests {
-            if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
-                log.used(FlowLoop::PageKind);
-                request
-                    .questions
-                    .insert(PAGE_KIND.to_owned(), ask::page_kind());
-            }
-            self.brief_into(&mut request);
-            self.mask(&mut request);
-            fit(&mut request, MAX_REQUEST_BYTES);
+        for request in requests {
+            let request = self.prepare(log, request);
             let framings = vote::framings(&request, votes);
-            let handles = framings
-                .iter()
-                .map(|framing| {
-                    let runtime = self.runtime.clone();
-                    let step = self.step.clone();
-                    let request = framing.request.clone();
-                    tokio::spawn(async move { runtime.evaluate(Some(&step), &request).await })
-                })
-                .collect::<Vec<_>>();
+            let handles = self.spawn(&framings);
             asked.push((request, framings, handles));
         }
         self.rounds = self.rounds.saturating_add(1);
@@ -592,7 +622,12 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 (true, None) => {
                     return Err(Halt::Failed("no Jev evaluation completed".to_owned()));
                 }
-                _ => vote::merge(&answered),
+                _ => {
+                    let ballots = vote::ballots(&answered);
+                    let merged = vote::tally(&ballots);
+                    self.ballots.extend(ballots);
+                    merged
+                }
             };
             // The decision's wall time: its framings run at once, and the
             // batch's requests with them, so this is the slowest framing so
@@ -622,6 +657,45 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             replies.push(answers);
         }
         Ok(replies)
+    }
+
+    /// `request` as it leaves for Jev: with the page-kind question on a web
+    /// page, briefed, masked, and fitted to size.
+    pub(super) fn prepare(
+        &self,
+        log: &mut StepLog,
+        mut request: EvaluationRequest,
+    ) -> EvaluationRequest {
+        if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
+            log.used(FlowLoop::PageKind);
+            request
+                .questions
+                .insert(PAGE_KIND.to_owned(), ask::page_kind());
+        }
+        self.brief_into(&mut request);
+        self.mask(&mut request);
+        fit(&mut request, MAX_REQUEST_BYTES);
+        request
+    }
+
+    /// Sends every framing to Jev at once.
+    pub(super) fn spawn(
+        &self,
+        framings: &[vote::Framing],
+    ) -> Vec<
+        tokio::task::JoinHandle<
+            Result<tinyinference_decisions::EvaluationResult, super::EvaluationFailure>,
+        >,
+    > {
+        framings
+            .iter()
+            .map(|framing| {
+                let runtime = self.runtime.clone();
+                let step = self.step.clone();
+                let request = framing.request.clone();
+                tokio::spawn(async move { runtime.evaluate(Some(&step), &request).await })
+            })
+            .collect()
     }
 
     /// Adds the run's brief — the goal, whom it is for, the plan with this
