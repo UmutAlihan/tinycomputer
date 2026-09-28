@@ -200,7 +200,7 @@ pub(in crate::agentic::flow) fn left_unchosen(screen: &Screen, option: &str, fil
 
 /// The ancestors siblings share: `path` without the numbered items it ends
 /// in, since each tab of a strip sits in its own `listitem #n`.
-pub(super) fn container(path: &[String]) -> &[String] {
+fn container(path: &[String]) -> &[String] {
     let numbered = |segment: &&String| {
         segment
             .rsplit_once(" #")
