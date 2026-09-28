@@ -4278,6 +4278,46 @@ async fn an_obstacle_in_front_is_cleared_from_the_turns_own_request_and_remember
 }
 
 #[tokio::test]
+async fn dismiss_options_honor_the_runs_value_visibility_policy() {
+    let hidden = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        wide,
+        |_, _, _| None,
+    )
+    .await;
+    let Question::Choice(dismiss) = &hidden.requests[0].questions["dismiss"] else {
+        panic!("dismiss is a choice");
+    };
+    assert!(
+        !serde_json::to_string(&dismiss.criteria)
+            .unwrap()
+            .contains("unsaved-draft-42"),
+        "a held value is hidden from dismiss options when include_values is false"
+    );
+
+    let shown = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.include_values = true;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    let Question::Choice(dismiss) = &shown.requests[0].questions["dismiss"] else {
+        panic!("dismiss is a choice");
+    };
+    assert!(
+        serde_json::to_string(&dismiss.criteria)
+            .unwrap()
+            .contains("unsaved-draft-42"),
+        "a held value must reach dismiss options when the run allows include_values"
+    );
+}
+
+#[tokio::test]
 async fn a_crowded_screen_is_surveyed_once_and_ranked_instead_of_narrowed() {
     let app = App::with(|sim| sim.extra_buttons = 60);
     let run = run_with(
