@@ -9,18 +9,19 @@ use std::{
 };
 
 use super::{
-    AgentBackend, Evaluator, JevRuntime, execute_desktop, internal_error,
+    Evaluator, JevRuntime,
+    backend::{AgentBackend, execute_desktop},
+    goal::{run_goal, run_goal_with, same_target},
     policy::{
         ACT, DESTRUCTIVE, FLOOR, action_space, choice, deterministic_destructive,
         exact_named_match, gate_with_evidence, noul, parse_operation, playing_goal_satisfied,
         positional_match, request, rerank_request, shortlist, target,
     },
-    provider_error, reason, resolve_intent, resolve_intent_with, response as agent_response,
-    run_goal, run_goal_with, same_target,
+    reply::{internal_error, provider_error, response as agent_response},
+    resolve::{reason, resolve_intent, resolve_intent_with, target_payload, visible_completion},
     screen::{
         Candidate, NativeId, Screen, describe, fingerprint, observe, parse_reply, snapshot_request,
     },
-    target_payload, visible_completion,
 };
 use serde_json::json;
 use tinycomputer_bus::{
