@@ -133,7 +133,10 @@ fn denoised_summary_parses_and_defaults() {
             hidden: 1
         }
     );
-    assert!(screen(&read).is_some(), "the summary does not change the screen");
+    assert!(
+        screen(&read).is_some(),
+        "the summary does not change the screen"
+    );
 
     assert_eq!(
         denoised(&reading()),
@@ -182,7 +185,10 @@ async fn live_reading(html: &str) -> Option<serde_json::Value> {
         .await
         .expect("the fixture is written");
     let reply = browser
-        .command(&info.id, json!({"action": "evaluate", "script": script(None)}))
+        .command(
+            &info.id,
+            json!({"action": "evaluate", "script": script(None)}),
+        )
         .await;
     browser.close_session(&info.id).await.unwrap();
     Some(reply.expect("sight reads the fixture")["result"].clone())
@@ -265,7 +271,10 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
             "{dropped} in {names:?}"
         );
     }
-    assert_eq!(reading["unreachable"], 0, "an ad frame never hides the page");
+    assert_eq!(
+        reading["unreachable"], 0,
+        "an ad frame never hides the page"
+    );
     assert_eq!(
         reading["denoised"],
         json!({"ads": 9, "empty": 0, "hidden": 0}),
@@ -294,7 +303,12 @@ async fn live_blank_containers_are_dropped() {
         .as_array()
         .unwrap()
         .iter()
-        .map(|node| (node["role"].as_str().unwrap(), node["name"].as_str().unwrap()))
+        .map(|node| {
+            (
+                node["role"].as_str().unwrap(),
+                node["name"].as_str().unwrap(),
+            )
+        })
         .collect::<Vec<_>>();
     assert_eq!(
         controls,
@@ -375,7 +389,10 @@ async fn live_hidden_elements_are_dropped() {
         "Inert link",
         "Screen reader only",
     ] {
-        assert!(!names.contains(&dropped.to_owned()), "{dropped} in {names:?}");
+        assert!(
+            !names.contains(&dropped.to_owned()),
+            "{dropped} in {names:?}"
+        );
     }
     let checkboxes = reading["nodes"]
         .as_array()
