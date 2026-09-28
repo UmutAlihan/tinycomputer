@@ -260,7 +260,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .fill(log, slot, &assignment.field, &screen.context)
                     .await?;
                 if !filled {
-                    struck.insert(element_kind(&assignment.field));
+                    struck.insert(signature(&assignment.field));
                     self.refused.insert(element_kind(&assignment.field));
                     self.ledger.tried(format!(
                         "{} did not take the {}",
