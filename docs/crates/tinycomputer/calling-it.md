@@ -233,11 +233,13 @@ in.
 ```
 
 `TaskReport` (also confidential, since it can carry the full trace) gives you
-the whole history once you are done:
+the whole history once you are done. Always send `trace`: a confidential call
+whose body is only `{"id": …}` is refused by the TinyBus client before it
+leaves, because that is the shape of a stream handle.
 
 ```json
 // TaskReport request
-{ "id": "task-7f2a" }
+{ "id": "task-7f2a", "trace": false }
 ```
 
 ## Discover what you can call before calling it

@@ -188,11 +188,10 @@ fn members() -> Vec<MemberDoc> {
                     "id": {"type": "string"},
                     "trace": {
                         "type": "boolean",
-                        "default": true,
-                        "description": "include every Jev exchange StartTask.trace recorded; false keeps the report small"
+                        "description": "include every Jev exchange StartTask.trace recorded; false keeps the report small. Required: a confidential body of only {\"id\"} is refused by the TinyBus client as a stream handle"
                     }
                 }),
-                &["id"],
+                &["id", "trace"],
             ),
             "TaskReport",
         ),

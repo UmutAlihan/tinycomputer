@@ -125,10 +125,66 @@ async fn describe_schemas_name_every_request_field() {
 
     let plan = serde_json::to_value(tinycomputer_bus::agent::PlanTaskRequest::default()).unwrap();
     assert_eq!(documented(&schema("PlanTask")), fields(&plan));
+
+    let id = tinycomputer_bus::agent::TaskId::new("t-1");
+    let others = [
+        (
+            "AwaitTask",
+            serde_json::to_value(tinycomputer_bus::agent::AwaitTaskRequest {
+                id: id.clone(),
+                timeout_ms: 1,
+            }),
+        ),
+        (
+            "ContinueTask",
+            serde_json::to_value(tinycomputer_bus::agent::ContinueTaskRequest {
+                id: id.clone(),
+                approve: Some(true),
+                answer: Some(String::new()),
+                ..tinycomputer_bus::agent::ContinueTaskRequest::default()
+            }),
+        ),
+        (
+            "CancelTask",
+            serde_json::to_value(tinycomputer_bus::agent::TaskRef { id: id.clone() }),
+        ),
+        (
+            "TaskReport",
+            serde_json::to_value(tinycomputer_bus::agent::TaskReportRequest::new(id)),
+        ),
+    ];
+    for (member, request) in others {
+        assert_eq!(
+            documented(&schema(member)),
+            fields(&request.unwrap()),
+            "{member}"
+        );
+    }
+    // Every member with a request object is compared above; the rest take
+    // no argument.
+    for member in &described.members {
+        if member.input["type"] != "object" {
+            assert_eq!(member.input["type"], "null", "{}", member.name);
+        }
+    }
 }
 
 #[tokio::test]
-async fn describe_browser_examples_decode_as_their_members_requests() {
+async fn the_task_report_schema_requires_the_trace_flag() {
+    // A schema-driven caller sends only what is required; a body of only
+    // `{"id"}` would be refused client-side as a stream handle.
+    let (tasks, _) = controller(Vec::new());
+    let described = capabilities(Vec::new(), true, &tasks);
+    let report = described
+        .members
+        .iter()
+        .find(|member| member.name == "TaskReport")
+        .unwrap();
+    assert_eq!(report.input["required"], json!(["id", "trace"]));
+}
+
+#[tokio::test]
+async fn every_describe_example_decodes_as_its_members_request() {
     use tinycomputer_bus::browser::{
         Action, NavigateRequest, ReadOutputRequest, SessionOptions, SessionRequest, names,
     };
@@ -151,10 +207,15 @@ async fn describe_browser_examples_decode_as_their_members_requests() {
                 serde_json::from_value::<ReadOutputRequest>(request).is_ok()
             }
             "StartTask" => serde_json::from_value::<StartTaskRequest>(request).is_ok(),
-            _ => continue,
+            "AwaitTask" => serde_json::from_value::<AwaitTaskRequest>(request).is_ok(),
+            "ContinueTask" => {
+                serde_json::from_value::<tinycomputer_bus::agent::ContinueTaskRequest>(request)
+                    .is_ok()
+            }
+            other => panic!("the {other} example has no decoder here; add one"),
         };
         assert!(decoded, "the {} example does not decode", example.title);
         seen += 1;
     }
-    assert!(seen >= 6, "the browser and output examples are checked");
+    assert_eq!(seen, described.examples.len());
 }
