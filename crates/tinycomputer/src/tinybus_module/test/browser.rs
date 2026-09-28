@@ -79,8 +79,9 @@ impl Drop for Scratch {
     }
 }
 
-/// Serves a scripted-browser service on a fresh bus and returns a proxy to it.
-async fn serve(scratch: &Scratch) -> tinybus::Result<Proxy> {
+/// Serves a scripted-browser service on a fresh bus and returns the serving
+/// connection, to keep alive, and a proxy to it.
+async fn serve(scratch: &Scratch) -> tinybus::Result<(Connection, Proxy)> {
     serve_with(scratch, &json!({}), Arc::new(ScriptedLauncher::default())).await
 }
 
@@ -90,7 +91,7 @@ async fn serve_with(
     scratch: &Scratch,
     config: &Value,
     launcher: Arc<ScriptedLauncher>,
-) -> tinybus::Result<Proxy> {
+) -> tinybus::Result<(Connection, Proxy)> {
     let bus = MemoryBus::new();
     Broker::new().spawn(bus.clone());
 
@@ -103,7 +104,10 @@ async fn serve_with(
     server.request_name(names::INTERFACE).await?;
 
     let client = Connection::connect(bus.connect().await?).await?;
-    client.proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)
+    let proxy = client.proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)?;
+    // The serving connection owns the name; the caller holds it for as long
+    // as it calls.
+    Ok((server, proxy))
 }
 
 async fn call(proxy: &Proxy, member: &str, request: Value) -> tinybus::Result<DesktopResponse> {
@@ -118,7 +122,7 @@ fn data(reply: &DesktopResponse) -> &Value {
 #[tokio::test]
 async fn a_session_runs_open_navigate_click_and_close_over_the_bus() -> tinybus::Result<()> {
     let scratch = Scratch::new("loop");
-    let proxy = serve(&scratch).await?;
+    let (_server, proxy) = serve(&scratch).await?;
 
     let opened = call(&proxy, methods::OPEN_SESSION, json!({})).await?;
     assert_eq!(opened.command, "browser-open-session");
@@ -154,7 +158,7 @@ async fn a_session_runs_open_navigate_click_and_close_over_the_bus() -> tinybus:
 #[tokio::test]
 async fn a_screenshot_is_read_back_in_chunks_and_released() -> tinybus::Result<()> {
     let scratch = Scratch::new("shot");
-    let proxy = serve(&scratch).await?;
+    let (_server, proxy) = serve(&scratch).await?;
     let opened = call(&proxy, methods::OPEN_SESSION, json!({})).await?;
     let session = data(&opened)["id"].clone();
 
@@ -189,7 +193,7 @@ async fn a_screenshot_is_read_back_in_chunks_and_released() -> tinybus::Result<(
 #[tokio::test]
 async fn a_stale_ref_fails_with_the_desktop_code_and_recovery() -> tinybus::Result<()> {
     let scratch = Scratch::new("stale");
-    let proxy = serve(&scratch).await?;
+    let (_server, proxy) = serve(&scratch).await?;
     let opened = call(&proxy, methods::OPEN_SESSION, json!({})).await?;
     let session = data(&opened)["id"].clone();
 
@@ -216,7 +220,7 @@ async fn a_stale_ref_fails_with_the_desktop_code_and_recovery() -> tinybus::Resu
 #[tokio::test]
 async fn an_unknown_session_is_refused_before_anything_is_sent() -> tinybus::Result<()> {
     let scratch = Scratch::new("unknown");
-    let proxy = serve(&scratch).await?;
+    let (_server, proxy) = serve(&scratch).await?;
 
     for (member, request) in [
         (methods::NAVIGATE, json!({"session": "s-404", "url": "https://example.com"})),
@@ -242,7 +246,7 @@ async fn an_unknown_session_is_refused_before_anything_is_sent() -> tinybus::Res
 async fn an_open_session_takes_the_configured_executable() -> tinybus::Result<()> {
     let scratch = Scratch::new("executable");
     let launcher = Arc::new(ScriptedLauncher::default());
-    let proxy = serve_with(
+    let (_server, proxy) = serve_with(
         &scratch,
         &json!({"browser": {"executable": "/opt/chromium"}}),
         launcher.clone(),
@@ -278,7 +282,7 @@ async fn an_open_session_takes_the_configured_executable() -> tinybus::Result<()
 #[tokio::test]
 async fn a_malformed_request_is_a_bus_error_not_a_panic() -> tinybus::Result<()> {
     let scratch = Scratch::new("malformed");
-    let proxy = serve(&scratch).await?;
+    let (_server, proxy) = serve(&scratch).await?;
     let reply = call(&proxy, methods::NAVIGATE, json!({"url": "https://example.com"})).await;
     assert!(reply.is_err(), "a request with no session does not decode");
     Ok(())
