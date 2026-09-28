@@ -12,6 +12,14 @@
 //!    with relabelled options, and confirmed with a yes/no question, in one
 //!    request. It is used only if the evidence agrees.
 //!
+//! A deliberating run (`docs/specs/jev-deliberation.md`) changes three
+//! things. The pool is denoised first (`denoise.rs`): what is in view ranks
+//! ahead of what is not. Narrowing keeps the two best regions wherever the
+//! region answer is close — an early wrong branch is the one grounding can
+//! never recover from — and at the deep level asks one flat Choice over the
+//! whole pool beside the tree, to cross-check it. And step 4 gives way to
+//! the evidence gate and its escalation ladder (`escalate`).
+//!
 //! The first round is built by [`FlowRun::opening`] without being asked, so
 //! a `do` turn can send it with its judge, and finished by
 //! [`FlowRun::resume`].
@@ -21,6 +29,8 @@ use std::collections::BTreeMap;
 use serde_json::json;
 use tinycomputer_bus::FlowLoop;
 use tinyinference_decisions::{Answer, EvaluationRequest};
+
+use super::{denoise, escalate::Offer, evidence::Bar};
 
 use super::{
     AgentBackend, FlowRun, Halt, StepLog,
@@ -37,6 +47,9 @@ pub(super) const CORROBORATED: f64 = 0.8;
 pub(super) const AGREED: f64 = 0.5;
 /// Deepest ancestor level narrowing splits on.
 const MAX_REGION_DEPTH: usize = 8;
+/// Lead the chosen region needs over the next one for narrowing to follow
+/// it alone; closer, a deliberating run keeps both.
+pub(super) const BRANCH_MARGIN: f64 = 0.3;
 
 /// Named groups of candidates, largest first.
 pub(super) type Regions = Vec<(String, Vec<Candidate>)>;
@@ -74,6 +87,9 @@ enum First {
     Narrowed {
         groups: Vec<(Option<usize>, Vec<Candidate>)>,
         regions: Option<(Vec<String>, Regions)>,
+        /// The flat Choice over the whole pool a deep run cross-checks the
+        /// tree with: its keys, and the request's position.
+        flat: Option<(Vec<String>, usize)>,
         requests: Vec<EvaluationRequest>,
     },
     /// A pool small enough for one Choice.
@@ -126,6 +142,18 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         remember: bool,
     ) -> Opening {
         let mut pool = distinct(pool, self.include_values);
+        if self.deliberates(FlowLoop::Denoise) {
+            let ranked = denoise::rank(pool.clone());
+            if ranked.len() != pool.len()
+                || ranked
+                    .iter()
+                    .zip(&pool)
+                    .any(|(ranked, pooled)| ranked.ref_id != pooled.ref_id)
+            {
+                log.used(FlowLoop::Denoise);
+            }
+            pool = ranked;
+        }
         if self.wide() {
             named_first(purpose, &mut pool);
         }
@@ -248,9 +276,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             ));
             (keys, regions)
         });
+        let flat = (self.deep() && self.deliberates(FlowLoop::TreeGrounding)).then(|| {
+            let pool = &pool[..pool.len().min(super::view::MAX_CANDIDATES)];
+            let keys = numbered(pool.len());
+            requests.push(ask::request(
+                self.model(),
+                self.state(screen, purpose),
+                Questions::default().with(
+                    "flat",
+                    elements(purpose, pool, &keys, self.include_values),
+                ),
+            ));
+            (keys, requests.len() - 1)
+        });
         First::Narrowed {
             groups,
             regions,
+            flat,
             requests,
         }
     }
@@ -293,23 +335,39 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 Box::pin(self.resume(log, screen, opening, None)).await
             }
             First::Narrowed {
-                groups, regions, ..
+                groups,
+                regions,
+                flat,
+                ..
             } => {
-                let region = regions.as_ref().and_then(|(keys, _)| {
-                    let (choice, _) = chosen(answers.get(1)?, "region")?;
-                    keys.iter().position(|key| *key == choice)
+                let kept = regions.as_ref().map_or_else(Vec::new, |(keys, _)| {
+                    answers
+                        .get(1)
+                        .map_or_else(Vec::new, |answers| self.kept_regions(log, answers, keys))
+                });
+                let cross = flat.and_then(|(keys, position)| {
+                    let (choice, _) = chosen(answers.get(position)?, "flat")?;
+                    let index = keys.iter().position(|key| *key == choice)?;
+                    pool.get(index).cloned()
                 });
                 let winners = answers.first().map_or_else(Vec::new, |knockout| {
-                    winners(knockout, groups, region, regions.as_ref())
+                    winners(knockout, groups, &kept, regions.as_ref())
                 });
-                self.decide(log, screen, &purpose, winners).await
+                self.decide(log, screen, &purpose, winners, cross).await
             }
-            First::Chosen { keys, .. } => {
+            First::Chosen { keys, request } => {
                 let pool = &pool[..pool.len().min(super::view::MAX_CANDIDATES)];
                 match answers.first() {
                     Some(answers) => {
-                        self.settle(log, screen, &purpose, pool.to_vec(), &keys, answers)
-                            .await
+                        self.settle(
+                            log,
+                            screen,
+                            &purpose,
+                            (pool.to_vec(), &keys),
+                            answers,
+                            (request, None),
+                        )
+                        .await
                     }
                     None => Ok(None),
                 }
@@ -326,47 +384,115 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         ask::state(screen, purpose, &self.history, self.include_values)
     }
 
+    /// The regions narrowing follows: the chosen one, and the runner-up too
+    /// when a deliberating run finds the choice close — the tree's beam.
+    fn kept_regions(
+        &self,
+        log: &mut StepLog,
+        answers: &BTreeMap<String, Answer>,
+        keys: &[String],
+    ) -> Vec<usize> {
+        let Some((choice, _)) = chosen(answers, "region") else {
+            return Vec::new();
+        };
+        let Some(first) = keys.iter().position(|key| *key == choice) else {
+            return Vec::new();
+        };
+        let mut kept = vec![first];
+        if !self.deliberates(FlowLoop::TreeGrounding) {
+            return kept;
+        }
+        let Some(Answer::Choice(region)) = answers.get("region") else {
+            return kept;
+        };
+        let lead = region
+            .probabilities
+            .get(&choice)
+            .copied()
+            .unwrap_or_default();
+        let second = keys
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| *index != first)
+            .filter_map(|(index, key)| Some((index, region.probabilities.get(key).copied()?)))
+            .max_by(|left, right| left.1.total_cmp(&right.1));
+        if let Some((index, probability)) = second
+            && lead - probability < BRANCH_MARGIN
+        {
+            log.used(FlowLoop::TreeGrounding);
+            kept.push(index);
+        }
+        kept
+    }
+
     /// The final Choice, re-asked and corroborated when it is not confident.
+    /// `cross` is a pick made independently of it, which a deliberating run
+    /// checks it against.
     pub(super) async fn decide(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
         purpose: &str,
         mut pool: Vec<Candidate>,
+        cross: Option<Candidate>,
     ) -> Result<Option<Grounded>, Halt> {
         pool.truncate(super::view::MAX_CANDIDATES);
         if pool.is_empty() {
             return Ok(None);
         }
         let keys = numbered(pool.len());
-        let answers = self
-            .ask(
-                log,
-                ask::request(
-                    self.model(),
-                    self.state(screen, purpose),
-                    Questions::default().with(
-                        "target",
-                        elements(purpose, &pool, &keys, self.include_values),
-                    ),
-                ),
-            )
-            .await?;
-        self.settle(log, screen, purpose, pool, &keys, &answers)
-            .await
+        let request = ask::request(
+            self.model(),
+            self.state(screen, purpose),
+            Questions::default().with(
+                "target",
+                elements(purpose, &pool, &keys, self.include_values),
+            ),
+        );
+        let answers = self.ask(log, request.clone()).await?;
+        self.settle(
+            log,
+            screen,
+            purpose,
+            (pool, &keys),
+            &answers,
+            (request, cross),
+        )
+        .await
     }
 
-    /// Reads the final Choice's `answers`; a pick under [`ACT`] is re-asked
-    /// and corroborated before it is used.
+    /// Reads the final Choice's `answers`, asked by `request` over `pool`
+    /// under `keys`. A deliberating run settles it on its evidence
+    /// (`escalate`), checking it against `cross` when there is one;
+    /// otherwise a pick under [`ACT`] is re-asked and corroborated before it
+    /// is used.
     async fn settle(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
         purpose: &str,
-        pool: Vec<Candidate>,
-        keys: &[String],
+        (pool, keys): (Vec<Candidate>, &[String]),
         answers: &BTreeMap<String, Answer>,
+        (request, cross): (EvaluationRequest, Option<Candidate>),
     ) -> Result<Option<Grounded>, Halt> {
+        if self.deliberates(FlowLoop::Evidence) {
+            let named = chosen(answers, "target")
+                .and_then(|(choice, _)| {
+                    let index = keys.iter().position(|key| *key == choice)?;
+                    pool.get(index)
+                })
+                .is_some_and(|first| exact_named_match(purpose, Some(first)));
+            let offer = Offer {
+                screen,
+                purpose,
+                pool,
+                keys: keys.to_vec(),
+                request,
+                bar: Bar::over(if named { NAMED_FLOOR } else { ACT }),
+                cross,
+            };
+            return self.deliberate_target(log, offer, answers.clone()).await;
+        }
         let Some((choice, confidence)) = chosen(answers, "target") else {
             return Ok(None);
         };
@@ -445,12 +571,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 }
 
 /// The knockout's group winners, in page order. When the region question
-/// chose a region holding at least one winner, only that region's winners
-/// go on: its answer is the coarse look a person takes first.
+/// chose a region holding at least one winner, only the winners of the
+/// `kept` regions go on: its answer is the coarse look a person takes
+/// first, and a close second region is kept beside it.
 fn winners(
     knockout: &BTreeMap<String, Answer>,
     groups: Vec<(Option<usize>, Vec<Candidate>)>,
-    region: Option<usize>,
+    kept: &[usize],
     regions: Option<&(Vec<String>, Regions)>,
 ) -> Vec<Candidate> {
     let won = groups
@@ -462,19 +589,21 @@ fn winners(
             group.into_iter().nth(position).map(|winner| (home, winner))
         })
         .collect::<Vec<_>>();
-    let Some(region) = region else {
+    if kept.is_empty() {
         return won.into_iter().map(|(_, winner)| winner).collect();
-    };
+    }
     let inside = |home: Option<usize>, winner: &Candidate| {
         home.map_or_else(
             || {
-                regions
-                    .and_then(|(_, regions)| regions.get(region))
-                    .is_some_and(|(_, members)| {
-                        members.iter().any(|member| member.ref_id == winner.ref_id)
-                    })
+                kept.iter().any(|region| {
+                    regions
+                        .and_then(|(_, regions)| regions.get(*region))
+                        .is_some_and(|(_, members)| {
+                            members.iter().any(|member| member.ref_id == winner.ref_id)
+                        })
+                })
             },
-            |home| home == region,
+            |home| kept.contains(&home),
         )
     };
     if won.iter().any(|(home, winner)| inside(*home, winner)) {

@@ -477,7 +477,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         match prepared {
             Prepared::Chosen(grounded) => Ok(Some(grounded.clone())),
             Prepared::Nothing => Ok(None),
-            Prepared::Finals(winners) => self.decide(log, screen, purpose, winners.clone()).await,
+            Prepared::Finals(winners) => {
+                self.decide(log, screen, purpose, winners.clone(), None)
+                    .await
+            }
             Prepared::Unsure {
                 candidate,
                 confidence,
