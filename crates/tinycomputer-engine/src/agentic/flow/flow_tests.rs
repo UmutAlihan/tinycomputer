@@ -5,8 +5,41 @@
 //! records every press. `Oracle` answers Jev questions from the same state, the
 //! way a well-behaved decision model would, and each test overrides only the
 //! answers it is about.
+//!
+//! This root holds the harness every test runs through; the simulator, its
+//! screens, and the oracle live beside it in `flow_tests/`, as does each
+//! topic's tests in its own `<topic>_tests.rs`.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+mod oracle;
+mod screens;
+mod simulator;
+
+mod attention_tests;
+mod backtrack_tests;
+mod brief_tests;
+mod budget_tests;
+mod choose_tests;
+mod deliberation_tests;
+mod do_loop_tests;
+mod end_to_end_tests;
+mod enter_tests;
+mod grounding_tests;
+mod helpers_tests;
+mod journal_tests;
+mod pick_tests;
+mod reflection_tests;
+mod step_kinds_tests;
+mod survey_tests;
+mod tree_tests;
+mod validation_tests;
+mod vote_tests;
+mod wide_tests;
+
+use oracle::*;
+use screens::*;
+use simulator::*;
 
 use std::{
     collections::{BTreeMap, BTreeSet},
