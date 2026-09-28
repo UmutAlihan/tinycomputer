@@ -1,6 +1,9 @@
 //! Clicking through a result card's own cover, and pressing a selection again
 //! when a page ignored the click.
 
+use super::{BrowserSurface, sight};
+use super::operations::target;
+
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
@@ -50,7 +53,7 @@ const SELECT_JS: &str = r"(element => {
 
 /// Roles a click selects rather than toggles, and that a page marks as
 /// selected once it took — or, for a list's option, closes the list over.
-fn selects_on_click(node: &Candidate) -> bool {
+pub(super) fn selects_on_click(node: &Candidate) -> bool {
     ["tab", "radio", "option"].contains(&node.role.as_str())
         && !node
             .states
@@ -91,7 +94,7 @@ impl BrowserSurface {
     /// (Emirates' trip tabs, freshly loaded) while its own `click()` works.
     /// Selecting is idempotent, so pressing an already selected one is
     /// harmless; a checkbox, which toggles, is never pressed twice.
-    fn select_if_ignored(&self, reference: &str) {
+    pub(super) fn select_if_ignored(&self, reference: &str) {
         let Ok(id) = self.ensure_session() else {
             return;
         };
@@ -105,7 +108,7 @@ impl BrowserSurface {
         );
     }
 
-    fn click_through_own_card(&self, reference: &str, name: &str) -> Option<DesktopResponse> {
+    pub(super) fn click_through_own_card(&self, reference: &str, name: &str) -> Option<DesktopResponse> {
         let id = self.ensure_session().ok()?;
         let selector = sight::selector(reference);
         let bounds = self

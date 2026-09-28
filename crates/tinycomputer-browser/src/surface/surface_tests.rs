@@ -14,7 +14,8 @@ use tinycomputer_cursor::{CursorPace, OverlayCommand, OverlaySink, ScreenCursor}
 
 use super::cursor::viewport_origin;
 use super::tree::{parse_line, screen};
-use super::{BrowserSurface, Denoised, Perception, browser_key};
+use super::operations::browser_key;
+use super::{BrowserSurface, Denoised, Perception};
 use crate::fake::{Fake, failure, ok};
 use crate::sessions::Browser;
 

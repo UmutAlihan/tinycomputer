@@ -1,5 +1,9 @@
 //! Whether the focused element, or the one a ref names, takes typed text.
 
+use super::{BrowserSurface, sight};
+use super::envelope::not_a_text_field;
+use super::operations::target;
+
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
@@ -26,7 +30,7 @@ impl BrowserSurface {
     /// wherever the browser's own focus happens to be, so this is checked
     /// first: a stale or unexpected focus — an unrelated field, or none at
     /// all — must never silently receive text, including a private value.
-    fn focused_field_is_editable(&self) -> bool {
+    pub(super) fn focused_field_is_editable(&self) -> bool {
         const SCRIPT: &str = r"(() => {
   // Focusing a ref inside an open shadow root or a same-origin frame — the
   // documented tree fallback's territory — leaves `document.activeElement`
@@ -82,7 +86,7 @@ impl BrowserSurface {
     /// role. A page can give any `div` a `combobox` or `textbox` role — a
     /// city in a list of suggestions, a card — and a fill or a paste into
     /// one reports success while nothing holds the text.
-    fn takes_text(&self, reference: &str) -> bool {
+    pub(super) fn takes_text(&self, reference: &str) -> bool {
         self.perform(
             "focus",
             Action::Focus {

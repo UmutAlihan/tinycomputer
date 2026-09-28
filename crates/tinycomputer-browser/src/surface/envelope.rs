@@ -1,5 +1,7 @@
 //! Browser results and errors as the envelope decision loops read.
 
+use super::{BrowserSurface, sight};
+
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
@@ -16,7 +18,7 @@ use crate::error::{Error, Result};
 use crate::sessions::Browser;
 
 /// A browser result as the envelope decision loops read.
-fn reply(command: &str, result: Result<Value>) -> DesktopResponse {
+pub(super) fn reply(command: &str, result: Result<Value>) -> DesktopResponse {
     match result {
         Ok(data) => DesktopResponse::ok(command, data),
         Err(error) => failure(command, &error),
@@ -26,14 +28,14 @@ fn reply(command: &str, result: Result<Value>) -> DesktopResponse {
 /// A browser error as an envelope failure whose code is the error's wire
 /// name in `SCREAMING_SNAKE_CASE`, such as `STALE_REF`.
 /// Whether a click was refused because another element covers its target.
-fn covered(reply: &DesktopResponse) -> bool {
+pub(super) fn covered(reply: &DesktopResponse) -> bool {
     reply
         .error
         .as_ref()
         .is_some_and(|error| error.message.contains("is covered by"))
 }
 
-fn failure(command: &str, error: &Error) -> DesktopResponse {
+pub(super) fn failure(command: &str, error: &Error) -> DesktopResponse {
     let name = error
         .wire_name()
         .rsplit('.')
@@ -50,7 +52,7 @@ fn failure(command: &str, error: &Error) -> DesktopResponse {
 }
 
 /// The refusal for text aimed at an element that does not take it.
-fn not_a_text_field() -> DesktopResponse {
+pub(super) fn not_a_text_field() -> DesktopResponse {
     DesktopResponse::err(
         "type-text",
         DesktopError::new(

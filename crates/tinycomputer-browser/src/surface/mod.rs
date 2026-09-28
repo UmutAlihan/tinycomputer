@@ -11,7 +11,11 @@
 //! each element before the surface acts on it (`cursor.rs`). It is cosmetic:
 //! the actions are the same with or without it.
 
+mod card;
 mod cursor;
+mod envelope;
+mod fields;
+mod operations;
 mod sight;
 mod tree;
 
@@ -31,6 +35,7 @@ use tinycomputer_cursor::ScreenCursor;
 
 use crate::error::{Error, Result};
 use crate::sessions::Browser;
+use envelope::reply;
 
 /// How deep a skeleton observation reads before a flow drills in.
 const SKELETON_DEPTH: u32 = 6;
@@ -43,10 +48,6 @@ const SETTLE_MS: u64 = 400;
 /// that polls forever is never idle, so this is a cap, not an expectation.
 const NETWORK_IDLE_MS: u64 = 2_000;
 
-mod card;
-mod fields;
-mod operations;
-mod reply;
 
 /// How a [`BrowserSurface`] reads a page.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
