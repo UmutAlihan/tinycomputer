@@ -150,6 +150,11 @@ report `failed`. See [Rescues](rescue.md).
 - what the task learned about the site, which can make the next run faster
   (see [Memory and saving](memory-and-saving.md)).
 
+If you want the results as clean JSON rather than raw screen text, pass
+`output` with `StartTask`: instructions in plain words and, optionally, a
+JSON Schema. When the task finishes, the result comes back in that shape as
+`done.result`. See [Memory and saving](memory-and-saving.md#getting-results-back-in-your-own-shape).
+
 `ListTasks` shows every task the module holds. `CancelTask` stops one and
 releases its browser.
 
