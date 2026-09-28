@@ -9,7 +9,7 @@ code, so this page exists mostly to keep them apart.
 ## `CONTRACT_VERSION`: does this host understand this module
 
 ```rust,ignore
-pub const CONTRACT_VERSION: (u32, u32) = (2, 5);
+pub const CONTRACT_VERSION: (u32, u32) = (2, 6);
 ```
 
 This describes the *vocabulary*: the member set and the payload shapes,
@@ -45,25 +45,26 @@ Two conditions, both necessary:
    relies on changed shape or disappeared, so a mismatched major is refused
    outright, in either direction.
 2. **The module must be at least as new, minor-wise, as the host.** A host
-   built against `(2, 5)` expects at least the members and fields that
-   existed at `(2, 5)`. A module reporting `(2, 4)` might be missing one of
-   them, so it is rejected. A module reporting `(2, 6)` has everything the
+   built against `(2, 6)` expects at least the members and fields that
+   existed at `(2, 6)`. A module reporting `(2, 5)` might be missing one of
+   them, so it is rejected. A module reporting `(2, 7)` has everything the
    host expects, plus something newer the host simply does not use yet, so
    it is accepted.
 
 ```rust,ignore
-assert!(is_compatible(CONTRACT_VERSION));   // (2, 5), the exact version this crate ships
-assert!(is_compatible((2, 6)));             // a newer, still-compatible module
-assert!(!is_compatible((2, 4)));            // an older module, missing something
+assert!(is_compatible(CONTRACT_VERSION));   // (2, 6), the exact version this crate ships
+assert!(is_compatible((2, 7)));             // a newer, still-compatible module
+assert!(!is_compatible((2, 5)));            // an older module, missing something
 assert!(!is_compatible((1, 8)));            // a different major, all bets off
 ```
 
 Call `is_compatible` before a host's first real call to a freshly loaded
-module (the `Version` desktop member and the browser interface's
-`ContractVersion` member both report the number to check). Getting this
-check wrong in either direction is a real failure mode: skip it and a host
-can call a member that does not exist yet on an old module, or silently miss
-a field a new module added because it never re-read its own assumptions.
+module: the `Version` member reports the number to check, for the desktop and
+the browser members alike, because both are served on the one interface and
+share the one `CONTRACT_VERSION`. Getting this check wrong in either
+direction is a real failure mode: skip it and a host can call a member that
+does not exist yet on an old module, or silently miss a field a new module
+added because it never re-read its own assumptions.
 
 ## `ENVELOPE_VERSION`: what does a reply's shape look like
 

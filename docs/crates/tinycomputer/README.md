@@ -18,8 +18,10 @@ code that wants to link against it directly, and a `cdylib`, a `.so`, `.dylib`,
 or `.dll` depending on platform, that a TinyBus host loads at runtime without
 either side knowing about the other's build. The `cdylib` is the module: it
 claims the bus name `ai.tinyhumans.tinycomputer.Desktop`, serves one object at
-`/ai/tinyhumans/tinycomputer/Desktop`, and answers 67 members, one call for
-each thing an agent can ask the desktop, the browser, or a running task to do.
+`/ai/tinyhumans/tinycomputer/Desktop`, and answers 80 members, one call for
+each thing an agent can ask the desktop, the browser, or a running task to do:
+54 desktop primitives, 5 Jev-driven members, 8 task members, and 13 browser
+primitives prefixed `Browser`.
 
 The crate holds no automation logic of its own. `tinycomputer-desktop` wraps
 the vendored accessibility engine, `tinycomputer-engine` wraps the decision
@@ -97,7 +99,7 @@ any given member is safe to call from an untrusted caller.
   `modules.toml`, checksum verification, and `verify_module`.
 - [configuration.md](configuration.md): every configuration key this module
   reads, with examples, and what happens when you leave one out.
-- [members.md](members.md): all 67 members grouped by family, and which ones
+- [members.md](members.md): all 80 members grouped by family, and which ones
   need confidential delivery.
 - [calling-it.md](calling-it.md): a host's-eye view of calling the module,
   worked examples for a plain desktop call and for a task.
