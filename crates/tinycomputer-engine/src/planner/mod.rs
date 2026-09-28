@@ -9,10 +9,14 @@
 //! questions for the caller.
 //!
 //! The model is behind [`LanguageModel`], so this logic is tested with
-//! scripted answers; the `planner` feature adds an `OpenRouter` adapter.
+//! scripted answers; the `planner` feature adds the hosted adapter, on
+//! `OpenRouter` or Tiny Humans' OpenAI-compatible gateway (`config.rs`,
+//! `hosted.rs`).
 
 #[cfg(feature = "planner")]
-mod openrouter;
+mod config;
+#[cfg(feature = "planner")]
+mod hosted;
 
 use std::collections::BTreeSet;
 use std::future::Future;
@@ -25,10 +29,12 @@ use tinycomputer_bus::{FLOW_GUIDE, Flow};
 use tinycomputer_core::is_sensitive_name;
 
 #[cfg(feature = "planner")]
-pub use openrouter::{
-    OUTPUT_MODEL, PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer,
-    open_router_shaper,
+pub use config::{
+    ModelRoute, OPEN_ROUTER_BASE_URL, OUTPUT_MODEL, PLANNER_MODEL, PlannerConfig, RESCUE_MODEL,
+    TINYHUMANS_BASE_URL,
 };
+#[cfg(feature = "planner")]
+pub use hosted::{open_router, open_router_rescuer, open_router_shaper};
 
 /// Validation repairs a plan gets.
 pub const REPAIRS: usize = 2;
