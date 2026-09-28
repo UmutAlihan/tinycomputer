@@ -61,8 +61,8 @@ Not every button inside a card should count as "the" way to open it. A
 result card might have a "Share" icon, a "Save" star, and a "Select" button;
 only the last one is what a person would actually click to act on that
 result. `prefers()` chooses whichever actionable element's name contains one
-of a short list of opener words, `select`, `book`, `choose`, `view`,
-`details`, `continue`, `reserve`, `deal`, `see`, over one that does not. If
+of a short list of opener words (`select`, `book`, `choose`, `view`,
+`details`, `continue`, `reserve`, `deal`, `see`) over one that does not. If
 nothing in the card matches an opener word, the group is left with whatever
 actionable element came last, which still gives a caller *something* to act
 on rather than nothing.
@@ -88,5 +88,5 @@ deliberately name-free (its `fields` are just a list of text, in order): it
 is the flow runtime, in `tinycomputer-engine`, that turns a page's `Group`s
 into named `Record`s once it knows what the fields probably mean. From
 there, [ranking by price, time, or stops](prices-times-and-dates.md) becomes
-plain arithmetic, see that page for how "book the cheapest one" turns into
+plain arithmetic. See that page for how "book the cheapest one" turns into
 a deterministic sort instead of a question sent to Jev.
