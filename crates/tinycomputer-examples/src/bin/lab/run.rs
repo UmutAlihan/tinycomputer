@@ -3,8 +3,6 @@
 
 use std::{io, path::Path, time::Instant};
 
-use super::{MEMORY, Options, RUNS, run_id};
-use crate::authored::authored;
 use tinycomputer_bus::{Flow, FlowAction, FlowRunResult, FlowStep, RunFlowRequest, RunGoalRequest};
 use tinycomputer_examples::lab::{
     host::{Host, LabError},
@@ -13,6 +11,9 @@ use tinycomputer_examples::lab::{
     },
     scenario::Scenario,
 };
+
+use super::{MEMORY, Options, RUNS, run_id};
+use crate::authored::authored;
 
 pub(crate) async fn run_once(
     host: &Host,

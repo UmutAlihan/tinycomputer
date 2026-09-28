@@ -53,7 +53,6 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use serde_json::json;
 use tinycomputer::Desktop;
@@ -61,8 +60,8 @@ use tinycomputer_browser::{
     AgentBrowser, Browser, BrowserSurface, CursorPace, ScreenCursor, SessionOptions,
 };
 use tinycomputer_bus::agent::{
-    AwaitTaskRequest, PlanTaskRequest, StartTaskRequest, SurfaceKind, TaskBudget, TaskConstraints,
-    TaskId, TaskOutput, TaskStatus, TaskView,
+    PlanTaskRequest, StartTaskRequest, SurfaceKind, TaskBudget, TaskConstraints, TaskId,
+    TaskOutput, TaskStatus, TaskView,
 };
 use tinycomputer_bus::{Flow, JevConfig, RunFlowRequest};
 use tinycomputer_engine::{
@@ -74,7 +73,7 @@ type Failure = Box<dyn std::error::Error>;
 
 mod follow;
 
-use follow::follow;
+use follow::{follow, state};
 
 struct Live {
     workspace: Workspace<Desktop, BrowserSurface>,

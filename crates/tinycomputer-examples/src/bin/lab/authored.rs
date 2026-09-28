@@ -3,14 +3,15 @@
 
 use std::path::Path;
 
-use super::Options;
-use crate::run::run_flow;
 use tinycomputer_bus::{FLOW_GUIDE, FlowRunResult};
 use tinycomputer_examples::lab::{
     host::{Host, LabError},
     record::{flow_timeline, write_json},
     scenario::Scenario,
 };
+
+use super::Options;
+use crate::run::run_flow;
 
 #[cfg(feature = "inference")]
 pub(crate) async fn authored(

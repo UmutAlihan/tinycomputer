@@ -1,27 +1,11 @@
 //! Following a task until it stops, and cancelling it past the time limit.
 
-use std::collections::BTreeMap;
-use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use serde_json::json;
-use tinycomputer::Desktop;
-use tinycomputer_browser::{
-    AgentBrowser, Browser, BrowserSurface, CursorPace, ScreenCursor, SessionOptions,
-};
-use tinycomputer_bus::agent::{
-    AwaitTaskRequest, PlanTaskRequest, StartTaskRequest, SurfaceKind, TaskBudget, TaskConstraints,
-    TaskId, TaskOutput, TaskStatus, TaskView,
-};
-use tinycomputer_bus::{Flow, JevConfig, RunFlowRequest};
-use tinycomputer_engine::{
-    FlowFuture, FlowRunner, JevRuntime, PlannerConfig, Tasks, TextFuture, Workspace, open_router,
-    open_router_rescuer, open_router_shaper,
-};
+use tinycomputer_bus::agent::{AwaitTaskRequest, TaskStatus, TaskView};
+use tinycomputer_engine::Tasks;
 
 type Failure = Box<dyn std::error::Error>;
-use super::env;
 
 /// Follows the task until it stops, cancelling it past the time limit.
 pub(crate) async fn follow(tasks: &Tasks, mut view: TaskView) -> Result<TaskView, String> {
@@ -75,7 +59,7 @@ pub(crate) fn next_wait(elapsed: Duration, limit: Duration) -> Option<Duration> 
         .map(|left| left.min(AWAIT_SLICE))
 }
 
-fn state(status: &TaskStatus) -> String {
+pub(crate) fn state(status: &TaskStatus) -> String {
     serde_json::to_value(status)
         .ok()
         .and_then(|value| {
