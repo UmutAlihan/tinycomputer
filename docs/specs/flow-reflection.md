@@ -35,7 +35,11 @@ Non-goals:
 ## Proposed behavior
 
 When a `choose` step ends `Done` and recorded at least one action, the
-runtime asks one voted decision on a fresh look at the screen:
+runtime looks at the screen again. If a tab, radio, or option named exactly
+as the step's option is not selected while a sibling of its kind is (Emirates
+left "Return" selected after "One way" was pressed), the screen settles it:
+the choice did not take, and Jev is not asked. Otherwise it asks one voted
+decision:
 
 - `reflects` (yes/no): "Does the screen now show this step's choice made,
   exactly as the step asked?"
@@ -55,7 +59,8 @@ A step that ends `AlreadyDone` pressed nothing and is not reflected on. When
 Jev gives no answer for either question, the step stands.
 
 Every reflection adds `reflection` to the step's loops and writes a `reflect`
-journal event: `step`, `held`, and `attempt` (`first` or `after_repair`).
+journal event: `step`, `held`, `attempt` (`first` or `after_repair`), and,
+when a selected sibling settled it, `contradicted`.
 
 ## Invariants and constraints
 
@@ -75,6 +80,8 @@ journal event: `step`, `held`, and `attempt` (`first` or `after_repair`).
 - A `choose` whose press left the right choice ends `Done` after one
   reflection and no repair.
 - A repair that changes nothing fails the step with a `reflection:` note.
+- A tab click the page ignored is repaired even when Jev answers that the
+  choice took: a selected sibling outranks Jev.
 - `FlowLoop::Reflection` appears in the step report's loops; the contract's
   minor version is bumped for the new variant.
 
