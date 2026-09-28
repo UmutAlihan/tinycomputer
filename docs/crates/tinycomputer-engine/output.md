@@ -169,8 +169,8 @@ honor `output` at all, so a caller can check before it asks.
 ### Configuring the shaper
 
 Like the planner and the rescuer, the shaper sits behind the `LanguageModel`
-trait (see [planner.md](planner.md)), and the same OpenRouter adapter
-builds it:
+trait (see [planner.md](planner.md)), and the same hosted adapter
+(OpenRouter or Tiny Humans, on the planner's route) builds it:
 
 ```rust
 pub fn open_router_shaper(config: &PlannerConfig) -> Result<Shaper, String>

@@ -242,8 +242,10 @@ sees the screen.
 
 It is compiled into the module (the `planner` feature) and stays off until the
 host sends a `planner` object in the module's private configuration, with an
-OpenRouter `api_key` and an optional `model` (default
-`anthropic/claude-sonnet-5`). Without it, a plain-language `StartTask` returns
+`api_key` and an optional `model` (default `anthropic/claude-sonnet-5`), on
+the `open_router` route by default or `provider: "tiny_humans"` for Tiny
+Humans' OpenAI-compatible gateway (contract 2.7;
+[`../crates/tinycomputer/configuration.md`](../crates/tinycomputer/configuration.md)). Without it, a plain-language `StartTask` returns
 `needs_plan` with the guide, and `PlanTask` returns an error saying no planner
 is configured.
 
@@ -333,7 +335,8 @@ model is the planner configuration's `output_model` (default
 | `task/brief.rs`, `task/names.rs`, `task/errors.rs` | the task's brief, the names its flow may use, the call errors |
 | `task/describe.rs` | `Describe`: capabilities, schemas, and examples |
 | `planner/mod.rs` | the planning protocol, validation, and repairs |
-| `planner/openrouter.rs` | the OpenRouter `LanguageModel`s for the planner, the rescuer, and the shaper (feature `planner`) |
+| `planner/config.rs` | `PlannerConfig`, `ModelRoute`, the model defaults, and the route allow-list (feature `planner`) |
+| `planner/hosted.rs` | the hosted `LanguageModel`s, on OpenRouter or Tiny Humans, for the planner, the rescuer, and the shaper (feature `planner`) |
 | `rescue/mod.rs` | the rescue protocol and the briefing |
 | `rescue/render.rs`, `rescue/judge.rs` | the briefing as the model reads it; judging its answer and building the resumed flow |
 | `shape/mod.rs`, `shape/schema.rs` | the output pass: its protocol, repairs, and the JSON Schema subset it checks |
