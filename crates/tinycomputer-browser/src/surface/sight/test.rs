@@ -223,6 +223,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
           </ul>
           <a href="https://ad.doubleclick.net/click?x=1">Buy now</a>
           <img src="https://sb.scorecardresearch.com/p?c1=2" width="1" height="1" alt="">
+          <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="">
           <header class="header shadow"><a href="/download">Download app</a></header>
           <div class="badge adults-picker"><button>2 adults</button></div>
           <p class="address">Address: 1 Lake Road</p>
@@ -263,7 +264,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
     assert_eq!(reading["unreachable"], 0, "an ad frame never hides the page");
     assert_eq!(
         reading["denoised"],
-        json!({"ads": 8, "empty": 0, "hidden": 0}),
+        json!({"ads": 9, "empty": 0, "hidden": 0}),
         "{names:?}"
     );
 }
