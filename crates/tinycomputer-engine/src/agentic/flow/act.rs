@@ -552,7 +552,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             operation @ ("activate" | "expand" | "scroll") => Ok(Move::Acted(
                 self.activate(log, screen, intent, operation, banned, judged)
                     .await?
-                .map(Box::new),
+                    .map(Box::new),
             )),
             other => {
                 // A malformed or prompt-injected answer must fail closed

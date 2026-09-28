@@ -3913,6 +3913,68 @@ fn redacted_strips_the_shown_text_but_keeps_the_ref_and_role() {
 }
 
 #[tokio::test]
+async fn a_first_turn_asks_the_judge_and_the_target_in_one_round_trip() {
+    let app = App::default();
+    let scratch = std::env::temp_dir().join(format!(
+        "tinycomputer-flow-batch-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let runtime = runtime(Oracle {
+        app: app.clone(),
+        hook: Box::new(activate_moves),
+        requests: Mutex::new(Vec::new()),
+        fail: false,
+    })
+    .with_journal(&scratch);
+    let request = RunFlowRequest {
+        flow: serde_json::from_value(
+            json!({"app": "Mail", "steps": [{"open": "Mail"}, "start a new email message"]}),
+        )
+        .unwrap(),
+        votes: 1,
+        ..RunFlowRequest::default()
+    };
+    let reply = super::run_flow(app.clone(), runtime, request).await;
+    assert!(reply.ok, "flow run failed: {:?}", reply.error);
+    assert_eq!(app.sim().clicks, ["New Message"]);
+    let run = std::fs::read_dir(&scratch)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let journal = std::fs::read_to_string(run.join(crate::JOURNAL_FILE)).unwrap();
+    let _ = std::fs::remove_dir_all(&scratch);
+    let events = journal
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    let turns = events
+        .iter()
+        .filter(|event| event["event"] == "turn")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        (turns[0]["decisions"].as_u64(), turns[0]["rounds"].as_u64()),
+        (Some(2), Some(1)),
+        "the judge and the target share the first turn's round trip"
+    );
+    assert_eq!(
+        (turns[1]["decisions"].as_u64(), turns[1]["rounds"].as_u64()),
+        (Some(1), Some(1)),
+        "after acting, the judge is asked alone"
+    );
+    let batched = events
+        .iter()
+        .filter(|event| event["event"] == "decision" && event["batched"] == 2)
+        .count();
+    assert_eq!(batched, 2, "both decisions of the batch say so");
+}
+
+#[tokio::test]
 async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
     let app = App::quirky(Quirk::BodyIgnoresSetValue);
     let scratch = std::env::temp_dir().join(format!(
@@ -3999,17 +4061,6 @@ async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
             && turn["rounds"].is_u64()
             && turn["wall_ms"].is_u64()
     }));
-    assert_eq!(
-        (turns[0]["decisions"].as_u64(), turns[0]["rounds"].as_u64()),
-        (Some(2), Some(1)),
-        "a step's first turn asks the judge and the target in one round trip"
-    );
-    assert!(
-        of("decision")
-            .iter()
-            .any(|decision| decision["batched"] == 2),
-        "batched decisions say so"
-    );
     assert!(!of("observe").is_empty());
     let steps = of("step");
     assert_eq!(
