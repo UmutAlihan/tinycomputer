@@ -364,6 +364,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if self.wide() {
             return self.wide_state(screen, purpose);
         }
+        if self.deliberates(FlowLoop::Denoise) {
+            let history = denoise::compact(&self.history);
+            return ask::state(screen, purpose, &history, self.include_values);
+        }
         ask::state(screen, purpose, &self.history, self.include_values)
     }
 
