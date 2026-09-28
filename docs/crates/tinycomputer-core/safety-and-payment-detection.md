@@ -92,9 +92,9 @@ is what a caller shows a person at a checkpoint rather than a bare boolean.
 Desktop applications have no URL and no HTML `autocomplete` attribute, so
 `payment_evidence` on its own cannot run there. `screen_payment_evidence(screen)`
 builds the same kind of evidence out of a plain `Screen`: it looks at fields
-that may take input (marked as such, or carrying no role and no actions , 
+that may take input (marked as such, or carrying no role and no actions,
 meaning nothing says they cannot), reads their labels, and separately looks
-at *nearby* text (within five nodes in document order, enough room for the
+at *nearby* text (within five nodes in document order: enough room for the
 usual wrapper elements between a label and its field, not enough to reach a
 footer far down the page) for strong card wording like "CVV" or "card
 number" that a promotional line would never use ("save 10% with your credit
