@@ -33,4 +33,4 @@ cargo build -p tinycomputer-cursor --features overlay
 cargo run -p tinycomputer-examples --bin cursor_demo -- calm 3
 ```
 
-See [`docs/specs/virtual-cursor.md`](../../docs/specs/virtual-cursor.md).
+See [`docs/technical/specs/virtual-cursor.md`](../../docs/technical/specs/virtual-cursor.md).

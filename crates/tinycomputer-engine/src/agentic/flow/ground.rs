@@ -12,7 +12,7 @@
 //!    with relabelled options, and confirmed with a yes/no question, in one
 //!    request. It is used only if the evidence agrees.
 //!
-//! A deliberating run (`docs/specs/jev-deliberation.md`) changes three
+//! A deliberating run (`docs/technical/specs/jev-deliberation.md`) changes three
 //! things. The pool is denoised first (`denoise.rs`): what is in view ranks
 //! ahead of what is not. Narrowing keeps the two best regions wherever the
 //! region answer is close — an early wrong branch is the one grounding can

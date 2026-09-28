@@ -193,7 +193,7 @@ task a `Workspace` with a browser session.
 `RunGoal` and `ResolveIntent` are the older, single-goal loop: one goal string,
 one Choice over operation and target per turn, and success predicates the
 module checks on the accessibility tree. They drive the desktop only.
-[`crates/tinycomputer-engine/src/agentic/README.md`](../crates/tinycomputer-engine/src/agentic/README.md)
+[`crates/tinycomputer-engine/src/agentic/README.md`](../../crates/tinycomputer-engine/src/agentic/README.md)
 describes them, including their confirmation handles.
 
 ## Configuration
@@ -211,7 +211,7 @@ configuration validates.
 | `trace_strict` | bool | fail a call when its trace cannot be written |
 | `headed` | bool | use real input instead of accessibility actions |
 | `jev` | object | Jev provider, API key, optional model, endpoint, timeout, retries, and `sdk_name` for the TinyHumans proxy |
-| `planner` | object | OpenRouter `api_key` and optional `model` for the planner, and optional `rescue_model` for rescuing failed steps (`docs/specs/task-rescue.md`); absent means no planner and no rescues |
+| `planner` | object | OpenRouter `api_key` and optional `model` for the planner, and optional `rescue_model` for rescuing failed steps (`docs/technical/specs/task-rescue.md`); absent means no planner and no rescues |
 | `browser.executable` | string | the Chrome or Chromium binary to launch, when discovery would not find one |
 | `cursor` | string or object | the agent's on-screen cursor for desktop and browser: a pace (`off`, `brisk`, `natural` (default), `calm`) or `{pace, overlay}` with the overlay helper's path ([spec](specs/virtual-cursor.md)) |
 

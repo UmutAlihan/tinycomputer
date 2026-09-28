@@ -25,7 +25,7 @@ Spec: [`../specs/virtual-cursor.md`](../specs/virtual-cursor.md).
    and share it between the desktop and the runner.
 7. **Release.** Package the helper beside the module on macOS and Windows.
 8. **Examples.** Add `cursor_demo`, which tours the cursor.
-9. **Docs.** Update `MODULE.md`, `README.md`, `docs/architecture.md`,
+9. **Docs.** Update `MODULE.md`, `README.md`, `docs/technical/architecture.md`,
    `AGENTS.md`, and `tinybus_module/README.md`.
 
 ## Verification

@@ -7,7 +7,7 @@ contract commands and the per-file coverage gate green.
 ## Phase 0 — docs and harness
 
 - [x] Spec and plan.
-- [x] Docker lab (`docker/lab/`, `scripts/docker-lab`, `docs/docker-lab.md`)
+- [x] Docker lab (`docker/lab/`, `scripts/docker-lab`, `docs/technical/docker-lab.md`)
       for anything that launches Chromium.
 
 ## Phase 1 — crate split, no behavior change
@@ -94,10 +94,10 @@ contract commands and the per-file coverage gate green.
 
 - [x] `browser_fixture` and `task_fixture` pass on real Chromium in the Docker
       lab; the booking task stops at the payment checkpoint
-      (`docs/evals/2026-09-27-unified-fixture.md`).
+      (`docs/technical/evals/2026-09-27-unified-fixture.md`).
 
 - [ ] Fixture travel site; scenarios `flight-fixture`, `flight-google`,
-      `kashmir-booking` and `cross-surface`; results in `docs/evals/`.
+      `kashmir-booking` and `cross-surface`; results in `docs/technical/evals/`.
 
 ## Verification
 

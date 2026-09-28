@@ -12,4 +12,4 @@ deterministic and behaves the same for a desktop application and a web page.
 | `facts/` | `Facts`: the caller's values, shared or secret, redaction, and masking secrets back to `${name}` |
 
 The safety checks are what stop a run before anything irreversible or paid
-happens, whatever a model decided (`docs/specs/unified-agent.md`).
+happens, whatever a model decided (`docs/technical/specs/unified-agent.md`).

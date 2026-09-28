@@ -10,7 +10,7 @@ illustrative. Run a scenario with `TINYCOMPUTER_JEV_JOURNAL=1` and
 Question ids, their types, and their thresholds are defined in
 [`jev-questions.md`](jev-questions.md); the loops that ask them are in
 [`decision-loops.md`](decision-loops.md); how to write a flow is in
-[`crates/tinycomputer-bus/src/flow/guide.md`](../crates/tinycomputer-bus/src/flow/guide.md).
+[`crates/tinycomputer-bus/src/flow/guide.md`](../../crates/tinycomputer-bus/src/flow/guide.md).
 
 ## What each step kind costs
 

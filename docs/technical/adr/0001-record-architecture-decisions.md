@@ -14,7 +14,7 @@ messages are too granular and pull request threads are too easy to lose.
 ## Decision
 
 Record each significant architectural decision as a numbered file in
-`docs/adr/`, using this document's structure: context, decision, consequences.
+`docs/technical/adr/`, using this document's structure: context, decision, consequences.
 
 - Number files sequentially: `0002-...`, `0003-...`.
 - An accepted ADR is immutable. To change a decision, write a new ADR and set

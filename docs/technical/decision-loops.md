@@ -7,7 +7,7 @@ every question the runtime asks Jev, the thresholds it acts on, and the rules
 it applies without asking anyone.
 
 If you only want to write flows, read the authoring guide
-([`crates/tinycomputer-bus/src/flow/guide.md`](../crates/tinycomputer-bus/src/flow/guide.md))
+([`crates/tinycomputer-bus/src/flow/guide.md`](../../crates/tinycomputer-bus/src/flow/guide.md))
 instead. This page is for people changing the runtime or trying to work out why
 a run did what it did. Companions: [`jev-questions.md`](jev-questions.md)
 (every Jev input and question id, and how each answer is used),

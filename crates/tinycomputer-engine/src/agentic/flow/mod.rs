@@ -20,7 +20,7 @@
 //!   the screen, carrying the judgement, the obstacle, and every move's
 //!   target; `survey` ranks a crowded screen's regions first, and `ledger`
 //!   is the working memory every wide question sees.
-//! - Deliberation (`docs/specs/jev-deliberation.md`) decides on evidence
+//! - Deliberation (`docs/technical/specs/jev-deliberation.md`) decides on evidence
 //!   rather than one probability: `evidence` reads a question's ballot into
 //!   accept, deliberate, or abstain; `escalate` asks a close call more ways,
 //!   `duel` settles close candidates two at a time; `denoise` ranks what is
@@ -33,7 +33,7 @@
 //! task. Secrets never leave as values: every request is masked so a secret
 //! reads `${name}` wherever it would have appeared.
 //!
-//! See `docs/specs/jev-intent-flows.md` for the design and its rationale.
+//! See `docs/technical/specs/jev-intent-flows.md` for the design and its rationale.
 
 mod act;
 mod ask;

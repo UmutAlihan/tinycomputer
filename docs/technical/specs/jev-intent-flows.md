@@ -142,4 +142,4 @@ condition listing several things is judged crisply.
   and body, verifies it, and stops in front of Send, with the checker reading
   the compose window.
 - `scripts/lab eval` produces a scorecard comparing tiers on the scenario
-  ladder; results are recorded under [`../evals/`](../evals/).
+  ladder; results are recorded under [`../evals/`](../evals).

@@ -1,7 +1,7 @@
 # Unified agent on the travel fixture — 2026-09-27
 
 The first end-to-end runs of the browser half of the unified agent
-(`docs/specs/unified-agent.md`), in the Docker lab on arm64 Linux with
+(`docs/technical/specs/unified-agent.md`), in the Docker lab on arm64 Linux with
 Playwright's Chromium (build 1243) and agent-browser linked in-process.
 
 ## Without Jev: `browser_fixture`

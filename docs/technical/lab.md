@@ -78,4 +78,4 @@ run of a scenario usually makes fewer Jev calls than the first.
    tree or a failed action). Engine faults go upstream to `agent-desktop`.
 4. Write the failing test against the simulator in
    `crates/tinycomputer-engine/src/agentic/flow/test.rs`, fix, and re-run the scenario.
-5. Record notable results in [`evals/`](evals/).
+5. Record notable results in [`evals/`](evals).

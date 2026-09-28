@@ -1,6 +1,6 @@
 //! Deliberation against the simulator: the evidence gate, the escalation
 //! ladder, tree grounding, denoising, expectations, verified undo, and
-//! backtracking (`docs/specs/jev-deliberation.md`).
+//! backtracking (`docs/technical/specs/jev-deliberation.md`).
 
 use super::*;
 

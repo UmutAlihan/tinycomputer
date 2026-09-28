@@ -10,7 +10,7 @@ commands green.
 | 1 | The rescuer: briefing, protocol, validation, repairs | `rescue/test.rs` | `tinycomputer-engine` `rescue/`, `planner::json_object` |
 | 2 | `OpenRouter` adapter: `rescue_model`, reasoning effort | `the_open_router_planner_needs_a_key_and_never_prints_it` | `planner/openrouter.rs` (`open_router_rescuer`, `RESCUE_MODEL`) |
 | 3 | The task controller: rescue before failing, resume, limits, record | `task/test/rescue.rs` | `task/mod.rs` (`rescued`, `rescue`, `record`, `rescue_outcome`, `drive` as a queue) |
-| 4 | Module wiring, `Describe`, examples, docs | `a_planner_is_configured_from_private_configuration_only_with_a_key`, `describe_documents_every_member_and_its_examples_really_work` | `tinybus_module/dispatch.rs`, `task/describe.rs`, `task_live` (`TASK_RESCUES`, `TINYCOMPUTER_RESCUE_MODEL`), `docs/tasks.md`, SKILL.md, the `start_task` schema |
+| 4 | Module wiring, `Describe`, examples, docs | `a_planner_is_configured_from_private_configuration_only_with_a_key`, `describe_documents_every_member_and_its_examples_really_work` | `tinybus_module/dispatch.rs`, `task/describe.rs`, `task_live` (`TASK_RESCUES`, `TINYCOMPUTER_RESCUE_MODEL`), `docs/technical/tasks.md`, SKILL.md, the `start_task` schema |
 | 5 | Guidance covering the steps after the failed one | `guidance_may_cover_the_steps_after_the_failed_one_but_never_a_stop_before`, `steps_the_guidance_covers_are_dropped_and_the_guard_is_kept` | `rescue/mod.rs` (`covered`, `guards`, `resumed`), `Rescue.covers` |
 
 ## Remaining

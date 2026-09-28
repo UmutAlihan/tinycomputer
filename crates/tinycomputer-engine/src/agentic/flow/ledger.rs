@@ -20,7 +20,7 @@
 //! - the names of the variables read so far, and the budget left.
 //!
 //! It never holds the goal-level brief: judged against the whole task, a
-//! step looks unfinished (see `docs/specs/jev-briefing.md`). Every line is
+//! step looks unfinished (see `docs/technical/specs/jev-briefing.md`). Every line is
 //! built from masked text, and the request is masked again before it
 //! leaves, so a secret's value never reaches Jev through it.
 

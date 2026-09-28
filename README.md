@@ -47,7 +47,7 @@ Every view carries a one-sentence `summary`, progress, the current step, and
 
 The caller's details are typed into fields locally. Jev and the planner only
 ever see their names. Card data is refused outright.
-[`docs/tasks.md`](docs/tasks.md) walks through a full session.
+[`docs/technical/tasks.md`](docs/technical/tasks.md) walks through a full session.
 
 ## How it works
 
@@ -86,7 +86,7 @@ arrive, the runtime pastes it and reads it back again. Irreversible controls
 are never pressed by an ordinary step, and a screen with card fields is never
 clicked through.
 
-[`docs/decision-loops.md`](docs/decision-loops.md) explains every step kind,
+[`docs/technical/decision-loops.md`](docs/technical/decision-loops.md) explains every step kind,
 question, and threshold in detail.
 
 ## Architecture
@@ -130,7 +130,7 @@ contract, so `tinycomputer::SnapshotRequest` and
 twins. The adapters are plain libraries that another host can take without the
 engine.
 
-[`docs/architecture.md`](docs/architecture.md) covers how a call travels
+[`docs/technical/architecture.md`](docs/technical/architecture.md) covers how a call travels
 through the layers, threading, configuration, and the safety checks.
 
 ## The members
@@ -232,7 +232,7 @@ text, `ValidateFlow` checks a candidate without touching anything, and the
 guide itself is
 [`crates/tinycomputer-bus/src/flow/guide.md`](crates/tinycomputer-bus/src/flow/guide.md).
 Nothing irreversible happens without `allow_destructive`. The design and its
-rationale are in [`docs/specs/jev-intent-flows.md`](docs/specs/jev-intent-flows.md).
+rationale are in [`docs/technical/specs/jev-intent-flows.md`](docs/technical/specs/jev-intent-flows.md).
 
 ### Goals
 
@@ -319,7 +319,7 @@ host:
 scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture
 ```
 
-See [`docs/lab.md`](docs/lab.md) and [`docs/docker-lab.md`](docs/docker-lab.md).
+See [`docs/technical/lab.md`](docs/technical/lab.md) and [`docs/technical/docker-lab.md`](docs/technical/docker-lab.md).
 
 ## Layout
 
@@ -432,23 +432,23 @@ Do not hand-edit the version in the root `Cargo.toml`.
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md): the layers, how a call
+- [`docs/technical/architecture.md`](docs/technical/architecture.md): the layers, how a call
   travels, threading, configuration, safety
-- [`docs/jev-harness.md`](docs/jev-harness.md): the Jev stack, one decision
+- [`docs/technical/jev-harness.md`](docs/technical/jev-harness.md): the Jev stack, one decision
   end to end, and where the time goes
-- [`docs/decision-loops.md`](docs/decision-loops.md): how the flow runtime
+- [`docs/technical/decision-loops.md`](docs/technical/decision-loops.md): how the flow runtime
   grounds each step, question by question
-- [`docs/jev-questions.md`](docs/jev-questions.md) and
-  [`docs/flow-examples.md`](docs/flow-examples.md): every Jev input and
+- [`docs/technical/jev-questions.md`](docs/technical/jev-questions.md) and
+  [`docs/technical/flow-examples.md`](docs/technical/flow-examples.md): every Jev input and
   output, and real flows traced decision by decision
-- [`docs/jev-journal.md`](docs/jev-journal.md): the debug journal, for reading
+- [`docs/technical/jev-journal.md`](docs/technical/jev-journal.md): the debug journal, for reading
   a run back and measuring its latency
-- [`docs/tasks.md`](docs/tasks.md): the task API, pausing and resuming,
+- [`docs/technical/tasks.md`](docs/technical/tasks.md): the task API, pausing and resuming,
   private values, the planner
-- [`docs/lab.md`](docs/lab.md) and [`docs/docker-lab.md`](docs/docker-lab.md):
+- [`docs/technical/lab.md`](docs/technical/lab.md) and [`docs/technical/docker-lab.md`](docs/technical/docker-lab.md):
   live runs
-- [`docs/specs/`](docs/specs/README.md), [`docs/plans/`](docs/plans/README.md),
-  [`docs/adr/`](docs/adr/0001-record-architecture-decisions.md): specs, plans,
+- [`docs/technical/specs/`](docs/technical/specs/README.md), [`docs/technical/plans/`](docs/technical/plans/README.md),
+  [`docs/technical/adr/`](docs/technical/adr/0001-record-architecture-decisions.md): specs, plans,
   and decision records
 - [`AGENTS.md`](AGENTS.md), [`CONTRIBUTING.md`](CONTRIBUTING.md),
   [`SECURITY.md`](SECURITY.md)
