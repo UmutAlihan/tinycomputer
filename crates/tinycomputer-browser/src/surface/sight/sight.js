@@ -172,7 +172,7 @@
       if (!shown(parent) || insideText(parent)) continue;
       if (parent.closest(NESTED)) continue;
       const dropped = noiseRoot(parent);
-      if (dropped && noise(dropped) === 'ads') continue;
+      if (dropped && noiseKinds.get(dropped) === 'ads') continue;
       const text = clip(parent.innerText || node.data, 80);
       if (text) words.push({ element: parent, text, rect: box(parent) });
     }
@@ -329,8 +329,9 @@
     'rubiconproject.com', 'scorecardresearch.com',
   ];
   const AD_HOST_NAMES = /(^|\.)(adservice\.google|criteo)\.[a-z]{2,}(\.[a-z]{2,})?$/;
-  // One word of a class or id, split at `-`, `_`, digits, and camelCase:
-  // `ad`, not the `ad` in `header`, `shadow`, `download`, or `adults`.
+  // One word of a class or id, split at `-` and `_` only: `ad`, not the `ad`
+  // in `header`, `shadow`, `download`, or `adults`, nor in a generated class
+  // such as `css-1ad4k9` or `hAdSfq`. `AdSlot` reads as `adslot`.
   const AD_WORD = /^(ads?|adsbygoogle|dfp|ad(slot|unit|box|zone|space|container|wrapper|banner|frame|holder|placement)s?|advert\w*|sponsor\w*)$/;
   const AD_LABEL = /^(advertisement|sponsored|ad)$/i;
   // Words that mark a cookie, consent, or newsletter banner, which the
@@ -345,9 +346,8 @@
   const classText = (element) => (typeof element.className === 'string' ? element.className
     : (element.className && element.className.baseVal) || '');
   const adWords = (element) => `${classText(element)} ${element.id || ''}`
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .toLowerCase()
-    .split(/[^a-z]+/)
+    .split(/[\s_-]+/)
     .some((word) => AD_WORD.test(word));
   const boilerplate = (element) => BOILERPLATE.test(
     `${classText(element)} ${element.id || ''} ${element.getAttribute('aria-label') || ''} `
@@ -435,12 +435,18 @@
     return clipped(element) ? 'hidden' : null;
   };
   const noiseRoots = new Map();
+  const noiseKinds = new Map();
   // The outermost noise block the element is in (or is), or null.
   const noiseRoot = (element) => {
     if (noiseRoots.has(element)) return noiseRoots.get(element);
     let root = null;
     if (element !== base && base.contains(element)) {
-      root = (element.parentElement && noiseRoot(element.parentElement)) || (noise(element) ? element : null);
+      root = element.parentElement && noiseRoot(element.parentElement);
+      const own = root ? null : noise(element);
+      if (own) {
+        root = element;
+        noiseKinds.set(element, own);
+      }
     }
     noiseRoots.set(element, root);
     return root;
@@ -450,7 +456,7 @@
   const tally = (root) => {
     if (tallied.has(root)) return;
     tallied.add(root);
-    denoised[noise(root)] += 1;
+    denoised[noiseKinds.get(root)] += 1;
   };
 
   const containers = new Map();
@@ -640,7 +646,7 @@
     const dropped = noiseRoot(element);
     // An ad's own frame or picture is an ad whether or not it shows words.
     if (dropped === element && ['iframe', 'img'].includes(tag(element))
-      && element.getClientRects().length > 0 && noise(element) === 'ads') {
+      && element.getClientRects().length > 0 && noiseKinds.get(element) === 'ads') {
       tally(element);
     }
     if (element.shadowRoot && shown(element)
