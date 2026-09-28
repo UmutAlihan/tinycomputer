@@ -1,25 +1,16 @@
 //! The `authored` mode: an LLM writes the flow from the scenario brief (feature
 //! `inference`).
 
-use std::{
-    io,
-    path::{Path, PathBuf},
-    time::Instant,
-};
+use std::path::Path;
 
-use tinycomputer_bus::{
-    Deliberation, FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, FlowStrategy,
-    RunFlowRequest, RunGoalRequest,
-};
+use super::Options;
+use crate::run::run_flow;
+use tinycomputer_bus::{FLOW_GUIDE, FlowRunResult};
 use tinycomputer_examples::lab::{
-    host::{Host, HostOptions, LabError, module_path},
-    record::{
-        RunRecord, flow_timeline, goal_timeline, load_memory, report, run_dir, save_memory,
-        scorecard, write_json,
-    },
-    scenario::{SCENARIOS, Scenario, find},
+    host::{Host, LabError},
+    record::{flow_timeline, write_json},
+    scenario::Scenario,
 };
-use super::{Options, run_flow};
 
 #[cfg(feature = "inference")]
 pub(crate) async fn authored(

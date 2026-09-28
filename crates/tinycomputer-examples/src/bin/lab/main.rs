@@ -19,24 +19,19 @@
 use std::{
     io,
     path::{Path, PathBuf},
-    time::Instant,
 };
 
-use tinycomputer_bus::{
-    Deliberation, FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, FlowStrategy,
-    RunFlowRequest, RunGoalRequest,
-};
+use tinycomputer_bus::{Deliberation, FLOW_GUIDE, FlowLoop, FlowStrategy};
 use tinycomputer_examples::lab::{
     host::{Host, HostOptions, LabError, module_path},
-    record::{
-        RunRecord, flow_timeline, goal_timeline, load_memory, report, run_dir, save_memory,
-        scorecard, write_json,
-    },
-    scenario::{SCENARIOS, Scenario, find},
+    record::{RunRecord, report, scorecard},
+    scenario::{SCENARIOS, find},
 };
 
-mod run;
 mod authored;
+mod run;
+
+use run::run_once;
 
 const RUNS: &str = "target/lab-runs";
 const MEMORY: &str = "target/lab-runs/memory.json";

@@ -1,25 +1,18 @@
 //! One trial: running a scenario's flow or goal, and keeping `--send` addressed
 //! only to the operator.
 
-use std::{
-    io,
-    path::{Path, PathBuf},
-    time::Instant,
-};
+use std::{io, path::Path, time::Instant};
 
-use tinycomputer_bus::{
-    Deliberation, FLOW_GUIDE, Flow, FlowAction, FlowLoop, FlowRunResult, FlowStep, FlowStrategy,
-    RunFlowRequest, RunGoalRequest,
-};
+use super::{MEMORY, Options, RUNS, run_id};
+use crate::authored::authored;
+use tinycomputer_bus::{Flow, FlowAction, FlowRunResult, FlowStep, RunFlowRequest, RunGoalRequest};
 use tinycomputer_examples::lab::{
-    host::{Host, HostOptions, LabError, module_path},
+    host::{Host, LabError},
     record::{
-        RunRecord, flow_timeline, goal_timeline, load_memory, report, run_dir, save_memory,
-        scorecard, write_json,
+        RunRecord, flow_timeline, goal_timeline, load_memory, run_dir, save_memory, write_json,
     },
-    scenario::{SCENARIOS, Scenario, find},
+    scenario::Scenario,
 };
-use super::{MEMORY, Options, RUNS, authored, run_id};
 
 pub(crate) async fn run_once(
     host: &Host,
