@@ -370,7 +370,7 @@ and minimal features unless a new module capability requires more.
 - Module-local unit tests live in `<module>_tests.rs` beside the module root
   (topics in `<module>_tests/`) and may touch private items.
 - Integration tests live in `crates/<crate>/tests/*_tests.rs` and exercise only
-  the public API — they are the regression suite for the crate's contract.
+  the public API; they are the regression suite for the crate's contract.
 - Payload types pin their serde representation in a unit test. That
   representation is the wire form: a host and a module that disagree about a
   field name fail at runtime with a decode error.
