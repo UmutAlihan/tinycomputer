@@ -387,7 +387,7 @@ fn a_card_s_rich_text_body_is_gated_on_include_values_but_its_name_is_not() {
         .clone();
     let hidden_line = lines[0].as_str().unwrap();
     assert!(
-        hidden_line.starts_with("card 1: Doc 1 →"),
+        hidden_line.starts_with("card 1: Doc 1 · Open 1 →"),
         "the card's name still shows: {hidden_line}"
     );
     assert!(
