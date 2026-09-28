@@ -3,10 +3,83 @@
 
 use super::*;
 
+use tinycomputer_bus::agent::{LanguageModelConfiguration, LanguageModelProvider};
+use tinycomputer_bus::{JevConfiguration, JevProvider};
+
+use super::rescue_tests::Model;
+
+/// A decision model summary, as a configured runtime reports it.
+fn jev() -> JevConfiguration {
+    JevConfiguration {
+        provider: JevProvider::OpenRouter,
+        model: "jev-latest".to_owned(),
+        endpoint_url: None,
+        fast: false,
+    }
+}
+
+#[test]
+fn describe_reports_the_decision_model_and_each_task_model() {
+    let (tasks, _) = controller(Vec::new());
+    let bare = capabilities(Vec::new(), None, &tasks);
+    assert!(!bare.jev_configured);
+    assert!(bare.decision_model.is_none());
+    assert!(bare.planner_model.is_none() && bare.rescue_model.is_none());
+    let wire = serde_json::to_value(&bare).unwrap();
+    for absent in ["decision_model", "planner_model", "rescue_model", "output_model"] {
+        assert!(wire.get(absent).is_none(), "{absent} is left out when unset");
+    }
+
+    let on = |provider, model: &str| LanguageModelConfiguration {
+        provider,
+        model: model.to_owned(),
+        endpoint_url: None,
+    };
+    let model = Arc::new(Model::default());
+    let tasks = tasks
+        .with_planner(
+            crate::planner::Planner::new(model.clone())
+                .with_configuration(on(LanguageModelProvider::TinyHumans, "anthropic/claude-sonnet-5")),
+        )
+        .with_rescuer(
+            crate::rescue::Rescuer::new(model.clone())
+                .with_configuration(on(LanguageModelProvider::OpenRouter, "openai/gpt-6-luna-pro")),
+        )
+        .with_shaper(crate::shape::Shaper::new(model));
+    let sage = JevConfiguration {
+        provider: JevProvider::Sage,
+        model: "levanto-sage".to_owned(),
+        endpoint_url: None,
+        fast: true,
+    };
+    let described = capabilities(Vec::new(), Some(&sage), &tasks);
+    assert!(described.jev_configured);
+    assert_eq!(described.decision_model.as_ref(), Some(&sage));
+    assert_eq!(
+        described.planner_model.unwrap().provider,
+        LanguageModelProvider::TinyHumans
+    );
+    assert_eq!(described.rescue_model.unwrap().model, "openai/gpt-6-luna-pro");
+    assert!(described.output_configured);
+    assert!(
+        described.output_model.is_none(),
+        "a shaper built without a configuration reports none"
+    );
+    let wire = serde_json::to_value(capabilities(Vec::new(), Some(&sage), &tasks)).unwrap();
+    assert_eq!(
+        wire["decision_model"],
+        serde_json::json!({"provider": "sage", "model": "levanto-sage", "endpoint_url": null, "fast": true})
+    );
+    assert_eq!(
+        wire["planner_model"],
+        serde_json::json!({"provider": "tiny_humans", "model": "anthropic/claude-sonnet-5"})
+    );
+}
+
 #[tokio::test]
 async fn describe_documents_every_member_and_its_examples_really_work() {
     let (tasks, _) = controller(Vec::new());
-    let described = capabilities(Vec::new(), true, &tasks);
+    let described = capabilities(Vec::new(), Some(&jev()), &tasks);
     let names = described
         .members
         .iter()
@@ -48,7 +121,7 @@ async fn describe_documents_every_member_and_its_examples_really_work() {
 #[tokio::test]
 async fn describe_catalogues_every_served_member() {
     let (tasks, _) = controller(Vec::new());
-    let described = capabilities(Vec::new(), true, &tasks);
+    let described = capabilities(Vec::new(), Some(&jev()), &tasks);
     let names = described
         .catalogue
         .iter()
@@ -84,7 +157,7 @@ fn fields(value: &serde_json::Value) -> Vec<String> {
 #[tokio::test]
 async fn describe_schemas_name_every_request_field() {
     let (tasks, _) = controller(Vec::new());
-    let described = capabilities(Vec::new(), true, &tasks);
+    let described = capabilities(Vec::new(), Some(&jev()), &tasks);
     let schema = |name: &str| {
         described
             .members
@@ -133,7 +206,7 @@ async fn describe_browser_examples_decode_as_their_members_requests() {
         Action, NavigateRequest, ReadOutputRequest, SessionOptions, SessionRequest, names,
     };
     let (tasks, _) = controller(Vec::new());
-    let described = capabilities(Vec::new(), true, &tasks);
+    let described = capabilities(Vec::new(), Some(&jev()), &tasks);
     let mut seen = 0;
     for example in &described.examples {
         let request = example.request.clone();
