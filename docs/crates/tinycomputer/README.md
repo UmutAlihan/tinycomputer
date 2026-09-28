@@ -99,7 +99,7 @@ any given member is safe to call from an untrusted caller.
   `modules.toml`, checksum verification, and `verify_module`.
 - [configuration.md](configuration.md): every configuration key this module
   reads, with examples, and what happens when you leave one out.
-- [members.md](members.md): all 67 members grouped by family, and which ones
+- [members.md](members.md): all 80 members grouped by family, and which ones
   need confidential delivery.
 - [calling-it.md](calling-it.md): a host's-eye view of calling the module,
   worked examples for a plain desktop call and for a task.
