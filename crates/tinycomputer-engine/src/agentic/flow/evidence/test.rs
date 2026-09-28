@@ -110,8 +110,8 @@ fn a_clear_agreed_belief_is_accepted_either_way() {
 
 #[test]
 fn framings_that_straddle_the_threshold_are_deliberated() {
-    let evidence = of_beliefs(&[0.95, 0.95, 0.95, 0.4, 0.4], 0.75);
-    assert!(evidence.p >= 0.75 + UNDECIDED_BAND - 0.1);
+    let evidence = of_beliefs(&[0.99, 0.99, 0.99, 0.5, 0.5], 0.75);
+    assert!(evidence.p >= 0.75 && evidence.p < 0.75 + UNDECIDED_BAND);
     assert!((evidence.agreement - 0.6).abs() < 1e-9);
     assert_eq!(belief_verdict(&evidence, 0.75), Verdict::Deliberate);
 }

@@ -755,10 +755,12 @@ impl Oracle {
         question: &Question,
         sim: &Sim,
     ) -> Answer {
+        let near = id.strip_prefix("only_near_").map(|index| format!("is_{index}"));
         let twin = match id {
             "not_done" => Some("done"),
             "negated" | "coverage" => Some("holds"),
-            _ => None,
+            "unintended" => Some("intended"),
+            _ => near.as_deref(),
         };
         if let Some(twin) = twin
             && let Some(positive) = request.questions.get(twin)
@@ -895,7 +897,9 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         "shortcut" => pick(question, "new_item", 0.9),
         // Every action helps and no field shows an error, unless a test says.
         // A press left what the step asked for, unless a test says.
-        "confirm" | "helped" | "dismiss_known" | "reflects" => noul(0.9),
+        "confirm" | "helped" | "dismiss_known" | "reflects" | "intended" => noul(0.9),
+        // A contrasted finalist is the element, unless a test says.
+        _ if id.starts_with("is_") => noul(0.9),
         _ if id.starts_with("known_") => noul(0.9),
         // A survey finds the step in "Region 1" and nothing distracting.
         _ if id.starts_with("relevance_") => {
