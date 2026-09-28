@@ -58,6 +58,7 @@ pub struct Briefing {
     pub screen: Vec<String>,   // the screen's visible text, now
     pub rules: Vec<String>,    // the task's standing rules (payment mode, destructive policy)
     pub known: BTreeSet<String>,
+    pub collected: Vec<(String, String)>, // what the task has saved so far, redacted
     pub secrets: BTreeSet<String>,
 }
 ```
