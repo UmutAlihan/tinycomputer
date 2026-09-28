@@ -43,6 +43,14 @@ const LIST_CARDS: usize = 12;
 const CARD_CHARS: usize = 160;
 /// Example labels a collapsed region names.
 const EXAMPLES: usize = 5;
+/// Longest a collapsed region's one-line summary is let to run, so a long
+/// region name or many long example labels cannot inflate it unboundedly.
+const SUMMARY_CHARS: usize = 200;
+/// How far `render` lets collapsed summaries push `spent` past
+/// `rendering.budget` before it stops adding them and reports a count of the
+/// rest instead: enough slack for one more summary or two, not an unbounded
+/// tail of them.
+const COLLAPSED_SLACK: usize = SUMMARY_CHARS * 2;
 /// Roles whose subtree is in front of the page.
 const FRONT_ROLES: &[&str] = &["sheet", "dialog", "alertdialog", "alert", "popover"];
 /// Words in a region's labels that mark an overlay a person must deal with.
