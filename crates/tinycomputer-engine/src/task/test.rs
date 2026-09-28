@@ -939,7 +939,7 @@ fn the_app_in_front_is_the_last_opened_before_a_step() {
 
 #[tokio::test]
 async fn describe_documents_every_member_and_its_examples_really_work() {
-    let described = capabilities(Vec::new(), true, false);
+    let described = capabilities(Vec::new(), true, false, false);
     let names = described
         .members
         .iter()
