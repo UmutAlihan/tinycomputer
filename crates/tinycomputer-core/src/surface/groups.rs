@@ -155,21 +155,58 @@ pub(super) fn ordinal(label: &str) -> Option<(&str, usize)> {
     Some((role, number))
 }
 
+/// Ancestor role prefixes under which a ref-less node's text mirrors a
+/// field's held contents rather than ordinary screen text: a rich-text
+/// area's body (`webarea`, `document`) or a tokenized field's own chip
+/// labels (`textbox`, `searchbox`, `combobox`, `textarea`). Mirrors the
+/// ancestor check `tinycomputer_desktop`'s `remembers_as_field_content` and
+/// `tinycomputer_browser`'s `FIELD_ROLES` use to keep this same text out of
+/// `Screen::context` unconditionally.
+const FIELD_ANCESTORS: &[&str] = &[
+    "webarea",
+    "document",
+    "textbox",
+    "searchbox",
+    "combobox",
+    "textarea",
+];
+
+/// Whether `path` sits inside one of [`FIELD_ANCESTORS`]: a ref-less node
+/// there holds field content, private unless values are shared, even though
+/// it carries no ref of its own.
+fn inside_field_content(path: &[String]) -> bool {
+    path.iter().any(|ancestor| {
+        let ancestor = ancestor.to_ascii_lowercase();
+        FIELD_ANCESTORS
+            .iter()
+            .any(|role| ancestor.starts_with(role))
+    })
+}
+
 /// A card field's visible text: an actionable node's name or description
 /// unconditionally, falling back to its held value only when `include_values`
-/// is set; a ref-less text node — always field content by construction, per
-/// [`super::screen::Screen::text_nodes`] — only when `include_values` is set,
-/// regardless of which of its fields carries that content.
+/// is set. A ref-less text node's own name, description, or value is shown
+/// unconditionally too, unless it sits inside a rich-text area or a
+/// tokenized field ([`inside_field_content`]) — there it mirrors that
+/// field's held contents, so it is gated on `include_values` like any other
+/// value.
 fn text_of(node: &Candidate, actionable: bool, include_values: bool) -> Option<String> {
     let held_value = || match &node.value {
         Some(Value::String(value)) => Some(value.clone()),
         _ => None,
     };
-    let text = if actionable {
+    let gated = !actionable && inside_field_content(&node.path);
+    let text = if actionable || !gated {
         node.name
             .clone()
             .or_else(|| node.description.clone())
-            .or_else(|| include_values.then(held_value).flatten())
+            .or_else(|| {
+                if actionable {
+                    include_values.then(held_value).flatten()
+                } else {
+                    held_value()
+                }
+            })
     } else if include_values {
         node.name
             .clone()
