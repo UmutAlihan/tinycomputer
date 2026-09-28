@@ -94,6 +94,8 @@ struct Sim {
     checked_fare: Option<&'static str>,
     /// A line of guidance shown on the page, such as a date layout.
     hint: Option<&'static str>,
+    /// A passengers box with adult steppers, holding this many adults.
+    adults: Option<u8>,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -147,6 +149,22 @@ fn press_booking(sim: &mut Sim, name: &str) {
             sim.fields.insert("Departure".to_owned(), day.to_owned());
         }
         _ => {}
+    }
+}
+
+/// Emirates' passengers box: a button that does not show its count, and
+/// steppers whose labels both name the count they would change.
+fn passenger_steppers(adults: u8, root: &str, candidates: &mut Vec<Candidate>) {
+    let path = [root, "group \"Passengers\""];
+    candidates.push(node("Passengers", "button", &["Click"], &path, 250.0));
+    for (verb, y) in [("Decrease", 260.0), ("Increase", 270.0)] {
+        candidates.push(node(
+            &format!("{verb} number of Adult passengers. You have selected {adults} Adult"),
+            "button",
+            &["Click"],
+            &path,
+            y,
+        ));
     }
 }
 
@@ -432,6 +450,9 @@ impl App {
         if let Some(booking) = &sim.booking {
             booking_widget(&sim, booking, &root, &mut candidates);
         }
+        if let Some(adults) = sim.adults {
+            passenger_steppers(adults, &root, &mut candidates);
+        }
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
         }
@@ -537,6 +558,12 @@ impl AgentBackend for App {
                     "Send" => sim.sent = true,
                     "Keep Editing" => sim.obstacle = false,
                     "Archive" => sim.compose_open = false,
+                    _ if name.starts_with("Increase number of Adult") => {
+                        sim.adults = sim.adults.map(|adults| adults + 1);
+                    }
+                    _ if name.starts_with("Decrease number of Adult") => {
+                        sim.adults = sim.adults.map(|adults| adults.saturating_sub(1));
+                    }
                     _ if sim.booking.is_some() => press_booking(&mut sim, &name),
                     _ => {}
                 }
@@ -821,6 +848,9 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
             noul(if held { 0.9 } else { 0.1 })
         }
         "progress" => level(2),
+        // A step's press left what it asked for, unless a test says.
+        "reflects" => noul(0.9),
+        "strays" => noul(0.05),
         "blocked" => noul(if sim.obstacle { 0.9 } else { 0.05 }),
         "move" => pick(question, "shortcut", 0.9),
         "shortcut" => pick(question, "new_item", 0.9),

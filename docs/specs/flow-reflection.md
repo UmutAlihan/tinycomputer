@@ -65,8 +65,8 @@ journal event: `step`, `held`, and `attempt` (`first` or `after_repair`).
 - A repair is an ordinary `do` loop: it cannot press a `stop_before` target,
   and it spends the same action and call budgets.
 - At most one repair per step: a reflection never loops.
-- A private choice (a secret an `enter` could not type) is reflected on by
-  the step's `what` alone; the value never reaches Jev.
+- Only a `choose` step is reflected on, and its option is never a secret:
+  the private choices `enter` makes through the same code are not.
 
 ## Acceptance criteria
 
