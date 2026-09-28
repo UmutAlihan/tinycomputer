@@ -71,7 +71,13 @@ fn a_request_becomes_one_batch_group_with_a_question_per_question() {
         .collect::<Vec<_>>();
     assert_eq!(
         described,
-        ["not started", "half way", "half way", "finished", "finished"],
+        [
+            "not started",
+            "half way",
+            "half way",
+            "finished",
+            "finished"
+        ],
         "three levels sampled onto Sage's five"
     );
     let DecisionQuestion::Choice { options, .. } = &questions[2] else {
@@ -120,7 +126,10 @@ fn sage_answers_come_back_as_jev_answers() {
     let Answer::Noul(done) = &answers["done"] else {
         panic!("{:?}", answers["done"]);
     };
-    assert!((done.noul - 0.64).abs() < 1e-9, "an unsure verdict keeps its probability");
+    assert!(
+        (done.noul - 0.64).abs() < 1e-9,
+        "an unsure verdict keeps its probability"
+    );
     let Answer::Choice(target) = &answers["target"] else {
         panic!("{:?}", answers["target"]);
     };
@@ -131,7 +140,10 @@ fn sage_answers_come_back_as_jev_answers() {
     let Answer::Score(progress) = &answers["progress"] else {
         panic!("{:?}", answers["progress"]);
     };
-    assert!((progress.score - 1.5).abs() < 1e-9, "3 of 0..4 is 1.5 of 0..2");
+    assert!(
+        (progress.score - 1.5).abs() < 1e-9,
+        "3 of 0..4 is 1.5 of 0..2"
+    );
     assert!((progress.probabilities["1"] - 0.5).abs() < 1e-9);
     assert!((progress.probabilities["2"] - 0.5).abs() < 1e-9);
     assert_eq!(progress.legend["0"], json!("not started"));

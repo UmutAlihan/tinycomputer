@@ -27,8 +27,8 @@ use std::time::Instant;
 use serde_json::Value;
 use tinyinference_decisions::sage::{
     BatchDecisionRequest, BatchDecisionResponse, BatchGroup, BatchQuestion, ChoiceOption,
-    DecisionContent, DecisionQuestion, DecisionResponse, LatencyMode, ReasoningMode, ScaleLevel,
-    SageClient,
+    DecisionContent, DecisionQuestion, DecisionResponse, LatencyMode, ReasoningMode, SageClient,
+    ScaleLevel,
 };
 use tinyinference_decisions::{
     Answer, ChoiceAnswer, Error, EvaluationFailure, EvaluationRequest, EvaluationResponse,
@@ -103,7 +103,10 @@ impl super::Evaluator for SageEvaluator {
 }
 
 /// `request` as one Sage batch group, its questions in the request's order.
-fn batch(request: &EvaluationRequest, latency: LatencyMode) -> Result<BatchDecisionRequest, String> {
+fn batch(
+    request: &EvaluationRequest,
+    latency: LatencyMode,
+) -> Result<BatchDecisionRequest, String> {
     let questions = request
         .questions
         .iter()
@@ -209,12 +212,16 @@ fn answers(
         .iter()
         .zip(&group.answers)
         .map(|((id, question), answer)| {
-            let result = answer.result.as_ref().filter(|_| answer.ok).ok_or_else(|| {
-                format!(
-                    "Sage could not answer `{id}`: {}",
-                    answer.error.as_deref().unwrap_or("no reason given")
-                )
-            })?;
+            let result = answer
+                .result
+                .as_ref()
+                .filter(|_| answer.ok)
+                .ok_or_else(|| {
+                    format!(
+                        "Sage could not answer `{id}`: {}",
+                        answer.error.as_deref().unwrap_or("no reason given")
+                    )
+                })?;
             Ok((id.clone(), answer_for(id, question, result)?))
         })
         .collect()
@@ -263,8 +270,7 @@ fn answer_for(id: &str, question: &Question, result: &DecisionResponse) -> Resul
         }
         (Question::Score(score), DecisionResponse::Scale { result, .. }) => {
             let last = score.criteria.len().saturating_sub(1);
-            let position = (result.expectation.clamp(0.0, (SCALE_LEVELS - 1) as f64)
-                * last as f64)
+            let position = (result.expectation.clamp(0.0, (SCALE_LEVELS - 1) as f64) * last as f64)
                 / (SCALE_LEVELS - 1) as f64;
             let below = position.floor();
             let above_share = position - below;

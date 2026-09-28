@@ -20,6 +20,10 @@
 //! - `TASK_MAX_MINUTES` — optional: cancel the task after this long (20).
 //! - `TASK_RESCUES` — optional: how many failed steps the reasoning model
 //!   may rescue (0 to 5, default 5; 0 turns rescues off).
+//! - `TINYCOMPUTER_DECISIONS` — optional: `sage` makes Levanto Sage take
+//!   every decision in place of Jev, with `SAGE_API_KEY`; `SAGE_FAST=1`
+//!   scores each choice in one pass. The planner and the rescuer still use
+//!   `OPENROUTER_API_KEY`.
 //! - `TINYCOMPUTER_RESCUE_MODEL` — optional: the `OpenRouter` model that
 //!   rescues them (`openai/gpt-6-luna` by default).
 //! - `TINYCOMPUTER_BROWSER_EXECUTABLE`, `TINYCOMPUTER_BROWSER_USER_AGENT`, and
@@ -100,7 +104,14 @@ async fn main() -> Result<(), Failure> {
 
     let jev: JevConfig =
         serde_json::from_value(json!({"api_key": key, "provider": "open_router"}))?;
-    let jev = JevRuntime::configure(&jev).map_err(|error| error.message)?;
+    let jev = if std::env::var("TINYCOMPUTER_DECISIONS").as_deref() == Ok("sage") {
+        let key = std::env::var("SAGE_API_KEY")
+            .map_err(|_| "TINYCOMPUTER_DECISIONS=sage needs SAGE_API_KEY")?;
+        let fast = std::env::var("SAGE_FAST").is_ok_and(|value| value == "1");
+        JevRuntime::sage(&key, fast).map_err(|error| error.message)?
+    } else {
+        JevRuntime::configure(&jev).map_err(|error| error.message)?
+    };
     let planner: PlannerConfig = serde_json::from_value(json!({
         "api_key": key,
         "model": std::env::var("TINYCOMPUTER_PLANNER_MODEL").ok(),
