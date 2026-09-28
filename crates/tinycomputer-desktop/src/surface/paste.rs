@@ -1,18 +1,7 @@
 //! Pasting through the clipboard and putting back what it held.
 
 use serde_json::{Value, json};
-use tinycomputer_bus::{
-    ClipboardFormat, ClipboardGetRequest, ClipboardSetRequest, DesktopResponse, Direction,
-    ElementProperty, GetRequest, JevOperation, LaunchRequest, ListWindowsRequest, PressRequest,
-    RefRequest, ScrollRequest, SetValueRequest, SnapshotRequest, Surface as Overlay, WaitRequest,
-};
-use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
-use tinycomputer_cursor::Rect;
-
-use crate::Desktop;
-
-/// How long a field is given to commit text before it is read back again.
-const SETTLE_MS: u64 = 200;
+use tinycomputer_bus::{ClipboardSetRequest, DesktopResponse};
 
 /// What to put back on the pasteboard once a paste is done with it.
 #[derive(Debug, Clone, PartialEq, Eq)]

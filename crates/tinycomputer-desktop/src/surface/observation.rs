@@ -2,14 +2,9 @@
 //! text kept as context, field content kept out of it, and the front window
 //! chosen.
 
-use serde_json::{Value, json};
-use tinycomputer_bus::{
-    ClipboardFormat, ClipboardGetRequest, ClipboardSetRequest, DesktopResponse, Direction,
-    ElementProperty, GetRequest, JevOperation, LaunchRequest, ListWindowsRequest, PressRequest,
-    RefRequest, ScrollRequest, SetValueRequest, SnapshotRequest, Surface as Overlay, WaitRequest,
-};
-use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
-use tinycomputer_cursor::Rect;
+use serde_json::Value;
+use tinycomputer_bus::{DesktopResponse, ListWindowsRequest, SnapshotRequest, Surface as Overlay};
+use tinycomputer_core::surface::{Candidate, Depth, Screen};
 
 use crate::Desktop;
 

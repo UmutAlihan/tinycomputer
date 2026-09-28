@@ -3,11 +3,10 @@
 
 use serde_json::{Value, json};
 use tinycomputer_bus::{
-    ClipboardFormat, ClipboardGetRequest, ClipboardSetRequest, DesktopResponse, Direction,
-    ElementProperty, GetRequest, JevOperation, LaunchRequest, ListWindowsRequest, PressRequest,
-    RefRequest, ScrollRequest, SetValueRequest, SnapshotRequest, Surface as Overlay, WaitRequest,
+    DesktopResponse, Direction, JevOperation, PressRequest, RefRequest, ScrollRequest,
+    SetValueRequest, WaitRequest,
 };
-use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
+use tinycomputer_core::surface::{Candidate, uses_pointer};
 use tinycomputer_cursor::Rect;
 
 use crate::Desktop;

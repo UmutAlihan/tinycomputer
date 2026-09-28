@@ -8,12 +8,10 @@
 
 use serde_json::{Value, json};
 use tinycomputer_bus::{
-    ClipboardFormat, ClipboardGetRequest, ClipboardSetRequest, DesktopResponse, Direction,
-    ElementProperty, GetRequest, JevOperation, LaunchRequest, ListWindowsRequest, PressRequest,
-    RefRequest, ScrollRequest, SetValueRequest, SnapshotRequest, Surface as Overlay, WaitRequest,
+    ClipboardFormat, ClipboardGetRequest, ClipboardSetRequest, DesktopResponse, ElementProperty,
+    GetRequest, JevOperation, LaunchRequest, RefRequest, WaitRequest,
 };
-use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
-use tinycomputer_cursor::Rect;
+use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface};
 
 mod act;
 mod observation;
@@ -24,6 +22,9 @@ use observation::observe;
 use paste::{Restore, restore_plan, with_restoration};
 
 use crate::Desktop;
+
+/// How long a field is given to commit text before it is read back again.
+const SETTLE_MS: u64 = 200;
 
 impl Surface for Desktop {
     fn observe(
