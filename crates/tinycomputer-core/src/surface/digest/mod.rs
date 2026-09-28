@@ -349,16 +349,19 @@ fn split(screen: &Screen, members: Vec<usize>, level: usize, out: &mut Vec<Regio
 }
 
 /// The list `members` form at `level`: every member sits under the same
-/// ancestors and then under one of at least two ordinal containers
-/// (`listitem #3`) there.
+/// ancestors and then under one of at least two ordinal containers of the
+/// same role (`listitem #3`, never a `listitem #1` next to a `tab #2`)
+/// there.
 fn list_at(screen: &Screen, members: &[usize], level: usize) -> Option<(usize, Vec<String>)> {
     let first = &screen.candidates[*members.first()?].path;
     let parent = first.get(..level)?;
     let mut containers = Vec::new();
+    let mut role = None;
     for index in members {
         let path = &screen.candidates[*index].path;
         let container = path.get(level)?;
-        if path.get(..level)? != parent || groups::ordinal(container).is_none() {
+        let (container_role, _) = groups::ordinal(container)?;
+        if path.get(..level)? != parent || *role.get_or_insert(container_role) != container_role {
             return None;
         }
         if !containers.contains(&container) {
