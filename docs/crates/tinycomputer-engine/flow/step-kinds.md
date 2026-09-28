@@ -89,10 +89,12 @@ even in a later step that uses it.
 
 ## `extract`
 
-Finds the repeated list items on screen ("cards" — search results, list
-rows, anything that repeats the same shape) using `result_groups`, and
-stores them as JSON rows of their visible text. No Jev call: the shape of
-the list is enough.
+Finds the repeated list items on screen ("cards": search results, list
+rows, anything that repeats the same shape) using `result_families`, and
+stores them as JSON rows of their visible text. Usually no Jev call: the
+shape of the list is enough. If more than one list shows at once, one
+Choice asks which list `extract`'s own `what` names first (see "Choosing
+the list a step means" below).
 
 ## `pick`
 
@@ -107,12 +109,34 @@ depending on whether its `by` text parses into something exact:
 When it parses ("lowest price"), the ranking costs nothing: the parsers in
 `tinycomputer-core/src/records/` read prices with currency symbols, clock
 times, durations like `2h 35m`, and stop counts like `non-stop` or `1
-stop`, and the winner is picked exactly. When it does not parse ("a morning
-flight with at most one stop"), Jev gets one Choice over the cards. Either
-way, the winner's text goes into the named variable, capped at 400
-characters, and its primary control (whatever looks most like "open this":
-select, book, choose, view, details, continue, reserve, deal, see) is
-clicked, after the same destructive check any other click gets.
+stop`, and the winner is picked exactly from whichever list on screen
+actually has that measure; no separate question about which list is meant
+is needed. When it does not parse ("a morning flight with at most one
+stop"), and more than one list shows, one Choice first asks which list
+`from` names, then Jev gets one Choice over that list's cards. Either way,
+the winner's text goes into the named variable, capped at 400 characters,
+and its primary control (whatever looks most like "open this": select,
+book, choose, view, details, continue, reserve, deal, see) is clicked,
+after the same destructive check any other click gets.
+
+## Choosing the list a step means
+
+A results page usually repeats its cards under a container the page itself
+labels by ordinal (`listitem #3`), and `result_families` picks the list
+with the most cards. A native desktop tree labels nothing that way, so
+there `result_families` instead reads a run of three or more same-role
+leaf siblings (`MIN_FLAT_ITEMS`) as a list, one record per element; this is
+what lets `extract` and `pick` work on a desktop application's flat
+accessibility tree, not only on a web page's own list markup.
+
+When more than one list shows on screen at once, such as a chat list
+beside the open chat's own messages, `extract` and an unranked `pick` ask
+Jev which one is meant: each of the first six lists (`MAX_LISTS`) is shown
+by its first three items (`LIST_PREVIEW`), and a clear winner at 0.5
+confidence or above is used; anything less clear falls back to the longest
+list, the one that would have been used before the question was asked at
+all. See [`../output.md`](../output.md) for the full detail, including how
+this interacts with the run's own memory of what it has already saved.
 
 ## `verify`, `wait_for`, `if`, `repeat_until`
 
