@@ -20,7 +20,7 @@ mod service;
 
 use browser::browser_reply;
 
-pub(super) use service::desktop_availability;
+pub(super) use service::{desktop_availability, sweep_every};
 
 use tinybus::Result as TinyBusResult;
 use tinycomputer_bus::{
