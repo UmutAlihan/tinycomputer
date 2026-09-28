@@ -112,9 +112,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .filter_map(|index| {
                 let answers = ids
                     .iter()
-                    .filter_map(|id| {
-                        Some(((*id).to_owned(), self.ballot(id).get(index)?.clone()))
-                    })
+                    .filter_map(|id| Some(((*id).to_owned(), self.ballot(id).get(index)?.clone())))
                     .collect::<BTreeMap<_, _>>();
                 belief.read(&answers)
             })
@@ -249,7 +247,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             seen.iter()
                 .filter_map(|answers| ask::calibrated(answers, belief.yes, belief.no)),
         );
-        let above = readings.iter().filter(|reading| **reading >= belief.threshold);
+        let above = readings
+            .iter()
+            .filter(|reading| **reading >= belief.threshold);
         let settled = if above.count() % readings.len() == 0 {
             evidence::mean(&readings)
         } else {
@@ -322,7 +322,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             })
             .collect::<Vec<_>>();
         if let Some(cross) = &offer.cross
-            && !finalists.iter().any(|finalist| finalist.ref_id == cross.ref_id)
+            && !finalists
+                .iter()
+                .any(|finalist| finalist.ref_id == cross.ref_id)
         {
             finalists.truncate(duel::MAX_FINALISTS - 1);
             finalists.push(cross.clone());
@@ -426,12 +428,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 "champion": standing.champion,
             })
         });
-        let champion = standing.champion.and_then(|champion| {
-            standing
-                .order
-                .iter()
-                .position(|index| *index == champion)
-        });
+        let champion = standing
+            .champion
+            .and_then(|champion| standing.order.iter().position(|index| *index == champion));
         let ranked = standing
             .order
             .iter()

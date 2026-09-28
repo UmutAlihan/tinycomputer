@@ -79,8 +79,7 @@ fn an_oscillation_is_a_return_to_two_turns_ago() {
 
 #[test]
 fn repeated_history_lines_read_once_with_a_count() {
-    let history = ["pressed x", "pressed x", "pressed x", "waited", "pressed x"]
-        .map(str::to_owned);
+    let history = ["pressed x", "pressed x", "pressed x", "waited", "pressed x"].map(str::to_owned);
     assert_eq!(
         compact(&history),
         ["pressed x (x3)", "waited", "pressed x"].map(str::to_owned)

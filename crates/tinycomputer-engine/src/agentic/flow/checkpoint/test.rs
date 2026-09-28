@@ -39,7 +39,12 @@ fn actions_are_classified_by_how_they_undo() {
         Reversibility::Reversible
     );
     assert_eq!(
-        classify(&Effect::Toggles(true), &element("radio", "Economy"), &page, &[]),
+        classify(
+            &Effect::Toggles(true),
+            &element("radio", "Economy"),
+            &page,
+            &[]
+        ),
         Reversibility::Restorable
     );
     assert_eq!(

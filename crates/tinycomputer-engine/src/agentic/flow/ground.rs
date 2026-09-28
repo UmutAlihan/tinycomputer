@@ -454,11 +454,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         });
         let mut replies = self.ask_batch(log, requests).await?.into_iter();
         let answers = replies.next().unwrap_or_default();
-        let cross = wider.zip(replies.next()).and_then(|((keys, wider), answers)| {
-            let (choice, _) = chosen(&answers, "wider")?;
-            let index = keys.iter().position(|key| *key == choice)?;
-            wider.get(index).cloned()
-        });
+        let cross = wider
+            .zip(replies.next())
+            .and_then(|((keys, wider), answers)| {
+                let (choice, _) = chosen(&answers, "wider")?;
+                let index = keys.iter().position(|key| *key == choice)?;
+                wider.get(index).cloned()
+            });
         self.settle(
             log,
             screen,

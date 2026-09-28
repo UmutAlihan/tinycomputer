@@ -21,8 +21,8 @@ use std::{
 
 use serde_json::{Value, json};
 use tinycomputer_bus::{
-    Deliberation, DesktopResponse, Flow, FlowLoop, FlowRunResult, FlowStopReason, GroundingHint, JevOperation,
-    RunFlowRequest, StepOutcome, ValidateFlowRequest,
+    Deliberation, DesktopResponse, Flow, FlowLoop, FlowRunResult, FlowStopReason, GroundingHint,
+    JevOperation, RunFlowRequest, StepOutcome, ValidateFlowRequest,
 };
 use tinyinference_decisions::{
     Answer, ChoiceAnswer, EvaluationFailure, EvaluationRequest, EvaluationResponse,
@@ -128,7 +128,8 @@ impl Sim {
     fn located(&self, command: &str) -> DesktopResponse {
         DesktopResponse::ok(
             command,
-            self.page().map_or_else(|| json!({}), |page| json!({"url": page})),
+            self.page()
+                .map_or_else(|| json!({}), |page| json!({"url": page})),
         )
     }
 }
@@ -156,7 +157,13 @@ fn shop_screen(sim: &Sim) -> Screen {
         ),
         REVIEW => (
             "Review",
-            vec![node("Pay", "button", &["Click"], &["main \"Review\""], 100.0)],
+            vec![node(
+                "Pay",
+                "button",
+                &["Click"],
+                &["main \"Review\""],
+                100.0,
+            )],
             vec!["Review your booking".to_owned()],
         ),
         _ => {
@@ -179,7 +186,13 @@ fn shop_screen(sim: &Sim) -> Screen {
                         &["form \"Extras\""],
                         180.0,
                     ),
-                    node("Continue", "button", &["Click"], &["form \"Extras\""], 260.0),
+                    node(
+                        "Continue",
+                        "button",
+                        &["Click"],
+                        &["form \"Extras\""],
+                        260.0,
+                    ),
                 ],
                 vec!["Choose your extras".to_owned()],
             )
@@ -882,7 +895,9 @@ impl Oracle {
         question: &Question,
         sim: &Sim,
     ) -> Answer {
-        let near = id.strip_prefix("only_near_").map(|index| format!("is_{index}"));
+        let near = id
+            .strip_prefix("only_near_")
+            .map(|index| format!("is_{index}"));
         let twin = match id {
             "not_done" => Some("done"),
             "negated" | "coverage" => Some("holds"),

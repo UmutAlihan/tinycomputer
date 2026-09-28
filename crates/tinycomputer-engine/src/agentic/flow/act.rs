@@ -548,8 +548,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .zip(judged.intended)
             .filter(|(previous, intended)| {
                 *intended < CLEAR_MISTAKE
-                    || (*intended < MISTAKE
-                        && matches!(previous.outcome, Some(Outcome::Missed(_))))
+                    || (*intended < MISTAKE && matches!(previous.outcome, Some(Outcome::Missed(_))))
             })
             .map(|(previous, intended)| {
                 let seen = match &previous.outcome {
@@ -648,8 +647,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             return;
         };
         log.used(FlowLoop::Expectation);
-        let moved = expected.checkpoint.location.is_some()
-            && expected.checkpoint.location != self.location;
+        let moved =
+            expected.checkpoint.location.is_some() && expected.checkpoint.location != self.location;
         let outcome = expect::check(&expected.effect, target, &last.before, screen, moved);
         self.runtime.journal.record("expect", || {
             json!({
@@ -696,9 +695,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     "the screen returned to where it was two turns ago; not pressing {} again",
                     banned.join(" or ")
                 ));
-                self.runtime.journal.record("denoise", || {
-                    json!({"step": self.step, "oscillation": banned})
-                });
+                self.runtime.journal.record(
+                    "denoise",
+                    || json!({"step": self.step, "oscillation": banned}),
+                );
             }
         }
         state.seen.push(now);

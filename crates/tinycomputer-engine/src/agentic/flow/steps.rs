@@ -200,10 +200,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 self.model(),
                 ask::state(&screen, condition_text, &[], self.include_values),
                 Questions::default()
-                    .with(
-                        "holds",
-                        ask::viewed(condition(condition_text), SCREEN_VIEW),
-                    )
+                    .with("holds", ask::viewed(condition(condition_text), SCREEN_VIEW))
                     .with(
                         "negated",
                         ask::viewed(ask::negated(condition_text), SCREEN_VIEW),

@@ -33,7 +33,14 @@ const OPENS: &[&str] = &["combobox", "popupbutton", "menubutton"];
 
 /// Words of a control that closes what it sits on.
 const CLOSERS: &[&str] = &[
-    "close", "cancel", "dismiss", "done", "ok", "got it", "not now", "no thanks",
+    "close",
+    "cancel",
+    "dismiss",
+    "done",
+    "ok",
+    "got it",
+    "not now",
+    "no thanks",
 ];
 
 /// What a press should change.
@@ -180,9 +187,7 @@ pub(super) fn check(
             "pressing {} left the page instead of opening something",
             label(target)
         )),
-        Effect::Opens if !appeared.is_empty() || before.surface != after.surface => {
-            Outcome::Met
-        }
+        Effect::Opens if !appeared.is_empty() || before.surface != after.surface => Outcome::Met,
         Effect::Navigates if moved || before.window != after.window => Outcome::Met,
         Effect::Closes if before.surface != "window" && after.surface == "window" => Outcome::Met,
         _ => Outcome::Unclear,

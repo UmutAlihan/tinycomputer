@@ -42,8 +42,20 @@ fn every_pairing_is_asked_in_both_orders() {
         panic!("a duel is a choice")
     };
     assert_eq!(asked[0].0, id(0, 1));
-    assert!(first.criteria["1"].as_ref().unwrap().to_string().contains('A'));
-    assert!(first.criteria["2"].as_ref().unwrap().to_string().contains('B'));
+    assert!(
+        first.criteria["1"]
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .contains('A')
+    );
+    assert!(
+        first.criteria["2"]
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .contains('B')
+    );
     assert!(first.criteria.contains_key("none"));
     assert!(asked.iter().any(|(question, _)| *question == id(1, 0)));
 }
@@ -117,5 +129,10 @@ fn finalists_are_the_strongest_real_options() {
         confidence: 0.4,
     });
     assert_eq!(finalists(&answer), vec!["3", "1", "4", "5"]);
-    assert!(finalists(&Answer::Noul(tinyinference_decisions::NoulAnswer { noul: 0.5 })).is_empty());
+    assert!(
+        finalists(&Answer::Noul(tinyinference_decisions::NoulAnswer {
+            noul: 0.5
+        }))
+        .is_empty()
+    );
 }

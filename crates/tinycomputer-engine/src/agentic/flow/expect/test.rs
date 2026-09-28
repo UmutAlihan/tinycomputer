@@ -76,7 +76,11 @@ fn a_toggle_that_cleared_instead_of_selecting_is_missed() {
     let before = element("checkbox", "Insurance", &[]);
     let effect = predict("activate", &before);
     let then = screen("window", "Extras", vec![before.clone()]);
-    let now = screen("window", "Extras", vec![element("checkbox", "Insurance", &[])]);
+    let now = screen(
+        "window",
+        "Extras",
+        vec![element("checkbox", "Insurance", &[])],
+    );
     assert!(matches!(
         check(&effect, &before, &then, &now, false),
         Outcome::Missed(_)
@@ -97,7 +101,10 @@ fn a_toggle_that_cleared_instead_of_selecting_is_missed() {
         Outcome::Missed(_)
     ));
     let gone = screen("window", "Extras", Vec::new());
-    assert_eq!(check(&effect, &before, &then, &gone, false), Outcome::Unclear);
+    assert_eq!(
+        check(&effect, &before, &then, &gone, false),
+        Outcome::Unclear
+    );
 }
 
 #[test]
@@ -109,7 +116,10 @@ fn opening_that_left_the_page_is_missed_and_opening_that_showed_more_is_met() {
         "Search",
         vec![target.clone(), element("option", "Delhi", &[])],
     );
-    assert_eq!(check(&Effect::Opens, &target, &then, &open, false), Outcome::Met);
+    assert_eq!(
+        check(&Effect::Opens, &target, &then, &open, false),
+        Outcome::Met
+    );
     assert!(matches!(
         check(&Effect::Opens, &target, &then, &then, true),
         Outcome::Missed(_)
@@ -125,16 +135,28 @@ fn navigation_and_closing_are_met_by_what_changed() {
     let link = element("link", "Details", &[]);
     let then = screen("window", "Results", vec![link.clone()]);
     let next = screen("window", "Details", Vec::new());
-    assert_eq!(check(&Effect::Navigates, &link, &then, &next, false), Outcome::Met);
-    assert_eq!(check(&Effect::Navigates, &link, &then, &then, true), Outcome::Met);
+    assert_eq!(
+        check(&Effect::Navigates, &link, &then, &next, false),
+        Outcome::Met
+    );
+    assert_eq!(
+        check(&Effect::Navigates, &link, &then, &then, true),
+        Outcome::Met
+    );
     assert_eq!(
         check(&Effect::Navigates, &link, &then, &then, false),
         Outcome::Unclear
     );
     let close = element("button", "Close", &[]);
     let sheet = screen("sheet", "Results", vec![close.clone()]);
-    assert_eq!(check(&Effect::Closes, &close, &sheet, &then, false), Outcome::Met);
-    assert_eq!(check(&Effect::Unknown, &close, &sheet, &then, true), Outcome::Unclear);
+    assert_eq!(
+        check(&Effect::Closes, &close, &sheet, &then, false),
+        Outcome::Met
+    );
+    assert_eq!(
+        check(&Effect::Unknown, &close, &sheet, &then, true),
+        Outcome::Unclear
+    );
 }
 
 #[test]
@@ -142,6 +164,10 @@ fn an_element_is_found_again_by_role_name_and_place() {
     let target = element("tab", "One way", &[]);
     let mut moved = target.clone();
     moved.path = vec!["elsewhere".to_owned()];
-    let now = screen("window", "x", vec![moved, element("tab", "One way", &["selected"])]);
+    let now = screen(
+        "window",
+        "x",
+        vec![moved, element("tab", "One way", &["selected"])],
+    );
     assert!(selected(find(&target, &now).unwrap()));
 }

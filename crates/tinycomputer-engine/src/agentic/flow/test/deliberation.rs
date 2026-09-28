@@ -8,10 +8,7 @@ use super::*;
 /// the card they sit in.
 fn lookalikes() -> App {
     App::with(|sim| {
-        sim.results = vec![
-            ("IndiGo", "₹5,000", "06:00"),
-            ("IndiGo", "₹5,200", "09:00"),
-        ];
+        sim.results = vec![("IndiGo", "₹5,000", "06:00"), ("IndiGo", "₹5,200", "09:00")];
     })
 }
 
@@ -111,7 +108,11 @@ async fn standard_deliberation_takes_the_duel_champion_without_contrast() {
     .await;
     assert_eq!(run.app.sim().picked, ["@s:select-2"]);
     assert_eq!(asked(&run.requests, "is_0"), 0);
-    assert_eq!(asked(&run.requests, "intended"), 0, "standard asks only on a miss");
+    assert_eq!(
+        asked(&run.requests, "intended"),
+        0,
+        "standard asks only on a miss"
+    );
 }
 
 #[tokio::test]
@@ -141,7 +142,10 @@ async fn a_duel_split_by_position_bias_is_settled_by_contrast() {
     )
     .await;
     assert_eq!(run.app.sim().picked, ["@s:select-2"]);
-    assert!(asked(&run.requests, "is_1") >= 1, "both finalists were contrasted");
+    assert!(
+        asked(&run.requests, "is_1") >= 1,
+        "both finalists were contrasted"
+    );
 }
 
 #[tokio::test]
@@ -278,7 +282,11 @@ async fn an_oscillation_bans_the_pair() {
             "move" => Some(pick(question, "activate", 0.9)),
             "target" => Some(pick(
                 question,
-                if sim.clicks.len() == 1 { "One way" } else { "Return" },
+                if sim.clicks.len() == 1 {
+                    "One way"
+                } else {
+                    "Return"
+                },
                 0.9,
             )),
             "done" => Some(noul(0.05)),
@@ -354,7 +362,11 @@ async fn an_unverifiable_undo_fails_the_step_closed() {
         step.note
     );
     assert_eq!(run.app.sim().clicks, ["Insurance terms"]);
-    assert_eq!(run.app.sim().navigated, [EXTRAS], "going back was tried, then the address");
+    assert_eq!(
+        run.app.sim().navigated,
+        [EXTRAS],
+        "going back was tried, then the address"
+    );
 }
 
 #[tokio::test]
@@ -382,7 +394,10 @@ async fn a_wrong_toggle_is_pressed_again_and_the_runner_up_is_tried() {
         ["Seat protection", "Seat protection", "Travel insurance"]
     );
     assert!(sim.insurance && !sim.protection);
-    assert_eq!(sim.backs, 0, "a toggle is undone in place, not by going back");
+    assert_eq!(
+        sim.backs, 0,
+        "a toggle is undone in place, not by going back"
+    );
     assert!(loops(&run, 0).contains(&FlowLoop::Backtrack));
 }
 
