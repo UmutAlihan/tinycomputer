@@ -858,33 +858,12 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         };
         if let Next::Stop { status, .. } = next {
             let status = human_wall(&cell, runner.as_ref(), *status).await;
-            let status = match status {
-                TaskStatus::Failed {
-                    step: Some(failed),
-                    reason,
-                    hint,
-                    recoverable: true,
-                } => match rescue(&cell, runner.as_ref(), &run, failed, &reason, reached).await {
-                    Rescued::Run(rescued) => {
-                        runs.push_front(rescued);
-                        continue;
-                    }
-                    Rescued::GaveUp(why) => TaskStatus::Failed {
-                        step: Some(failed),
-                        reason,
-                        hint: redacted.redact(&format!(
-                            "the rescuer gave up: {why}; reword the step, split it, or take over"
-                        )),
-                        recoverable: true,
-                    },
-                    Rescued::Skipped => TaskStatus::Failed {
-                        step: Some(failed),
-                        reason,
-                        hint,
-                        recoverable: true,
-                    },
-                },
-                status => status,
+            let status = match rescued(&cell, runner.as_ref(), &run, status, reached).await {
+                Ok(status) => status,
+                Err(rescued) => {
+                    runs.push_front(rescued);
+                    continue;
+                }
             };
             let summary = redacted.redact(&stopped_summary(&status));
             let ended = matches!(
@@ -927,6 +906,40 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
         &answer.0,
     );
     runner.release(&cell.view.borrow().id);
+}
+
+/// A recoverable failure of a top-level step is first rescued: `Err` holds
+/// the run the guidance makes, to run next. Anything else, or a rescue that
+/// gave up or was not tried, is the status to publish.
+async fn rescued(
+    cell: &Cell,
+    runner: &dyn FlowRunner,
+    run: &Run,
+    status: TaskStatus,
+    reached: Vec<StepReport>,
+) -> Result<TaskStatus, Run> {
+    let TaskStatus::Failed {
+        step: Some(failed),
+        reason,
+        hint,
+        recoverable: true,
+    } = status
+    else {
+        return Ok(status);
+    };
+    let hint = match rescue(cell, runner, run, failed, &reason, reached).await {
+        Rescued::Run(rescued) => return Err(rescued),
+        Rescued::GaveUp(why) => {
+            format!("the rescuer gave up: {why}; reword the step, split it, or take over")
+        }
+        Rescued::Skipped => hint,
+    };
+    Ok(TaskStatus::Failed {
+        step: Some(failed),
+        reason,
+        hint,
+        recoverable: true,
+    })
 }
 
 /// What a rescue came to.
@@ -1019,41 +1032,8 @@ async fn rescue(
         .await
         .unwrap_or_else(|_| Err("the rescuer took too long".to_owned()));
     let spent_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-    let (record, guided) = match answer {
-        Ok(Guidance::Retry { reason, steps }) => {
-            let flow = resumed(&briefing, steps.clone());
-            (
-                Rescue {
-                    step: failed,
-                    failure: briefing.failure.clone(),
-                    reason,
-                    steps,
-                    outcome: RescueOutcome::Running,
-                },
-                Some(flow),
-            )
-        }
-        Ok(Guidance::GiveUp { reason }) => (
-            Rescue {
-                step: failed,
-                failure: briefing.failure.clone(),
-                reason,
-                steps: Vec::new(),
-                outcome: RescueOutcome::GaveUp,
-            },
-            None,
-        ),
-        Err(error) => (
-            Rescue {
-                step: failed,
-                failure: briefing.failure.clone(),
-                reason: error,
-                steps: Vec::new(),
-                outcome: RescueOutcome::GaveUp,
-            },
-            None,
-        ),
-    };
+    let (record, guided) = record(failed, briefing.failure.clone(), answer);
+    let guided = guided.map(|steps| resumed(&briefing, steps));
     let reason = facts.redact(&record.reason);
     let index = {
         let Ok(mut state) = cell.state.lock() else {
@@ -1076,6 +1056,32 @@ async fn rescue(
         allow_destructive: run.allow_destructive,
         rescue: Some(index),
     })
+}
+
+/// The record of a rescue of step `failed`, and the guidance's steps when
+/// it gave any.
+fn record(
+    failed: usize,
+    failure: String,
+    answer: Result<Guidance, String>,
+) -> (Rescue, Option<Vec<FlowStep>>) {
+    let (reason, steps, outcome) = match answer {
+        Ok(Guidance::Retry { reason, steps }) => (reason, steps, RescueOutcome::Running),
+        Ok(Guidance::GiveUp { reason }) | Err(reason) => {
+            (reason, Vec::new(), RescueOutcome::GaveUp)
+        }
+    };
+    let guided = (outcome == RescueOutcome::Running).then(|| steps.clone());
+    (
+        Rescue {
+            step: failed,
+            failure,
+            reason,
+            steps,
+            outcome,
+        },
+        guided,
+    )
 }
 
 /// How a rescue went, from the steps its run reached: recovered when each

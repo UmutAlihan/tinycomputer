@@ -171,7 +171,7 @@ async fn rescues_stop_after_three_and_the_task_fails_as_before() {
     assert_eq!(script.requests.lock().unwrap().len(), 4);
     let rescues = tasks.report(&view.id).data.unwrap().rescues;
     assert_eq!(rescues.len(), 3);
-    let asked = &model.seen.lock().unwrap()[2][1].text;
+    let asked = model.seen.lock().unwrap()[2][1].text.clone();
     assert!(asked.contains("Earlier rescues of this task"), "{asked}");
 
     // A task may ask for fewer, never more, and zero turns rescue off.
