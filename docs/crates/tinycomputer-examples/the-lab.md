@@ -69,18 +69,18 @@ at you.
 
 ## The three modes
 
-- **`goal`** — the baseline. One call to `RunGoal` with the scenario's whole
+- **`goal`**: the baseline. One call to `RunGoal` with the scenario's whole
   goal as one string, no flow at all. This is the simplest thing that could
   work, and the number every other mode is implicitly compared against.
-- **`flow`** — the scenario's hand-written flow
+- **`flow`**: the scenario's hand-written flow
   (`crates/tinycomputer-examples/scenarios/<name>/flow.json`), a short list
   of plain-language steps a person wrote with no idea which button does
   what. See [writing flows](../../writing-flows.md) for the language.
-- **`authored`** — an LLM writes the flow itself, from the scenario's brief
+- **`authored`**: an LLM writes the flow itself, from the scenario's brief
   alone. It never sees the screen. It is given the brief and the same flow
   guide `scripts/lab guide` prints, writes a flow, and the lab validates and
-  runs it. Afterward the author is shown a summary of what happened —
-  including anything a `read` step captured — and gets up to three rounds to
+  runs it. Afterward the author is shown a summary of what happened,
+  including anything a `read` step captured, and gets up to three rounds to
   either declare it done or write a follow-up flow for what is left. The
   model is `TINYCOMPUTER_LAB_MODEL` (default `anthropic/claude-sonnet-5`,
   called through the vendored `tinyinference` client), and every LLM call
