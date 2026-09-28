@@ -47,6 +47,7 @@ run afterward.
 |---|---|---|
 | The step driver (`mod.rs`) | walks the flow's steps, holds the run's budgets and brief, is the one door to Jev and to acting | this page, [Budgets and switches](budgets-and-switches.md) |
 | Step kinds (`steps.rs`, `act.rs`, `enter.rs`) | `do`, `open`, `browse`, `enter`, `choose`, `read`, `extract`, `pick`, `verify`, `wait_for`, `if`, `repeat_until`, `stop_before` | [Step kinds](step-kinds.md), [The do loop](the-do-loop.md), [Filling in forms](filling-forms.md) |
+| Run memory and output (`wide.rs`'s `collected`, `steps.rs`'s `judge_list`) | what a run has already saved, shown back to Jev every turn, and choosing which list a step means | [`../output.md`](../output.md) |
 | Grounding (`ground.rs`, `memory.rs`) | turns "click to accomplish X" into one specific element | [Grounding](grounding.md) |
 | Voting and briefing (`vote.rs`, and briefing inside `mod.rs`) | asks each decision several ways at once, and tells Jev what the run is for | [Voting and briefing](voting-and-briefing.md) |
 | The wide strategy (`wide.rs`, `survey.rs`, `ledger.rs`) | one request per turn over a digest of the screen, with working memory | [The wide strategy](wide-strategy.md) |
