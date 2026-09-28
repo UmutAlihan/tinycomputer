@@ -16,10 +16,11 @@ fn the_contract_binds_to_itself() {
 
 #[test]
 fn a_newer_minor_on_the_module_side_binds() {
-    assert!(is_compatible((2, 2)));
+    assert!(is_compatible((2, 3)));
     assert!(is_compatible((2, 97)));
-    // 2.1 added the flow strategy: a 2.1 host may send it, a 2.0 module
-    // would not understand it.
+    // 2.3 added the flow deliberation level: a 2.3 host may send it, a 2.2
+    // module would not understand it.
+    assert!(!is_compatible((2, 2)));
     assert!(!is_compatible((2, 0)));
 }
 
