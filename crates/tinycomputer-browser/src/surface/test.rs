@@ -806,11 +806,11 @@ fn a_combobox_s_own_value_never_becomes_an_ancestors_description() {
     // autocomplete widget) around a nested combobox that already holds a
     // typed or selected value: the wrapper must not inherit that value as
     // its own description, even though it is itself named by what it shows.
-    let tree = r#"- main
+    let tree = r"- main
   - combobox [ref=e20]
     - combobox [ref=e21]: Springfield, IL
     - text: label
-"#;
+";
     let parsed = screen(tree, "Flights");
     let outer = parsed
         .candidates
