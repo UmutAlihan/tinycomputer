@@ -108,8 +108,10 @@ pub(super) struct Distraction {
     pub(super) name: String,
     /// A few of its labels, as Jev reads them.
     pub(super) shows: Vec<String>,
-    /// The control that clears it, least committal of those it holds.
-    pub(super) closer: Candidate,
+    /// The control that clears it, least committal of those it holds; `None`
+    /// for something that covers the page with no control of its own, which
+    /// Escape clears.
+    pub(super) closer: Option<Candidate>,
 }
 
 /// The rank of `candidate` as a dismiss control, lower is less committal;
@@ -233,24 +235,87 @@ pub(super) fn distractions(
                     .take(6)
                     .map(|(_, member)| label(member))
                     .collect(),
-                closer: closer.clone(),
+                closer: Some(closer.clone()),
             },
         ));
     }
     found.sort_by_key(|(behind, _)| *behind);
-    found
+    let mut found = found
         .into_iter()
         .take(MAX_DISTRACTIONS)
         .map(|(_, distraction)| distraction)
-        .collect()
+        .collect::<Vec<_>>();
+    if found.len() < MAX_DISTRACTIONS
+        && let Some(covering) = covering(screen, &intent, cleared)
+    {
+        found.push(covering);
+    }
+    found
+}
+
+/// The key a step's Escape at something covering the page is remembered
+/// under, so a covering Escape did not close is not offered again.
+pub(super) const ESCAPED: &str = "escape: whatever covers the page";
+
+/// Something open over the page with no control of its own — a calendar
+/// or list left open by an earlier step — when the surface marks elements
+/// `covered`: a distraction Escape clears. Live on Emirates, the date
+/// calendar stayed open over the form and covered the Class button the next
+/// step needed.
+fn covering(screen: &Screen, intent: &[String], cleared: &BTreeSet<String>) -> Option<Distraction> {
+    if cleared.contains(ESCAPED) {
+        return None;
+    }
+    let covered = screen
+        .candidates
+        .iter()
+        .filter(|candidate| {
+            candidate
+                .states
+                .iter()
+                .any(|state| state.eq_ignore_ascii_case("covered"))
+        })
+        .collect::<Vec<_>>();
+    if covered.is_empty() {
+        return None;
+    }
+    // A step about the thing in front — "choose the date in the calendar" —
+    // works in it; only a step about what lies under it is covered.
+    let front = screen
+        .candidates
+        .iter()
+        .filter(|candidate| {
+            !covered
+                .iter()
+                .any(|hidden| hidden.ref_id == candidate.ref_id)
+        })
+        .map(label)
+        .collect::<Vec<_>>();
+    let covers_step = covered.iter().any(|candidate| {
+        words(&label(candidate))
+            .iter()
+            .any(|word| word.len() > 3 && intent.contains(word))
+    });
+    if !covers_step {
+        return None;
+    }
+    Some(Distraction {
+        name: "something open over the page".to_owned(),
+        shows: front.into_iter().take(6).collect(),
+        closer: None,
+    })
 }
 
 /// A distraction as a Choice option Jev reads, wrapped as untrusted data.
 pub(super) fn option(distraction: &Distraction, include_values: bool) -> serde_json::Value {
+    let cleared_with = distraction.closer.as_ref().map_or_else(
+        || serde_json::json!("press Escape"),
+        |closer| describe(closer, include_values),
+    );
     serde_json::json!({"untrusted_accessibility_data": {
         "region": distraction.name,
         "shows": distraction.shows,
-        "cleared_with": describe(&distraction.closer, include_values),
+        "cleared_with": cleared_with,
     }})
 }
 
@@ -335,29 +400,41 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let Some(distraction) = chosen.filter(|_| verdict == Verdict::Accept).cloned() else {
             return Ok(false);
         };
-        let target = distraction.closer.clone();
-        cleared.pressed.insert(signature(&target));
         cleared.count += 1;
-        let pressed = target.clone();
-        let reply = self
-            .act(
-                log,
-                "click (clear distraction)",
-                Some(&target),
-                move |backend| backend.execute(JevOperation::Click, Some(pressed), None),
-            )
-            .await?;
+        let (reply, how) = match distraction.closer.clone() {
+            Some(target) => {
+                cleared.pressed.insert(signature(&target));
+                let pressed = target.clone();
+                let reply = self
+                    .act(
+                        log,
+                        "click (clear distraction)",
+                        Some(&target),
+                        move |backend| backend.execute(JevOperation::Click, Some(pressed), None),
+                    )
+                    .await?;
+                (reply, label(&target))
+            }
+            None => {
+                cleared.pressed.insert(ESCAPED.to_owned());
+                let app = self.app.clone();
+                let reply = self
+                    .act(
+                        log,
+                        "press escape (clear distraction)",
+                        None,
+                        move |backend| backend.press(&app, "escape"),
+                    )
+                    .await?;
+                (reply, "Escape".to_owned())
+            }
+        };
         self.history.push(format!(
-            "cleared {} out of the way with {}, ok={}",
-            distraction.name,
-            label(&target),
-            reply.ok
+            "cleared {} out of the way with {how}, ok={}",
+            distraction.name, reply.ok
         ));
-        self.ledger.tried(format!(
-            "cleared {} with {}",
-            distraction.name,
-            label(&target)
-        ));
+        self.ledger
+            .tried(format!("cleared {} with {how}", distraction.name));
         Ok(true)
     }
 }

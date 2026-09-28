@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use super::{MAX_DISTRACTION_SIZE, MAX_DISTRACTIONS, distractions};
+use super::{ESCAPED, MAX_DISTRACTION_SIZE, MAX_DISTRACTIONS, distractions};
 use crate::agentic::flow::view::{Candidate, Screen, signature};
 
 fn button(name: &str, path: &[&str]) -> Candidate {
@@ -57,7 +57,10 @@ fn a_consent_card_is_cleared_with_its_least_committal_control() {
         &BTreeSet::new(),
     );
     assert_eq!(found.len(), 1);
-    assert_eq!(found[0].closer.name.as_deref(), Some("Reject all"));
+    assert_eq!(
+        found[0].closer.as_ref().unwrap().name.as_deref(),
+        Some("Reject all")
+    );
     assert!(
         found[0]
             .shows
@@ -80,7 +83,10 @@ fn a_toast_with_a_plain_close_is_a_distraction_without_any_telling_words() {
         &BTreeSet::new(),
     );
     assert_eq!(found.len(), 1);
-    assert_eq!(found[0].closer.name.as_deref(), Some("Close"));
+    assert_eq!(
+        found[0].closer.as_ref().unwrap().name.as_deref(),
+        Some("Close")
+    );
 }
 
 #[test]
@@ -120,7 +126,10 @@ fn a_control_already_pressed_or_irreversible_is_never_offered() {
     candidates.extend(consent());
     let pressed = BTreeSet::from([signature(&consent()[1])]);
     let found = distractions(&screen(candidates.clone()), "search", &[], &pressed);
-    assert_eq!(found[0].closer.name.as_deref(), Some("Accept all"));
+    assert_eq!(
+        found[0].closer.as_ref().unwrap().name.as_deref(),
+        Some("Accept all")
+    );
     let found = distractions(
         &screen(candidates),
         "search",
@@ -172,4 +181,42 @@ fn a_whole_region_or_a_form_is_never_a_distraction() {
         button("Close", &form),
     ];
     assert!(distractions(&screen(candidates), "enter the name", &[], &BTreeSet::new()).is_empty());
+}
+
+#[test]
+fn something_covering_what_the_step_needs_is_cleared_with_escape() {
+    let mut class = button("Class", &["main", "form \"Book\""]);
+    class.states = vec!["covered".to_owned()];
+    let day = button("18", &["main", "grid \"October 2026\""]);
+    let candidates = vec![class, day];
+    let found = distractions(
+        &screen(candidates.clone()),
+        "choose Economy in the class button",
+        &[],
+        &BTreeSet::new(),
+    );
+    assert_eq!(found.len(), 1);
+    assert!(found[0].closer.is_none(), "Escape clears it");
+    assert!(found[0].shows.iter().any(|shown| shown.contains("18")));
+    // A step about what is in front works in it; an Escape tried once is
+    // not offered again.
+    assert!(
+        distractions(
+            &screen(candidates.clone()),
+            "choose 18 October",
+            &[],
+            &BTreeSet::new()
+        )
+        .is_empty()
+    );
+    let tried = BTreeSet::from([ESCAPED.to_owned()]);
+    assert!(
+        distractions(
+            &screen(candidates),
+            "choose Economy in the class button",
+            &[],
+            &tried
+        )
+        .is_empty()
+    );
 }
