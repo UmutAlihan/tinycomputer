@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Runs one live task (tasks/<name>/task.md with its facts.json) through the
-# planner and the task controller, inside the Docker lab:
+# built module's bus members — PlanTask, StartTask, AwaitTask, TaskReport —
+# inside the Docker lab:
 #   scripts/docker-lab -- crates/tinycomputer-examples/tasks/run kashmir
 # Set FLOW_FILE to replay a saved plan instead of planning a new one; each
 # task's tasks/<name>/plan.json is the plan its recorded runs replayed
@@ -24,5 +25,8 @@ TASK_FILE="$here/$name/task.md"
 FACTS_FILE="$here/$name/facts.json"
 TASK_OUT="${TASK_OUT:-target/task-live/$name}"
 export TINYCOMPUTER_BROWSER_EXECUTABLE TINYCOMPUTER_BROWSER_USER_AGENT TINYCOMPUTER_BROWSER_ARGS TASK_FILE FACTS_FILE TASK_OUT
+# The runner drives the built module over the bus, as a host would.
+TINYCOMPUTER_MODULE="${TINYCOMPUTER_MODULE:-$("$here/../../../scripts/build-module")}"
+export TINYCOMPUTER_MODULE
 cargo build -q -p tinycomputer-examples --bin task_live
 cargo run -q -p tinycomputer-examples --bin task_live

@@ -9,5 +9,10 @@ export TINYCOMPUTER_BROWSER_EXECUTABLE
 (cd "$here/travel" && exec python3 -m http.server 8765 >/dev/null 2>&1) &
 server=$!
 trap 'kill "$server" 2>/dev/null' EXIT
+if [ "$bin" = task_fixture ]; then
+  # task_fixture drives the built module over the bus, as a host would.
+  TINYCOMPUTER_MODULE="${TINYCOMPUTER_MODULE:-$("$here/../../../scripts/build-module")}"
+  export TINYCOMPUTER_MODULE
+fi
 cargo build -q -p tinycomputer-examples --bin "$bin"
 cargo run -q -p tinycomputer-examples --bin "$bin"

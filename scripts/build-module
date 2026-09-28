@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Build the tinycomputer module in release mode and attest it, the way a
+# packaged release is: the library is copied into <target>/lab/ with a
+# modules.toml beside it naming its SHA-256, so the TinyBus loader will load
+# it and deliver confidential calls (StartTask, RunFlow) to it.
+#
+#   scripts/build-module            # prints the module path on stdout
+#   TINYCOMPUTER_MODULE="$(scripts/build-module)" cargo run -p tinycomputer-examples --bin task_live
+#
+# <target> is $CARGO_TARGET_DIR when set (the Docker lab sets it), else target/.
+# Every runner that drives the module over the bus — scripts/lab, tasks/run,
+# fixtures/run — builds it through here.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+target="${CARGO_TARGET_DIR:-$root/target}"
+
+case "$(uname -s)" in
+  Darwin) library="libtinycomputer.dylib" ;;
+  Linux) library="libtinycomputer.so" ;;
+  *) echo "build-module runs on macOS or Linux" >&2; exit 1 ;;
+esac
+
+cargo build --release -p tinycomputer --lib >&2
+mkdir -p "$target/lab"
+cp "$target/release/${library}" "$target/lab/${library}"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  # The engine's clipboard (and so the paste fallback for rich-text
+  # fields) runs through a helper it only trusts beside the module.
+  cargo build --release -p agent-desktop-macos --bin agent-desktop-macos-helper >&2
+  install -m 755 "$target/release/agent-desktop-macos-helper" "$target/lab/agent-desktop-macos-helper"
+fi
+if command -v sha256sum >/dev/null 2>&1; then
+  hash="$(sha256sum "$target/lab/${library}" | awk '{print $1}')"
+else
+  hash="$(shasum -a 256 "$target/lab/${library}" | awk '{print $1}')"
+fi
+printf '"%s" = "%s"\n' "$library" "$hash" > "$target/lab/modules.toml"
+echo "$target/lab/${library}"
