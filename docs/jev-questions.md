@@ -175,7 +175,7 @@ request is also re-asked in more framings, which changes no id.
 
 | Id | Type | Given | Answer used as |
 |---|---|---|---|
-| `focus` | Choice | `step`, and up to four distractions: the container, what it shows, the control that clears it | the root of a turn and a step's prelude: a distraction clearly picked is cleared first (`attention/`) |
+| `focus` | Choice | `step`, and up to four distractions: the container, what it shows, the control that clears it (or Escape, for something covering the controls the step names) | the root of a turn and a step's prelude: a distraction clearly picked is cleared first (`attention/`) |
 | `wider` | Choice | every knockout winner, up to 20, when the region cut dropped some (deep) | a pick made without the region, checked against `target`; a disagreement goes to a duel |
 | `duel_<i>_<j>` | Choice | two finalists, `1` shown first | both orders of every pair, counted Copeland-style; a champion takes at least 0.60 of every pairing |
 | `is_<i>` | Noul | the purpose, one finalist | calibrated with `only_near_<i>`: with no duel champion, takes a leader at 0.65 with a 0.20 lead; `is_0` also vouches for an irreversible press at 0.85 |

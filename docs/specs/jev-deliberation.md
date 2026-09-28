@@ -68,6 +68,12 @@ covered the lower result cards while the flow pressed the fare above it.
   form's clear-field "close" icons sat directly under `main`), nor a
   distraction the step itself names ("dismiss the cookie banner"), nor any
   control that looks irreversible or was already pressed this step.
+- **Something covering the step.** When the surface marks elements
+  `covered` and one of them is something the step names, whatever lies
+  over them — a calendar or list an earlier step left open, with no control
+  of its own — is offered too, cleared with Escape, once per step. Live on
+  Emirates, the date calendar stayed open over the form and covered the
+  Class button the next step needed.
 - **One question, only when there is a candidate:** a `focus` Choice, "the
   step" against each distraction (what it shows, what clears it). A clean
   screen costs nothing.
