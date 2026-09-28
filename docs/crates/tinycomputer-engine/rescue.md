@@ -62,7 +62,7 @@ pub struct Briefing {
 }
 ```
 
-Every fact value is redacted before it reaches this struct, the task
+Every fact value is redacted before it reaches this struct: the task
 controller runs `Facts::redact` and `Facts::mask` over the goal, the
 failure text, every step's text and note, and the screen text, before any
 of it is handed to the rescuer (`rescue` in `task/mod.rs`). The rescuer sees
