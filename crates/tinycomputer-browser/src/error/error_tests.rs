@@ -149,9 +149,9 @@ fn a_stale_ref_envelope_matches_the_desktop_recovery() {
             .suggestion
             .is_some_and(|s| s.contains("BrowserSnapshot"))
     );
-    // The engine rejected the ref in its reply to a command it received,
-    // so nothing proves the command never arrived.
-    assert_eq!(envelope.disposition.retry, RetryDisposition::Unknown);
+    // agent-browser could not resolve the ref, so nothing reached the page:
+    // retrying with a fresh ref cannot repeat an effect.
+    assert_eq!(envelope.disposition.retry, RetryDisposition::Safe);
 }
 
 #[test]
@@ -179,25 +179,32 @@ fn a_refused_navigation_says_not_to_retry() {
             .suggestion
             .is_some_and(|s| s.starts_with("do not retry"))
     );
-    // The engine's domain filter can refuse it after receiving the command.
-    assert_eq!(envelope.disposition.delivery, DeliveryDisposition::Unknown);
+    // The domain filter refuses before any navigation reaches the page.
+    assert_eq!(
+        envelope.disposition.delivery,
+        DeliveryDisposition::NotDelivered
+    );
 }
 
 #[test]
-fn only_local_lookups_claim_nothing_was_delivered() {
-    let not_delivered =
-        |error: Error| error.envelope().disposition.delivery == DeliveryDisposition::NotDelivered;
-    assert!(not_delivered(Error::NoSuchSession { id: "s-1".into() }));
-    assert!(not_delivered(Error::NoSuchOutput { id: "o-1".into() }));
-    for error in every_variant().into_iter().filter(|error| {
-        !matches!(
+fn only_failures_decided_before_the_page_claim_nothing_was_delivered() {
+    let before_the_page = |error: &Error| {
+        matches!(
             error,
-            Error::NoSuchSession { .. } | Error::NoSuchOutput { .. }
+            Error::NoSuchSession { .. }
+                | Error::NoSuchOutput { .. }
+                | Error::StaleRef { .. }
+                | Error::BlockedByPolicy { .. }
         )
-    }) {
-        assert!(
-            !not_delivered(error),
-            "only a local lookup is provably undelivered"
+    };
+    for error in every_variant() {
+        let expected = before_the_page(&error);
+        let name = error.to_string();
+        let delivery = error.envelope().disposition.delivery;
+        assert_eq!(
+            delivery == DeliveryDisposition::NotDelivered,
+            expected,
+            "{name}"
         );
     }
 }

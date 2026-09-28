@@ -35,10 +35,12 @@ a host is supposed to see and do about it.
 | `ConnectionLost` | `NoSuchSession` (same wire name as `NoSuchSession`) | Open a new session. Kept as its own Rust variant, rather than folded into `NoSuchSession` at construction time, because it says something more specific ("the transport died") that is useful for the crate's own diagnostics. A caller across the bus is told exactly the same thing either way: don't retry into a socket that will never answer, open a fresh session instead. |
 | `ModuleFailed` | `ModuleFailed` | Anything that does not fit the categories above. |
 
-`Error::envelope` marks only `NoSuchSession` and `NoSuchOutput` as
-`not_delivered`: they are decided by a local lookup before any command is
-sent. Every other variant can also arrive in the engine's reply to a command
-it received, so its delivery is left `unknown` rather than claimed.
+`Error::envelope` marks a failure `not_delivered` (so retrying is safe) only
+when it is decided before anything reaches the page: `NoSuchSession` and
+`NoSuchOutput`, looked up locally, and `StaleRef` and `BlockedByPolicy`,
+refused inside agent-browser by its ref lookup and domain filter before any
+input is sent. Every other variant can follow work already done, so its
+delivery is left `unknown` rather than claimed.
 
 `errors::is_agent_recoverable` (in the bus crate) is the one further
 decision that gets made on top of this table: whether a model can plausibly
