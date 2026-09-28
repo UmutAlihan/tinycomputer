@@ -208,7 +208,7 @@ same MSRV.
 - [`docs/technical/lab.md`](../../technical/lab.md) and
   [`docs/technical/docker-lab.md`](../../technical/docker-lab.md) for running
   things locally the way CI's build steps do
-- [`docs/specs/tinybus-module-release.md`](../../technical/specs/tinybus-module-release.md)
+- [`docs/technical/specs/tinybus-module-release.md`](../../technical/specs/tinybus-module-release.md)
   for the release workflow's design rationale
 - the repository's `AGENTS.md`/`CLAUDE.md` "Build And Test" and "Releases"
   sections for the human-facing version of this same material

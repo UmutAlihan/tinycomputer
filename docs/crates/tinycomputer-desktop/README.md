@@ -24,7 +24,7 @@ and how it behaves.
 - Someone debugging why a click failed, why a snapshot came back empty, or why
   a permission error showed up.
 - Anyone curious what "the desktop adapter" in
-  [`docs/architecture.md`](../../technical/architecture.md) actually contains.
+  [`docs/technical/architecture.md`](../../technical/architecture.md) actually contains.
 
 If you only want to describe a job in plain language and let tinycomputer
 figure out the clicks, you want

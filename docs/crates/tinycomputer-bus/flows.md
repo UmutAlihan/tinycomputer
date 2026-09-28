@@ -8,7 +8,7 @@ This page documents the *types*: what a `Flow` looks like as JSON, what
 `RunFlowRequest` carries, and what a run reports back. For the ideas behind
 flows (why they never name a button, how grounding works, worked examples),
 see [Writing flows](../../writing-flows.md) and
-[docs/flow-examples.md](../../technical/flow-examples.md). This page and that
+[docs/technical/flow-examples.md](../../technical/flow-examples.md). This page and that
 guide overlap on purpose: this one is the reference, that one is the
 narrative.
 
