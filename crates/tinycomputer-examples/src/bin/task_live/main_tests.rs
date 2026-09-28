@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use super::{AWAIT_SLICE, next_wait};
+use super::follow::{AWAIT_SLICE, next_wait};
 
 const LIMIT: Duration = Duration::from_secs(20 * 60);
 
