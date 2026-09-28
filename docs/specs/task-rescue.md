@@ -44,6 +44,12 @@ fails the task.
   - When the failed step is itself a `stop_before` (the control it guards
     was not found), the guidance must hold a `stop_before` too, so a rescue
     can move the guard to where the page puts it but never remove it.
+  - `{"action": "skip", "reason", "covers"}` runs nothing in place of the
+    failed step: the screen is already past it, as when a run reached the
+    payment page while a step still looked for the seat page. The flow goes
+    on from the next step not covered. The same guards hold: a failed or
+    covered `stop_before` is never skipped, and a skip that leaves nothing to
+    run goes back as invalid.
   - `{"action": "give_up", "reason"}` is for when no step can help: the site
     blocks, a person must act, or the goal is out of reach.
 - **Validation.** The guidance, followed by the steps after the failed one,
