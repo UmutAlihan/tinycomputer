@@ -229,6 +229,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
           <p class="address">Address: 1 Lake Road</p>
           <div class="css-1ad4k9 sc-hAdSfq"><button>Continue</button></div>
           <div class="gb_2d gb_Ad"><button>Main menu</button></div>
+          <div class="gb_ad"><button>Apps</button></div>
           <div class="AdSlot_wrapper__x1y2"><a href="/deal">Watch deal</a></div>
         </main>"#,
     )
@@ -246,6 +247,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
         "Address: 1 Lake Road",
         "Continue",
         "Main menu",
+        "Apps",
     ] {
         assert!(names.iter().any(|name| name == kept), "{kept} in {names:?}");
     }
