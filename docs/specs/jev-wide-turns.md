@@ -92,6 +92,12 @@ Changes found on the live runs apply to both strategies:
   offered once, the first in page order, in element Choices and slot
   matching;
 - an unnamed element is described by the nearest named container it sits in;
+- text is typed only into a real text entry (on the web: a text-like
+  `input`, a `textarea`, or `contenteditable`, whatever the ARIA role says);
+  a field that refuses it is struck for the step with every element of its
+  kind, and no `do` move of the step presses one;
+- an unnamed control on the web is described by the text inside it, unless
+  it is a text entry or holds a value;
 - `pick` recovers from a covered click the way a `do` click does, and says
   why when it cannot; the browser clicks through a result card's own content
   when the exact target is in that card and no dialog is involved.

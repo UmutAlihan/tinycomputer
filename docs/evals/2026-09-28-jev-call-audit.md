@@ -108,3 +108,27 @@ picks the destination search box at 0.99, but three fills do not land in
 IndiGo's search combobox: that is text delivery into the widget, not a
 decision, and is the next thing to take up (with the step-10 judgement, and
 the dropdown closing again before step 11 on one wide run).
+
+## The typing failure at step 11
+
+Instrumented live (goindigo.in, 1280×800), the "search box" Jev chose was
+never a text field. Each city in IndiGo's dropdown is a
+`div role="combobox"` whose `aria-labelledby` points nowhere, so it is
+unnamed and holds its city as a value; the dropdown's only real input
+(`placeholder="Search"`) sits in a mobile header that is `display: none` at
+desktop width, and neither inserted text nor key presses filter the list,
+which offers nine popular cities and not Srinagar. The general faults, and
+their fixes:
+
+| Fault | Fix |
+|---|---|
+| the browser's editable check accepted any focused element with a `combobox`, `searchbox`, or `textbox` role | only a text-like `input` (not read-only or disabled), a `textarea`, or a `contenteditable` region takes text; a fill or a paste into anything else is refused as `NOT_A_TEXT_FIELD` before a key is sent |
+| `enter` tried a refused field again every round, then the next row of the same list | a field that refuses the text is struck with every element of its kind (role, label, place), for the rest of the step |
+| the reveal loop then pressed a refused row and chose Mumbai | no `do` move in the step presses an element of a refused kind |
+| an unnamed control's own text never reached Jev | an unnamed, valueless, non-text-entry control is described by the text inside it |
+| the failure read "no field was found" | "no field that takes text was found for: …; N element(s) the page offered as fields refused the text" |
+
+After the fixes, both strategies refuse the row once, press nothing they
+should not, and fail step 11 with that note. Srinagar cannot be entered in
+this widget at desktop width from a headless browser; that is the site, not
+the harness.
