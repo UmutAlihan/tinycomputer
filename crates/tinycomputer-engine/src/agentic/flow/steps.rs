@@ -18,7 +18,7 @@ use super::{
     ground::Grounded,
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute_safe},
-    view::{Candidate, Screen, is_destructive, label, target_payload},
+    view::{Candidate, Screen, element_kind, is_destructive, label, target_payload},
 };
 
 /// Turns a `do` step may spend.
@@ -514,6 +514,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             if reply.ok {
                 self.history
                     .push(format!("typed into {} to filter it", label(&target)));
+            } else {
+                self.refused.insert(element_kind(&target));
             }
         }
         Ok(())
