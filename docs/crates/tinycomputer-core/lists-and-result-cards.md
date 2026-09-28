@@ -38,7 +38,7 @@ or not, in document order:
 
 - An actionable element (something you could click or type into) contributes
   its name or description unconditionally, and its held value only when the
-  caller asked to see values (`include_values`), the same rule
+  caller asked to see values (`include_values`). That is the same rule
   [`element_line`](surfaces-and-screens.md) applies everywhere else in this
   crate.
 - A ref-less text node (something with no actions of its own, like a plain
