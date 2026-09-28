@@ -37,7 +37,9 @@ is optional:
 - `planner`: an OpenRouter `api_key` and optional `model`, which lets
   `StartTask` accept a plain-language task, and an optional `rescue_model`
   (default `openai/gpt-6-luna`) that a task's failed step is handed to for
-  guidance, up to five times, before the task fails;
+  guidance, up to five times, before the task fails, and an optional
+  `output_model` (default `openai/gpt-6-luna`) that shapes a finished task's
+  answer when `StartTask` asks for an `output`;
 - `browser.executable`: the Chrome or Chromium binary to launch.
 
 Configuration is delivered as sensitive host-control traffic and is never

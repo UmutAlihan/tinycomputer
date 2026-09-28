@@ -8,7 +8,7 @@ use serde_json::Value;
 /// It tracks the `agent-desktop` output envelope rather than
 /// [`crate::CONTRACT_VERSION`]: the former describes the reply shape, the
 /// latter describes the member set and the payloads.
-pub const ENVELOPE_VERSION: &str = "2.4";
+pub const ENVELOPE_VERSION: &str = "2.5";
 
 /// The reply from every member of [`crate::INTERFACE`].
 ///

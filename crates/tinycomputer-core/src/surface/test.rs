@@ -13,7 +13,8 @@ use tinycomputer_bus::{DesktopResponse, JevOperation};
 
 use super::{
     Candidate, Depth, Screen, Surface, change_note, deliver_text, describe, element_line,
-    exact_named_match, fingerprint, holds, result_groups, target_payload, tokenized, uses_pointer,
+    exact_named_match, fingerprint, holds, result_families, result_groups, target_payload,
+    tokenized, uses_pointer,
 };
 
 fn clickable_screen() -> Screen {
@@ -432,6 +433,65 @@ fn the_list_is_where_the_most_cards_repeat() {
     let groups = result_groups(&results(cards));
     assert_eq!(groups.len(), 5);
     assert_eq!(groups[4].fields[0], "result 4");
+}
+
+/// A leaf of a desktop tree: no ordinal anywhere in its path.
+fn leaf(role: &str, text: &str, parent: &str, order: usize) -> (Candidate, bool) {
+    let actionable = role == "button";
+    (
+        Candidate {
+            ref_id: if actionable {
+                format!("e{order}")
+            } else {
+                String::new()
+            },
+            role: role.to_owned(),
+            name: Some(text.to_owned()),
+            available_actions: if actionable {
+                vec!["Click".to_owned()]
+            } else {
+                Vec::new()
+            },
+            path: vec!["window".to_owned(), parent.to_owned()],
+            order,
+            ..Candidate::default()
+        },
+        actionable,
+    )
+}
+
+#[test]
+fn a_run_of_leaf_siblings_is_a_list_where_nothing_repeats_by_ordinal() {
+    // A chat app: four chats as buttons in one pane, five messages as text
+    // in the other, a lone heading, and a container that is not a leaf.
+    let mut nodes = (0..4)
+        .map(|index| leaf("button", &format!("Chat {index}"), "group \"Chats\"", index))
+        .collect::<Vec<_>>();
+    nodes.extend((0..5).map(|index| {
+        leaf(
+            "statictext",
+            &format!("message {index}, 12:0{index}"),
+            "group \"Messages\"",
+            10 + index,
+        )
+    }));
+    nodes.push(leaf("heading", "Today", "group \"Messages\"", 20));
+    let mut parent = leaf("statictext", "not a leaf", "group \"Messages\"", 21);
+    parent.0.children.push(Candidate::default());
+    nodes.push(parent);
+    let families = result_families(&results(vec![nodes]));
+    assert_eq!(families.len(), 2, "the longest list first: {families:?}");
+    assert_eq!(families[0].len(), 5);
+    assert_eq!(families[0][4].fields, ["message 4, 12:04"]);
+    assert_eq!(families[0][0].label, "statictext #1");
+    assert!(families[0][0].primary.is_none(), "text opens nothing");
+    assert_eq!(families[1][2].primary.as_ref().unwrap().ref_id, "e2");
+    // Two of a kind are a label and its value, not a list.
+    let pair = results(vec![vec![
+        leaf("button", "OK", "group", 0),
+        leaf("button", "Cancel", "group", 1),
+    ]]);
+    assert!(result_groups(&pair).is_empty());
 }
 
 #[test]

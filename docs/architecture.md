@@ -211,7 +211,7 @@ configuration validates.
 | `trace_strict` | bool | fail a call when its trace cannot be written |
 | `headed` | bool | use real input instead of accessibility actions |
 | `jev` | object | Jev provider, API key, optional model, endpoint, timeout, retries, and `sdk_name` for the TinyHumans proxy |
-| `planner` | object | OpenRouter `api_key` and optional `model` for the planner, and optional `rescue_model` for rescuing failed steps (`docs/specs/task-rescue.md`); absent means no planner and no rescues |
+| `planner` | object | OpenRouter `api_key` and optional `model` for the planner, optional `rescue_model` for rescuing failed steps (`docs/specs/task-rescue.md`), and optional `output_model` for shaping a finished task's answer (`docs/specs/task-output.md`); absent means no planner, no rescues, and no output shapes |
 | `browser.executable` | string | the Chrome or Chromium binary to launch, when discovery would not find one |
 | `cursor` | string or object | the agent's on-screen cursor for desktop and browser: a pace (`off`, `brisk`, `natural` (default), `calm`) or `{pace, overlay}` with the overlay helper's path ([spec](specs/virtual-cursor.md)) |
 

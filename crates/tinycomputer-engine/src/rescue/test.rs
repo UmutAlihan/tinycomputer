@@ -81,6 +81,7 @@ fn briefing() -> Briefing {
         rules: vec!["Never pay: stop in front of the control that pays.".to_owned()],
         known: BTreeSet::from(["email".to_owned(), "card".to_owned()]),
         secrets: BTreeSet::from(["card".to_owned()]),
+        collected: Vec::new(),
     }
 }
 
@@ -224,6 +225,20 @@ fn the_briefing_shows_earlier_rescues_and_cuts_a_long_screen() {
 
     briefing.screen = vec!["  ".to_owned()];
     assert!(render(&briefing).contains("(nothing readable)"));
+}
+
+#[test]
+fn the_briefing_recalls_what_the_task_already_saved() {
+    let mut briefing = briefing();
+    assert!(!render(&briefing).contains("already read and saved"));
+    briefing.collected = vec![
+        ("chat_1".to_owned(), "Book Club".to_owned()),
+        ("messages_1".to_owned(), "y".repeat(500)),
+    ];
+    let text = render(&briefing);
+    assert!(text.contains("already read and saved"), "{text}");
+    assert!(text.contains("${chat_1} = Book Club"), "{text}");
+    assert!(!text.contains(&"y".repeat(201)), "each value is clipped");
 }
 
 #[test]

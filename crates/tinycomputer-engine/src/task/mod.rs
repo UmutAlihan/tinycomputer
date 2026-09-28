@@ -42,7 +42,7 @@ use std::time::{Duration, Instant};
 use tinycomputer_bus::agent::{
     AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputField, InputKind,
     PaymentMode, PlanTaskRequest, Rescue, RescueOutcome, StartTaskRequest, StepView, TaskBudget,
-    TaskConstraints, TaskId, TaskPlan, TaskReport, TaskStatus, TaskView,
+    TaskConstraints, TaskId, TaskOutput, TaskPlan, TaskReport, TaskStatus, TaskView,
 };
 use tinycomputer_bus::{
     DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowBrief, FlowStep, GroundingHint, JevExchange,
@@ -54,6 +54,7 @@ use tokio::sync::watch;
 pub use describe::capabilities;
 
 use crate::rescue::{Briefing, Guidance, MAX_RESCUES, Rescuer, resumed};
+use crate::shape::{Harvest, Shaper};
 use interpret::{Next, Resume, finished, run_outcome};
 
 /// The future a [`FlowRunner`] returns: the flow runtime's reply envelope.
@@ -100,11 +101,16 @@ pub(crate) const DEFAULT_VOTES: u32 = 7;
 /// The longest one rescue may think before the task fails without it.
 pub(crate) const RESCUE_TIMEOUT_MS: u64 = 120_000;
 
+/// The longest the shaping pass may take before the task fails without its
+/// result.
+pub(crate) const SHAPE_TIMEOUT_MS: u64 = 120_000;
+
 /// The task controller.
 pub struct Tasks {
     runner: Arc<dyn FlowRunner>,
     planner: Option<crate::planner::Planner>,
     rescuer: Option<Rescuer>,
+    shaper: Option<Shaper>,
     cells: Mutex<BTreeMap<u64, Arc<Cell>>>,
     counter: AtomicU64,
 }
@@ -122,6 +128,8 @@ struct Cell {
     worker: Mutex<Option<tokio::task::AbortHandle>>,
     /// Who a failed step is handed to before the task fails.
     rescuer: Option<Rescuer>,
+    /// Who turns what a finished task read into the shape it asked for.
+    shaper: Option<Shaper>,
 }
 
 struct State {
@@ -146,6 +154,8 @@ struct State {
     spent: Spent,
     /// Every rescue so far, in order.
     rescues: Vec<Rescue>,
+    /// The shape the caller wants the answer in, if any.
+    output: Option<TaskOutput>,
 }
 
 /// A task's cumulative spend against its [`TaskBudget`], across every run.
@@ -173,6 +183,7 @@ impl Tasks {
             runner,
             planner: None,
             rescuer: None,
+            shaper: None,
             cells: Mutex::new(BTreeMap::new()),
             counter: AtomicU64::new(0),
         }
@@ -192,6 +203,20 @@ impl Tasks {
     pub fn with_rescuer(mut self, rescuer: Rescuer) -> Self {
         self.rescuer = Some(rescuer);
         self
+    }
+
+    /// This controller, turning what a finished task read into the shape
+    /// its `output` asks for with `shaper`.
+    #[must_use]
+    pub fn with_shaper(mut self, shaper: Shaper) -> Self {
+        self.shaper = Some(shaper);
+        self
+    }
+
+    /// Whether a task may ask for its answer in a shape.
+    #[must_use]
+    pub fn output_configured(&self) -> bool {
+        self.shaper.is_some()
     }
 
     /// Whether a rescuer is configured.
@@ -248,6 +273,25 @@ impl Tasks {
                 ));
             }
         };
+        if let Some(output) = &request.output {
+            if self.shaper.is_none() {
+                return AgentResponse::err(AgentError::new(
+                    "OUTPUT_UNAVAILABLE",
+                    "an output shape needs the planner configured, which shapes the answer",
+                    "configure the planner, or leave out `output` and read `done.records`",
+                    true,
+                ));
+            }
+            if let Some(Err(problem)) = output.schema.as_ref().map(crate::shape::schema::supported)
+            {
+                return AgentResponse::err(AgentError::new(
+                    "INVALID_OUTPUT",
+                    problem,
+                    "use only the supported schema keywords; TaskOutput lists them",
+                    true,
+                ));
+            }
+        }
         if request.constraints.payment == PaymentMode::FillThenApprove
             && request.constraints.origins.is_empty()
         {
@@ -560,9 +604,11 @@ impl Tasks {
                 resume: None,
                 spent: Spent::default(),
                 rescues: Vec::new(),
+                output: request.output.clone(),
             }),
             worker: Mutex::new(None),
             rescuer: self.rescuer.clone(),
+            shaper: self.shaper.clone(),
         });
         let mut tasks = self.cells.lock().ok()?;
         while tasks.len() >= MAX_TASKS {
@@ -749,6 +795,8 @@ fn run_request(cell: &Cell, run: &Run) -> Option<(RunFlowRequest, TaskConstraint
             brief: brief(&state),
             memory: state.memory.clone(),
             trace: state.trace,
+            // What earlier runs saved, so a resumed run remembers it.
+            collected: state.reads.clone(),
             ..RunFlowRequest::default()
         },
         state.constraints.clone(),
@@ -881,12 +929,13 @@ async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Vec<Run>) {
             return;
         }
     }
-    finish(&cell, runner.as_ref());
+    finish(&cell, runner.as_ref()).await;
 }
 
-/// Every run finished: the task is done, with what it read.
-fn finish(cell: &Cell, runner: &dyn FlowRunner) {
-    let answer = {
+/// Every run finished: the task is done, with what it read, shaped as its
+/// `output` asks when it asks.
+async fn finish(cell: &Cell, runner: &dyn FlowRunner) {
+    let (answer, records, harvest) = {
         let Ok(state) = cell.state.lock() else {
             return;
         };
@@ -904,15 +953,61 @@ fn finish(cell: &Cell, runner: &dyn FlowRunner) {
                 reads.join("; ")
             )
         };
-        (state.facts.redact(&answer), records(&state.reads))
+        let harvest = state.output.clone().map(|output| Harvest {
+            goal: state.facts.redact(&state.goal),
+            output,
+            reads: state
+                .reads
+                .iter()
+                .map(|(name, value)| (name.clone(), state.facts.redact(value)))
+                .collect(),
+        });
+        (state.facts.redact(&answer), records(&state.reads), harvest)
+    };
+    let result = match (harvest, cell.shaper.clone()) {
+        (Some(harvest), Some(shaper)) => {
+            publish(
+                cell,
+                TaskStatus::Running,
+                "Every step finished; shaping the answer.",
+            );
+            let answered = tokio::time::timeout(
+                Duration::from_millis(SHAPE_TIMEOUT_MS),
+                shaper.shape(&harvest),
+            )
+            .await
+            .unwrap_or_else(|_| Err("shaping the answer took too long".to_owned()));
+            match answered {
+                Ok(result) => Some(result),
+                Err(why) => {
+                    let steps = cell.state.lock().map_or(0, |state| state.flow.steps.len());
+                    let reason = format!("the answer could not be shaped: {why}");
+                    publish(
+                        cell,
+                        TaskStatus::Failed {
+                            step: Some(steps),
+                            reason: reason.clone(),
+                            hint: "every step finished; TaskReport holds the records they read"
+                                .to_owned(),
+                            recoverable: false,
+                        },
+                        &format!("The task failed: {reason}"),
+                    );
+                    runner.release(&cell.view.borrow().id);
+                    return;
+                }
+            }
+        }
+        _ => None,
     };
     publish(
         cell,
         TaskStatus::Done {
-            answer: answer.0.clone(),
-            records: answer.1,
+            answer: answer.clone(),
+            records,
+            result,
         },
-        &answer.0,
+        &answer,
     );
     runner.release(&cell.view.borrow().id);
 }
@@ -962,6 +1057,31 @@ enum Rescued {
     Skipped,
 }
 
+/// The names a rescue's steps may use — the flow's, the facts', and what the
+/// task saved — and what it saved, fact values redacted.
+fn recalled(
+    flow: &Flow,
+    facts: &Facts,
+    reads: &BTreeMap<String, String>,
+) -> (BTreeSet<String>, Vec<(String, String)>) {
+    let known = known_names(flow, facts)
+        .into_iter()
+        .chain(reads.keys().cloned())
+        .collect();
+    let collected = reads
+        .iter()
+        .map(|(name, value)| (name.clone(), facts.redact(&facts.mask(value))))
+        .collect();
+    (known, collected)
+}
+
+/// `step` with every fact value in its text and note redacted.
+fn redacted(facts: &Facts, mut step: StepReport) -> StepReport {
+    step.text = facts.redact(&step.text);
+    step.note = facts.redact(&step.note);
+    step
+}
+
 /// Hands the step `failed` of `run`, which failed for `failure`, to the
 /// task's rescuer, with what the run reached and the screen now — every
 /// fact value redacted. Returns the run its guidance makes, or why not.
@@ -976,7 +1096,7 @@ async fn rescue(
     let Some(rescuer) = cell.rescuer.clone() else {
         return Rescued::Skipped;
     };
-    let (facts, goal, earlier, limit, time_left, brief_rules) = {
+    let (facts, goal, earlier, limit, time_left, brief_rules, reads) = {
         let Ok(state) = cell.state.lock() else {
             return Rescued::Skipped;
         };
@@ -1000,6 +1120,7 @@ async fn rescue(
             limit,
             time_left,
             brief(&state).rules,
+            state.reads.clone(),
         )
     };
     let attempt = earlier.len() + 1;
@@ -1010,6 +1131,7 @@ async fn rescue(
         .iter()
         .map(|line| facts.redact(&facts.mask(line)))
         .collect();
+    let (known, collected) = recalled(&run.flow, &facts, &reads);
     let briefing = Briefing {
         goal: facts.redact(&goal),
         flow: run.flow.clone(),
@@ -1017,16 +1139,13 @@ async fn rescue(
         failure: facts.redact(failure),
         steps: reached
             .into_iter()
-            .map(|mut step| {
-                step.text = facts.redact(&step.text);
-                step.note = facts.redact(&step.note);
-                step
-            })
+            .map(|step| redacted(&facts, step))
             .collect(),
         earlier,
         screen,
         rules: brief_rules,
-        known: known_names(&run.flow, &facts),
+        known,
+        collected,
         secrets: fact_names(&facts),
     };
     publish(

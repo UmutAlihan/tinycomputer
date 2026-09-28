@@ -85,7 +85,9 @@ undone and retried when wrong — is in
 ([`plans/jev-deliberation.md`](plans/jev-deliberation.md)). How a failed step
 is handed to a reasoning model for guidance before a task fails is in
 [`specs/task-rescue.md`](specs/task-rescue.md)
-([`plans/task-rescue.md`](plans/task-rescue.md)).
+([`plans/task-rescue.md`](plans/task-rescue.md)). How a run remembers what it
+saved, and how a finished task returns it in the caller's JSON shape, is in
+[`specs/task-output.md`](specs/task-output.md).
 
 ## Conventions
 

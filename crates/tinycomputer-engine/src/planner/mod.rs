@@ -26,7 +26,8 @@ use tinycomputer_core::is_sensitive_name;
 
 #[cfg(feature = "planner")]
 pub use openrouter::{
-    PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer,
+    OUTPUT_MODEL, PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer,
+    open_router_shaper,
 };
 
 /// Validation repairs a plan gets.

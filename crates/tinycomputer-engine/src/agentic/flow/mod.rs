@@ -144,7 +144,12 @@ pub(super) async fn run_flow_with<B: AgentBackend + Sync>(
     runtime: &JevRuntime,
     request: RunFlowRequest,
 ) -> DesktopResponse {
-    let known = request.vars.keys().cloned().collect::<BTreeSet<_>>();
+    let known = request
+        .vars
+        .keys()
+        .chain(request.collected.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>();
     let validation = validate::check(&request.flow, &known, &request.facts);
     if !validation.valid {
         return DesktopResponse::err(
@@ -332,6 +337,9 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             .map(|(name, value)| (name.clone(), validate::substitute(value, &request.vars)))
             .collect::<BTreeMap<_, _>>();
         vars.extend(request.vars.clone());
+        for (name, value) in &request.collected {
+            vars.entry(name.clone()).or_insert_with(|| value.clone());
+        }
         let facts = validate::carrying_facts(&request.flow.vars, &request.facts);
         let secrets = Facts::with_secrets(
             facts
@@ -394,7 +402,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             attention: None,
             decisions: 0,
             rounds: 0,
-            read: Vec::new(),
+            read: request.collected.keys().cloned().collect(),
             refused: BTreeSet::new(),
             typed: BTreeSet::new(),
             deliberation: request.deliberation,

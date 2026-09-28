@@ -479,6 +479,13 @@ pub struct RunFlowRequest {
     /// How much the runtime deliberates before acting on a decision:
     /// [`Deliberation::Deep`] unless set.
     pub deliberation: Deliberation,
+    /// What earlier runs of the same task read and saved, by variable name.
+    /// The run starts with these as variables (a caller's `vars` win a
+    /// clash) and recalls them to Jev as already collected, so a task that
+    /// resumes — after a rescue, an approval, or a person's help — still
+    /// knows what it has done.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub collected: BTreeMap<String, String>,
 }
 
 impl Default for RunFlowRequest {
@@ -498,6 +505,7 @@ impl Default for RunFlowRequest {
             trace: false,
             strategy: FlowStrategy::Narrow,
             deliberation: Deliberation::Deep,
+            collected: BTreeMap::new(),
         }
     }
 }

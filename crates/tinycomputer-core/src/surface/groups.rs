@@ -6,6 +6,11 @@
 //! is the parent under which the most same-role containers repeat; each
 //! container is one record, its text is the record's fields, and its most
 //! "open this" control is how the record is chosen.
+//!
+//! A desktop tree labels no containers that way: a chat's messages are a run
+//! of sibling text elements under one parent. When nothing on a screen
+//! repeats by ordinal, each run of `MIN_FLAT_ITEMS` or more same-role leaf
+//! siblings is a list instead, one record per element.
 
 use std::collections::BTreeMap;
 
@@ -17,6 +22,11 @@ use super::{Candidate, Screen};
 const OPENERS: &[&str] = &[
     "select", "book", "choose", "view", "details", "continue", "reserve", "deal", "see",
 ];
+
+/// How many same-role leaf siblings a parent must hold to be read as a list
+/// when nothing repeats by ordinal: two could be a label and its value;
+/// three is a run.
+const MIN_FLAT_ITEMS: usize = 3;
 
 /// One repeated card.
 #[derive(Debug, Clone)]
@@ -41,15 +51,56 @@ pub fn result_groups(screen: &Screen) -> Vec<Group> {
 
 /// Every list of repeated cards on `screen`, the longest first (the deeper
 /// on a tie): a results page often repeats more than one thing, such as a
-/// strip of dates above the flights themselves.
+/// strip of dates above the flights themselves. Where no container repeats
+/// by ordinal, the runs of same-role leaf siblings (`MIN_FLAT_ITEMS` or
+/// more), each element one card.
 #[must_use]
 pub fn result_families(screen: &Screen) -> Vec<Vec<Group>> {
     let nodes = ordered(screen);
-    list_levels(&nodes)
+    let families: Vec<Vec<Group>> = list_levels(&nodes)
         .into_iter()
         .map(|(depth, parent)| cards(&nodes, depth, &parent, true))
         .filter(|groups| !groups.is_empty())
-        .collect()
+        .collect();
+    if families.is_empty() {
+        flat_lists(&nodes)
+    } else {
+        families
+    }
+}
+
+/// A run of leaf siblings: their parent's path and their role.
+type RunKey<'a> = (&'a [String], &'a str);
+
+/// The runs of same-role leaf siblings on a screen that labels no container
+/// by ordinal, the longest first (the deeper on a tie), each element with
+/// text one card labelled by its role and place in the run.
+fn flat_lists(nodes: &[(&Candidate, bool)]) -> Vec<Vec<Group>> {
+    let mut runs: Vec<(RunKey<'_>, Vec<Group>)> = Vec::new();
+    for (node, actionable) in nodes {
+        if !node.children.is_empty() {
+            continue;
+        }
+        let Some(text) = text_of(node, *actionable, true) else {
+            continue;
+        };
+        let key = (node.path.as_slice(), node.role.as_str());
+        let index = if let Some(index) = runs.iter().position(|(seen, _)| *seen == key) {
+            index
+        } else {
+            runs.push((key, Vec::new()));
+            runs.len() - 1
+        };
+        let groups = &mut runs[index].1;
+        groups.push(Group {
+            label: format!("{} #{}", node.role, groups.len() + 1),
+            fields: vec![text],
+            primary: actionable.then(|| (*node).clone()),
+        });
+    }
+    runs.retain(|(_, groups)| groups.len() >= MIN_FLAT_ITEMS);
+    runs.sort_by_key(|((path, _), groups)| std::cmp::Reverse((groups.len(), path.len())));
+    runs.into_iter().map(|(_, groups)| groups).collect()
 }
 
 /// The cards of the list under `parent` whose containers sit at `depth`,
