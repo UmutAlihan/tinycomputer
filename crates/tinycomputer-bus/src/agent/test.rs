@@ -205,3 +205,57 @@ fn waiting_and_continuing_have_forgiving_defaults() {
     assert_eq!(resume.inputs["date of birth"], "1990-04-02");
     assert_eq!(resume.approve, None);
 }
+
+#[test]
+fn rescues_pin_their_wire_form() {
+    let request: StartTaskRequest = serde_json::from_value(json!({
+        "task": "book a flight",
+        "budget": {"max_rescues": 1}
+    }))
+    .unwrap();
+    assert_eq!(request.budget.max_rescues, Some(1));
+    let rescue = super::Rescue {
+        step: 2,
+        failure: "the class button is covered".to_owned(),
+        reason: "the calendar is still open".to_owned(),
+        steps: vec![crate::FlowStep::Intent("close the calendar".to_owned())],
+        outcome: super::RescueOutcome::FailedAgain,
+    };
+    let value = serde_json::to_value(&rescue).unwrap();
+    assert_eq!(
+        value,
+        json!({
+            "step": 2,
+            "failure": "the class button is covered",
+            "reason": "the calendar is still open",
+            "steps": ["close the calendar"],
+            "outcome": "failed_again"
+        })
+    );
+    assert_eq!(
+        serde_json::from_value::<super::Rescue>(value).unwrap(),
+        rescue
+    );
+    for (outcome, wire) in [
+        (super::RescueOutcome::Running, "running"),
+        (super::RescueOutcome::Recovered, "recovered"),
+        (super::RescueOutcome::GaveUp, "gave_up"),
+    ] {
+        assert_eq!(serde_json::to_value(outcome).unwrap(), json!(wire));
+    }
+    // A report or a description from before 2.4 still reads.
+    let report: super::TaskReport = serde_json::from_value(json!({
+        "view": {"id": "t-1", "status": {"state": "running"}, "summary": "",
+                 "progress": 0.0, "next": []},
+        "steps": [], "records": {}, "artifacts": [], "learned": [], "trace": []
+    }))
+    .unwrap();
+    assert!(report.rescues.is_empty());
+    assert!(
+        !serde_json::to_value(&report)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .contains_key("rescues")
+    );
+}
