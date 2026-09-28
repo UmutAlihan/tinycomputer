@@ -10,8 +10,8 @@ needs, mounted against this repository's source.
 Two separate reasons, and both are real:
 
 1. **Repeatability.** A browser test that writes throwaway shell scripts and
-   executes them — which the agent-browser test suite does, for its fake
-   `chrome` fixtures — behaves differently on every developer's Mac. Inside
+   executes them (which the agent-browser test suite does, for its fake
+   `chrome` fixtures) behaves differently on every developer's Mac. Inside
    a container it always behaves the same way, and it touches nothing on
    your machine except the source tree you mounted in.
 2. **Safety.** Those same throwaway `chrome` shell scripts have tripped
@@ -19,8 +19,8 @@ Two separate reasons, and both are real:
    container, none of that protection is in the way, and nothing escapes
    the container to trigger it on the host.
 
-If a browser example needs a display you can actually see — a headed run,
-or anything driving a macOS application alongside the browser — the
+If a browser example needs a display you can actually see (a headed run,
+or anything driving a macOS application alongside the browser), the
 container cannot help, because it has no display. Those still run on the
 host with `scripts/lab` or `task_live` directly.
 
