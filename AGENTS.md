@@ -107,25 +107,13 @@ vendor/
 └── tinyinference/      # pinned Jev client and the planner's LLM client
 docs/
 ├── README.md           # the index: guides, per-crate docs, technical reference
-├── how-it-works.md, giving-it-a-task.md, writing-flows.md, how-it-decides.md,
-├── catching-mistakes.md, rescue.md, memory-and-saving.md, seeing-the-screen.md,
-├── safety-and-privacy.md, watching-a-run.md, glossary.md
-│                       # plain-language guides for users of the module
-├── crates/<crate>/     # a friendly guide per crate (engine's flow runtime in crates/tinycomputer-engine/flow/)
-├── project/            # the repository map, scripts/, docker/, vendor/, CI and tooling
-└── technical/          # the engineering reference
-    ├── architecture.md     # the layers, how a call travels, configuration, safety
-    ├── jev-harness.md      # the Jev stack, one decision end to end, latency levers
-    ├── decision-loops.md   # every flow loop, question, and threshold
-    ├── jev-questions.md    # every Jev input, question id, answer shape, and use
-    ├── flow-examples.md    # real flows traced decision by decision
-    ├── jev-journal.md      # the debug journal and how to measure a run
-    ├── tasks.md            # the task API and the planner
-    ├── lab.md, docker-lab.md # live runs
-    ├── evals/              # recorded live results
-    ├── specs/              # behavior and architecture specifications
-    ├── plans/              # test-first implementation plans
-    └── adr/                # immutable architecture decision records
+├── how-it-works.md, …  # plain-language guides (docs/README.md lists them)
+├── crates/<crate>/     # a friendly guide per crate
+├── project/            # the repository map: scripts/, docker/, vendor/, CI
+└── technical/          # the engineering reference:
+    ├── architecture.md, jev-harness.md, decision-loops.md, decision-thresholds.md,
+    ├── jev-questions.md, flow-examples.md, jev-journal.md, tasks.md, lab.md, docker-lab.md
+    └── evals/, specs/, plans/, adr/  # live results, specs, plans, ADRs
 .jev-journal/           # git-ignored: debug journals written by local runs
 ```
 

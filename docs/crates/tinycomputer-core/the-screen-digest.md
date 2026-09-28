@@ -19,7 +19,7 @@ or a result list. A region too large to take in at once (more than 24
 elements, by default) is split one ancestor level deeper, recursively, up to
 10 levels down. A list of repeated cards is always kept as one region rather
 than being split apart, even if splitting it would otherwise shrink the
-pieces below the size limit, a result list is one thing, not twenty.
+pieces below the size limit: a result list is one thing, not twenty.
 
 Every region gets three properties:
 
