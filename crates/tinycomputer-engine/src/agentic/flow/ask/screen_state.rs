@@ -1,12 +1,11 @@
 //! The shared state every question about a screen is asked against: its
 //! elements, the text fields hold, and the recent history.
 
-
 use serde_json::{Value, json};
 
 use crate::agentic::flow::view::{Candidate, Screen, element_line, label, untrusted_context};
 
-use super::{MAX_STATE_ELEMENTS, MAX_HISTORY, MAX_FIELDS};
+use super::{MAX_FIELDS, MAX_HISTORY, MAX_STATE_ELEMENTS};
 
 /// The shared state every question about `screen` is asked against.
 pub(in crate::agentic::flow) fn state(
@@ -119,7 +118,10 @@ pub(in crate::agentic::flow) fn ordered_nodes(screen: &Screen) -> Vec<&Candidate
 }
 
 /// The text inside a rich-text area, joined in reading order.
-pub(in crate::agentic::flow) fn rich_text(ordered: &[&Candidate], area: &Candidate) -> Option<String> {
+pub(in crate::agentic::flow) fn rich_text(
+    ordered: &[&Candidate],
+    area: &Candidate,
+) -> Option<String> {
     if !["webarea", "document"]
         .iter()
         .any(|role| area.role.eq_ignore_ascii_case(role))

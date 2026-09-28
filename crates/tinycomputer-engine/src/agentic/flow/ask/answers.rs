@@ -5,11 +5,13 @@ use std::collections::BTreeMap;
 
 use tinyinference_decisions::Answer;
 
-
-
 /// A yes/no probability calibrated against its negation: the mean of
 /// `P(yes)` and `1 - P(no)`, or whichever of the two was answered.
-pub(in crate::agentic::flow) fn calibrated(answers: &BTreeMap<String, Answer>, yes: &str, no: &str) -> Option<f64> {
+pub(in crate::agentic::flow) fn calibrated(
+    answers: &BTreeMap<String, Answer>,
+    yes: &str,
+    no: &str,
+) -> Option<f64> {
     match (probability(answers, yes), probability(answers, no)) {
         (Some(yes), Some(no)) => Some(f64::midpoint(yes, 1.0 - no)),
         (Some(yes), None) => Some(yes),
@@ -20,7 +22,10 @@ pub(in crate::agentic::flow) fn calibrated(answers: &BTreeMap<String, Answer>, y
 
 /// The probability a Score answer puts on its highest level: "fully
 /// accomplished", "all of it holds".
-pub(in crate::agentic::flow) fn top_level(answers: &BTreeMap<String, Answer>, id: &str) -> Option<f64> {
+pub(in crate::agentic::flow) fn top_level(
+    answers: &BTreeMap<String, Answer>,
+    id: &str,
+) -> Option<f64> {
     let Some(Answer::Score(answer)) = answers.get(id) else {
         return None;
     };
@@ -37,7 +42,10 @@ pub(in crate::agentic::flow) fn combined(yes_no: Option<f64>, top: Option<f64>) 
 }
 
 /// The chosen key and its probability, or `None` for `none` or a missing answer.
-pub(in crate::agentic::flow) fn chosen(answers: &BTreeMap<String, Answer>, id: &str) -> Option<(String, f64)> {
+pub(in crate::agentic::flow) fn chosen(
+    answers: &BTreeMap<String, Answer>,
+    id: &str,
+) -> Option<(String, f64)> {
     match answers.get(id) {
         Some(Answer::Choice(answer)) if answer.choice != "none" => Some((
             answer.choice.clone(),
@@ -52,7 +60,10 @@ pub(in crate::agentic::flow) fn chosen(answers: &BTreeMap<String, Answer>, id: &
 }
 
 /// A Noul's probability, or `None` when it was not asked or not answered.
-pub(in crate::agentic::flow) fn probability(answers: &BTreeMap<String, Answer>, id: &str) -> Option<f64> {
+pub(in crate::agentic::flow) fn probability(
+    answers: &BTreeMap<String, Answer>,
+    id: &str,
+) -> Option<f64> {
     match answers.get(id) {
         Some(Answer::Noul(answer)) => Some(answer.noul),
         _ => None,

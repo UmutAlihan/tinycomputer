@@ -33,7 +33,6 @@ use std::collections::BTreeMap;
 
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
-
 use super::{
     ask::{CAP, chosen},
     view::Candidate,

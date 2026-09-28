@@ -14,10 +14,9 @@ use crate::agentic::flow::{
     view::{ACT, Candidate, Screen, exact_named_match},
 };
 
-use super::{NAMED_FLOOR, CORROBORATED, AGREED, Grounded};
+use super::{AGREED, CORROBORATED, Grounded, NAMED_FLOOR};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// The final Choice, re-asked and corroborated when it is not confident.
     ///
     /// `wider` is a larger pool the narrowing tree cut `pool` from: a deep
@@ -185,5 +184,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .max(confirm.unwrap_or_default()),
         }))
     }
-
 }

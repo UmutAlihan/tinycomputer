@@ -6,7 +6,10 @@ use std::collections::BTreeSet;
 
 use tinycomputer_bus::{FlowAction, FlowStep};
 
-use super::{MAX_NESTING, MAX_REPEAT, step_path, substitution::{references, substitute_with}};
+use super::{
+    MAX_NESTING, MAX_REPEAT, step_path,
+    substitution::{references, substitute_with},
+};
 
 /// Walks `steps` in the order they run, checking every text against the
 /// variables defined so far and growing that set as `read` steps are seen.

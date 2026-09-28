@@ -14,10 +14,9 @@ use crate::agentic::flow::{
     view::{Candidate, element_kind, label},
 };
 
-use super::{REVEAL_TURNS, BLIND_PICK_MISSES, names, editable};
+use super::{BLIND_PICK_MISSES, REVEAL_TURNS, editable, names};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Fills every slot in `pending` it can find a field or an option for,
     /// removing each one that arrives.
     pub(super) async fn fill_pending(
@@ -173,5 +172,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         ));
         Ok(reply.ok)
     }
-
 }

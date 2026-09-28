@@ -20,7 +20,6 @@ use crate::agentic::flow::{
 use super::{CONTRAST_ACCEPT, CONTRAST_LEAD, MAX_FRONTIER, Offer};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Settles a target Choice on its evidence: acted on when its winner is
     /// clearly ahead and agreed on, abstained from when nothing serves, and
     /// otherwise taken up the ladder — more framings, a duel between the
@@ -306,7 +305,6 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         Ok(ask::calibrated(&answers, "is_0", "only_near_0").unwrap_or_default())
     }
-
 }
 
 /// The candidate `merged` picked among `offer`'s, with its probability.

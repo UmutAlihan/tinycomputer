@@ -3,10 +3,11 @@
 
 use std::collections::BTreeSet;
 
+use crate::agentic::flow::view::{
+    Candidate, Screen, describe, digest, is_destructive, label, signature,
+};
 
-use crate::agentic::flow::view::{Candidate, Screen, describe, digest, is_destructive, label, signature};
-
-use super::{MAX_DISTRACTIONS, MAX_DISTRACTION_SIZE, Distraction, ESCAPED};
+use super::{Distraction, ESCAPED, MAX_DISTRACTION_SIZE, MAX_DISTRACTIONS};
 
 /// their rank is their position.
 const CLOSERS: &[&[&str]] = &[
@@ -287,7 +288,10 @@ fn covering(screen: &Screen, intent: &[String], cleared: &BTreeSet<String>) -> O
 }
 
 /// A distraction as a Choice option Jev reads, wrapped as untrusted data.
-pub(in crate::agentic::flow) fn option(distraction: &Distraction, include_values: bool) -> serde_json::Value {
+pub(in crate::agentic::flow) fn option(
+    distraction: &Distraction,
+    include_values: bool,
+) -> serde_json::Value {
     let cleared_with = distraction.closer.as_ref().map_or_else(
         || serde_json::json!("press Escape"),
         |closer| describe(closer, include_values),

@@ -3,8 +3,6 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-
-
 /// Every `${name}` referenced in `text`.
 pub(in crate::agentic::flow) fn references(text: &str) -> Vec<String> {
     let mut names = Vec::new();
@@ -51,7 +49,10 @@ pub(in crate::agentic::flow) fn substitute_safe(
     })
 }
 
-pub(super) fn substitute_with<'a>(text: &'a str, resolve: impl Fn(&str) -> Option<&'a str>) -> String {
+pub(super) fn substitute_with<'a>(
+    text: &'a str,
+    resolve: impl Fn(&str) -> Option<&'a str>,
+) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(start) = rest.find("${") {

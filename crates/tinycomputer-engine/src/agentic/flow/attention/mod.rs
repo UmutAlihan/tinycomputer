@@ -21,7 +21,6 @@ mod find;
 
 use std::collections::BTreeSet;
 
-
 use super::view::Candidate;
 
 /// Most distractions one attention question offers.

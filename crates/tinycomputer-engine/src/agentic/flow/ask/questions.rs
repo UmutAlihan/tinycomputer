@@ -8,7 +8,6 @@ use tinyinference_decisions::{Choice, Noul, Question, Score};
 
 use crate::agentic::flow::view::{Candidate, describe};
 
-
 /// "Is `condition` true on this screen right now?"
 pub(in crate::agentic::flow) fn condition(condition: &str) -> Question {
     Question::Noul(Noul {
@@ -271,7 +270,11 @@ pub(in crate::agentic::flow) fn elements(
 }
 
 /// "Is this element the one to use for `purpose`?"
-pub(in crate::agentic::flow) fn corroborate(purpose: &str, candidate: &Candidate, include_values: bool) -> Question {
+pub(in crate::agentic::flow) fn corroborate(
+    purpose: &str,
+    candidate: &Candidate,
+    include_values: bool,
+) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Is this element the right one to use for the purpose?",
@@ -286,7 +289,11 @@ pub(in crate::agentic::flow) fn corroborate(purpose: &str, candidate: &Candidate
 /// — asked beside [`corroborate`] when grounding contrasts its finalists,
 /// so a lookalike in the wrong row or a label beside the control reads as
 /// what it is.
-pub(in crate::agentic::flow) fn only_near(purpose: &str, candidate: &Candidate, include_values: bool) -> Question {
+pub(in crate::agentic::flow) fn only_near(
+    purpose: &str,
+    candidate: &Candidate,
+    include_values: bool,
+) -> Question {
     Question::Noul(Noul {
         instructions: json!({
             "question": "Is this element only similar to, or next to, the element the purpose needs, rather than that element itself?",

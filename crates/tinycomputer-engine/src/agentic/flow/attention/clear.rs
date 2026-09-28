@@ -13,7 +13,10 @@ use crate::agentic::flow::{
     view::{Screen, label, signature},
 };
 
-use super::{MAX_CLEARED, ATTENTION_FLOOR, Distraction, ESCAPED, Cleared, find::{distractions, option}};
+use super::{
+    ATTENTION_FLOOR, Cleared, Distraction, ESCAPED, MAX_CLEARED,
+    find::{distractions, option},
+};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Asks what on `screen` needs attention first for the step `intent`,

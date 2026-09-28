@@ -16,10 +16,9 @@ use crate::agentic::flow::{
     view::{Candidate, Screen, distinct, label, named_first},
 };
 
-use super::{AGREED, BRANCH_MARGIN, Grounded, Opening, First, winners, split};
+use super::{AGREED, BRANCH_MARGIN, First, Grounded, Opening, split, winners};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Picks the element of `pool` that serves `purpose`, or `None` when no
     /// element does with enough agreement.
     ///
@@ -268,7 +267,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// The shared question state for `purpose` on `screen`: under the wide
     /// strategy, the screen as a digest and the run's working memory.
-    pub(in crate::agentic::flow) fn state(&self, screen: &Screen, purpose: &str) -> serde_json::Value {
+    pub(in crate::agentic::flow) fn state(
+        &self,
+        screen: &Screen,
+        purpose: &str,
+    ) -> serde_json::Value {
         if self.wide() {
             return self.wide_state(screen, purpose);
         }
@@ -324,5 +327,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         kept
     }
-
 }

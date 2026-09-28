@@ -12,10 +12,9 @@ use crate::agentic::flow::{
     view::{Candidate, Screen, signature},
 };
 
-use super::{SLOT_FLOOR, FIELD_ERROR, NOT_ASKED, Assignment, position};
+use super::{Assignment, FIELD_ERROR, NOT_ASKED, SLOT_FLOOR, position};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// The `pending` slots the form on screen does not ask for, by one Noul
     /// each.
     pub(super) async fn unasked(
@@ -172,5 +171,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         assignments.sort_by(|left, right| position(&left.field).total_cmp(&position(&right.field)));
         Ok(assignments)
     }
-
 }

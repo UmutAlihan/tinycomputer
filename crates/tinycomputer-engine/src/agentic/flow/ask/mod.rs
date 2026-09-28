@@ -9,14 +9,17 @@ mod questions;
 mod screen_state;
 
 pub(super) use answers::{calibrated, chosen, combined, level, probability, top_level};
-pub(super) use questions::{asks_for, completion, condition, corroborate, coverage, elements, field_error, helped, intended, negated, obstacle, only_near, options, page_kind, progress, reflects, strays, unfinished, unintended, viewed};
+pub(super) use questions::{
+    asks_for, completion, condition, corroborate, coverage, elements, field_error, helped,
+    intended, negated, obstacle, only_near, options, page_kind, progress, reflects, strays,
+    unfinished, unintended, viewed,
+};
 pub(super) use screen_state::{ordered_nodes, rich_text, state};
 
 use std::collections::BTreeMap;
 
 use serde_json::Value;
 use tinyinference_decisions::{EvaluationRequest, Question};
-
 
 /// Most options one Choice offers before narrowing takes over.
 pub(super) const CAP: usize = 20;

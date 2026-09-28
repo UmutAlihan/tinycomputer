@@ -18,7 +18,6 @@ use crate::agentic::flow::{
 use super::Belief;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
-
     /// Asks `request` again in the framings it was not asked in yet, up to
     /// [`vote::MAX_VOTES`] and within the budget, and returns every one of
     /// its questions re-tallied over the whole ballot. `None` when there is
@@ -169,5 +168,4 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         });
         Ok(Some(settled))
     }
-
 }
