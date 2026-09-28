@@ -384,7 +384,10 @@ fn many_collapsed_regions_stop_growing_the_digest_past_its_budget() {
         },
     );
     let collapsed = view(&rendered)["collapsed"].as_array().unwrap().clone();
-    let total: usize = collapsed.iter().map(|line| line.as_str().unwrap().len()).sum();
+    let total: usize = collapsed
+        .iter()
+        .map(|line| line.as_str().unwrap().len())
+        .sum();
     assert!(
         total < super::COLLAPSED_SLACK + super::SUMMARY_CHARS * 4,
         "collapsed summaries must stop growing well past the budget, got {total} bytes over {} lines",
