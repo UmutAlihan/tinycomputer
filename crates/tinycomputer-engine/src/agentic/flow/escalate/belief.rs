@@ -9,8 +9,7 @@ use tinycomputer_bus::{FlowLoop, JevExchange};
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use crate::agentic::flow::{
-    AgentBackend, FlowRun, Halt, StepLog,
-    ask::{self},
+    AgentBackend, FlowRun, Halt, StepLog, ask,
     evidence::{self, Verdict},
     vote,
 };

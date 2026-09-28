@@ -38,8 +38,7 @@ use tinycomputer_bus::FlowLoop;
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use super::{
-    AgentBackend, FlowRun, StepLog,
-    ask::{self},
+    AgentBackend, FlowRun, StepLog, ask,
     evidence::{Bar, Evidence, Verdict},
     view::{Candidate, Screen},
 };
