@@ -119,7 +119,7 @@ impl DesktopService {
             .map_err(|error| TinyBusError::failed(format!("task call failed: {error}")))
     }
 
-    pub(super) fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
+    pub(in crate::tinybus_module) fn jev_runtime(&self) -> Option<agentic::JevRuntime> {
         self.jev.clone()
     }
 }
