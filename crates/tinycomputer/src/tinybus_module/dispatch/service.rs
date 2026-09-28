@@ -1,17 +1,15 @@
 //! Building the service from the module configuration, running its work off
 //! the dispatch task, and reading the desktop's availability.
 
-use tinybus::{Error as TinyBusError, Result as TinyBusResult};
-use tinycomputer_bus::{DesktopResponse, JevConfig};
-
 use std::sync::Arc;
 
+use tinybus::{Error as TinyBusError, Result as TinyBusResult};
+use tinycomputer_bus::{DesktopResponse, JevConfig};
 use tinycomputer_bus::agent::{SurfaceAvailability, SurfaceKind};
+use tinycomputer_engine as agentic;
 
 use crate::tinybus_module::runner::WorkspaceRunner;
 use crate::{Desktop, Result};
-use tinycomputer_engine as agentic;
-
 use super::DesktopService;
 use crate::tinybus_module::config::{browser_executable, cursor_config};
 

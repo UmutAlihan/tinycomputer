@@ -3,7 +3,7 @@
 //! Every method has the same body — hand a copy of the engine to a blocking
 //! thread and return the envelope it produces — so the file is long and
 //! uninteresting on purpose. What matters is that the order below is the order
-//! of [`tinycomputer_bus::names::METHODS`]; `test.rs` asserts the generated
+//! of [`tinycomputer_bus::names::METHODS`]; `tinybus_module_tests.rs` asserts the generated
 //! dispatch table against that list, so a member added in one place and not the
 //! other fails the build.
 //!

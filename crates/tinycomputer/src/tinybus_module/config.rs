@@ -1,7 +1,8 @@
 //! Reading the module configuration's `browser` and `cursor` keys.
 
-use crate::Result;
 use tinycomputer_browser::{CursorPace, ScreenCursor};
+
+use crate::Result;
 
 /// The `browser.executable` configuration: the Chrome or Chromium binary to
 /// launch where the platform's own discovery would not find one.
