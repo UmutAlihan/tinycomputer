@@ -202,12 +202,18 @@ notice when one finishes.
 
 Source: [`crates/tinycomputer-bus/src/browser/errors/mod.rs`](../../../crates/tinycomputer-bus/src/browser/errors/mod.rs)
 
-The browser interface answers failures with a stable *name* (a constant
-string with the prefix `ai.tinyhumans.tinycomputer.Browser.Error`), not a
-`DesktopError`-shaped structure. The reasoning is the same as everywhere else
-in this crate: a host does not hand a model a raw failure string, it decides
-what *kind* of failure happened and shapes its tool result accordingly, and
-matching on prose breaks the moment a message is reworded.
+A browser member fails with the same `DesktopResponse`/`DesktopError`
+envelope a desktop member does, reusing the desktop's own error code wherever
+the meaning is shared (`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`,
+`POLICY_DENIED`, `INVALID_ARGS`), so one handler serves both surfaces. This
+crate additionally defines a stable, more specific *name* for each browser
+failure (a constant string with the prefix
+`ai.tinyhumans.tinycomputer.Browser.Error`), carried in `details.name`, with
+`errors::code(name)` giving the shared envelope code it maps to. The
+reasoning is the same as everywhere else in this crate: a host does not hand
+a model a raw failure string, it decides what *kind* of failure happened and
+shapes its tool result accordingly, and matching on prose breaks the moment a
+message is reworded.
 
 | Name | Meaning | An agent can act on this |
 |---|---|---|
