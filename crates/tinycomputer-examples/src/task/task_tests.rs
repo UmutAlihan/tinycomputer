@@ -84,16 +84,15 @@ fn a_pause_asking_for_nothing_is_handed_back() {
 }
 
 #[test]
-fn a_logged_url_keeps_only_its_origin_and_path() {
+fn a_logged_url_keeps_only_its_scheme_and_host() {
     assert_eq!(
         loggable("https://user:secret@pay.test/checkout?token=abc#step"),
-        "https://pay.test/checkout"
+        "https://pay.test"
     );
-    assert_eq!(loggable("about:blank"), "about:blank");
-    // An `@` in the path is not a credential separator.
-    assert_eq!(
-        loggable("https://example.com/@alice?tab=1"),
-        "https://example.com/@alice"
-    );
+    // A path can carry a token (a magic link), and an `@` in it is not a
+    // credential separator.
+    assert_eq!(loggable("https://example.com/reset/t0k3n"), "https://example.com");
+    assert_eq!(loggable("https://example.com/@alice?tab=1"), "https://example.com");
     assert_eq!(loggable("https://u:p@example.com"), "https://example.com");
+    assert_eq!(loggable("about:blank"), "about:blank");
 }

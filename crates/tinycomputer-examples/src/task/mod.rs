@@ -93,22 +93,20 @@ pub fn inputs_for(
         .collect()
 }
 
-/// `url` with its credentials, query, and fragment dropped, for a log line:
-/// those are where tokens and personal data ride.
+/// `url` reduced to its scheme and host, for a log line: credentials,
+/// paths (password-reset and magic-link tokens ride there), queries, and
+/// fragments are all dropped.
 #[must_use]
 pub fn loggable(url: &str) -> String {
-    let url = url.split(['?', '#']).next().unwrap_or_default();
     match url.split_once("://") {
         Some((scheme, rest)) => {
-            // Credentials live only in the authority, before the first `/`;
-            // an `@` in the path is part of the path.
-            let (authority, path) = rest.find('/').map_or((rest, ""), |at| rest.split_at(at));
+            let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
             let host = authority
                 .rsplit_once('@')
                 .map_or(authority, |(_, host)| host);
-            format!("{scheme}://{host}{path}")
+            format!("{scheme}://{host}")
         }
-        None => url.to_owned(),
+        None => url.split(['?', '#']).next().unwrap_or_default().to_owned(),
     }
 }
 
@@ -164,10 +162,14 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         serde_json::to_string_pretty(&report)?,
     )?;
     // The screenshot the task took when it stopped, before its session was
-    // released — the only one left for a task that finished or failed.
+    // released — the only one left for a task that finished or failed. It
+    // may have expired (held outputs live five minutes), so whether it was
+    // actually written decides whether open sessions are captured instead.
+    let mut captured = false;
     if let Some(last) = report.artifacts.last() {
         match host.read_output(last).await {
             Ok(image) => {
+                captured = true;
                 std::fs::write(out.join("final.png"), image)?;
                 println!(
                     "screenshot: {} (taken as the task stopped)",
@@ -181,7 +183,6 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
     // captured as they stand now, unless the task's own screenshot already
     // shows that state, then closed. Every session belongs to this run:
     // `Host::load` gives each run a private bus and its own module.
-    let captured = !report.artifacts.is_empty();
     for (index, session) in host.browser_sessions().await?.iter().enumerate() {
         if captured {
             host.close_browser_session(&session.id).await?;
@@ -201,7 +202,7 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         }
         host.close_browser_session(&session.id).await?;
     }
-    if report.artifacts.is_empty() && !out.join("open-0.png").exists() {
+    if !captured && !out.join("open-0.png").exists() {
         println!("no screenshot: the task's surface could not take one");
     }
     if let TaskStatus::Done {

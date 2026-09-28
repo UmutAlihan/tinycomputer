@@ -42,14 +42,18 @@ fn one_step() -> serde_json::Value {
 }
 
 #[tokio::test]
-async fn a_payment_checkpoint_shows_the_screen_it_stopped_on() {
+async fn a_payment_checkpoint_keeps_its_screen_in_the_report_only() {
     let (tasks, _) = with_shot(vec![paying()]);
     let view = start(&tasks, one_step(), &[]);
     let stopped = settle(&tasks, &view.id).await;
     let TaskStatus::Checkpoint { screenshot, .. } = &stopped.status else {
         panic!("{:?}", stopped.status);
     };
-    assert_eq!(screenshot.as_ref(), Some(&shot()));
+    // A view also travels through the non-confidential AwaitTask and
+    // ListTasks, so the handle stays out of it.
+    assert!(screenshot.is_none());
+    let listed = tasks.list().data.unwrap();
+    assert!(serde_json::to_string(&listed).unwrap().find("o-1").is_none());
     assert_eq!(tasks.report(&view.id).data.unwrap().artifacts, [shot()]);
 }
 

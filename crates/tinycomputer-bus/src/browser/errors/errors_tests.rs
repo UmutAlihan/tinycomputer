@@ -131,12 +131,17 @@ fn a_refused_navigation_offers_no_way_out() {
 }
 
 #[test]
-fn a_failure_after_delivery_says_inspect_before_retrying() {
-    for name in [TIMEOUT, PAGE_ERROR] {
-        let hint = recovery(name).expect("a recoverable failure has a way out");
-        assert_eq!(hint.strategy, "inspect_state_then_retry_original", "{name}");
-        assert!(hint.requires_fresh_snapshot, "{name}");
-    }
+fn a_timeout_says_inspect_before_retrying() {
+    let hint = recovery(TIMEOUT).expect("a timeout has a way out");
+    assert_eq!(hint.strategy, "inspect_state_then_retry_original");
+    assert!(hint.retryable && hint.requires_fresh_snapshot);
+}
+
+#[test]
+fn a_page_error_says_change_the_request_not_repeat_it() {
+    let hint = recovery(PAGE_ERROR).expect("a page error has a way out");
+    assert_eq!(hint.strategy, "inspect_state_then_revise_request");
+    assert!(!hint.retryable && hint.requires_fresh_snapshot);
 }
 
 #[test]
