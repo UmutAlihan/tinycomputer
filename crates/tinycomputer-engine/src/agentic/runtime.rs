@@ -252,7 +252,7 @@ impl Evaluator for Client {
 /// published route. `OpenJEV` and Sage have no `TinyHumans` proxy route in
 /// `tinyinference-decisions`, so none is approved for them.
 #[must_use]
-pub const fn approved_endpoint(provider: JevProvider) -> &'static str {
+pub(super) const fn approved_endpoint(provider: JevProvider) -> &'static str {
     match provider {
         JevProvider::TypeSafe => "https://api.typesafe.ai/v1/systemone",
         JevProvider::OpenRouter => "https://openrouter.ai/api/alpha/decisions",
