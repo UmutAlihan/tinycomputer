@@ -331,8 +331,10 @@
   const AD_HOST_NAMES = /(^|\.)(adservice\.google|criteo)\.[a-z]{2,}(\.[a-z]{2,})?$/;
   // One word of a class or id, split at `-` and `_` only: `ad`, not the `ad`
   // in `header`, `shadow`, `download`, or `adults`, nor in a generated class
-  // such as `css-1ad4k9` or `hAdSfq`. `AdSlot` reads as `adslot`.
-  const AD_WORD = /^(ads?|adsbygoogle|dfp|ad(slot|unit|box|zone|space|container|wrapper|banner|frame|holder|placement)s?|advert\w*|sponsor\w*)$/;
+  // such as `css-1ad4k9`. `AdSlot` reads as `adslot`. The short words must
+  // be all one case: Google's generated `gb_Ad` is not an ad.
+  const AD_SHORT = /^(ad|ads|dfp|AD|ADS|DFP)$/;
+  const AD_WORD = /^(adsbygoogle|ad(slot|unit|box|zone|space|container|wrapper|banner|frame|holder|placement)s?|advert\w*|sponsor\w*)$/i;
   const AD_LABEL = /^(advertisement|sponsored|ad)$/i;
   // Words that mark a cookie, consent, or newsletter banner, which the
   // obstacle loop must see to close: no ad rule ever drops one.
@@ -346,9 +348,8 @@
   const classText = (element) => (typeof element.className === 'string' ? element.className
     : (element.className && element.className.baseVal) || '');
   const adWords = (element) => `${classText(element)} ${element.id || ''}`
-    .toLowerCase()
     .split(/[\s_-]+/)
-    .some((word) => AD_WORD.test(word));
+    .some((word) => AD_SHORT.test(word) || AD_WORD.test(word));
   const boilerplate = (element) => BOILERPLATE.test(
     `${classText(element)} ${element.id || ''} ${element.getAttribute('aria-label') || ''} `
     + (element.textContent || '').slice(0, 600),
@@ -382,9 +383,6 @@
     const rect = box(element);
     return rect.width <= 1 && rect.height <= 1 && computed.overflow === 'hidden';
   };
-  // A page marked hidden, all but a dialog: yet a large part of it in
-  // front is what a person sees — a modal library that forgot to unmark
-  // the page behind it.
   const inFront = (element) => {
     const rect = box(element);
     const x = Math.min(Math.max((rect.left + rect.right) / 2, 0), width - 1);
@@ -392,9 +390,17 @@
     const hit = document.elementFromPoint(x, y);
     return hit === element || (hit && element.contains(hit));
   };
+  // Whether a person sees what the page marks `aria-hidden`: pages mark
+  // plenty they draw — a custom list's shown label, a pill below the fold,
+  // a page a modal library forgot to unmark. Only what is slid out
+  // sideways (a carousel's clones) or sits behind something in the
+  // viewport (the page behind a dialog) is out of their sight.
   const plainlySeen = (element) => {
     const rect = box(element);
-    return rect.width * rect.height >= width * height * 0.25 && inFront(element);
+    if (rect.width < 1 || rect.height < 1) return true;
+    if (rect.right <= 0 || rect.left >= width) return false;
+    if (rect.bottom <= 0 || rect.top >= height) return true;
+    return inFront(element);
   };
   // Blocks labelled as ads, found once up front: the label and the nearest
   // block around it that holds the ad, but never a landmark, a form, a
