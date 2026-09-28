@@ -74,7 +74,7 @@ assert!(payment_evidence("https://ota.test/traveller", &[card], &[]).is_some());
 assert!(payment_evidence("https://ota.test/results", &[], &["Book"]).is_none());
 ```
 
-The rule: a card field is enough on its own, either a `cc-*` autocomplete
+The rule: a card field is enough on its own: either a `cc-*` autocomplete
 attribute, or a label/name matching card wording ("card number", "cvv",
 "expiry date", "upi id", …). Without a card field, a payment-shaped URL path
 (`payment`, `billing`, `checkout`, …) *and* a payment-classified control
