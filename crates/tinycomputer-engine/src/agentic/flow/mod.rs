@@ -661,7 +661,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
 
     /// `request` as it leaves for Jev: with the page-kind question on a web
     /// page, briefed, masked, and fitted to size.
-    pub(super) fn outgoing(
+    fn outgoing(
         &self,
         log: &mut StepLog,
         mut request: EvaluationRequest,
@@ -679,7 +679,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     }
 
     /// Sends every framing to Jev at once.
-    pub(super) fn spawn(
+    fn spawn(
         &self,
         framings: &[vote::Framing],
     ) -> Vec<
