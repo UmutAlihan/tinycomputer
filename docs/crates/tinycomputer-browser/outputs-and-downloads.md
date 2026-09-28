@@ -12,7 +12,7 @@ is loaded into somebody else's process. Returning the raw bytes straight
 back on the same call would work for a small viewport capture, but a
 full-page capture of a long article is easily several megabytes, and a bus
 frame has a limit. So screenshots are captured, held, and handed back as a
-small reference (`OutputRef`) that a caller then reads in chunks — the same
+small reference (`OutputRef`) that a caller then reads in chunks: the same
 handle-and-chunk protocol tinybrowser used before it, kept because hosts
 written against it keep working unchanged.
 
@@ -33,10 +33,10 @@ header, and stores the bytes under a fresh, unguessable id.
 
 `ScreenshotRequest` covers the viewport by default; set `full_page: true`
 to capture the whole scrollable document, or give a `target` to capture one
-element. The format defaults to PNG — lossless, correct when a model is
-going to read text out of the image — with JPEG and WebP available for a
+element. The format defaults to PNG, lossless and correct when a model is
+going to read text out of the image, with JPEG and WebP available for a
 long full-page capture where layout matters more than legibility, plus an
-optional `quality` (1–100, checked at conversion time) for the lossy
+optional `quality` (1 to 100, checked at conversion time) for the lossy
 formats.
 
 Sizing is checked *before* decoding: `outputs::within_cap` estimates the
@@ -61,7 +61,7 @@ Expiry runs both reactively (every store operation calls `expire` first)
 and, expected from a host, on a fixed timer via `Browser::sweep_outputs`
 every `SWEEP_INTERVAL`. Without the timer, an output taken and then never
 collected again would sit in memory, in somebody else's process, until the
-next unrelated call happened to trigger a cleanup — which might never come.
+next unrelated call happened to trigger a cleanup, which might never come.
 
 ## Reading a held output
 
@@ -75,7 +75,7 @@ since expired, is `Error::NoSuchOutput`.
 ## Releasing early
 
 `Browser::release_output` drops a held output before its TTL, and, like
-closing a session, succeeds whether or not the output was still there — a
+closing a session, succeeds whether or not the output was still there. A
 caller cleaning up after itself should never have to check first.
 
 ## Downloads
@@ -89,7 +89,7 @@ and the path it was written to. `Error::Timeout` comes back if nothing
 finishes before the deadline.
 
 Every completed download is remembered on the session (`Session::downloads`)
-and returned by `Browser::list_downloads` — a simple in-memory list, not a
+and returned by `Browser::list_downloads`, a simple in-memory list, not a
 subscription; a caller that wants to know about the *next* download calls
 `wait_download` again.
 

@@ -19,13 +19,13 @@ screen that happens to arrive at the same place, at the same moment.
 
 ## Who needs this
 
-- **Anyone watching a run**, in a demo, a support call, or just curiosity
-  about what the agent is doing. Without a cursor, buttons just change with
-  no visible cause, which is confusing to watch.
-- **Host applications** that embed tinycomputer and want their own look for
-  the cursor, or want to draw it inside their own window instead of a
+- Anyone watching a run, in a demo, a support call, or just curiosity about
+  what the agent is doing. Without a cursor, buttons just change with no
+  visible cause, which is confusing to watch.
+- Host applications that embed tinycomputer and want their own look for the
+  cursor, or want to draw it inside their own window instead of a
   system-level overlay. See [Using your own sink](using-your-own-sink.md).
-- **Anyone debugging the "it looks robotic" kind of complaint**, since the
+- Anyone debugging the "it looks robotic" kind of complaint, since the
   motion this crate produces is deliberately human-shaped: a curved path,
   overshoot, a little wobble, a small tremor.
 

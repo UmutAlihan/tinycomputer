@@ -147,7 +147,7 @@ one step in front of it.
 `ValidateFlowRequest` takes the candidate flow as raw JSON (a `Value`, not a
 typed `Flow`), specifically so a malformed flow comes back as a list of
 readable errors instead of a bus decode failure, which is what something
-authoring flows programmatically actually needs in order to repair one:
+authoring flows programmatically actually needs to repair one:
 
 ```rust,ignore
 pub struct FlowValidation {
