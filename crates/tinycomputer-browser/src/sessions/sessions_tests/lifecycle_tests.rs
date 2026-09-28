@@ -81,3 +81,62 @@ fn the_default_scratch_space_is_private_to_the_process() {
     let browser = Browser::new(Arc::new(Fake::new()));
     assert!(format!("{browser:?}").contains(&std::process::id().to_string()));
 }
+
+/// An engine that yields before every reply, so concurrent launches
+/// interleave the way real ones do.
+#[derive(Debug)]
+struct Slow;
+
+impl crate::engine::Engine for Slow {
+    fn execute(&mut self, command: serde_json::Value) -> crate::engine::Reply<'_> {
+        Box::pin(async move {
+            tokio::task::yield_now().await;
+            crate::fake::default_reply(&command)
+        })
+    }
+}
+
+impl crate::engine::Launcher for Slow {
+    fn open(&self, _session: &str) -> Box<dyn crate::engine::Engine> {
+        Box::new(Slow)
+    }
+}
+
+#[tokio::test]
+async fn concurrent_opens_never_exceed_the_cap() {
+    let browser = Arc::new(Browser::with_scratch(Arc::new(Slow), scratch("race")));
+    let mut opens = tokio::task::JoinSet::new();
+    for _ in 0..MAX_SESSIONS + 4 {
+        let browser = browser.clone();
+        opens.spawn(async move {
+            browser
+                .open_session(SessionOptions {
+                    endpoint: Some("ws://127.0.0.1:9222".to_owned()),
+                    ..SessionOptions::default()
+                })
+                .await
+        });
+    }
+    let mut refused = 0;
+    while let Some(opened) = opens.join_next().await {
+        if matches!(opened.unwrap(), Err(Error::LimitExceeded { .. })) {
+            refused += 1;
+        }
+    }
+    assert_eq!(refused, 4);
+    assert_eq!(browser.list_sessions().await.unwrap().len(), MAX_SESSIONS);
+}
+
+#[tokio::test]
+async fn a_failed_launch_gives_its_slot_back() {
+    let fake = Fake::scripted(|command| {
+        (command["action"] == "launch").then(|| failure("Chrome exited"))
+    });
+    let browser = Browser::with_scratch(Arc::new(fake), scratch("slot"));
+    for _ in 0..MAX_SESSIONS + 2 {
+        assert!(matches!(
+            browser.open_session(SessionOptions::default()).await,
+            Err(Error::BrowserUnavailable { .. })
+        ));
+    }
+}
