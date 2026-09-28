@@ -218,14 +218,22 @@ impl Error {
         }
     }
 
-    /// Whether this failure is always decided before any command reaches
-    /// the browser: a session or an output looked up locally and not found.
+    /// Whether this failure is always decided before anything reaches the
+    /// page, so repeating the call cannot repeat an effect: a session or an
+    /// output looked up locally and not found, a ref agent-browser could not
+    /// resolve, and a destination its domain filter refused — both of those
+    /// are rejected inside agent-browser before any input is sent to the page.
     ///
-    /// Every other variant can also come back in the engine's reply to a
-    /// command it received — a stale ref, a refused origin, invalid input —
-    /// so its delivery stays unknown rather than claimed.
+    /// Invalid input and a limit can also come back after work was done — a
+    /// capture that turned out too large — so their delivery stays unknown.
     fn refused_before_delivery(&self) -> bool {
-        matches!(self, Self::NoSuchSession { .. } | Self::NoSuchOutput { .. })
+        matches!(
+            self,
+            Self::NoSuchSession { .. }
+                | Self::NoSuchOutput { .. }
+                | Self::StaleRef { .. }
+                | Self::BlockedByPolicy { .. }
+        )
     }
 
     /// Builds an [`Error::InvalidInput`].
