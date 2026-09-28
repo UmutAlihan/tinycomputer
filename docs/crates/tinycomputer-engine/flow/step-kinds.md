@@ -61,7 +61,7 @@ actually landed. Covered on its own page:
 Grounds the named option among the clickable, non-destructive elements on
 screen (favouring ones inside whatever region the step names, when the page
 carries one) and clicks it. When the option is not there yet, `choose` runs
-a short three-turn `do` loop to reveal it first — opening a dropdown, say.
+a short three-turn `do` loop to reveal it first, opening a dropdown, say.
 Once revealed, two further tricks apply, depending on what kind of control
 it is:
 
