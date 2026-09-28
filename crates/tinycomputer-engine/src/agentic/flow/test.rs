@@ -3799,7 +3799,10 @@ fn a_field_already_showing_the_option_holds_it_unless_the_flow_typed_it() {
         "the stepper only mentions the option; the box holds it"
     );
     assert!(already_holds(&screen, "2 Adults", &none).is_none());
-    assert!(already_holds(&screen, "Adult", &none).is_none(), "whole value only");
+    assert!(
+        already_holds(&screen, "Adult", &none).is_none(),
+        "whole value only"
+    );
     assert!(already_holds(&screen, "", &none).is_none());
     let typed = BTreeSet::from([super::view::element_kind(&passengers)]);
     assert!(
