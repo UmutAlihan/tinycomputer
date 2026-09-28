@@ -58,7 +58,9 @@ a caret.
    hidden checkbox or radio is that checkbox or radio. Disabled controls are
    left out, as in the tree.
 2. **Only what is drawn.** Zero-size, `display: none`, invisible, and
-   transparent elements are left out. A control outside the viewport carries
+   transparent elements are left out, and so are disabled controls: the
+   `disabled` property, `aria-disabled`, or a class name ending in
+   `disabled` (a calendar's past day, `rdrDay rdrDayDisabled`). A control outside the viewport carries
    the state `offscreen`; one whose middle is under another element carries
    `covered`, unless the cover is its own result card's content (the same
    rule the click-through uses).
@@ -70,7 +72,9 @@ a caret.
    or pictures' alternative text, then the icon's class, id, or test-id words
    (`close`, `search`, `menu`, …) with the description "an icon", and for a
    link, where it leads ("leads to sightseeing"). A page label that adds to
-   the words shown becomes the description.
+   the words shown becomes the description — the control's own, or else the
+   one labelled element inside it that carries its words: a calendar day
+   drawn as "18" whose inner span is labelled "Sunday, 18 October 2026".
 4. **One control per thing a person sees.** Two related elements drawn in
    nearly the same box (intersection over union 0.6), a wrapper with the same
    words as the control inside it, or two controls of one kind in the same
