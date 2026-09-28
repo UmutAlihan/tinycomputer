@@ -1,10 +1,14 @@
 # The flow runtime
 
-A flow is a short list of plain-language steps, like "start a new email
-message" or "enter the recipient and subject", with no mention of buttons or
-menus. The flow runtime is the code that turns each of those steps into
-clicks, key presses, and typed text on a screen it has never seen before. It
-lives in `crates/tinycomputer-engine/src/agentic/flow/`.
+tinycomputer is a decision-model harness for desktop and browser
+automation: Jev makes every choice about what to press by answering small
+closed questions, and the harness does everything else. The flow runtime
+is the part of that harness that runs flows. A flow is a short list of
+plain-language steps, like "start a new email message" or "enter the
+recipient and subject", with no mention of buttons or menus. The flow
+runtime is the code that turns each of those steps into clicks, key
+presses, and typed text on a screen it has never seen before. It lives in
+`crates/tinycomputer-engine/src/agentic/flow/`.
 
 If you just want to write a flow, read
 [Writing flows](../../../writing-flows.md) instead. This section is for
