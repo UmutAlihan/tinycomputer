@@ -149,7 +149,7 @@ async fn invalid_guidance_is_sent_back_with_what_is_wrong() {
             .contains("no valid guidance"),
         "{REPAIRS} repairs, then it stops"
     );
-    let seen = model.seen.lock().unwrap();
+    let seen = model.seen.lock().unwrap().clone();
     assert_eq!(seen.len(), REPAIRS + 1);
     let last = seen.last().unwrap();
     let repairs = last
