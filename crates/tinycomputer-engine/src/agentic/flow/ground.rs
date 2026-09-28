@@ -44,6 +44,54 @@ pub(super) struct Grounded {
     pub(super) confidence: f64,
 }
 
+/// The first round grounding asks, built but not yet sent, so a caller can
+/// batch it with a request of its own: the turn's judge asks it alongside,
+/// and uses the answers only when the move turns out to need a target.
+#[derive(Debug, Clone)]
+pub(super) struct Opening {
+    purpose: String,
+    pool: Vec<Candidate>,
+    first: First,
+}
+
+/// What an [`Opening`] asks.
+#[derive(Debug, Clone)]
+enum First {
+    /// Nothing to ask: no pool, or a remembered element used unconfirmed.
+    Settled(Option<Grounded>),
+    /// A remembered element, confirmed with one yes/no question.
+    Remembered {
+        known: Candidate,
+        request: EvaluationRequest,
+    },
+    /// A crowded pool: a knockout whose groups follow the screen's regions,
+    /// and, when the pool splits, which region holds the element — asked
+    /// together, in one round trip.
+    Narrowed {
+        groups: Vec<(Option<usize>, Vec<Candidate>)>,
+        regions: Option<(Vec<String>, Regions)>,
+        requests: Vec<EvaluationRequest>,
+    },
+    /// A pool small enough for one Choice.
+    Chosen {
+        keys: Vec<String>,
+        request: EvaluationRequest,
+    },
+}
+
+impl Opening {
+    /// The requests to send, the one grounding needs most first.
+    pub(super) fn requests(&self) -> Vec<EvaluationRequest> {
+        match &self.first {
+            First::Settled(_) => Vec::new(),
+            First::Remembered { request, .. } | First::Chosen { request, .. } => {
+                vec![request.clone()]
+            }
+            First::Narrowed { requests, .. } => requests.clone(),
+        }
+    }
+}
+
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Picks the element of `pool` that serves `purpose`, or `None` when no
     /// element does with enough agreement.
@@ -55,77 +103,121 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         screen: &Screen,
         purpose: &str,
         key: &str,
-        mut pool: Vec<Candidate>,
+        pool: Vec<Candidate>,
     ) -> Result<Option<Grounded>, Halt> {
-        if pool.is_empty() {
-            return Ok(None);
-        }
-        pool = distinct(pool, self.include_values);
-        if self.wide() {
-            named_first(purpose, &mut pool);
-        }
-        if self.enabled(FlowLoop::Memory)
-            && let Some(known) = recall(&self.memory, &self.app, key, &pool).cloned()
-        {
-            log.used(FlowLoop::Memory);
-            let confirmed = if self.enabled(FlowLoop::Corroboration) {
-                log.used(FlowLoop::Corroboration);
-                let answers = self
-                    .ask(
-                        log,
-                        ask::request(
-                            self.model(),
-                            self.state(screen, purpose),
-                            Questions::default()
-                                .with("confirm", corroborate(purpose, &known, self.include_values)),
-                        ),
-                    )
-                    .await?;
-                probability(&answers, "confirm").unwrap_or_default()
-            } else {
-                1.0
-            };
-            if confirmed >= AGREED {
-                return Ok(Some(Grounded {
-                    candidate: known,
-                    confidence: confirmed,
-                }));
-            }
-        }
-        let pool = if pool.len() > CAP && self.enabled(FlowLoop::Narrowing) {
-            log.used(FlowLoop::Narrowing);
-            self.narrow(log, screen, purpose, pool).await?
-        } else {
-            pool
-        };
-        self.decide(log, screen, purpose, pool).await
+        let opening = self.opening(log, screen, purpose, key, pool, true);
+        self.resume(log, screen, opening, None).await
     }
 
-    /// The shared question state for `purpose` on `screen`: under the wide
-    /// strategy, the screen as a digest and the run's working memory.
-    pub(super) fn state(&self, screen: &Screen, purpose: &str) -> serde_json::Value {
-        if self.wide() {
-            return self.wide_state(screen, purpose);
-        }
-        ask::state(screen, purpose, &self.history, self.include_values)
-    }
-
-    /// Shrinks `pool` to at most [`CAP`] elements.
-    async fn narrow(
-        &mut self,
+    /// Grounding's first round for `purpose` over `pool`, without asking
+    /// it: grounding memory's confirmation, the narrowing round, or the
+    /// Choice. `remember` offers a remembered element first.
+    pub(super) fn opening(
+        &self,
         log: &mut StepLog,
         screen: &Screen,
         purpose: &str,
-        mut pool: Vec<Candidate>,
-    ) -> Result<Vec<Candidate>, Halt> {
-        let mut depth = 0;
-        for _ in 0..MAX_REGION_ROUNDS {
-            if pool.len() <= CAP {
-                return Ok(pool);
+        key: &str,
+        pool: Vec<Candidate>,
+        remember: bool,
+    ) -> Opening {
+        let mut pool = distinct(pool, self.include_values);
+        if self.wide() {
+            named_first(purpose, &mut pool);
+        }
+        let first = self.first_round(log, screen, purpose, key, &pool, remember);
+        Opening {
+            purpose: purpose.to_owned(),
+            pool,
+            first,
+        }
+    }
+
+    fn first_round(
+        &self,
+        log: &mut StepLog,
+        screen: &Screen,
+        purpose: &str,
+        key: &str,
+        pool: &[Candidate],
+        remember: bool,
+    ) -> First {
+        if pool.is_empty() {
+            return First::Settled(None);
+        }
+        if remember
+            && self.enabled(FlowLoop::Memory)
+            && let Some(known) = recall(&self.memory, &self.app, key, pool).cloned()
+        {
+            log.used(FlowLoop::Memory);
+            if !self.enabled(FlowLoop::Corroboration) {
+                return First::Settled(Some(Grounded {
+                    candidate: known,
+                    confidence: 1.0,
+                }));
             }
-            let Some((level, regions)) = split(&pool, depth) else {
-                break;
-            };
+            log.used(FlowLoop::Corroboration);
+            let request = ask::request(
+                self.model(),
+                self.state(screen, purpose),
+                Questions::default()
+                    .with("confirm", corroborate(purpose, &known, self.include_values)),
+            );
+            return First::Remembered { known, request };
+        }
+        if pool.len() > CAP && self.enabled(FlowLoop::Narrowing) {
+            log.used(FlowLoop::Narrowing);
+            return self.narrowing(screen, purpose, pool);
+        }
+        let pool = &pool[..pool.len().min(super::view::MAX_CANDIDATES)];
+        let keys = numbered(pool.len());
+        let request = ask::request(
+            self.model(),
+            self.state(screen, purpose),
+            Questions::default().with("target", elements(purpose, pool, &keys, self.include_values)),
+        );
+        First::Chosen { keys, request }
+    }
+
+    /// The narrowing round: a knockout of [`CAP`]-sized groups, cut along
+    /// the screen's regions when they fit in one knockout, and the region
+    /// question, asked at once. The region's answer then keeps the winners
+    /// it holds — the map a person reads before the detail — without a
+    /// round trip of its own.
+    fn narrowing(&self, screen: &Screen, purpose: &str, pool: &[Candidate]) -> First {
+        let regions = split(pool, 0).map(|(_, regions)| regions);
+        let aligned = regions.as_ref().map(|regions| {
+            regions
+                .iter()
+                .enumerate()
+                .flat_map(|(index, (_, members))| {
+                    members
+                        .chunks(CAP)
+                        .map(move |chunk| (Some(index), chunk.to_vec()))
+                })
+                .collect::<Vec<_>>()
+        });
+        let groups = match aligned {
+            Some(groups) if groups.len() <= CAP => groups,
+            _ => pool
+                .chunks(CAP)
+                .take(CAP)
+                .map(|chunk| (None, chunk.to_vec()))
+                .collect(),
+        };
+        let mut questions = Questions::default();
+        for (index, (_, group)) in groups.iter().enumerate() {
+            questions = questions.with(
+                &format!("group_{index}"),
+                elements(purpose, group, &numbered(group.len()), self.include_values),
+            );
+        }
+        let mut requests = vec![ask::request(
+            self.model(),
+            self.state(screen, purpose),
+            questions,
+        )];
+        let regions = regions.map(|regions| {
             let keys = numbered(regions.len());
             let question = ask::options(
                 json!({
@@ -142,70 +234,89 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         }})
                     })),
             );
-            let answers = self
-                .ask(
-                    log,
-                    ask::request(
-                        self.model(),
-                        self.state(screen, purpose),
-                        Questions::default().with("region", question),
-                    ),
-                )
-                .await?;
-            let Some((choice, _)) = chosen(&answers, "region") else {
-                break;
-            };
-            let Some(index) = keys.iter().position(|key| *key == choice) else {
-                break;
-            };
-            pool = regions
-                .into_iter()
-                .nth(index)
-                .map(|(_, members)| members)
-                .unwrap_or_default();
-            depth = level + 1;
+            requests.push(ask::request(
+                self.model(),
+                self.state(screen, purpose),
+                Questions::default().with("region", question),
+            ));
+            (keys, regions)
+        });
+        First::Narrowed {
+            groups,
+            regions,
+            requests,
         }
-        if pool.len() <= CAP {
-            return Ok(pool);
-        }
-        self.knockout(log, screen, purpose, pool).await
     }
 
-    /// Picks a winner from each `CAP`-sized group in one request.
-    async fn knockout(
+    /// Finishes grounding from its opening, with the opening's answers when
+    /// they were already asked (batched with another request) — or asks them
+    /// now.
+    pub(super) async fn resume(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
-        purpose: &str,
-        pool: Vec<Candidate>,
-    ) -> Result<Vec<Candidate>, Halt> {
-        let groups = pool
-            .chunks(CAP)
-            .take(CAP)
-            .map(<[Candidate]>::to_vec)
-            .collect::<Vec<_>>();
-        let mut questions = Questions::default();
-        for (index, group) in groups.iter().enumerate() {
-            questions = questions.with(
-                &format!("group_{index}"),
-                elements(purpose, group, &numbered(group.len()), self.include_values),
-            );
+        opening: Opening,
+        answered: Option<Vec<BTreeMap<String, Answer>>>,
+    ) -> Result<Option<Grounded>, Halt> {
+        let requests = opening.requests();
+        let answers = match answered {
+            Some(answers) if answers.len() >= requests.len() => answers,
+            _ if requests.is_empty() => Vec::new(),
+            _ => self.ask_batch(log, requests).await?,
+        };
+        let Opening {
+            purpose,
+            pool,
+            first,
+        } = opening;
+        match first {
+            First::Settled(grounded) => Ok(grounded),
+            First::Remembered { known, .. } => {
+                let confirmed = answers
+                    .first()
+                    .and_then(|answers| probability(answers, "confirm"))
+                    .unwrap_or_default();
+                if confirmed >= AGREED {
+                    return Ok(Some(Grounded {
+                        candidate: known,
+                        confidence: confirmed,
+                    }));
+                }
+                let opening = self.opening(log, screen, &purpose, "", pool, false);
+                Box::pin(self.resume(log, screen, opening, None)).await
+            }
+            First::Narrowed {
+                groups, regions, ..
+            } => {
+                let region = regions.as_ref().and_then(|(keys, _)| {
+                    let (choice, _) = chosen(answers.get(1)?, "region")?;
+                    keys.iter().position(|key| *key == choice)
+                });
+                let winners = answers.first().map_or_else(Vec::new, |knockout| {
+                    winners(knockout, groups, region, regions.as_ref())
+                });
+                self.decide(log, screen, &purpose, winners).await
+            }
+            First::Chosen { keys, .. } => {
+                let pool = &pool[..pool.len().min(super::view::MAX_CANDIDATES)];
+                match answers.first() {
+                    Some(answers) => {
+                        self.settle(log, screen, &purpose, pool.to_vec(), &keys, answers)
+                            .await
+                    }
+                    None => Ok(None),
+                }
+            }
         }
-        let answers = self
-            .ask(
-                log,
-                ask::request(self.model(), self.state(screen, purpose), questions),
-            )
-            .await?;
-        Ok(groups
-            .into_iter()
-            .enumerate()
-            .filter_map(|(index, group)| {
-                let (choice, _) = chosen(&answers, &format!("group_{index}"))?;
-                let position = choice.parse::<usize>().ok()?.checked_sub(1)?;
-                group.into_iter().nth(position)
-            })
-            .collect())
+    }
+
+    /// The shared question state for `purpose` on `screen`: under the wide
+    /// strategy, the screen as a digest and the run's working memory.
+    pub(super) fn state(&self, screen: &Screen, purpose: &str) -> serde_json::Value {
+        if self.wide() {
+            return self.wide_state(screen, purpose);
+        }
+        ask::state(screen, purpose, &self.history, self.include_values)
     }
 
     /// The final Choice, re-asked and corroborated when it is not confident.
@@ -234,83 +345,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 ),
             )
             .await?;
-        let Some((choice, confidence)) = chosen(&answers, "target") else {
-            return Ok(None);
-        };
-        let Some(first) = keys
-            .iter()
-            .position(|key| *key == choice)
-            .and_then(|index| pool.get(index).cloned())
-        else {
-            return Ok(None);
-        };
-        if confidence >= ACT
-            || (confidence >= NAMED_FLOOR && exact_named_match(purpose, Some(&first)))
-        {
-            return Ok(Some(Grounded {
-                candidate: first,
-                confidence,
-            }));
-        }
-        let consistency = self.enabled(FlowLoop::Consistency) && pool.len() > 1;
-        let corroboration = self.enabled(FlowLoop::Corroboration);
-        if !consistency && !corroboration {
-            return Ok(None);
-        }
-        let mut questions = Questions::default();
-        let mut reordered = pool.clone();
-        reordered.reverse();
-        let letters = lettered(reordered.len());
-        if consistency {
-            log.used(FlowLoop::Consistency);
-            questions = questions.with(
-                "again",
-                elements(purpose, &reordered, &letters, self.include_values),
-            );
-        }
-        if corroboration {
-            log.used(FlowLoop::Corroboration);
-            questions =
-                questions.with("confirm", corroborate(purpose, &first, self.include_values));
-        }
-        let answers = self
-            .ask(
-                log,
-                ask::request(self.model(), self.state(screen, purpose), questions),
-            )
-            .await?;
-        let again = chosen(&answers, "again").and_then(|(choice, probability)| {
-            letters
-                .iter()
-                .position(|key| *key == choice)
-                .and_then(|index| reordered.get(index))
-                .map(|candidate| (candidate.clone(), probability))
-        });
-        let confirm = probability(&answers, "confirm");
-        let agrees = again
-            .as_ref()
-            .is_some_and(|(candidate, _)| candidate.ref_id == first.ref_id);
-        let accepted = match (consistency, corroboration) {
-            (true, true) => {
-                (agrees && confirm.unwrap_or_default() >= AGREED)
-                    || confirm.unwrap_or_default() >= CORROBORATED
-            }
-            (true, false) => agrees,
-            (false, _) => confirm.unwrap_or_default() >= CORROBORATED,
-        };
-        if !accepted {
-            return Ok(None);
-        }
-        let again_confidence = again.map_or(0.0, |(_, probability)| probability);
-        Ok(Some(Grounded {
-            candidate: first,
-            confidence: confidence
-                .max(again_confidence)
-                .max(confirm.unwrap_or_default()),
-        }))
+        self.settle(log, screen, purpose, pool, &keys, &answers).await
     }
-}
 
+    /// Reads the final Choice's `answers`; a pick under [`ACT`] is re-asked
+    /// and corroborated before it is used.
+    async fn settle(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        purpose: &str,
+        pool: Vec<Candidate>,
+        keys: &[String],
+        answers: &BTreeMap<String, Answer>,
+    ) -> Result<Option<Grounded>, Halt> {
+        let Some((choice, confidence)) = chosen(answers, "target") else {
+            return Ok(None);
+        };
 /// Groups `pool` by the first ancestor level, at or below `from`, that splits
 /// it into more than one region. Regions beyond `CAP - 1` are merged.
 pub(super) fn split(pool: &[Candidate], from: usize) -> Option<(usize, Regions)> {
