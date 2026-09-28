@@ -179,10 +179,14 @@ async fn the_open_router_planner_needs_a_key_and_never_prints_it() {
     use super::{PlannerConfig, open_router};
 
     let empty = PlannerConfig {
-        api_key: " ".to_owned(),
+        route: super::ModelRoute {
+            api_key: " ".to_owned(),
+            ..super::ModelRoute::default()
+        },
         model: None,
         rescue_model: None,
         output_model: None,
+        rescue_route: None,
     };
     assert!(open_router(&empty).unwrap_err().contains("api_key"));
     assert!(
@@ -232,3 +236,6 @@ async fn the_open_router_planner_needs_a_key_and_never_prints_it() {
         .unwrap_err();
     assert!(!failed.contains("secret-key"));
 }
+
+#[cfg(feature = "planner")]
+mod route_tests;
