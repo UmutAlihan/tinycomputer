@@ -87,7 +87,7 @@ than every planner test needing a live API call.
 The `planner` Cargo feature adds one concrete `LanguageModel`:
 `crates/tinycomputer-engine/src/planner/openrouter.rs`, built on
 `tinyinference_llm`'s OpenAI-compatible client pointed at OpenRouter. This is
-the only file in the crate that links a text-generating model at all, the
+the only file in the crate that links a text-generating model at all: the
 key it is given in the module's private configuration never leaves this one
 adapter.
 
@@ -97,7 +97,7 @@ pub fn open_router(config: &PlannerConfig) -> Result<Planner, String>
 
 `PlannerConfig` holds the OpenRouter `api_key`, an optional `model`
 (`PLANNER_MODEL`, `anthropic/claude-sonnet-5`, when unset), and an optional
-`rescue_model` (see [rescue.md](rescue.md), the same file also builds the
+`rescue_model` (see [rescue.md](rescue.md); the same file also builds the
 rescuer's model, since both are just OpenRouter chat completions with
 different settings). The planner's own model is asked for a JSON object
 response format, at a low sampling temperature (0.2), because a plan should

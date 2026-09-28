@@ -1,6 +1,12 @@
 # tinycomputer-cursor
 
-This crate draws the little arrow that follows the agent around the screen.
+tinycomputer is a decision model (Jev) based harness for desktop and browser
+automation: Jev decides what to click, and the harness reads the screen,
+acts, and verifies. This crate is a purely visual part of that harness. It
+draws the little arrow that follows the agent around the screen, arriving
+where the harness is about to act, but it does not decide what to click;
+that decision is made elsewhere, by Jev.
+
 It is the part of tinycomputer that a person actually watches: when the agent
 is about to click something, this cursor glides over to it first, the same
 way a person's own pointer would.

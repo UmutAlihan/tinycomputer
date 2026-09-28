@@ -1,16 +1,17 @@
 # tinycomputer-core
 
-`tinycomputer-core` is the small, boring crate at the bottom of tinycomputer.
-It holds the ideas that a desktop application and a web page share: what a
-screen looks like once you have observed it, what counts as a dangerous
-button, how to type a value the way a form wants it typed, and how to keep a
-card number away from a language model. None of it knows how to actually
-click anything. It has no window system, no browser, no network calls, and no
-model in it. Everything in this crate is a plain function you could run in a
-unit test with no computer attached, which is exactly the point: rules that
-decide "is this a payment button" or "is this the cheapest flight" should not
-depend on luck, timing, or asking a model twice and hoping for the same
-answer.
+tinycomputer is a Jev-based harness: Jev, the decision model, decides what to
+press, and the Rust harness does everything else. `tinycomputer-core` is the
+small, boring crate at the bottom of that harness. It holds the ideas that a
+desktop application and a web page share: what a screen looks like once you
+have observed it, what counts as a dangerous button, how to type a value the
+way a form wants it typed, and how to keep a card number away from Jev. None
+of it knows how to actually click anything. It has no window system, no
+browser, no network calls, and no model in it. Everything in this crate is a
+plain function you could run in a unit test with no computer attached, which
+is exactly the point: rules that decide "is this a payment button" or "is
+this the cheapest flight" should not depend on luck, timing, or asking a
+model twice and hoping for the same answer.
 
 If you are new to the project, read
 [how tinycomputer works](../../how-it-works.md) first. This page assumes you
