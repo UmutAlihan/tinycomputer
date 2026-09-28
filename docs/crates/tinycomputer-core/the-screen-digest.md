@@ -112,12 +112,12 @@ The result is wrapped once more as `untrusted_accessibility_data`, with
 - `front()`: an iterator over just the front regions.
 - `layout()`: a string built from every region's kind and name, ignoring its
   contents. It changes when a dialog opens or the page moves to a different
-  screen, and does not change when someone types into a field, so a
-  higher-level attention pass that is keyed on "has the shape of the page
-  changed" only re-runs when it actually should.
+  screen, and does not change when someone types into a field. That lets a
+  higher-level attention pass, keyed on "has the shape of the page changed",
+  only re-run when it actually should.
 - `ranked(rendering)`: every element index in the order the digest would show
   them (front first, then by relevance, then reading order, noise and
-  distractions last), useful for anything that wants the digest's ordering
+  distractions last). Useful for anything that wants the digest's ordering
   without needing the rendered text.
 
 ## Why this lives in `tinycomputer-core` and not the engine
