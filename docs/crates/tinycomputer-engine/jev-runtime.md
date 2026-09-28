@@ -9,8 +9,8 @@ Jev's answer.
 
 `JevRuntime`, in `src/agentic/mod.rs`, is the one place in this crate that
 talks to Jev. The doc comment on the crate calls it "the one door to Jev",
-and the code backs that up: every other module, the flow runtime, the task
-controller, `RunGoal`, `ResolveIntent`, asks Jev by calling
+and the code backs that up: every other module (the flow runtime, the task
+controller, `RunGoal`, `ResolveIntent`) asks Jev by calling
 `JevRuntime::evaluate` (indirectly, through the loops built on it), never by
 holding a client of its own. That matters for three reasons: the budget is
 charged in one place, secrets are masked in one place, and the debug journal
