@@ -181,7 +181,7 @@ request is also re-asked in more framings, which changes no id.
 | `only_near_<i>` | Noul | the same | the negation: a lookalike, or something next to the element |
 | `intended` | Noul | the step, the last press, what it was meant to do | calibrated with `unintended`: under 0.50 after a missed effect, or under 0.25 after any press, the press is undone |
 | `unintended` | Noul | the same | the negation: the wrong item opened, the page left, a choice cleared |
-| `done`, `not_done`, `holds`, `negated` with a `view` | Noul | the screen alone, or what changed since the step began | the judgement over another rendering; views that straddle the threshold keep the lowest |
+| `done`, `not_done`, `holds`, `negated` with a `view` | Noul | the screen alone, or what changed since the step began | the judgement over another rendering; the readings are combined by their median |
 
 ### Entering text (`enter.rs`)
 
