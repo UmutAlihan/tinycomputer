@@ -244,6 +244,10 @@ pub(super) struct FlowRun<'r, B> {
     decisions: u32,
     /// Variables read from the screen so far, by name.
     read: Vec<String>,
+    /// Kinds of element (`view::element_kind`) that refused text in this
+    /// step: options in a list, never pressed by a `do` move while the step
+    /// looks for somewhere to type.
+    pub(super) refused: BTreeSet<String>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -344,6 +348,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             attention: None,
             decisions: 0,
             read: Vec::new(),
+            refused: BTreeSet::new(),
         }
     }
 
@@ -377,6 +382,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let mut log = StepLog::default();
         self.step.clone_from(&path);
         self.ledger.begin();
+        self.refused.clear();
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let wall_ms = millis(started.elapsed());

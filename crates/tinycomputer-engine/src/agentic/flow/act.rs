@@ -23,7 +23,9 @@ use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
     memory::{learn, remember},
-    view::{Candidate, Screen, change_note, fingerprint, is_destructive, label, signature},
+    view::{
+        Candidate, Screen, change_note, element_kind, fingerprint, is_destructive, label, signature,
+    },
     wide::{Dismissal, Prepared},
 };
 
@@ -590,6 +592,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .iter()
                     .any(|action| action == capability)
                     && !banned.contains(&signature(candidate))
+                    && !self.refused.contains(&element_kind(candidate))
             })
             .cloned()
             .collect::<Vec<_>>();

@@ -42,8 +42,8 @@ use super::{
     ledger::Context,
     memory::{learn, recall, remember},
     view::{
-        ACT, Candidate, Digest, Rendering, Screen, digest, distinct, exact_named_match,
-        is_destructive, label, named_first, signature,
+        ACT, Candidate, Digest, Rendering, Screen, digest, distinct, element_kind,
+        exact_named_match, is_destructive, label, named_first, signature,
     },
 };
 
@@ -226,6 +226,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         .filter(|candidate| {
                             supports(candidate, capability)
                                 && !banned.contains(&signature(candidate))
+                                && !self.refused.contains(&element_kind(candidate))
                         })
                         .cloned()
                         .collect(),

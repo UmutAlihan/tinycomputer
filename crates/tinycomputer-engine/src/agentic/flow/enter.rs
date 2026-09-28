@@ -18,7 +18,7 @@ use super::{
     backend::deliver_text,
     memory::{learn, recall, remember},
     validate::{references, substitute, substitute_safe},
-    view::{Candidate, Screen, distinct, label, signature},
+    view::{Candidate, Screen, distinct, element_kind, label, signature},
 };
 
 /// Least probability a slot assignment needs.
@@ -214,7 +214,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
             let fields = editable(&screen)
                 .into_iter()
-                .filter(|field| !struck.contains(&kind(field)))
+                .filter(|field| !struck.contains(&element_kind(field)))
                 .collect::<Vec<_>>();
             let assignments = if fields.is_empty() {
                 Vec::new()
@@ -249,7 +249,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .fill(log, slot, &assignment.field, &screen.context)
                     .await?;
                 if !filled {
-                    struck.insert(kind(&assignment.field));
+                    struck.insert(element_kind(&assignment.field));
+                    self.refused.insert(element_kind(&assignment.field));
                     self.ledger.tried(format!(
                         "{} did not take the {}",
                         label(&assignment.field),
@@ -425,24 +426,6 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         ));
         Ok(reply.ok)
     }
-}
-
-/// What kind of element `field` is, and where: its role, its label, and its
-/// ancestors, without the value or states that tell one list row from the
-/// next. A field that refused the text strikes every element of its kind:
-/// the rows of a city list each hold their city as a value, and trying them
-/// one by one only spends the step.
-fn kind(field: &Candidate) -> String {
-    format!(
-        "{}:{}:{}",
-        field.role,
-        field
-            .name
-            .as_deref()
-            .or(field.description.as_deref())
-            .unwrap_or_default(),
-        field.path.join(">")
-    )
 }
 
 /// The names of the slots at `indices`, joined.

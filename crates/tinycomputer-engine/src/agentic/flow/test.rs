@@ -4682,3 +4682,42 @@ async fn a_field_that_refuses_the_text_is_struck_and_the_real_one_is_used() {
     );
     assert_eq!(run.app.sim().fields["Search"], "Srinagar");
 }
+
+#[tokio::test]
+async fn a_row_that_refused_the_text_is_never_pressed_while_revealing_a_field() {
+    // Live, after a city row refused the text, the reveal loop pressed that
+    // row and chose a city nobody asked for.
+    let run = run_with(
+        App::quirky(Quirk::CityRows),
+        json!({"app": "Mail", "steps": [{"enter": {"destination search": "Srinagar"}}]}),
+        |_| {},
+        |id, question, _| {
+            let offered = serde_json::to_string(question).unwrap();
+            let row = r#""what":"combobox""#;
+            match id {
+                // Jev keeps wanting a row: for the text, and to reveal.
+                _ if id.starts_with("slot_") || id == "target" => Some(if offered.contains(row) {
+                    pick(question, row, 0.9)
+                } else {
+                    pick(question, "none", 0.9)
+                }),
+                "move" => Some(pick(question, "activate", 0.9)),
+                _ => None,
+            }
+        },
+    )
+    .await;
+    let step = &run.result.steps[0];
+    let rows = step
+        .actions
+        .iter()
+        .filter(|action| {
+            action
+                .target
+                .as_ref()
+                .is_some_and(|target| target.ref_id.starts_with("@s:city-"))
+        })
+        .map(|action| action.action.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(rows, ["fill destination search"], "{:?}", step.actions);
+}
