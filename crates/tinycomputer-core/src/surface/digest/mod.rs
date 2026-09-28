@@ -27,10 +27,6 @@ mod types;
 
 pub use types::{Digest, Region, RegionKind, Rendering};
 
-use std::collections::BTreeMap;
-
-use serde_json::{Value, json};
-
 use super::{Candidate, Screen, element_line, groups, label};
 
 /// Most elements a region holds before it is split one level deeper.

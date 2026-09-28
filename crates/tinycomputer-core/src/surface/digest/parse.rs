@@ -3,11 +3,9 @@
 
 use std::collections::BTreeMap;
 
-use serde_json::{Value, json};
-
-use super::{Candidate, Screen, element_line, groups, label};
-use super::{FRONT_ROLES, FRONT_WORDS, MAX_DEPTH, NOISE_WORDS, REGION_SIZE};
+use super::{Candidate, Screen, groups};
 use super::{Digest, Region, RegionKind};
+use super::{FRONT_ROLES, FRONT_WORDS, MAX_DEPTH, NOISE_WORDS, REGION_SIZE};
 
 /// Parses `screen` into regions.
 #[must_use]
