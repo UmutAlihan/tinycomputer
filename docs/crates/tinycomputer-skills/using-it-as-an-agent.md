@@ -11,8 +11,10 @@ calling.
 
 1. Call `Describe` once, at the start of a session. It returns what
    surfaces are available (`desktop`, `browser`), whether a planner is
-   configured, the flow guide, every member's input schema, and worked
-   examples. Do this once, not before every task.
+   configured, the flow guide, every task member's input schema, worked
+   examples, and a `catalogue` of every member the module serves (task,
+   flow, desktop, and browser), each with its family and a one-sentence
+   summary. Do this once, not before every task.
 2. Call `StartTask` with either `task` (plain language, needs a planner) or
    `flow` (written from the guide `Describe` returned). It returns at once
    with a task id; the work happens in the background.
