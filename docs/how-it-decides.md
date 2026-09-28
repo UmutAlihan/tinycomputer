@@ -15,7 +15,7 @@ Jev only answers three kinds of question:
 | **A pick** (a "Choice") | "Which of these 20 buttons starts a new message?" | the chosen option, plus a probability for every option |
 
 It never writes free text and never makes a plan. Each question gets a
-number back, and the runtime can hold that number up against a bar. That's
+number back, and the harness can hold that number up against a bar. That's
 what makes the answers checkable.
 
 ## What Jev is shown

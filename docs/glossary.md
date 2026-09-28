@@ -54,6 +54,10 @@ or ordered a little differently. See **Voting**.
 **Grounding memory.** Hints about which control worked for a step last time.
 See [Memory and saving](memory-and-saving.md).
 
+**Harness.** The Rust code around Jev that reads the screen, decides which
+questions to ask, acts, and checks. It holds all the safety rules. The flow
+runtime is the part of the harness that runs flows.
+
 **Jev.** The decision model. It answers yes/no, scale, and pick questions,
 never writes text, and never plans.
 
@@ -78,9 +82,6 @@ the choice asked for, and repairing it once if not.
 
 **Rescue.** Asking a reasoning model for new steps after a step fails. See
 [Rescues](rescue.md).
-
-**Runtime.** The ordinary code that reads the screen, asks Jev, acts, and
-checks. It holds all the safety rules.
 
 **Saved values.** Text a flow read, extracted, or picked. The run remembers
 them and returns them at the end.

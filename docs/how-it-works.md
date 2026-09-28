@@ -47,7 +47,7 @@ Three parties take part in every run, and each has one job.
    a position on a scale, or a pick from a list of labelled options. Every
    answer comes back with a probability, so tinycomputer knows how sure Jev
    is.
-3. **The runtime** does everything else. This is ordinary code, with no
+3. **The harness** does everything else. This is ordinary Rust code, with no
    model in it. It reads the screen, decides which questions to ask Jev,
    combines the answers, clicks and types, checks what happened, and backs
    out of mistakes.
