@@ -42,7 +42,7 @@ harmless, so the safe default wins.
 
 ### Counters are a deliberate exception
 
-A stepper's minus button often says something that sounds irreversible , 
+A stepper's minus button often says something that sounds irreversible.
 "Remove Adult, 2 Adult Remaining" reads a lot like "Remove" on its own would.
 But all it does is lower a number that the plus button right next to it
 would put back. `adjusts_a_count(label)` recognizes this shape: a decrease
