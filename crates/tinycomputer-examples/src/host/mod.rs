@@ -48,22 +48,28 @@ impl std::fmt::Debug for Host {
     }
 }
 
-/// The broker's task until the module has loaded: aborted if dropped first.
-struct AbortOnDrop(Option<tokio::task::JoinHandle<tinybus::Result<()>>>);
+/// Aborts the broker's task if dropped while still armed: a load that fails
+/// part-way must not leave the broker, and the module it loaded, running.
+struct AbortOnDrop {
+    task: tokio::task::AbortHandle,
+    armed: bool,
+}
 
 impl AbortOnDrop {
-    /// The task, no longer aborted on drop, for a host that loaded.
-    fn disarm(mut self) -> tokio::task::JoinHandle<tinybus::Result<()>> {
-        self.0
-            .take()
-            .expect("the broker task is held until disarmed")
+    fn new(task: tokio::task::AbortHandle) -> Self {
+        Self { task, armed: true }
+    }
+
+    /// Stops guarding, once the host has loaded and owns the task.
+    fn disarm(mut self) {
+        self.armed = false;
     }
 }
 
 impl Drop for AbortOnDrop {
     fn drop(&mut self) {
-        if let Some(task) = self.0.take() {
-            task.abort();
+        if self.armed {
+            self.task.abort();
         }
     }
 }
@@ -109,9 +115,8 @@ impl Host {
         verify_allowlisted(module)?;
         let bus = MemoryBus::new();
         let broker = Broker::new();
-        // Stops the broker, and with it the loaded module, on any failure
-        // below; a load that fails part-way must not leave either running.
-        let broker_task = AbortOnDrop(Some(broker.spawn(bus.clone())));
+        let broker_task = broker.spawn(bus.clone());
+        let guard = AbortOnDrop::new(broker_task.abort_handle());
         let module_host = ModuleHost::new(broker);
         let info = module_host.load_file(module)?;
         if info.name != "tinycomputer" {
@@ -133,9 +138,10 @@ impl Host {
             )
             .into());
         }
+        guard.disarm();
         Ok(Self {
             proxy,
-            broker: broker_task.disarm(),
+            broker: broker_task,
             _client: client,
         })
     }
