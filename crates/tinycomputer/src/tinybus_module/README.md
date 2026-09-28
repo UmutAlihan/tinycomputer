@@ -9,14 +9,17 @@ consumer instead of an `UnknownMethod` at runtime.
 
 ## Why the members are written out
 
-`dispatch.rs` is eighty near-identical `async fn`s. They cannot be generated
+`dispatch/mod.rs` is eighty near-identical `async fn`s, in one `impl` block
+(building the service lives in `dispatch/service.rs`, the browser members'
+shared helpers in `dispatch/browser.rs`). They cannot be generated
 by a `macro_rules!` inside the `impl` block: `#[tinybus::interface]` reads that
 block's items to build its dispatch table, and a macro invocation there is still
 unexpanded when the attribute runs. Writing them out is what lets the macro see
 them.
 
 The order they appear in is the order of `tinycomputer_bus::names::METHODS`, and
-`test.rs` asserts the generated dispatch table against that list.
+`tinybus_module_tests/wire_tests.rs` asserts the generated dispatch table
+against that list.
 
 ## Why every member blocks elsewhere
 
