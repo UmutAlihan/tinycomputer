@@ -28,7 +28,9 @@ reply carrying either the data or an error with its code, suggestion, and
 recovery hint. Desktop and browser failures share one code vocabulary
 (`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `POLICY_DENIED`, …), so one
 handler serves both. `Describe` returns a catalogue of every member with its
-family and a one-line summary. All payload types, the interface name, the object path, and the
+family and a one-line summary, and names the configured decision model
+(`decision_model`) and the planner's, rescuer's, and shaper's routes and
+models (`planner_model`, `rescue_model`, `output_model`). All payload types, the interface name, the object path, and the
 member names are published as the `tinycomputer-bus` crate, so a host names
 them from a library rather than by string literal.
 
@@ -37,18 +39,27 @@ is optional:
 
 - `session_id` and `trace_path` (strings), `trace_strict` and `headed`
   (booleans) for the desktop engine;
-- `jev`: the Jev provider and API key, needed by the Jev-driven and task
-  members;
+- `jev`: the decision model and its API key, needed by the Jev-driven and
+  task members. `provider` picks it: Jev through `type_safe` (the default),
+  `open_router`, or `tiny_humans_open_router`; `open_jev` (OpenJEV's
+  Jev-compatible API, model `openjev`); or `sage` (Levanto Sage in place of
+  Jev, with an optional `fast`). `endpoint_url` may only repeat the
+  provider's own approved route;
 - `cursor`: the agent's on-screen cursor, shared by the desktop and the
   browser — a pace (`off`, `brisk`, `natural` (the default), `calm`), or an
   object with an optional `pace` and an optional `overlay` path to the
   `tinycomputer-cursor-overlay` helper shipped beside the module;
-- `planner`: an OpenRouter `api_key` and optional `model`, which lets
-  `StartTask` accept a plain-language task, and an optional `rescue_model`
-  (default `openai/gpt-6-luna`) that a task's failed step is handed to for
-  guidance, up to five times, before the task fails, and an optional
-  `output_model` (default `openai/gpt-6-luna`) that shapes a finished task's
-  answer when `StartTask` asks for an `output`;
+- `planner`: an `api_key` and optional `model`, which lets `StartTask`
+  accept a plain-language task, and an optional `rescue_model` (default
+  `openai/gpt-6-luna`) that a task's failed step is handed to for guidance,
+  up to five times, before the task fails, and an optional `output_model`
+  (default `openai/gpt-6-luna`) that shapes a finished task's answer when
+  `StartTask` asks for an `output`. `provider` routes all three through
+  `open_router` (the default, an OpenRouter key) or `tiny_humans` (Tiny
+  Humans' OpenAI-compatible gateway, the host's TinyHumans bearer, with an
+  optional `sdk_name`); `endpoint_url` may only repeat that route's approved
+  base URL; and `rescue_route` (`api_key`, `provider`, `endpoint_url`,
+  `sdk_name`) gives the rescuer a route and key of its own;
 - `browser.executable`: the Chrome or Chromium binary to launch.
 
 Configuration is delivered as sensitive host-control traffic and is never
