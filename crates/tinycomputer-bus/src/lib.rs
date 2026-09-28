@@ -11,7 +11,10 @@
 //! # What is here
 //!
 //! - [`names`] — the interface name, the object path, and one constant per
-//!   member, plus [`names::METHODS`] listing all fifty-six in dispatch order.
+//!   member, plus [`names::METHODS`] listing all eighty in dispatch order.
+//! - [`catalogue`] — every member with its family (task, flow, desktop,
+//!   browser), a one-line summary, and whether it is confidential; `Describe`
+//!   serves it so a caller can find the right member without this source.
 //! - [`envelope`] — [`DesktopResponse`], the reply every member returns, and
 //!   the structured [`DesktopError`] it carries on failure.
 //! - [`vocabulary`] — the enumerations shared across payloads: surfaces,
@@ -22,9 +25,9 @@
 //! - [`agent`] — the Agent interface: tasks handed over in plain language or
 //!   as a flow, run across the desktop and the browser, paused only for what
 //!   the caller must decide.
-//! - [`browser`] — the browser interface's own vocabulary and member names,
-//!   namespaced so its snapshot and screenshot types never shadow the
-//!   desktop ones.
+//! - [`browser`] — the browser members' own vocabulary and names (each
+//!   `Browser`-prefixed), namespaced so its snapshot and screenshot types
+//!   never shadow the desktop ones. They reply with the same envelope.
 //! - [`version`] — [`CONTRACT_VERSION`] and the [`is_compatible`] bind rule.
 //!
 //! # How the pieces fit together at a call site
