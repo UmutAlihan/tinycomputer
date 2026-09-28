@@ -45,7 +45,10 @@ fn decision_model_selection_round_trips_and_stays_additive() {
 
     assert_eq!(JevProvider::TypeSafe.default_model(), "jev-latest");
     assert_eq!(JevProvider::OpenRouter.default_model(), "jev-latest");
-    assert_eq!(JevProvider::TinyHumansOpenRouter.default_model(), "jev-latest");
+    assert_eq!(
+        JevProvider::TinyHumansOpenRouter.default_model(),
+        "jev-latest"
+    );
     assert_eq!(JevProvider::OpenJev.default_model(), "openjev");
     assert_eq!(JevProvider::Sage.default_model(), "levanto-sage");
 
@@ -90,7 +93,10 @@ fn every_agentic_enum_pins_its_wire_spelling() {
         serde_json::to_value(JevProvider::OpenJev).unwrap(),
         json!("open_jev")
     );
-    assert_eq!(serde_json::to_value(JevProvider::Sage).unwrap(), json!("sage"));
+    assert_eq!(
+        serde_json::to_value(JevProvider::Sage).unwrap(),
+        json!("sage")
+    );
     for (operation, wire) in [
         (JevOperation::Click, "CLICK"),
         (JevOperation::TypeText, "TYPE_TEXT"),
