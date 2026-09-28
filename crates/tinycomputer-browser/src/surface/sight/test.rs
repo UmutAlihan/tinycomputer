@@ -190,7 +190,7 @@ async fn live_reading(html: &str) -> Option<serde_json::Value> {
 
 /// The names of the controls and the words of the text a reading returned.
 #[cfg(feature = "agent-browser")]
-fn names(reading: &serde_json::Value) -> Vec<String> {
+fn shown_names(reading: &serde_json::Value) -> Vec<String> {
     reading["nodes"]
         .as_array()
         .unwrap()
@@ -232,7 +232,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
     else {
         return;
     };
-    let names = names(&reading);
+    let names = shown_names(&reading);
     for kept in [
         "Flights to Srinagar",
         "Search",
@@ -320,7 +320,7 @@ async fn live_consent_banners_are_kept() {
     else {
         return;
     };
-    let names = names(&reading);
+    let names = shown_names(&reading);
     for kept in [
         "Accept all",
         "Reject",
@@ -353,7 +353,7 @@ async fn live_hidden_elements_are_dropped() {
     else {
         return;
     };
-    let names = names(&reading);
+    let names = shown_names(&reading);
     assert!(names.iter().any(|name| name == "Visible"), "{names:?}");
     for dropped in [
         "Clone slide",
@@ -390,5 +390,5 @@ async fn live_hidden_elements_are_dropped() {
     else {
         return;
     };
-    assert_eq!(names(&stale), ["Book now"]);
+    assert_eq!(shown_names(&stale), ["Book now"]);
 }
