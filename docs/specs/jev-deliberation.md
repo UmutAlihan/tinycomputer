@@ -63,6 +63,9 @@ covered the lower result cards while the flow pressed the fare above it.
   it (cookie, consent, privacy, newsletter, subscribe, offer, promo, app,
   survey…), or when its control is a plain close. An "Accept" or "Reject" in
   ordinary content is the step's own business and is not offered, nor is a
+  container of more than `MAX_DISTRACTION_SIZE` elements or with more than
+  one text field (that is the page or a form: live on Emirates, the booking
+  form's clear-field "close" icons sat directly under `main`), nor a
   distraction the step itself names ("dismiss the cookie banner"), nor any
   control that looks irreversible or was already pressed this step.
 - **One question, only when there is a candidate:** a `focus` Choice, "the
@@ -219,7 +222,15 @@ Each action is classified:
 | reversible | opens, scrolls | Escape |
 | restorable | a toggle | pressing it again |
 | restorable | a navigation | `Surface::back`, then loading the recorded address |
+| restorable | text a failed `choose` typed | retyping each changed field's previous text |
 | irreversible | send, pay, delete, a `stop_before` control | nothing |
+
+A `choose` that cannot find its option falls back to typing it to filter a
+list, and the text lands wherever the focus is. Live on Emirates, a gender
+the form never asked for was typed into the last name: `Raina` became
+`RainaFemale`, in every run. A deliberating `choose` records every text
+field first and, when the step fails, retypes each field it changed (a field
+told apart by its kind alone, never one that refused text).
 
 The undo is **verified**. The screen must show `RESTORED` of the
 checkpoint's marks, at the recorded address. If a rung that claims to
@@ -305,7 +316,8 @@ guessed.
   value by read-back and checks field errors. A failed reflection there would
   need a repair that can type, which the `do` loop cannot.
 - **Checkpoints for typed text in the `do` loop.** It never types; `enter`
-  re-enters a flagged field instead.
+  re-enters a flagged field instead, and `choose` retypes what it changed
+  when it fails.
 - **The wide strategy's first-pass targets.** Wide turns get the
   expectation checks, the verified undo, and backtracking, and their final
   Choices go through the gate. The targets `wide::prepare` reads from the

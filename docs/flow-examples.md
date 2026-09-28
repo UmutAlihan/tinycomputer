@@ -246,6 +246,7 @@ What is different on the web:
 | `failed: undid a mistake (…) but the screen does not match where it started` | a restoring undo could not be verified, so the step failed closed | the `restore` event's `similarity` and `rungs` |
 | `failed: will not press … irreversibly on uncertain evidence` | a deep `stop_before` vouched under 0.85 | the `is_0`/`only_near_0` answers in its exchanges |
 | a close call pressed at its best ranking | the evidence gate deliberated, and neither the duel nor the contrast settled it; the runners-up are kept for a backtrack | `evidence`, `escalate`, `duel` events for the step; `jev_journal --calibration` |
+| `the step typed into … by mistake; put its text back` in history | a `choose` found no option and typed it to filter; the text went into the focused field, and the failed step retyped the field's previous text | the `restore` event (`rungs: ["retype"]`) |
 | `the Jev call budget ran out` (stop `ModelBudget`) | the call budget ran out | `jev_journal` summary: calls per step; voting multiplies them |
 
 Start from the step report, find that step's events in the journal
