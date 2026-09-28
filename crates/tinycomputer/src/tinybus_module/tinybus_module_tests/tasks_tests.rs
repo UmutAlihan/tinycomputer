@@ -104,6 +104,10 @@ async fn the_runner_keeps_one_workspace_per_task_until_released() {
     // Nothing observed yet, so there is nothing to read.
     assert!(runner.visible_text(&task).await.is_empty());
     assert_eq!(runner.workspaces.lock().unwrap().len(), 1);
+    // No browser session was ever opened, so there is nothing to capture,
+    // and a task the runner never saw has nothing either.
+    assert!(runner.capture(&task).await.is_none());
+    assert!(runner.capture(&TaskId::new("t-unknown")).await.is_none());
     runner.release(&task);
     assert!(runner.workspaces.lock().unwrap().is_empty());
 }
