@@ -1,31 +1,17 @@
 //! Making an option show when a `choose` step cannot find it: opening the
 //! control, paging a calendar, or typing the option to filter a list.
 
-use std::collections::BTreeSet;
 
-use serde_json::{Value, json};
-use tinycomputer_bus::{
-    ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
-    RepeatStep, StepOutcome,
-};
-use tinycomputer_core::surface::{Group, result_families};
-use tinycomputer_core::{Criterion, Record, rank};
+use tinycomputer_bus::JevOperation;
 
-use crate::workspace::BROWSER;
 
 use crate::agentic::flow::{
-    Ended, FlowRun, Halt, StepLog,
-    act::{DONE, SCREEN_VIEW},
-    ask::{self, Questions, chosen, condition, numbered},
+    FlowRun, Halt, StepLog,
     backend::{AgentBackend, deliver_text},
-    escalate::Belief,
-    ground::Grounded,
-    memory::{learn, remember},
-    validate::{MAX_REPEAT, substitute_safe},
-    view::{Candidate, Screen, element_kind, is_destructive, label, target_payload},
+    view::{Screen, element_kind, label},
 };
 
-use super::{REVEAL_TURNS, WINDOW_CHECKS, WAIT_CHECKS, MAX_PICK_SUMMARY, IRREVERSIBLE_FLOOR, LOCATE_FLOOR, MAX_LISTS, LIST_PREVIEW, read::{readable}, date::{MAX_MONTHS, looks_like_date, is_next_month, date_words}, matching::{held_text, closest, plain, is_checked, is_one_option, already_chosen, already_holds, left_unchosen, lists_more_than, editable, one_option, plainest, mentions, search_text, within, in_region, redacted, clickable}};
+use super::{REVEAL_TURNS, date::{MAX_MONTHS, looks_like_date, is_next_month}, matching::{lists_more_than, mentions, search_text, clickable}};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 

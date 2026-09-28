@@ -1,31 +1,11 @@
 //! Reading a date option: whether it names a calendar day, and the words a
 //! control must show to be that day.
 
-use std::collections::BTreeSet;
 
-use serde_json::{Value, json};
-use tinycomputer_bus::{
-    ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
-    RepeatStep, StepOutcome,
-};
-use tinycomputer_core::surface::{Group, result_families};
-use tinycomputer_core::{Criterion, Record, rank};
 
-use crate::workspace::BROWSER;
 
-use crate::agentic::flow::{
-    Ended, FlowRun, Halt, StepLog,
-    act::{DONE, SCREEN_VIEW},
-    ask::{self, Questions, chosen, condition, numbered},
-    backend::{AgentBackend, deliver_text},
-    escalate::Belief,
-    ground::Grounded,
-    memory::{learn, remember},
-    validate::{MAX_REPEAT, substitute_safe},
-    view::{Candidate, Screen, element_kind, is_destructive, label, target_payload},
-};
 
-use super::{REVEAL_TURNS, WINDOW_CHECKS, WAIT_CHECKS, MAX_PICK_SUMMARY, IRREVERSIBLE_FLOOR, LOCATE_FLOOR, MAX_LISTS, LIST_PREVIEW, read::{readable}, matching::{held_text, closest, plain, is_checked, is_one_option, already_chosen, already_holds, left_unchosen, lists_more_than, editable, one_option, plainest, mentions, search_text, within, in_region, redacted, clickable}};
+use super::matching::plain;
 
 /// The months a date picker is paged forward at most.
 pub(super) const MAX_MONTHS: usize = 12;

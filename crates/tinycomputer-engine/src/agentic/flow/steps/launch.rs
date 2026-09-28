@@ -1,31 +1,20 @@
 //! The `open` and `browse` steps: launching an application or a page and
 //! waiting for it to show a readable window.
 
-use std::collections::BTreeSet;
 
-use serde_json::{Value, json};
 use tinycomputer_bus::{
-    ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
-    RepeatStep, StepOutcome,
+    JevOperation, StepOutcome,
 };
-use tinycomputer_core::surface::{Group, result_families};
-use tinycomputer_core::{Criterion, Record, rank};
 
 use crate::workspace::BROWSER;
 
 use crate::agentic::flow::{
     Ended, FlowRun, Halt, StepLog,
-    act::{DONE, SCREEN_VIEW},
-    ask::{self, Questions, chosen, condition, numbered},
-    backend::{AgentBackend, deliver_text},
-    escalate::Belief,
-    ground::Grounded,
-    memory::{learn, remember},
-    validate::{MAX_REPEAT, substitute_safe},
-    view::{Candidate, Screen, element_kind, is_destructive, label, target_payload},
+    backend::AgentBackend,
+    validate::substitute_safe,
 };
 
-use super::{REVEAL_TURNS, WINDOW_CHECKS, WAIT_CHECKS, MAX_PICK_SUMMARY, IRREVERSIBLE_FLOOR, LOCATE_FLOOR, MAX_LISTS, LIST_PREVIEW, read::{readable}, date::{MAX_MONTHS, looks_like_date, is_next_month, date_words}, matching::{held_text, closest, plain, is_checked, is_one_option, already_chosen, already_holds, left_unchosen, lists_more_than, editable, one_option, plainest, mentions, search_text, within, in_region, redacted, clickable}};
+use super::WINDOW_CHECKS;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
