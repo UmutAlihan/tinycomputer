@@ -77,6 +77,15 @@ else in this codebase that a screen's own text reaches a model.
 The screen text is cut to `SCREEN_CHARS` (8,000 characters), the longest
 lines first dropped.
 
+The briefing also lists what the task's earlier steps have already saved,
+`Briefing::collected`, one line per variable, each value clipped to 200
+characters (`COLLECTED_CHARS`) and redacted the same way as everything
+else. The rescuer's own protocol tells it these are variables its guidance
+may use, and that it should not redo what is already there: a rescue that
+re-reads five chats the run already saved would waste the very budget it
+exists to save. See [output.md](output.md) for how a run builds up this
+memory in the first place, across every one of a task's runs.
+
 ## What the rescuer answers
 
 Exactly one JSON object, one of three shapes:
