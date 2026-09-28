@@ -324,7 +324,7 @@ model is the planner configuration's `output_model` (default
 | `task/controller.rs` | `Tasks` and the calls it answers: plan, start, await, continue, cancel, report |
 | `task/store.rs` | the task store: each task's cell and working state |
 | `task/drive.rs` | `drive`: running a task's flows in the background and finishing it |
-| `task/interpret.rs` | what a finished run means: continue, pause, or stop |
+| `task/interpret.rs` | what a finished run means: continue, pause, or stop, and how to resume |
 | `task/resume.rs` | answering a paused task: values, approval, a person past a wall |
 | `task/budget.rs` | a task's budget across its runs |
 | `task/human.rs` | `human_wall`: a wall only a person can pass |
