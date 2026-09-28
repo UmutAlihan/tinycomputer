@@ -1,7 +1,7 @@
 # Tasks
 
 `Tasks`, in `crates/tinycomputer-engine/src/task/mod.rs`, is the controller
-behind the Agent interface, the thing most callers should actually use
+behind the Agent interface: the thing most callers should actually use
 instead of `RunGoal` or `ResolveIntent` directly. Give it a flow (or a
 plain-language task, with a planner configured) and it runs that flow in the
 background, reporting back a status a calling model can act on: still
