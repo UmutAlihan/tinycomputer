@@ -496,6 +496,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .available_actions
                     .iter()
                     .any(|action| action == "SetValue")
+                    && !self.refused.contains(&element_kind(candidate))
             })
             .cloned()
             .collect::<Vec<_>>();
