@@ -13,7 +13,7 @@ judgment.
 
 ## `Record`: one card as named fields
 
-A `Record` is just a field name mapped to the text shown for it , 
+A `Record` is just a field name mapped to the text shown for it, for example
 `{"airline": "IndiGo", "price": "₹6,840"}`. `Record::from_pairs` builds one
 from `(name, text)` pairs directly, which is mostly how tests and examples
 construct them; in a live run, the flow runtime builds these from the
