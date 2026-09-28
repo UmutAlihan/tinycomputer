@@ -12,7 +12,11 @@ use super::super::screen::Screen;
 use super::{DecisionFlow, GoalLoop};
 
 impl<B: AgentBackend> GoalLoop<B> {
-    pub(super) fn handle_decision(&mut self, before: &Screen, decision: &JevDecision) -> DecisionFlow {
+    pub(super) fn handle_decision(
+        &mut self,
+        before: &Screen,
+        decision: &JevDecision,
+    ) -> DecisionFlow {
         let stop = stop_reason(decision.decision);
         if stop == Some(JevStopReason::ConfirmationRequired) && self.request.require_confirmations {
             return DecisionFlow::Stop(Box::new(self.confirmation(before, decision)));

@@ -117,7 +117,9 @@ pub(super) fn response<T: serde::Serialize>(command: &str, value: &T) -> Desktop
     }
 }
 
-pub(super) fn provider_error(error: &tinyinference_decisions::EvaluationFailure) -> Box<DesktopResponse> {
+pub(super) fn provider_error(
+    error: &tinyinference_decisions::EvaluationFailure,
+) -> Box<DesktopResponse> {
     let code = match error.error.as_ref() {
         JevError::Authentication => "JEV_AUTHENTICATION",
         JevError::RateLimited => "JEV_RATE_LIMITED",

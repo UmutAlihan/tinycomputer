@@ -102,7 +102,10 @@ pub(super) fn remaining_goal_time(pending: &PendingRun) -> Option<Duration> {
         .filter(|remaining| !remaining.is_zero())
 }
 
-pub(super) fn take_pending(runtime: &JevRuntime, id: &str) -> Result<PendingRun, Box<DesktopResponse>> {
+pub(super) fn take_pending(
+    runtime: &JevRuntime,
+    id: &str,
+) -> Result<PendingRun, Box<DesktopResponse>> {
     let pending = runtime
         .pending
         .lock()

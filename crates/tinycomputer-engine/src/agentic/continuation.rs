@@ -14,14 +14,12 @@ use super::goal::{prepared_text, record_turn, same_target, within_scope};
 use super::pending::{
     PendingRun, approved_pending, pending_stop, remaining_goal_millis, remaining_goal_time,
 };
-use super::reply::{
-    action_failed_response, failed_turn, run_response, run_response_observed,
-};
+use super::policy;
+use super::reply::{action_failed_response, failed_turn, run_response, run_response_observed};
 use super::runtime::JevRuntime;
 use super::screen::{Candidate, Screen, fingerprint};
 use super::task::run_goal_fresh;
 use super::verify::{satisfied, verify};
-use super::policy;
 
 pub(super) async fn continue_goal<B: AgentBackend>(
     backend: B,

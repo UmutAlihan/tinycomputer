@@ -7,8 +7,7 @@ use tinycomputer_bus::{DesktopResponse, JevDecision, JevOperation, JevStopReason
 
 use super::super::backend::{AgentBackend, execute_operation};
 use super::super::goal::{
-    mutates, prepared_text, record_turn, same_target, selected_target, target_allowed,
-    within_scope,
+    mutates, prepared_text, record_turn, same_target, selected_target, target_allowed, within_scope,
 };
 use super::super::reply::{action_failed_response, failed_turn};
 use super::super::screen::{Candidate, Screen, fingerprint};

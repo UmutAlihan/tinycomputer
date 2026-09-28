@@ -10,8 +10,8 @@ mod step;
 use std::time::{Duration, Instant};
 
 use tinycomputer_bus::{
-    DesktopError, DesktopResponse, JevDecision, JevMetrics, JevObservation, JevStopReason,
-    JevTurn, RunGoalRequest, VisiblePredicate,
+    DesktopError, DesktopResponse, JevDecision, JevMetrics, JevObservation, JevStopReason, JevTurn,
+    RunGoalRequest, VisiblePredicate,
 };
 
 use super::backend::{AgentBackend, observe_async};
