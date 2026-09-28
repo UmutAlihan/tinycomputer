@@ -37,7 +37,11 @@ engine's argument types, the permission preflight, and the bus surface.
   added task rescues, `budget.max_rescues`, `TaskReport.rescues`, and
   `Capabilities.rescue_configured`, `specs/task-rescue.md`; 2.5 added task
   output shapes, `StartTask.output`, `done.result`, and
-  `Capabilities.output_configured`, `specs/task-output.md`) return an
+  `Capabilities.output_configured`, `specs/task-output.md`; 2.7 added the
+  `open_jev` and `sage` decision providers, `JevConfig.fast`,
+  `JevConfiguration.fast`, the planner's `LanguageModelProvider` routes, and
+  `Capabilities.decision_model`, `planner_model`, `rescue_model`, and
+  `output_model`, all optional) return an
   `AgentResponse` instead — see [`unified-agent.md`](unified-agent.md). They
   share this interface because a TinyBus module exports one interface.
 - The thirteen browser members (2.6) close the list, each prefixed `Browser`
