@@ -277,7 +277,10 @@ page, with `${name}`).
 view, the flow it ran, one `StepReport` per step reached, `records` (rows
 `extract` and `pick` steps collected, keyed by variable name), `learned`
 grounding hints, the Jev `trace` if `StartTask.trace` was set, and every
-`Rescue` attempted, in order.
+`Rescue` attempted, in order. `records` is always the raw values the flow
+saved; when `StartTask.output` was set, `view.status.result` holds the
+shaped answer built from them (see [output.md](output.md)), alongside
+`records`, not instead of it.
 
 ### Example: a `Done` task's records
 
