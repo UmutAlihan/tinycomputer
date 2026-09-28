@@ -101,12 +101,13 @@ addition without breaking every existing host the day it lands.
 ## Where the wire form itself is pinned
 
 Every payload family in this crate keeps its own test module
-(`<family>_tests.rs` beside the folder's `mod.rs`) that serializes a real value and
-asserts the exact JSON it produces, and in several places decodes a literal
+(`<family>_tests.rs` beside the folder's `mod.rs`) that serializes a real
+value and asserts the exact JSON it produces, and in several places decodes a literal
 JSON fixture taken from the real engine's own output. That is not incidental
 test coverage: it is where the wire form is actually pinned. A host and a
 module that disagree about a field's name fail at runtime with a decode
 error, so the shape is asserted in these tests rather than merely assumed to
 hold. If you are ever unsure whether a field is really optional, or really
 snake_case, or really named what the doc comment says, the `*_tests.rs` file
-next to its `types.rs` (or `types/` folder) is the fastest way to find out for certain.
+next to its `types.rs` (or `types/` folder) is the fastest way to find out
+for certain.
