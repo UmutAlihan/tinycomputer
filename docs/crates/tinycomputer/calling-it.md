@@ -114,6 +114,48 @@ Without `jev` configured, this comes back immediately as:
 }
 ```
 
+## Calling a browser member
+
+The 13 `Browser…` members take one object, the session beside the member's
+own fields, and answer in the same `DesktopResponse` envelope the desktop
+members use. `BrowserOpenSession` first, then act on the session it hands
+back:
+
+```json
+// BrowserOpenSession request
+{}
+```
+
+```json
+// BrowserOpenSession response
+{
+  "ok": true,
+  "command": "browser-open-session",
+  "data": { "id": "s-1", "launched": true, "headless": true }
+}
+```
+
+```json
+// BrowserNavigate request
+{ "session": "s-1", "url": "https://example.com/next" }
+```
+
+```json
+// BrowserPerform request, clicking a ref BrowserSnapshot named
+{
+  "session": "s-1",
+  "action": "click",
+  "target": { "kind": "ref", "value": "e3" }
+}
+```
+
+`BrowserScreenshot` hands back an output id rather than an inline image;
+read it back in chunks with `BrowserReadOutput` until `eof`, then
+`BrowserReleaseOutput`. `crates/tinycomputer/src/tinybus_module/test/browser.rs`
+runs this exact open-navigate-click-close sequence over the in-memory bus.
+See [docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md)
+for every field and error code.
+
 ## Calling a task member
 
 Task members answer `AgentResponse<T>` instead of `DesktopResponse`: same
