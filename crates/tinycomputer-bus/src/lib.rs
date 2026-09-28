@@ -52,7 +52,7 @@
 //!
 //! // Every member replies with the same envelope, success or failure.
 //! let reply: DesktopResponse = serde_json::from_value(serde_json::json!({
-//!     "version": "2.3",
+//!     "version": "2.4",
 //!     "ok": false,
 //!     "command": "click",
 //!     "error": { "code": "STALE_REF", "message": "ref is no longer valid" },
