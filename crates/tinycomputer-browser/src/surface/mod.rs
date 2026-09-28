@@ -23,14 +23,11 @@ pub use sight::Denoised;
 
 use std::sync::{Arc, Mutex};
 
-use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, NavigateRequest, ScrollDirection, SessionId, SessionOptions, SnapshotRequest, Target,
-    WaitState,
-};
-use tinycomputer_bus::{DesktopError, DesktopResponse, JevOperation};
-use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
-use tinycomputer_core::{Key, Platform};
+use serde_json::json;
+use tinycomputer_bus::DesktopResponse;
+use tinycomputer_bus::browser::{Action, SessionId, SessionOptions};
+use tinycomputer_core::Platform;
+use tinycomputer_core::surface::Screen;
 use tinycomputer_cursor::ScreenCursor;
 
 use crate::error::{Error, Result};
@@ -47,7 +44,6 @@ const SETTLE_MS: u64 = 400;
 /// The longest a settle waits for the page's network to go quiet; a page
 /// that polls forever is never idle, so this is a cap, not an expectation.
 const NETWORK_IDLE_MS: u64 = 2_000;
-
 
 /// How a [`BrowserSurface`] reads a page.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

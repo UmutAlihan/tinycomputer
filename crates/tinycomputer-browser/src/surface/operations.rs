@@ -1,25 +1,19 @@
 //! The [`Surface`] implementation: observing, acting, reading, pasting,
 //! pressing, and navigating, with the engine targets and key spellings they use.
 
-use super::sight;
 use super::card::selects_on_click;
 use super::envelope::{covered, failure, not_a_text_field, reply};
+use super::sight;
 use super::{NETWORK_IDLE_MS, SETTLE_MS, SKELETON_DEPTH, tree};
-
-use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
 use tinycomputer_bus::browser::{
-    Action, NavigateRequest, ScrollDirection, SessionId, SessionOptions, SnapshotRequest, Target,
-    WaitState,
+    Action, NavigateRequest, ScrollDirection, SnapshotRequest, Target, WaitState,
 };
 use tinycomputer_bus::{DesktopError, DesktopResponse, JevOperation};
 use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
 use tinycomputer_core::{Key, Platform};
-use tinycomputer_cursor::ScreenCursor;
 
-use crate::error::{Error, Result};
-use crate::sessions::Browser;
 use super::{BrowserSurface, Perception};
 
 impl Surface for BrowserSurface {

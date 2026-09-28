@@ -1,21 +1,9 @@
 //! Browser results and errors as the envelope decision loops read.
 
-use super::{BrowserSurface, sight};
-
-use std::sync::{Arc, Mutex};
-
-use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, NavigateRequest, ScrollDirection, SessionId, SessionOptions, SnapshotRequest, Target,
-    WaitState,
-};
-use tinycomputer_bus::{DesktopError, DesktopResponse, JevOperation};
-use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
-use tinycomputer_core::{Key, Platform};
-use tinycomputer_cursor::ScreenCursor;
+use serde_json::Value;
+use tinycomputer_bus::{DesktopError, DesktopResponse};
 
 use crate::error::{Error, Result};
-use crate::sessions::Browser;
 
 /// A browser result as the envelope decision loops read.
 pub(super) fn reply(command: &str, result: Result<Value>) -> DesktopResponse {

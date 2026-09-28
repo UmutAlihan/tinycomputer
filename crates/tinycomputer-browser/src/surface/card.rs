@@ -2,22 +2,11 @@
 //! when a page ignored the click.
 
 use super::sight;
-use super::operations::target;
-
-use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, NavigateRequest, ScrollDirection, SessionId, SessionOptions, SnapshotRequest, Target,
-    WaitState,
-};
-use tinycomputer_bus::{DesktopError, DesktopResponse, JevOperation};
-use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
-use tinycomputer_core::{Key, Platform};
-use tinycomputer_cursor::ScreenCursor;
+use tinycomputer_bus::DesktopResponse;
+use tinycomputer_core::surface::Candidate;
 
-use crate::error::{Error, Result};
-use crate::sessions::Browser;
 use super::BrowserSurface;
 
 /// Whether what covers a point belongs to the same result card as the
@@ -108,7 +97,11 @@ impl BrowserSurface {
         );
     }
 
-    pub(super) fn click_through_own_card(&self, reference: &str, name: &str) -> Option<DesktopResponse> {
+    pub(super) fn click_through_own_card(
+        &self,
+        reference: &str,
+        name: &str,
+    ) -> Option<DesktopResponse> {
         let id = self.ensure_session().ok()?;
         let selector = sight::selector(reference);
         let bounds = self

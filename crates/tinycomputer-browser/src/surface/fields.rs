@@ -1,23 +1,10 @@
 //! Whether the focused element, or the one a ref names, takes typed text.
 
-use super::sight;
-use super::envelope::not_a_text_field;
 use super::operations::target;
 
-use std::sync::{Arc, Mutex};
-
 use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, NavigateRequest, ScrollDirection, SessionId, SessionOptions, SnapshotRequest, Target,
-    WaitState,
-};
-use tinycomputer_bus::{DesktopError, DesktopResponse, JevOperation};
-use tinycomputer_core::surface::{Candidate, Depth, Screen, Surface, uses_pointer};
-use tinycomputer_core::{Key, Platform};
-use tinycomputer_cursor::ScreenCursor;
+use tinycomputer_bus::browser::Action;
 
-use crate::error::{Error, Result};
-use crate::sessions::Browser;
 use super::BrowserSurface;
 
 impl BrowserSurface {
