@@ -32,7 +32,7 @@ use super::*;
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Runs the `do` loop for `intent` for at most `max_turns` turns.
-    pub(super) async fn accomplish(
+    pub(in crate::agentic::flow) async fn accomplish(
         &mut self,
         log: &mut StepLog,
         intent: &str,
@@ -61,7 +61,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         });
     }
 
-    async fn turns(
+    pub(super) async fn turns(
         &mut self,
         log: &mut StepLog,
         state: &mut DoState,
@@ -185,7 +185,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// A wait that changes nothing is not a stall: the page has settled, and
     /// Jev is told so. It is not let wait again after [`MAX_IDLE_WAITS`] of
     /// them, which leaves it to judge or act on the page as it stands.
-    fn note_change(&mut self, state: &mut DoState, screen: &Screen) -> Result<(), Halt> {
+    pub(super) fn note_change(&mut self, state: &mut DoState, screen: &Screen) -> Result<(), Halt> {
         let Some(previous) = &state.last else {
             return Ok(());
         };

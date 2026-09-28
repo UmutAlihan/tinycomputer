@@ -33,7 +33,7 @@ use super::*;
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Dismisses an obstacle or undoes a regression; `true` when it acted.
-    async fn recover(
+    pub(super) async fn recover(
         &mut self,
         log: &mut StepLog,
         state: &mut DoState,
@@ -191,7 +191,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Checks the last press's expected effect against `screen`.
-    fn check_expectation(&self, log: &mut StepLog, state: &mut DoState, screen: &Screen) {
+    pub(super) fn check_expectation(&self, log: &mut StepLog, state: &mut DoState, screen: &Screen) {
         let Some(last) = state.last.as_mut() else {
             return;
         };
@@ -219,7 +219,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Bans both presses that took the screen back to where it was two
     /// turns ago: pressed in turn, they undo each other.
-    fn note_oscillation(&mut self, log: &mut StepLog, state: &mut DoState, screen: &Screen) {
+    pub(super) fn note_oscillation(&mut self, log: &mut StepLog, state: &mut DoState, screen: &Screen) {
         if !self.deliberates(FlowLoop::Denoise) {
             return;
         }
@@ -259,7 +259,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// What pressing `target` with `operation` on `screen` should change,
     /// and the checkpoint it can be undone back to, when the run
     /// deliberates on effects.
-    fn expect(
+    pub(super) fn expect(
         &self,
         log: &mut StepLog,
         operation: &str,
@@ -280,7 +280,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// The backtrack's `branch`, when it is still on `screen` and one yes/no
     /// question confirms it serves `purpose`.
-    async fn try_branch(
+    pub(super) async fn try_branch(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,

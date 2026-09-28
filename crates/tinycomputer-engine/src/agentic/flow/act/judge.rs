@@ -35,7 +35,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// or a narrow judge — on the first turn with grounding's first round
     /// beside it. After a press whose effect was missed it also asks
     /// whether the press did what it was meant to.
-    async fn judge_turn(
+    pub(super) async fn judge_turn(
         &mut self,
         log: &mut StepLog,
         state: &DoState,
@@ -75,7 +75,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// `judged` with its completion settled on the evidence
     /// (`escalate::settle_belief`): at the deep level asked again over the
     /// screen alone and over what changed since the step began.
-    async fn settle_done(
+    pub(super) async fn settle_done(
         &mut self,
         log: &mut StepLog,
         state: &DoState,
@@ -140,7 +140,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         .take(12)
                         .rev()
                         .collect::<Vec<_>>(),
-                    "visible_text": super::view::untrusted_context(screen),
+                    "visible_text": crate::agentic::flow::view::untrusted_context(screen),
                 }),
                 questions(CHANGES_VIEW),
             ));
@@ -198,7 +198,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(judged)
     }
 
-    async fn judge(
+    pub(super) async fn judge(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
@@ -218,7 +218,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// The questions that judge a turn: completion and its negation,
     /// progress, obstacles, whether the last action helped, and the move.
-    pub(super) fn judge_questions(
+    pub(in crate::agentic::flow) fn judge_questions(
         &self,
         log: &mut StepLog,
         intent: &str,
@@ -287,29 +287,29 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
 /// One turn's reading of the screen.
 #[derive(Debug, Clone)]
-pub(super) struct Judgement {
-    pub(super) done: Option<f64>,
-    pub(super) progress: Option<f64>,
-    pub(super) blocked: Option<f64>,
-    pub(super) helped: Option<f64>,
-    pub(super) next: String,
-    pub(super) shortcut: Option<(&'static str, &'static str)>,
+pub(in crate::agentic::flow) struct Judgement {
+    pub(in crate::agentic::flow) done: Option<f64>,
+    pub(in crate::agentic::flow) progress: Option<f64>,
+    pub(in crate::agentic::flow) blocked: Option<f64>,
+    pub(in crate::agentic::flow) helped: Option<f64>,
+    pub(in crate::agentic::flow) next: String,
+    pub(in crate::agentic::flow) shortcut: Option<(&'static str, &'static str)>,
     /// Under the wide strategy: a target already chosen for each move that
     /// needs one, from the same request.
-    pub(super) prepared: BTreeMap<&'static str, Prepared>,
+    pub(in crate::agentic::flow) prepared: BTreeMap<&'static str, Prepared>,
     /// Under the wide strategy: how to clear what is in front, if it is in
     /// the way.
-    pub(super) dismissal: Option<Dismissal>,
+    pub(in crate::agentic::flow) dismissal: Option<Dismissal>,
     /// Under the narrow strategy: the `activate` target's first grounding
     /// round, asked in the same round trip as the judge.
-    pub(super) speculated: Option<Speculated>,
+    pub(in crate::agentic::flow) speculated: Option<Speculated>,
     /// Under deliberation: whether the last press did what it was meant to,
     /// calibrated against its negation.
-    pub(super) intended: Option<f64>,
+    pub(in crate::agentic::flow) intended: Option<f64>,
     /// The request that asked the judgement, and its answers, for a
     /// deliberating run to widen.
-    pub(super) request: Option<EvaluationRequest>,
-    pub(super) answers: BTreeMap<String, Answer>,
+    pub(in crate::agentic::flow) request: Option<EvaluationRequest>,
+    pub(in crate::agentic::flow) answers: BTreeMap<String, Answer>,
 }
 
 /// Grounding's first round for an `activate` move, asked alongside the
@@ -317,14 +317,14 @@ pub(super) struct Judgement {
 /// Used only if it is; otherwise its calls were spent for nothing, which
 /// the journal shows as a decision with no action after it.
 #[derive(Debug, Clone)]
-pub(super) struct Speculated {
-    pub(super) opening: Opening,
-    pub(super) answers: Vec<BTreeMap<String, Answer>>,
+pub(in crate::agentic::flow) struct Speculated {
+    pub(in crate::agentic::flow) opening: Opening,
+    pub(in crate::agentic::flow) answers: Vec<BTreeMap<String, Answer>>,
 }
 
 impl Judgement {
     /// Reads the judging questions' answers.
-    pub(super) fn read(answers: &BTreeMap<String, Answer>) -> Self {
+    pub(in crate::agentic::flow) fn read(answers: &BTreeMap<String, Answer>) -> Self {
         let next = chosen(answers, "move").map_or_else(|| "activate".to_owned(), |(next, _)| next);
         let shortcut = chosen(answers, "shortcut")
             .filter(|(_, probability)| *probability >= SHORTCUT_FLOOR)
@@ -354,7 +354,7 @@ impl Judgement {
 
     /// Reads `answers` afresh — a widened ballot — keeping the targets,
     /// dismissal, and speculation already prepared.
-    pub(super) fn reread(&mut self, answers: &BTreeMap<String, Answer>) {
+    pub(in crate::agentic::flow) fn reread(&mut self, answers: &BTreeMap<String, Answer>) {
         let fresh = Self::read(answers);
         self.done = fresh.done;
         self.progress = fresh.progress;
@@ -367,7 +367,7 @@ impl Judgement {
     }
 
     /// The judgement when every judging loop is disabled: just press something.
-    pub(super) fn activate() -> Self {
+    pub(in crate::agentic::flow) fn activate() -> Self {
         Self {
             done: None,
             progress: None,

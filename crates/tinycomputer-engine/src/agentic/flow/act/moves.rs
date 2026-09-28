@@ -32,7 +32,7 @@ use super::*;
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Carries out the move Jev chose.
-    async fn make_move(
+    pub(super) async fn make_move(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
@@ -117,7 +117,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// The elements a move of `capability` may target: not banned this
     /// step, and not of a kind that refused text.
-    fn pool(&self, screen: &Screen, capability: &str, banned: &BTreeSet<String>) -> Vec<Candidate> {
+    pub(super) fn pool(&self, screen: &Screen, capability: &str, banned: &BTreeSet<String>) -> Vec<Candidate> {
         screen
             .candidates
             .iter()
@@ -138,7 +138,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ///
     /// A `branch` left by a backtrack is tried first, confirmed with one
     /// yes/no question, before anything is grounded afresh.
-    async fn activate(
+    pub(super) async fn activate(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
@@ -209,7 +209,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// is refused because something covers it — a drawer, a menu, or a
     /// result card's own click layer — presses Escape once and tries the
     /// same target again. Escape never chooses a new element.
-    pub(super) async fn press_uncovering(
+    pub(in crate::agentic::flow) async fn press_uncovering(
         &mut self,
         log: &mut StepLog,
         verb: &str,
@@ -242,7 +242,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Dismisses whatever is blocking the step, choosing only safe controls.
-    async fn clear_obstacle(
+    pub(super) async fn clear_obstacle(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
@@ -265,7 +265,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let mut options = keys
             .iter()
             .cloned()
-            .zip(pool.iter().map(|node| super::view::describe(node, false)))
+            .zip(pool.iter().map(|node| crate::agentic::flow::view::describe(node, false)))
             .collect::<Vec<_>>();
         options.push(("escape".to_owned(), json!("Press Escape to close it.")));
         let answers = self
