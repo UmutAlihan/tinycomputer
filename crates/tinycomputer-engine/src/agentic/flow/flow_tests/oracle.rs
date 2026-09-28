@@ -4,13 +4,13 @@
 
 use super::*;
 
-type Hook = dyn Fn(&str, &Question, &Sim) -> Option<Answer> + Send + Sync;
+pub(super) type Hook = dyn Fn(&str, &Question, &Sim) -> Option<Answer> + Send + Sync;
 
-struct Oracle {
-    app: App,
-    hook: Box<Hook>,
-    requests: Mutex<Vec<EvaluationRequest>>,
-    fail: bool,
+pub(super) struct Oracle {
+    pub(super) app: App,
+    pub(super) hook: Box<Hook>,
+    pub(super) requests: Mutex<Vec<EvaluationRequest>>,
+    pub(super) fail: bool,
 }
 
 impl Evaluator for Oracle {
@@ -57,7 +57,7 @@ impl Evaluator for Oracle {
 impl Oracle {
     /// The hooked or default answer; a negated question is answered as the
     /// inverse of its positive twin, so hooks only ever name the positive one.
-    fn answer(
+    pub(super) fn answer(
         &self,
         request: &EvaluationRequest,
         id: &str,
@@ -98,7 +98,7 @@ impl Oracle {
     }
 }
 
-fn text_of(question: &Question, field: &str) -> String {
+pub(super) fn text_of(question: &Question, field: &str) -> String {
     let instructions = match question {
         Question::Choice(choice) => &choice.instructions,
         Question::Score(score) => &score.instructions,
@@ -115,11 +115,11 @@ fn text_of(question: &Question, field: &str) -> String {
         .to_ascii_lowercase()
 }
 
-fn noul(probability: f64) -> Answer {
+pub(super) fn noul(probability: f64) -> Answer {
     Answer::Noul(NoulAnswer { noul: probability })
 }
 
-fn level(position: usize) -> Answer {
+pub(super) fn level(position: usize) -> Answer {
     Answer::Score(ScoreAnswer {
         score: 0.0,
         legend: BTreeMap::new(),
@@ -130,7 +130,7 @@ fn level(position: usize) -> Answer {
     })
 }
 
-fn pick(question: &Question, needle: &str, probability: f64) -> Answer {
+pub(super) fn pick(question: &Question, needle: &str, probability: f64) -> Answer {
     let Question::Choice(choice) = question else {
         panic!("pick needs a choice question");
     };
@@ -164,7 +164,7 @@ fn pick(question: &Question, needle: &str, probability: f64) -> Answer {
 /// A Choice answer putting `weights` on the options whose key or description
 /// holds each needle, the rest of the probability spread evenly over the
 /// other options; the winner is the heaviest.
-fn weighted(question: &Question, weights: &[(&str, f64)]) -> Answer {
+pub(super) fn weighted(question: &Question, weights: &[(&str, f64)]) -> Answer {
     let Question::Choice(choice) = question else {
         panic!("weighted needs a choice question");
     };
@@ -202,7 +202,7 @@ fn weighted(question: &Question, weights: &[(&str, f64)]) -> Answer {
     })
 }
 
-fn needle_for(purpose: &str) -> &'static str {
+pub(super) fn needle_for(purpose: &str) -> &'static str {
     if purpose.contains("send") {
         "Send"
     } else if purpose.contains("new email") || purpose.contains("editable fields") {
@@ -220,7 +220,7 @@ fn needle_for(purpose: &str) -> &'static str {
     }
 }
 
-fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
+pub(super) fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
     match id {
         "done" => {
             let step = text_of(question, "step");

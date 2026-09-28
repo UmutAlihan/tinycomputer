@@ -5,7 +5,7 @@ use super::*;
 
 /// Fixed behaviours a test gives the simulated app.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Quirk {
+pub(super) enum Quirk {
     /// Set-value on the body is silently ignored, as in a rich-text editor.
     BodyIgnoresSetValue,
     /// Every extra row sits in one list instead of three.
@@ -43,56 +43,56 @@ enum Quirk {
 }
 
 #[derive(Debug, Default)]
-struct Sim {
-    compose_open: bool,
-    sent: bool,
-    obstacle: bool,
-    fields: BTreeMap<String, String>,
-    presses: Vec<String>,
-    clicks: Vec<String>,
-    launched: Vec<String>,
-    navigated: Vec<String>,
+pub(super) struct Sim {
+    pub(super) compose_open: bool,
+    pub(super) sent: bool,
+    pub(super) obstacle: bool,
+    pub(super) fields: BTreeMap<String, String>,
+    pub(super) presses: Vec<String>,
+    pub(super) clicks: Vec<String>,
+    pub(super) launched: Vec<String>,
+    pub(super) navigated: Vec<String>,
     /// Result cards: (airline, price, departure), shown as a list.
-    results: Vec<(&'static str, &'static str, &'static str)>,
+    pub(super) results: Vec<(&'static str, &'static str, &'static str)>,
     /// Refs of the result cards' "Select" buttons clicked, in order.
-    picked: Vec<String>,
+    pub(super) picked: Vec<String>,
     /// Days in a date strip above the results, a longer list than they are.
-    date_strip: usize,
-    extra_buttons: usize,
+    pub(super) date_strip: usize,
+    pub(super) extra_buttons: usize,
     /// A booking form with an autocomplete destination and a calendar.
-    booking: Option<Booking>,
+    pub(super) booking: Option<Booking>,
     /// A fare radio shown already checked, as a fare page preselects one.
-    checked_fare: Option<&'static str>,
+    pub(super) checked_fare: Option<&'static str>,
     /// A line of guidance shown on the page, such as a date layout.
-    hint: Option<&'static str>,
+    pub(super) hint: Option<&'static str>,
     /// A passengers box with adult steppers, holding this many adults.
-    adults: Option<u8>,
+    pub(super) adults: Option<u8>,
     /// Trip-type tabs: the selected one, and how many clicks on the others
     /// the page ignores first, as a page still loading its scripts does.
-    trip: Option<(&'static str, u8)>,
+    pub(super) trip: Option<(&'static str, u8)>,
     /// A web shop's page stack, newest last; empty for the mail app.
-    pages: Vec<&'static str>,
+    pub(super) pages: Vec<&'static str>,
     /// The shop's extras checked: "Travel insurance", "Seat protection".
-    checked: BTreeSet<&'static str>,
+    pub(super) checked: BTreeSet<&'static str>,
     /// Times the shop went back a page.
-    backs: u32,
+    pub(super) backs: u32,
     /// The field typed or pasted into last: where the focus stays.
-    focused: Option<String>,
-    quirks: BTreeSet<Quirk>,
+    pub(super) focused: Option<String>,
+    pub(super) quirks: BTreeSet<Quirk>,
 }
 
 impl Sim {
-    fn has(&self, quirk: Quirk) -> bool {
+    pub(super) fn has(&self, quirk: Quirk) -> bool {
         self.quirks.contains(&quirk)
     }
 
     /// The shop page showing, or `None` for the mail app.
-    fn page(&self) -> Option<&'static str> {
+    pub(super) fn page(&self) -> Option<&'static str> {
         self.pages.last().copied()
     }
 
     /// A reply carrying the shop's address, as a browser's does.
-    fn located(&self, command: &str) -> DesktopResponse {
+    pub(super) fn located(&self, command: &str) -> DesktopResponse {
         DesktopResponse::ok(
             command,
             self.page()
@@ -102,27 +102,27 @@ impl Sim {
 }
 
 #[derive(Clone, Default)]
-struct App(Arc<Mutex<Sim>>);
+pub(super) struct App(Arc<Mutex<Sim>>);
 
 impl App {
-    fn with(configure: impl FnOnce(&mut Sim)) -> Self {
+    pub(super) fn with(configure: impl FnOnce(&mut Sim)) -> Self {
         let app = Self::default();
         configure(&mut app.0.lock().unwrap());
         app
     }
 
-    fn quirky(quirk: Quirk) -> Self {
+    pub(super) fn quirky(quirk: Quirk) -> Self {
         Self::with(|sim| {
             sim.quirks.insert(quirk);
         })
     }
 
-    fn sim(&self) -> std::sync::MutexGuard<'_, Sim> {
+    pub(super) fn sim(&self) -> std::sync::MutexGuard<'_, Sim> {
         self.0.lock().unwrap()
     }
 }
 
-fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Candidate {
+pub(super) fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Candidate {
     Candidate {
         ref_id: format!("@s:{name}"),
         role: role.to_owned(),
@@ -135,7 +135,7 @@ fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Cand
 }
 
 impl App {
-    fn screen(&self) -> Screen {
+    pub(super) fn screen(&self) -> Screen {
         let sim = self.sim();
         if sim.page().is_some() {
             return shop_screen(&sim);
@@ -450,11 +450,11 @@ impl AgentBackend for App {
     }
 }
 
-fn is_city_row(target: Option<&Candidate>) -> bool {
+pub(super) fn is_city_row(target: Option<&Candidate>) -> bool {
     target.is_some_and(|target| target.ref_id.starts_with("@s:city-"))
 }
 
-fn not_a_text_field() -> DesktopResponse {
+pub(super) fn not_a_text_field() -> DesktopResponse {
     DesktopResponse::err(
         "type-text",
         tinycomputer_bus::DesktopError::new("NOT_A_TEXT_FIELD", "no input takes the text"),

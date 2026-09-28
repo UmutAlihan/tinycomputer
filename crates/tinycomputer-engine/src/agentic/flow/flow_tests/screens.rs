@@ -4,20 +4,20 @@
 use super::*;
 
 /// The shop's pages.
-const EXTRAS: &str = "https://shop.test/extras";
+pub(super) const EXTRAS: &str = "https://shop.test/extras";
 
-const TERMS: &str = "https://shop.test/terms";
+pub(super) const TERMS: &str = "https://shop.test/terms";
 
-const REVIEW: &str = "https://shop.test/review";
+pub(super) const REVIEW: &str = "https://shop.test/review";
 
 /// The shop's two extras.
-const INSURANCE: &str = "Travel insurance";
+pub(super) const INSURANCE: &str = "Travel insurance";
 
-const PROTECTION: &str = "Seat protection";
+pub(super) const PROTECTION: &str = "Seat protection";
 
 /// The shop's screen: an extras page with two checkboxes, a terms link, and
 /// Continue; the terms and review pages beyond it.
-fn shop_screen(sim: &Sim) -> Screen {
+pub(super) fn shop_screen(sim: &Sim) -> Screen {
     let page = sim.page().unwrap_or(EXTRAS);
     let (window, candidates, context) = match page {
         TERMS => (
@@ -86,7 +86,7 @@ fn shop_screen(sim: &Sim) -> Screen {
 }
 
 /// What pressing `name` does in the shop.
-fn press_shop(sim: &mut Sim, name: &str) {
+pub(super) fn press_shop(sim: &mut Sim, name: &str) {
     match name {
         PROTECTION | INSURANCE => {
             let extra = if name == PROTECTION {
@@ -104,7 +104,7 @@ fn press_shop(sim: &mut Sim, name: &str) {
     }
 }
 
-const MONTH_NAMES: [&str; 12] = [
+pub(super) const MONTH_NAMES: [&str; 12] = [
     "January",
     "February",
     "March",
@@ -122,15 +122,15 @@ const MONTH_NAMES: [&str; 12] = [
 /// A booking form: a destination box that opens a search field, as an
 /// autocomplete does, and a departure date picked only from a calendar.
 #[derive(Debug, Default)]
-struct Booking {
+pub(super) struct Booking {
     /// Whether the destination's search field is open.
-    searching: bool,
+    pub(super) searching: bool,
     /// `Some(month)` while the calendar is open on that month (0 = January).
-    calendar: Option<usize>,
+    pub(super) calendar: Option<usize>,
 }
 
 /// What pressing `name` does to the booking form.
-fn press_booking(sim: &mut Sim, name: &str) {
+pub(super) fn press_booking(sim: &mut Sim, name: &str) {
     let Some(booking) = sim.booking.as_mut() else {
         return;
     };
@@ -159,7 +159,7 @@ fn press_booking(sim: &mut Sim, name: &str) {
 
 /// Emirates' passengers box: a button that does not show its count, and
 /// steppers whose labels both name the count they would change.
-fn passenger_steppers(adults: u8, root: &str, candidates: &mut Vec<Candidate>) {
+pub(super) fn passenger_steppers(adults: u8, root: &str, candidates: &mut Vec<Candidate>) {
     let path = [root, "group \"Passengers\""];
     candidates.push(node("Passengers", "button", &["Click"], &path, 250.0));
     for (verb, y) in [("Decrease", 260.0), ("Increase", 270.0)] {
@@ -174,7 +174,7 @@ fn passenger_steppers(adults: u8, root: &str, candidates: &mut Vec<Candidate>) {
 }
 
 /// Trip-type tabs, `selected` marked as the page marks it.
-fn trip_tabs(selected: &str, root: &str, candidates: &mut Vec<Candidate>) {
+pub(super) fn trip_tabs(selected: &str, root: &str, candidates: &mut Vec<Candidate>) {
     for (index, tab) in ["Return", "One way", "Multi-city"].into_iter().enumerate() {
         let mut tab_node = node(
             tab,
@@ -191,7 +191,7 @@ fn trip_tabs(selected: &str, root: &str, candidates: &mut Vec<Candidate>) {
 }
 
 /// The preselected fare radio, when the simulator shows one.
-fn checked_fare(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
+pub(super) fn checked_fare(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
     if let Some(fare) = sim.checked_fare {
         let mut radio = node(fare, "radio", &["Click"], &[root, "group \"Fares\""], 200.0);
         radio.states = vec!["checked".to_owned()];
@@ -203,7 +203,7 @@ fn checked_fare(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
 /// 2026"`, nothing more. The calendar's own container control names every
 /// visible day, so a plain `ends_with(" 2026")` check would also treat
 /// pressing that container as picking a day.
-fn is_single_day_label(name: &str) -> bool {
+pub(super) fn is_single_day_label(name: &str) -> bool {
     let mut words = name.split(' ');
     let day_is_a_number = words.next().is_some_and(|day| day.parse::<u8>().is_ok());
     day_is_a_number
@@ -213,7 +213,7 @@ fn is_single_day_label(name: &str) -> bool {
 }
 
 /// The booking form's controls, as they stand.
-fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec<Candidate>) {
+pub(super) fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec<Candidate>) {
     let widget = [root, "group \"Booking\""];
     candidates.push(node("Going to?", "button", &["Click"], &widget, 80.0));
     // The destination's own container names its recent searches, so it
@@ -276,7 +276,7 @@ fn booking_widget(sim: &Sim, booking: &Booking, root: &str, candidates: &mut Vec
 /// The obstacle sheet's controls: two buttons, and a checkbox holding a
 /// value, to check that value-visibility policy is honored when it is
 /// offered as a dismissal option.
-fn obstacle_sheet(candidates: &mut Vec<Candidate>) {
+pub(super) fn obstacle_sheet(candidates: &mut Vec<Candidate>) {
     candidates.push(node(
         "Delete Draft",
         "button",
@@ -299,7 +299,7 @@ fn obstacle_sheet(candidates: &mut Vec<Candidate>) {
 
 /// A city list whose unnamed rows each hold their city as a value and take
 /// no text, above the one real search field.
-fn city_rows(root: &str, candidates: &mut Vec<Candidate>) {
+pub(super) fn city_rows(root: &str, candidates: &mut Vec<Candidate>) {
     for (index, city) in ["Mumbai", "Pune", "Chennai"].into_iter().enumerate() {
         candidates.push(Candidate {
             ref_id: format!("@s:city-{index}"),
@@ -321,7 +321,7 @@ fn city_rows(root: &str, candidates: &mut Vec<Candidate>) {
 
 /// The simulator's result list: each card's text as ref-less nodes, and its
 /// "Select" button among `candidates`, under an ordinal-labelled list item.
-fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<Candidate> {
+pub(super) fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<Candidate> {
     let mut text_nodes = Vec::new();
     for (index, (airline, price, departure)) in sim.results.iter().enumerate() {
         let card = format!("listitem #{}", index + 1);
@@ -374,7 +374,7 @@ fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<C
 
 /// What lies over the simulated page: a promo toast, or something that
 /// covers the New Message button.
-fn overlays(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
+pub(super) fn overlays(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) {
     if sim.has(Quirk::Covered) {
         for candidate in candidates.iter_mut() {
             if candidate.name.as_deref() == Some("New Message") {
