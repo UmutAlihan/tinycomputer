@@ -50,10 +50,30 @@ const CLOSERS: &[&[&str]] = &[
         "use necessary cookies only",
     ],
     &[
-        "close", "×", "x", "✕", "dismiss", "not now", "no thanks", "no, thanks", "maybe later",
-        "skip", "later", "got it", "ok", "okay", "continue without",
+        "close",
+        "×",
+        "x",
+        "✕",
+        "dismiss",
+        "not now",
+        "no thanks",
+        "no, thanks",
+        "maybe later",
+        "skip",
+        "later",
+        "got it",
+        "ok",
+        "okay",
+        "continue without",
     ],
-    &["accept", "accept all", "agree", "i agree", "allow all", "allow"],
+    &[
+        "accept",
+        "accept all",
+        "agree",
+        "i agree",
+        "allow all",
+        "allow",
+    ],
 ];
 
 /// Words that mark a region as a distraction when it holds no dismiss
@@ -127,9 +147,9 @@ pub(super) fn distractions(
 ) -> Vec<Distraction> {
     let intent = words(intent);
     let named_by_step = |text: &str| {
-        words(text)
-            .iter()
-            .any(|word| word.len() > 3 && DISTRACTION_WORDS.contains(&word.as_str()) && intent.contains(word))
+        words(text).iter().any(|word| {
+            word.len() > 3 && DISTRACTION_WORDS.contains(&word.as_str()) && intent.contains(word)
+        })
     };
     let mut found = Vec::new();
     let mut regions = digest(screen).regions;
@@ -220,9 +240,11 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             json!("Nothing is in the way: work on the step itself."),
         ))
         .chain(
-            keys.iter()
-                .cloned()
-                .zip(found.iter().map(|distraction| option(distraction, self.include_values))),
+            keys.iter().cloned().zip(
+                found
+                    .iter()
+                    .map(|distraction| option(distraction, self.include_values)),
+            ),
         );
         let answers = self
             .ask(
@@ -270,9 +292,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         cleared.count += 1;
         let pressed = target.clone();
         let reply = self
-            .act(log, "click (clear distraction)", Some(&target), move |backend| {
-                backend.execute(JevOperation::Click, Some(pressed), None)
-            })
+            .act(
+                log,
+                "click (clear distraction)",
+                Some(&target),
+                move |backend| backend.execute(JevOperation::Click, Some(pressed), None),
+            )
             .await?;
         self.history.push(format!(
             "cleared {} out of the way with {}, ok={}",

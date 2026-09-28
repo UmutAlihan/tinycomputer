@@ -50,17 +50,35 @@ fn content() -> Vec<Candidate> {
 fn a_consent_card_is_cleared_with_its_least_committal_control() {
     let mut candidates = content();
     candidates.extend(consent());
-    let found = distractions(&screen(candidates), "search for flights", &[], &BTreeSet::new());
+    let found = distractions(
+        &screen(candidates),
+        "search for flights",
+        &[],
+        &BTreeSet::new(),
+    );
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].closer.name.as_deref(), Some("Reject all"));
-    assert!(found[0].shows.iter().any(|shown| shown.contains("Accept all")));
+    assert!(
+        found[0]
+            .shows
+            .iter()
+            .any(|shown| shown.contains("Accept all"))
+    );
 }
 
 #[test]
 fn a_toast_with_a_plain_close_is_a_distraction_without_any_telling_words() {
     let mut candidates = content();
-    candidates.push(button("Close", &["main", "region \"Unlimited date changes\""]));
-    let found = distractions(&screen(candidates), "search for flights", &[], &BTreeSet::new());
+    candidates.push(button(
+        "Close",
+        &["main", "region \"Unlimited date changes\""],
+    ));
+    let found = distractions(
+        &screen(candidates),
+        "search for flights",
+        &[],
+        &BTreeSet::new(),
+    );
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].closer.name.as_deref(), Some("Close"));
 }
@@ -72,7 +90,15 @@ fn ordinary_content_is_not_a_distraction() {
     // step's own business: a fare to accept, terms to agree to.
     candidates.push(button("Accept", &["main", "form \"Fare\""]));
     candidates.push(button("Done", &["main", "form \"Passengers\""]));
-    assert!(distractions(&screen(candidates), "choose the fare", &[], &BTreeSet::new()).is_empty());
+    assert!(
+        distractions(
+            &screen(candidates),
+            "choose the fare",
+            &[],
+            &BTreeSet::new()
+        )
+        .is_empty()
+    );
 }
 
 #[test]
@@ -98,10 +124,16 @@ fn a_control_already_pressed_or_irreversible_is_never_offered() {
     let found = distractions(
         &screen(candidates),
         "search",
-        &["accept all the terms".to_owned(), "reject all offers".to_owned()],
+        &[
+            "accept all the terms".to_owned(),
+            "reject all offers".to_owned(),
+        ],
         &BTreeSet::new(),
     );
-    assert!(found.is_empty(), "controls the flow names in stop_before are irreversible");
+    assert!(
+        found.is_empty(),
+        "controls the flow names in stop_before are irreversible"
+    );
 }
 
 #[test]

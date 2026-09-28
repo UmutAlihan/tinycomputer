@@ -32,11 +32,11 @@ use tinyinference_decisions::{Answer, EvaluationRequest};
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
     ask::{self, Questions, chosen, completion, level, obstacle, probability, progress},
+    attention::Cleared,
     checkpoint::{Checkpoint, Reversibility, classify},
     denoise,
     escalate::Belief,
     expect::{self, Effect, Outcome},
-    attention::Cleared,
     ground::{AGREED, Grounded, Opening},
     memory::{learn, remember},
     view::{
