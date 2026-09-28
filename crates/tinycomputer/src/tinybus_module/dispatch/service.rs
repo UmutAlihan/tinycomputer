@@ -127,7 +127,9 @@ impl DesktopService {
 
 /// Whether the desktop surface is usable, from a `Permissions` reply: the
 /// accessibility permission must be granted (or not needed on this platform).
-pub(in crate::tinybus_module) fn desktop_availability(permissions: &DesktopResponse) -> SurfaceAvailability {
+pub(in crate::tinybus_module) fn desktop_availability(
+    permissions: &DesktopResponse,
+) -> SurfaceAvailability {
     let accessibility = permissions
         .data
         .as_ref()
