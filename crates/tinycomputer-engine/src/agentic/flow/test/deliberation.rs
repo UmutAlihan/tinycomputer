@@ -749,3 +749,86 @@ async fn escape_at_a_covering_is_pressed_once_per_step() {
     assert_eq!(escapes, 1);
     assert!(loops(&run, 0).contains(&FlowLoop::Attention));
 }
+
+#[tokio::test]
+async fn a_clear_decision_is_asked_three_ways_and_a_split_one_every_way() {
+    let with = |votes: u32, deliberation: Deliberation| {
+        run_with(
+            App::default(),
+            mail_flow(),
+            move |request| {
+                request.votes = votes;
+                request.deliberation = deliberation;
+            },
+            |_, _, _| None,
+        )
+    };
+    let three = with(3, Deliberation::Deep).await;
+    let seven = with(7, Deliberation::Deep).await;
+    let legacy = with(7, Deliberation::Off).await;
+    assert_eq!(seven.result.stop, three.result.stop);
+    assert_eq!(
+        seven.requests.len(),
+        three.requests.len(),
+        "framings that agree are not asked again: seven votes cost what three do"
+    );
+    assert!(
+        legacy.requests.len() > seven.requests.len(),
+        "the legacy path asks every vote"
+    );
+
+    // A slot choice the first framings split on is asked all seven ways.
+    let biased = biased_mail(7).await;
+    let slot_asks = asked_prefix(&biased.requests, "slot_");
+    assert_eq!(slot_asks % 7, 0, "{slot_asks}");
+    assert_eq!(
+        biased.app.sim().fields["Subject"],
+        "Moving Thursday's sync",
+        "the split is settled by every vote"
+    );
+}
+
+#[test]
+fn a_ballot_is_settled_only_when_every_framing_agrees() {
+    use std::collections::BTreeMap;
+    use tinyinference_decisions::{ChoiceAnswer, NoulAnswer};
+
+    let noul = |values: &[f64]| {
+        values
+            .iter()
+            .map(|noul| Answer::Noul(NoulAnswer { noul: *noul }))
+            .collect::<Vec<_>>()
+    };
+    let choice = |picks: &[&str]| {
+        picks
+            .iter()
+            .map(|pick| {
+                Answer::Choice(ChoiceAnswer {
+                    choice: (*pick).to_owned(),
+                    probabilities: BTreeMap::from([((*pick).to_owned(), 0.8)]),
+                    confidence: 0.8,
+                })
+            })
+            .collect::<Vec<_>>()
+    };
+    let ballots = |pairs: Vec<(&str, Vec<Answer>)>| {
+        pairs
+            .into_iter()
+            .map(|(id, answers)| (id.to_owned(), answers))
+            .collect::<BTreeMap<_, _>>()
+    };
+    let settled = |pairs| vote::settled(&ballots(pairs), PAGE_KIND);
+    assert!(settled(vec![("target", choice(&["3", "3", "3"]))]));
+    assert!(!settled(vec![("target", choice(&["3", "3", "4"]))]));
+    assert!(settled(vec![("done", noul(&[0.8, 0.9, 0.75]))]));
+    assert!(!settled(vec![("done", noul(&[0.55, 0.9, 0.8]))]), "too spread");
+    assert!(!settled(vec![("done", noul(&[0.45, 0.55, 0.5]))]), "both sides");
+    assert!(!settled(vec![("done", noul(&[0.9]))]), "one answer shows nothing");
+    assert!(
+        settled(vec![
+            ("done", noul(&[0.1, 0.2, 0.15])),
+            (PAGE_KIND, choice(&["results", "form", "results"]))
+        ]),
+        "the page kind rides along and never holds a decision back"
+    );
+}
