@@ -2484,6 +2484,39 @@ fn validation_allows_a_non_fact_variable_in_model_facing_text() {
 }
 
 #[test]
+fn validation_rejects_a_condition_that_names_a_picked_item() {
+    // A pick stores the whole card's text, and the opened item no longer
+    // shows it all: a condition built on it fails a pick that worked.
+    let flow: Flow = serde_json::from_value(json!({
+        "app": "browser",
+        "steps": [
+            {"pick": {"from": "the flight results", "by": "lowest price", "into": "cheapest_flight"}},
+            {"verify": "${cheapest_flight} shows a price and airline"},
+            {"wait_for": "the fare for ${cheapest_flight} is listed"},
+            {"repeat_until": {"condition": "${cheapest_flight} is gone", "max": 2, "steps": ["scroll down"]}},
+            {"if": {"condition": "a banner is showing", "then": [
+                {"verify": "${cheapest_flight} is selected"}
+            ]}},
+            {"do": "open the details of ${cheapest_flight}"}
+        ]
+    }))
+    .unwrap();
+    let validation = validate::check(&flow, &BTreeSet::new(), &BTreeSet::new());
+    let picked = validation
+        .errors
+        .iter()
+        .filter(|error| error.contains("`${cheapest_flight}` holds a picked item"))
+        .collect::<Vec<_>>();
+    assert_eq!(picked.len(), 4, "{:?}", validation.errors);
+    for path in ["step 2:", "step 3:", "step 4:", "step 5.1:"] {
+        assert!(
+            picked.iter().any(|error| error.starts_with(path)),
+            "{path} {picked:?}"
+        );
+    }
+}
+
+#[test]
 fn text_helpers_substitute_reference_and_normalize() {
     let vars = BTreeMap::from([("to".to_owned(), "sam".to_owned())]);
     assert_eq!(
