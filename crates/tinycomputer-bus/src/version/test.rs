@@ -6,7 +6,7 @@ use super::{CONTRACT_VERSION, binds, is_compatible};
 
 #[test]
 fn the_shipped_contract_version_is_pinned() {
-    assert_eq!(CONTRACT_VERSION, (2, 3));
+    assert_eq!(CONTRACT_VERSION, (2, 4));
 }
 
 #[test]
@@ -16,11 +16,11 @@ fn the_contract_binds_to_itself() {
 
 #[test]
 fn a_newer_minor_on_the_module_side_binds() {
-    assert!(is_compatible((2, 3)));
+    assert!(is_compatible((2, 4)));
     assert!(is_compatible((2, 97)));
-    // 2.3 added the flow deliberation level: a 2.3 host may send it, a 2.2
-    // module would not understand it.
-    assert!(!is_compatible((2, 2)));
+    // 2.4 added task rescues: a 2.4 host may set `budget.max_rescues`, a
+    // 2.3 module would not understand it.
+    assert!(!is_compatible((2, 3)));
     assert!(!is_compatible((2, 0)));
 }
 
