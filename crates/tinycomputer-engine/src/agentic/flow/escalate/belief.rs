@@ -10,15 +10,12 @@ use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use crate::agentic::flow::{
     AgentBackend, FlowRun, Halt, StepLog,
-    ask::{self, Questions},
-    duel,
-    evidence::{self, Bar, Evidence, Verdict},
-    ground::Grounded,
-    view::{Candidate, Screen},
+    ask::{self},
+    evidence::{self, Verdict},
     vote,
 };
 
-use super::{CONTRAST_ACCEPT, CONTRAST_LEAD, MAX_FRONTIER, Belief, Offer};
+use super::Belief;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 

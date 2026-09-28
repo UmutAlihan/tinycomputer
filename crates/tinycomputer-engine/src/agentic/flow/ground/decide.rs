@@ -3,20 +3,18 @@
 
 use std::collections::BTreeMap;
 
-use serde_json::json;
 use tinycomputer_bus::FlowLoop;
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
-use crate::agentic::flow::{denoise, escalate::Offer, evidence::Bar};
+use crate::agentic::flow::{escalate::Offer, evidence::Bar};
 
 use crate::agentic::flow::{
     AgentBackend, FlowRun, Halt, StepLog,
     ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
-    memory::recall,
-    view::{ACT, Candidate, Screen, distinct, exact_named_match, label, named_first},
+    view::{ACT, Candidate, Screen, exact_named_match},
 };
 
-use super::{NAMED_FLOOR, CORROBORATED, AGREED, MAX_REGION_DEPTH, BRANCH_MARGIN, Regions, Grounded, Opening, First, winners, split};
+use super::{NAMED_FLOOR, CORROBORATED, AGREED, Grounded};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 

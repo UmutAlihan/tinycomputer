@@ -14,10 +14,9 @@ pub(super) use screen_state::{ordered_nodes, rich_text, state};
 
 use std::collections::BTreeMap;
 
-use serde_json::{Value, json};
-use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
+use serde_json::Value;
+use tinyinference_decisions::{EvaluationRequest, Question};
 
-use super::view::{Candidate, Screen, describe, element_line, label, untrusted_context};
 
 /// Most options one Choice offers before narrowing takes over.
 pub(super) const CAP: usize = 20;

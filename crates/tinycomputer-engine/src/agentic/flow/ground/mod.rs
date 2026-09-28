@@ -31,17 +31,12 @@ mod narrow;
 
 use std::collections::BTreeMap;
 
-use serde_json::json;
-use tinycomputer_bus::FlowLoop;
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
-use super::{denoise, escalate::Offer, evidence::Bar};
 
 use super::{
-    AgentBackend, FlowRun, Halt, StepLog,
-    ask::{self, CAP, Questions, chosen, corroborate, elements, lettered, numbered, probability},
-    memory::recall,
-    view::{ACT, Candidate, Screen, distinct, exact_named_match, label, named_first},
+    ask::{CAP, chosen},
+    view::Candidate,
 };
 
 /// Least probability an exact-name match needs to be used without re-asking.

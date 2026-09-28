@@ -10,10 +10,10 @@ use crate::agentic::flow::{
     AgentBackend, FlowRun, Halt, StepLog,
     ask::{self, Questions},
     evidence::{self, Bar, Verdict},
-    view::{Candidate, Screen, describe, digest, is_destructive, label, signature},
+    view::{Screen, label, signature},
 };
 
-use super::{MAX_DISTRACTIONS, MAX_CLEARED, ATTENTION_FLOOR, MAX_DISTRACTION_SIZE, Distraction, ESCAPED, Cleared, find::{distractions, covering, option}};
+use super::{MAX_CLEARED, ATTENTION_FLOOR, Distraction, ESCAPED, Cleared, find::{distractions, option}};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Asks what on `screen` needs attention first for the step `intent`,

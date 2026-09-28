@@ -4,19 +4,17 @@
 use std::collections::BTreeSet;
 
 use serde_json::Value;
-use tinycomputer_bus::{FlowLoop, Slot, StepOutcome};
+use tinycomputer_bus::Slot;
 use tinycomputer_core::reformat_date;
 
 use crate::agentic::flow::{
-    AgentBackend, Ended, FlowRun, Halt, StepLog,
-    ask::{self, CAP, Questions, asks_for, chosen, elements, field_error, numbered, probability},
+    AgentBackend, FlowRun, Halt, StepLog,
     backend::deliver_text,
-    memory::{learn, recall, remember},
-    validate::{references, substitute, substitute_safe},
-    view::{Candidate, Screen, element_kind, label, signature},
+    memory::{learn, remember},
+    view::{Candidate, element_kind, label},
 };
 
-use super::{SLOT_FLOOR, REVEAL_TURNS, FIELD_ERROR, NOT_ASKED, BLIND_PICK_MISSES, Assignment, names, editable, position};
+use super::{REVEAL_TURNS, BLIND_PICK_MISSES, names, editable};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 

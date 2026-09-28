@@ -4,11 +4,10 @@
 use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
-use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
+use tinyinference_decisions::{Choice, Noul, Question, Score};
 
-use crate::agentic::flow::view::{Candidate, Screen, describe, element_line, label, untrusted_context};
+use crate::agentic::flow::view::{Candidate, describe};
 
-use super::{CAP, MAX_READ_SOURCES, MAX_STATE_ELEMENTS, MAX_HISTORY, MAX_FIELDS, request, Questions, numbered, lettered, screen_state::{state, field_contents, ordered_nodes, rich_text}, answers::{calibrated, top_level, combined, chosen, probability, level}};
 
 /// "Is `condition` true on this screen right now?"
 pub(in crate::agentic::flow) fn condition(condition: &str) -> Question {

@@ -1,14 +1,12 @@
 //! The shared state every question about a screen is asked against: its
 //! elements, the text fields hold, and the recent history.
 
-use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
-use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
 
-use crate::agentic::flow::view::{Candidate, Screen, describe, element_line, label, untrusted_context};
+use crate::agentic::flow::view::{Candidate, Screen, element_line, label, untrusted_context};
 
-use super::{CAP, MAX_READ_SOURCES, MAX_STATE_ELEMENTS, MAX_HISTORY, MAX_FIELDS, request, Questions, numbered, lettered, questions::{condition, negated, reflects, strays, unfinished, completion, progress, coverage, page_kind, helped, asks_for, field_error, obstacle, options, elements, corroborate, only_near, intended, unintended, viewed}, answers::{calibrated, top_level, combined, chosen, probability, level}};
+use super::{MAX_STATE_ELEMENTS, MAX_HISTORY, MAX_FIELDS};
 
 /// The shared state every question about `screen` is asked against.
 pub(in crate::agentic::flow) fn state(

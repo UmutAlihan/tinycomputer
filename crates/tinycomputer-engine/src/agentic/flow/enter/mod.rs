@@ -11,17 +11,12 @@ mod fill;
 
 use std::collections::BTreeSet;
 
-use serde_json::Value;
 use tinycomputer_bus::{FlowLoop, Slot, StepOutcome};
-use tinycomputer_core::reformat_date;
 
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
-    ask::{self, CAP, Questions, asks_for, chosen, elements, field_error, numbered, probability},
-    backend::deliver_text,
-    memory::{learn, recall, remember},
     validate::{references, substitute, substitute_safe},
-    view::{Candidate, Screen, element_kind, label, signature},
+    view::{Candidate, Screen},
 };
 
 /// Least probability a slot assignment needs.

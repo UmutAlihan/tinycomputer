@@ -3,23 +3,21 @@
 //! candidate before an irreversible press.
 
 use std::collections::BTreeMap;
-use std::time::Instant;
 
 use serde_json::json;
-use tinycomputer_bus::{FlowLoop, JevExchange};
-use tinyinference_decisions::{Answer, EvaluationRequest};
+use tinycomputer_bus::FlowLoop;
+use tinyinference_decisions::Answer;
 
 use crate::agentic::flow::{
     AgentBackend, FlowRun, Halt, StepLog,
     ask::{self, Questions},
     duel,
-    evidence::{self, Bar, Evidence, Verdict},
+    evidence::{self, Verdict},
     ground::Grounded,
     view::{Candidate, Screen},
-    vote,
 };
 
-use super::{CONTRAST_ACCEPT, CONTRAST_LEAD, MAX_FRONTIER, Belief, Offer};
+use super::{CONTRAST_ACCEPT, CONTRAST_LEAD, MAX_FRONTIER, Offer};
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 

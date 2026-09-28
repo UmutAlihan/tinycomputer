@@ -32,20 +32,16 @@ mod belief;
 mod target;
 
 use std::collections::BTreeMap;
-use std::time::Instant;
 
 use serde_json::json;
-use tinycomputer_bus::{FlowLoop, JevExchange};
+use tinycomputer_bus::FlowLoop;
 use tinyinference_decisions::{Answer, EvaluationRequest};
 
 use super::{
-    AgentBackend, FlowRun, Halt, StepLog,
-    ask::{self, Questions},
-    duel,
-    evidence::{self, Bar, Evidence, Verdict},
-    ground::Grounded,
+    AgentBackend, FlowRun, StepLog,
+    ask::{self},
+    evidence::{Bar, Evidence, Verdict},
     view::{Candidate, Screen},
-    vote,
 };
 
 /// Least calibrated belief a finalist needs, with no champion, to be taken.

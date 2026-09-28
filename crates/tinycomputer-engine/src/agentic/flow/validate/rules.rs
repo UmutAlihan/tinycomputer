@@ -2,12 +2,11 @@
 //! against the variables defined so far and keeping facts out of what Jev
 //! may see.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
-use serde_json::Value;
-use tinycomputer_bus::{Flow, FlowAction, FlowStep, FlowValidation};
+use tinycomputer_bus::{FlowAction, FlowStep};
 
-use super::{MAX_STEPS, MAX_NESTING, MAX_REPEAT, validate, carrying_facts, step_path, substitution::{references, substitute, substitute_safe, substitute_with, normalize}};
+use super::{MAX_NESTING, MAX_REPEAT, step_path, substitution::{references, substitute_with}};
 
 /// Walks `steps` in the order they run, checking every text against the
 /// variables defined so far and growing that set as `read` steps are seen.

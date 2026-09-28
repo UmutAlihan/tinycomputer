@@ -21,15 +21,8 @@ mod find;
 
 use std::collections::BTreeSet;
 
-use serde_json::json;
-use tinycomputer_bus::{FlowLoop, JevOperation};
 
-use super::{
-    AgentBackend, FlowRun, Halt, StepLog,
-    ask::{self, Questions},
-    evidence::{self, Bar, Verdict},
-    view::{Candidate, Screen, describe, digest, is_destructive, label, signature},
-};
+use super::view::Candidate;
 
 /// Most distractions one attention question offers.
 pub(super) const MAX_DISTRACTIONS: usize = 4;

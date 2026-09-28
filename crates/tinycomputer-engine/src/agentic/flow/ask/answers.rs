@@ -3,12 +3,9 @@
 
 use std::collections::BTreeMap;
 
-use serde_json::{Value, json};
-use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
+use tinyinference_decisions::Answer;
 
-use crate::agentic::flow::view::{Candidate, Screen, describe, element_line, label, untrusted_context};
 
-use super::{CAP, MAX_READ_SOURCES, MAX_STATE_ELEMENTS, MAX_HISTORY, MAX_FIELDS, request, Questions, numbered, lettered, screen_state::{state, field_contents, ordered_nodes, rich_text}, questions::{condition, negated, reflects, strays, unfinished, completion, progress, coverage, page_kind, helped, asks_for, field_error, obstacle, options, elements, corroborate, only_near, intended, unintended, viewed}};
 
 /// A yes/no probability calibrated against its negation: the mean of
 /// `P(yes)` and `1 - P(no)`, or whichever of the two was answered.

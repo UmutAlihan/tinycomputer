@@ -3,17 +3,10 @@
 
 use std::collections::BTreeSet;
 
-use serde_json::json;
-use tinycomputer_bus::{FlowLoop, JevOperation};
 
-use crate::agentic::flow::{
-    AgentBackend, FlowRun, Halt, StepLog,
-    ask::{self, Questions},
-    evidence::{self, Bar, Verdict},
-    view::{Candidate, Screen, describe, digest, is_destructive, label, signature},
-};
+use crate::agentic::flow::view::{Candidate, Screen, describe, digest, is_destructive, label, signature};
 
-use super::{MAX_DISTRACTIONS, MAX_CLEARED, ATTENTION_FLOOR, MAX_DISTRACTION_SIZE, Distraction, ESCAPED, Cleared};
+use super::{MAX_DISTRACTIONS, MAX_DISTRACTION_SIZE, Distraction, ESCAPED};
 
 /// their rank is their position.
 const CLOSERS: &[&[&str]] = &[
