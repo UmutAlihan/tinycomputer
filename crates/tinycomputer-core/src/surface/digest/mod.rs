@@ -421,16 +421,15 @@ fn region(screen: &Screen, members: Vec<usize>, list: Option<(usize, Vec<String>
     }
 }
 
-/// The last two labels every member's path shares, or `top level`.
-fn region_name(screen: &Screen, members: &[usize]) -> String {
+/// The ancestor labels every one of `members` shares, from the root; `None`
+/// when they share none (or there are no members).
+fn shared_path(screen: &Screen, members: &[usize]) -> Option<Vec<String>> {
     let paths = members
         .iter()
         .filter_map(|index| screen.candidates.get(*index))
         .map(|candidate| &candidate.path)
         .collect::<Vec<_>>();
-    let Some(first) = paths.first() else {
-        return "top level".to_owned();
-    };
+    let first = paths.first()?;
     let shared = (0..first.len())
         .take_while(|level| {
             paths
@@ -438,10 +437,15 @@ fn region_name(screen: &Screen, members: &[usize]) -> String {
                 .all(|path| path.get(*level) == first.get(*level))
         })
         .count();
-    if shared == 0 {
-        return "top level".to_owned();
-    }
-    first[shared.saturating_sub(2)..shared].join(" > ")
+    (shared > 0).then(|| first[..shared].to_vec())
+}
+
+/// The last two labels every member's path shares, or `top level`.
+fn region_name(screen: &Screen, members: &[usize]) -> String {
+    shared_path(screen, members).map_or_else(
+        || "top level".to_owned(),
+        |shared| shared[shared.len().saturating_sub(2)..].join(" > "),
+    )
 }
 
 /// The overlay `candidate` sits inside, named by its ancestor labels down to
