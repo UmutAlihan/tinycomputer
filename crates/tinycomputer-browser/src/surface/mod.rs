@@ -277,7 +277,33 @@ impl BrowserSurface {
     /// all — must never silently receive text, including a private value.
     fn focused_field_is_editable(&self) -> bool {
         const SCRIPT: &str = r"(() => {
-  const element = document.activeElement;
+  // Focusing a ref inside an open shadow root or a same-origin frame — the
+  // documented tree fallback's territory — leaves `document.activeElement`
+  // pointing at the shadow host or the `<iframe>` itself, not the nested
+  // field that actually holds the focus; descend into both before judging
+  // editability, so that documented fallback stays usable for text entry.
+  const deepActiveElement = () => {
+    let element = document.activeElement;
+    for (;;) {
+      if (element && element.shadowRoot && element.shadowRoot.activeElement) {
+        element = element.shadowRoot.activeElement;
+        continue;
+      }
+      if (element && element.tagName === 'IFRAME') {
+        try {
+          const inner = element.contentDocument && element.contentDocument.activeElement;
+          if (inner) {
+            element = inner;
+            continue;
+          }
+        } catch (e) {
+          // Cross-origin frame: inaccessible, judge the host element itself.
+        }
+      }
+      return element;
+    }
+  };
+  const element = deepActiveElement();
   if (!element) return false;
   const tag = (element.tagName || '').toLowerCase();
   if (element.isContentEditable) return true;
