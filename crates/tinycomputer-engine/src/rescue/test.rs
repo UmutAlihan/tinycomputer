@@ -50,8 +50,8 @@ fn scripted(answers: &[Result<&str, &str>]) -> (Rescuer, Arc<Scripted>) {
 fn briefing() -> Briefing {
     let flow: Flow = serde_json::from_value(json!({"app": "browser", "steps": [
         {"browse": "https://flights.test"},
-        {"choose": {"departure date": "18 October"}},
-        {"choose": {"class": "Economy"}},
+        {"choose": {"what": "the departure date", "option": "18 October"}},
+        {"choose": {"what": "the class", "option": "Economy"}},
         {"stop_before": "paying for the booking"}
     ]}))
     .unwrap();
@@ -82,7 +82,7 @@ fn briefing() -> Briefing {
 const FIX: &str = r#"Thinking done.
 ```json
 {"action": "retry", "reason": "the calendar is still open over the form",
- "steps": ["close the date calendar with its Done button", {"choose": {"class": "Economy"}}]}
+ "steps": ["close the date calendar with its Done button", {"choose": {"what": "the class", "option": "Economy"}}]}
 ```"#;
 
 #[tokio::test]
