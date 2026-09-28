@@ -1,12 +1,14 @@
 # tinycomputer-examples
 
-This crate has no product code in it. Everything here exists to run
-tinycomputer against something real and show you what happened: a
-demonstration binary, a scored evaluation harness (the lab), a live task
-runner, fixtures to test against without touching a real website, and a
-reader for the debug journal. If you want to see tinycomputer do something,
-or check that a change to the engine did not quietly make it worse at doing
-that thing, this is the crate you run.
+tinycomputer-examples holds runnable examples and lab tooling for
+tinycomputer, a decision model (Jev) based harness for desktop and browser
+automation written in Rust. It has no product code of its own: everything
+here exists to run tinycomputer against something real and show you what
+happened, through a demonstration binary, a scored evaluation harness (the
+lab), a live task runner, fixtures to test against without touching a real
+website, and a reader for the debug journal. If you want to see tinycomputer
+do something, or check that a change to the engine did not quietly make it
+worse at doing that thing, this is the crate you run.
 
 ## Who this is for
 

@@ -1,10 +1,12 @@
 # tinycomputer-browser
 
-This crate is the adapter between tinycomputer and a real browser. It turns
-typed requests like "open a session", "click this", "read the page" into
-commands for [agent-browser], and turns agent-browser's replies back into
-typed results. It is the browser counterpart of `tinycomputer-desktop`: same
-job, different target.
+tinycomputer-browser is the browser half of tinycomputer, a decision model
+(Jev) based harness for desktop and browser automation written in Rust. It
+adapts [agent-browser] into that harness: typed requests like "open a
+session", "click this", "read the page" become commands for agent-browser,
+and agent-browser's replies become typed results the rest of tinycomputer can
+use. It is the browser counterpart of `tinycomputer-desktop`: same job,
+different target.
 
 [agent-browser]: https://github.com/vercel-labs/agent-browser
 
@@ -72,20 +74,20 @@ not two talking over a socket.
 
 ## Cross-links
 
-- [`../../how-it-works.md`](../../how-it-works.md) — how the whole system
+- [`../../how-it-works.md`](../../how-it-works.md): how the whole system
   fits together, browser and desktop both.
-- [`../../seeing-the-screen.md`](../../seeing-the-screen.md) — observation in
+- [`../../seeing-the-screen.md`](../../seeing-the-screen.md): observation in
   general, sight's desktop counterpart included.
-- [`../../safety-and-privacy.md`](../../safety-and-privacy.md) — why screen
+- [`../../safety-and-privacy.md`](../../safety-and-privacy.md): why screen
   text and typed values are treated as data, never instructions, and never
   leaked.
-- [`../../watching-a-run.md`](../../watching-a-run.md) — what you can see
+- [`../../watching-a-run.md`](../../watching-a-run.md): what you can see
   while a browser session is being driven.
-- [`../../glossary.md`](../../glossary.md) — terms like ref, session,
+- [`../../glossary.md`](../../glossary.md): terms like ref, session,
   surface, and checkpoint.
-- [`../../technical/specs/browser-sight.md`](../../technical/specs/browser-sight.md)
-  — the full sight specification, denoising rules, and acceptance criteria.
-- [`../../technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md)
-  — how the browser and desktop become one task API.
-- [`../../technical/docker-lab.md`](../../technical/docker-lab.md) — how to
+- [`../../technical/specs/browser-sight.md`](../../technical/specs/browser-sight.md):
+  the full sight specification, denoising rules, and acceptance criteria.
+- [`../../technical/specs/unified-agent.md`](../../technical/specs/unified-agent.md):
+  how the browser and desktop become one task API.
+- [`../../technical/docker-lab.md`](../../technical/docker-lab.md): how to
   run this crate's live tests, which need a real Chromium.
