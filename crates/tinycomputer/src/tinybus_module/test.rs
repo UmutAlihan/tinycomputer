@@ -7,11 +7,14 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod browser;
+
 use super::{DesktopService, setup};
 use serde_json::json;
 use tinybus::broker::Broker;
 use tinybus::transport::memory::MemoryBus;
 use tinybus::{Connection, Interface};
+use tinycomputer_bus::browser::names::methods as browser_methods;
 use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
 
 /// The `methods = [...]` list `module_export!` was handed, read back out of
@@ -172,12 +175,16 @@ async fn an_unknown_member_is_a_transport_error_not_an_envelope() -> tinybus::Re
 /// The payloads are the same rejected-before-anything-happens ones the engine
 /// sweep in `desktop/test.rs` uses, and safe for the same reasons — see the
 /// note there. `ClipboardClear` is absent for that note's reason: there is no
-/// invalid input to hand it.
+/// invalid input to hand it. The browser members name a session or an output
+/// that was never opened, so none reaches a browser; `BrowserOpenSession` is
+/// absent because every input to it launches one.
 fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
     let empty_ref = json!([{ "ref_id": "" }]);
     let no_app = json!([{ "app": "" }]);
     let nothing = json!([]);
     let empty = json!([{}]);
+    let no_session = json!([{ "session": "s-0" }]);
+    let no_output = json!([{ "output": "o-0" }]);
 
     vec![
         (
@@ -250,6 +257,27 @@ fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
         (names::methods::VERSION, nothing.clone()),
         (names::methods::STATUS, nothing.clone()),
         (names::methods::PERMISSIONS, empty),
+        (browser_methods::CLOSE_SESSION, no_session.clone()),
+        (browser_methods::LIST_SESSIONS, nothing),
+        (
+            browser_methods::NAVIGATE,
+            json!([{ "session": "s-0", "url": "https://example.com" }]),
+        ),
+        (browser_methods::SNAPSHOT, no_session.clone()),
+        (
+            browser_methods::PERFORM,
+            json!([{ "session": "s-0", "action": "press", "key": "Tab" }]),
+        ),
+        (browser_methods::READ_PAGE, no_session.clone()),
+        (
+            browser_methods::EVALUATE,
+            json!([{ "session": "s-0", "expression": "1" }]),
+        ),
+        (browser_methods::SCREENSHOT, no_session.clone()),
+        (browser_methods::READ_OUTPUT, no_output.clone()),
+        (browser_methods::RELEASE_OUTPUT, no_output),
+        (browser_methods::LIST_DOWNLOADS, no_session.clone()),
+        (browser_methods::WAIT_DOWNLOAD, no_session),
     ]
 }
 
@@ -279,6 +307,7 @@ fn the_wire_sweep_covers_every_member_except_the_one_with_no_safe_input() {
             &names::methods::TASK_REPORT,
             &names::methods::LIST_TASKS,
             &names::methods::CLIPBOARD_CLEAR,
+            &browser_methods::OPEN_SESSION,
         ],
         "the task members answer in their own reply shape; see the agent tests below"
     );
@@ -535,7 +564,10 @@ async fn the_runner_keeps_one_workspace_per_task_until_released() {
     use tinycomputer_bus::agent::TaskId;
     use tinycomputer_engine::FlowRunner;
 
-    let runner = super::runner::WorkspaceRunner::new(crate::Desktop::new(), None);
+    let browser = std::sync::Arc::new(tinycomputer_browser::Browser::new(std::sync::Arc::new(
+        tinycomputer_browser::AgentBrowser,
+    )));
+    let runner = super::runner::WorkspaceRunner::new(crate::Desktop::new(), None, browser);
     let task = TaskId::new("t-1");
     // Nothing observed yet, so there is nothing to read.
     assert!(runner.visible_text(&task).await.is_empty());
@@ -589,4 +621,17 @@ fn the_cursor_is_configured_or_refused() {
         assert!(DesktopService::from_config(&wrong).is_err(), "{wrong}");
     }
     assert!(DesktopService::from_config(&json!({"cursor": "off"})).is_ok());
+}
+
+#[test]
+fn the_catalogue_marks_exactly_the_confidential_members() {
+    let service = service();
+    for member in tinycomputer_bus::catalogue::MEMBERS {
+        assert_eq!(
+            service.requires_confidential(&member.name.try_into().expect("valid member")),
+            member.confidential,
+            "{} disagrees with the served interface",
+            member.name
+        );
+    }
 }

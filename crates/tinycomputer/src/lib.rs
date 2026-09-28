@@ -2,10 +2,12 @@
 //!
 //! tinycomputer wraps the [`agent-desktop`] engine — accessibility-tree
 //! observation and interaction for macOS, Windows, and Linux — and serves it
-//! over `TinyBus` as fifty-six typed members. A host loads the compiled
-//! `cdylib`, and an agent behind that host gets structured access to any
-//! running application: no screenshots to interpret, no pixel matching, no
-//! browser.
+//! over `TinyBus` beside browser automation and a task API — eighty typed
+//! members in all, listed with one-line summaries by
+//! [`tinycomputer_bus::catalogue`]. A host loads the compiled `cdylib`, and
+//! an agent behind that host gets structured access to any running
+//! application and to Chrome: no screenshots to interpret, no pixel
+//! matching.
 //!
 //! [`agent-desktop`]: https://github.com/lahfir/agent-desktop
 //!

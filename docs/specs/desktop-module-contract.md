@@ -18,11 +18,14 @@ engine's argument types, the permission preflight, and the bus surface.
 ### Members
 
 - The interface `ai.tinyhumans.tinycomputer.Desktop` is served at
-  `/ai/tinyhumans/tinycomputer/Desktop` with exactly sixty-seven members,
-  enumerated in dispatch order by `tinycomputer_bus::names::METHODS`.
+  `/ai/tinyhumans/tinycomputer/Desktop` with exactly eighty members,
+  enumerated in dispatch order by `tinycomputer_bus::names::METHODS`, and
+  catalogued — family, one-line summary, confidentiality — by
+  `tinycomputer_bus::catalogue::MEMBERS`, which `Describe` serves as
+  `Capabilities.catalogue` (2.6).
 - Every member takes at most one request payload. Members taking no argument:
   `ListDisplays`, `ClipboardClear`, `FlowGuide`, `Version`, `Status`,
-  `Describe`, `ListTasks`.
+  `Describe`, `ListTasks`, `BrowserListSessions`.
 - Every desktop and agentic member returns a `DesktopResponse`. The eight task
   members (`Describe`, `PlanTask`, `StartTask`, `AwaitTask`, `ContinueTask`,
   `CancelTask`, `TaskReport`, `ListTasks`, contract 1.7; briefs, votes,
@@ -37,6 +40,21 @@ engine's argument types, the permission preflight, and the bus surface.
   `Capabilities.output_configured`, `specs/task-output.md`) return an
   `AgentResponse` instead — see [`unified-agent.md`](unified-agent.md). They
   share this interface because a TinyBus module exports one interface.
+- The thirteen browser members (2.6) close the list, each prefixed `Browser`
+  (`tinycomputer_bus::browser::names`): sessions, navigate, snapshot,
+  perform, read, evaluate, screenshot, held outputs, and downloads. Each takes
+  one object — `{"session": …}` beside the member's own fields — and returns a
+  `DesktopResponse`. A failure's `code` is `browser::errors::code` of its
+  wire name, which reuses the desktop's code where the meaning is the same
+  (`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `POLICY_DENIED`,
+  `INVALID_ARGS`, `INTERNAL`); the full name is in `details.name`, the
+  recovery hint is `browser::errors::recovery`'s, and a call refused before
+  anything reached the browser is marked `not_delivered`. The members share
+  one `Browser` with the task runner, so `BrowserReadOutput` reads a
+  screenshot a task view names and `BrowserListSessions` shows a task's
+  session. The `ai.tinyhumans.tinycomputer.Browser` interface and its
+  unprefixed names, never served by any release, are retired; the error
+  names keep that prefix because they are published values, not members.
 - Members are named in `PascalCase`, matching the engine's command names where
   Rust allows it. `Type` is renamed explicitly because `type` is a keyword.
 - `KeyDown`, `KeyUp`, `MouseDown`, and `MouseUp` are served, validate their

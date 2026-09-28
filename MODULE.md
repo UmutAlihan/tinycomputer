@@ -5,7 +5,7 @@ v1. Install only the archive matching the host operating system and
 architecture.
 
 The module claims `ai.tinyhumans.tinycomputer.Desktop`, serves the object at
-`/ai/tinyhumans/tinycomputer/Desktop`, and provides sixty-seven members:
+`/ai/tinyhumans/tinycomputer/Desktop`, and provides eighty members:
 
 - 54 desktop primitives: accessibility-tree observation, ref-addressed
   interaction, synthesized keyboard and mouse input, application and window
@@ -15,11 +15,19 @@ The module claims `ai.tinyhumans.tinycomputer.Desktop`, serves the object at
 - 8 task members for outside agents: `Describe`, `PlanTask`, `StartTask`,
   `AwaitTask`, `ContinueTask`, `CancelTask`, `TaskReport`, and `ListTasks`.
   Tasks run across desktop applications and a Chrome browser, pause for
-  missing details and approvals, and always stop at payment.
+  missing details and approvals, and always stop at payment;
+- 13 browser primitives, each prefixed `Browser`: `BrowserOpenSession`,
+  `BrowserNavigate`, `BrowserSnapshot`, `BrowserPerform`, `BrowserReadPage`,
+  `BrowserEvaluate`, `BrowserScreenshot`, `BrowserReadOutput`, and the
+  session, output, and download members around them. They share one browser
+  with the tasks, so a task's session and screenshots are reachable too.
 
 Every member takes one request payload, or none, and returns a structured
 reply carrying either the data or an error with its code, suggestion, and
-recovery hint. All payload types, the interface name, the object path, and the
+recovery hint. Desktop and browser failures share one code vocabulary
+(`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `POLICY_DENIED`, …), so one
+handler serves both. `Describe` returns a catalogue of every member with its
+family and a one-line summary. All payload types, the interface name, the object path, and the
 member names are published as the `tinycomputer-bus` crate, so a host names
 them from a library rather than by string literal.
 

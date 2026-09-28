@@ -977,8 +977,126 @@ async fn describe_documents_every_member_and_its_examples_really_work() {
     assert_eq!(fields[0].name, "phone");
     assert_eq!(fields[0].kind, InputKind::Phone);
     for example in &described.examples[1..] {
-        assert!(names.contains(&example.member.as_str()));
+        assert!(
+            tinycomputer_bus::names::METHODS.contains(&example.member.as_str()),
+            "{} is not a served member",
+            example.member
+        );
     }
+}
+
+#[tokio::test]
+async fn describe_catalogues_every_served_member() {
+    let (tasks, _) = controller(Vec::new());
+    let described = capabilities(Vec::new(), true, &tasks);
+    let names = described
+        .catalogue
+        .iter()
+        .map(|member| member.name.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(names, tinycomputer_bus::names::METHODS);
+}
+
+/// The property names a hand-written object schema documents.
+fn documented(schema: &serde_json::Value) -> Vec<String> {
+    let mut names = schema["properties"]
+        .as_object()
+        .expect("an object schema")
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+    names.sort();
+    names
+}
+
+/// The field names a value serializes with, every optional one set.
+fn fields(value: &serde_json::Value) -> Vec<String> {
+    let mut names = value
+        .as_object()
+        .expect("an object")
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>();
+    names.sort();
+    names
+}
+
+#[tokio::test]
+async fn describe_schemas_name_every_request_field() {
+    let (tasks, _) = controller(Vec::new());
+    let described = capabilities(Vec::new(), true, &tasks);
+    let schema = |name: &str| {
+        described
+            .members
+            .iter()
+            .find(|member| member.name == name)
+            .map(|member| member.input.clone())
+            .expect("the member is documented")
+    };
+
+    let start = StartTaskRequest {
+        output: Some(tinycomputer_bus::agent::TaskOutput::default()),
+        ..StartTaskRequest::default()
+    };
+    let start = serde_json::to_value(start).unwrap();
+    let start_schema = schema("StartTask");
+    assert_eq!(documented(&start_schema), fields(&start));
+    assert_eq!(
+        documented(&start_schema["properties"]["constraints"]),
+        fields(&start["constraints"])
+    );
+    let budget = tinycomputer_bus::agent::TaskBudget {
+        max_actions: Some(1),
+        max_model_calls: Some(1),
+        votes: Some(1),
+        strategy: Some(tinycomputer_bus::FlowStrategy::default()),
+        deliberation: Some(tinycomputer_bus::Deliberation::default()),
+        max_elapsed_ms: Some(1),
+        max_rescues: Some(1),
+    };
+    assert_eq!(
+        documented(&start_schema["properties"]["budget"]),
+        fields(&serde_json::to_value(budget).unwrap())
+    );
+    assert_eq!(
+        documented(&start_schema["properties"]["output"]),
+        vec!["instructions".to_owned(), "schema".to_owned()]
+    );
+
+    let plan = serde_json::to_value(tinycomputer_bus::agent::PlanTaskRequest::default()).unwrap();
+    assert_eq!(documented(&schema("PlanTask")), fields(&plan));
+}
+
+#[tokio::test]
+async fn describe_browser_examples_decode_as_their_members_requests() {
+    use tinycomputer_bus::browser::{
+        Action, NavigateRequest, ReadOutputRequest, SessionOptions, SessionRequest, names,
+    };
+    let (tasks, _) = controller(Vec::new());
+    let described = capabilities(Vec::new(), true, &tasks);
+    let mut seen = 0;
+    for example in &described.examples {
+        let request = example.request.clone();
+        let decoded = match example.member.as_str() {
+            names::methods::OPEN_SESSION => {
+                serde_json::from_value::<SessionOptions>(request).is_ok()
+            }
+            names::methods::NAVIGATE => {
+                serde_json::from_value::<SessionRequest<NavigateRequest>>(request).is_ok()
+            }
+            names::methods::PERFORM => {
+                serde_json::from_value::<SessionRequest<Action>>(request).is_ok()
+            }
+            names::methods::READ_OUTPUT => {
+                serde_json::from_value::<ReadOutputRequest>(request).is_ok()
+            }
+            "StartTask" => serde_json::from_value::<StartTaskRequest>(request).is_ok(),
+            _ => continue,
+        };
+        assert!(decoded, "the {} example does not decode", example.title);
+        seen += 1;
+    }
+    assert!(seen >= 6, "the browser and output examples are checked");
 }
 
 /// A model that always answers with the same text.
