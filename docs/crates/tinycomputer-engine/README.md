@@ -1,10 +1,13 @@
 # tinycomputer-engine
 
-This crate is the agent runtime. It is the part of tinycomputer that decides
-what to do next and drives the desktop or the browser to do it. If
-`tinycomputer-desktop` is the hand that clicks and types, this crate is the
-part that looks at the screen, asks a small decision model what to do, and
-keeps a task moving until it is done, blocked, or needs a person.
+tinycomputer is a decision-model harness for desktop and browser
+automation, written in Rust: Jev makes every choice about what to press by
+answering small closed questions, and the harness does everything else. This
+crate, `tinycomputer-engine`, is that harness. It reads the screen, asks
+Jev what to do, checks the answer, acts, verifies the action landed, and
+enforces safety, and it keeps a task moving until it is done, blocked, or
+needs a person. If `tinycomputer-desktop` is the hand that clicks and
+types, this crate is the part that decides where the hand goes next.
 
 It has no bus of its own. The `tinycomputer` crate wraps these functions as
 TinyBus members; this crate only holds the logic.
