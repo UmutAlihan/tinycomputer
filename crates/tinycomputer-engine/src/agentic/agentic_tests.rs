@@ -360,6 +360,7 @@ fn runtime_recording(
                 provider: tinycomputer_bus::JevProvider::OpenRouter,
                 model: "jev-latest".to_owned(),
                 endpoint_url: None,
+                fast: false,
             },
             pending: Arc::new(Mutex::new(std::collections::HashMap::new())),
             journal: super::journal::Journal::default(),
