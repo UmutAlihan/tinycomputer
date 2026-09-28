@@ -359,7 +359,7 @@ fn a_card_s_rich_text_body_is_gated_on_include_values_but_its_name_is_not() {
             order: order + 1,
             ..Candidate::default()
         });
-        candidates.push(node("Open", "button", &path, order + 2));
+        candidates.push(node(&format!("Open {item}"), "button", &path, order + 2));
     }
     let page = screen(candidates, text_nodes);
     let digest = digest(&page);
