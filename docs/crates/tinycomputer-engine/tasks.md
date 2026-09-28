@@ -149,7 +149,7 @@ A `TaskBudget` bounds a whole *task*, not one flow run of it. That
 distinction matters because a task rarely finishes in exactly one flow run:
 an approval, a missing value, or a rescue each splits it into another run,
 and each of those runs must be charged against what the task has already
-spent, never given a fresh budget just because it happens to be a new
+spent: never given a fresh budget just because it happens to be a new
 `RunFlow` call underneath.
 
 ```rust
