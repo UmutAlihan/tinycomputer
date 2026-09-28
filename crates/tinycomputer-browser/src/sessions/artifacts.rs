@@ -6,6 +6,8 @@ use tinycomputer_bus::browser::{
 };
 
 use super::Browser;
+#[cfg(doc)]
+use crate::error::Error;
 use crate::error::Result;
 
 impl Browser {
