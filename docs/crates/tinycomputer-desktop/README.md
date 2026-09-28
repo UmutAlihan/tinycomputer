@@ -1,8 +1,12 @@
 # tinycomputer-desktop
 
-`tinycomputer-desktop` is the crate that lets tinycomputer control a real
-desktop: click a button in Safari, read a field in a Finder window, type into
-a form in System Settings. It wraps the vendored
+`tinycomputer-desktop` is the desktop half of tinycomputer, a decision model
+(Jev) based harness for desktop and browser automation written in Rust. Jev
+answers the small closed questions about what to press next; the harness
+around it reads the screen, asks, checks the answer, acts, verifies, and
+enforces safety. This crate is the part of the harness that lets it control a
+real desktop: click a button in Safari, read a field in a Finder window, type
+into a form in System Settings. It wraps the vendored
 [agent-desktop](https://github.com/lahfir/agent-desktop) engine, which does the
 actual accessibility-tree work, and exposes it as one Rust type, `Desktop`,
 with one method per operation.
