@@ -241,7 +241,8 @@
     }
     const text = ownText(element);
     if (text) {
-      const description = aria && aria !== text && !text.includes(aria) ? clip(aria, limits.name) : '';
+      const said = aria || innerLabel(element, text);
+      const description = said && said !== text && !text.includes(said) ? clip(said, limits.name) : '';
       return { name: clip(text, limits.name), description };
     }
     const pictured = [...element.querySelectorAll('img[alt], svg title')]
