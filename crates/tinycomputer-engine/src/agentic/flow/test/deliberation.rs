@@ -683,3 +683,41 @@ async fn a_toast_jev_says_is_not_in_the_way_is_left() {
     assert!(!run.app.sim().clicks.contains(&"Close".to_owned()));
     assert!(asked(&run.requests, "focus") >= 1);
 }
+
+#[tokio::test]
+async fn a_failed_choose_puts_back_the_text_it_typed_by_mistake() {
+    // Live on Emirates: no gender field, so "Female" was typed wherever the
+    // focus was — the last name filled a step earlier — and the step failed
+    // leaving "RainaFemale" behind.
+    let flow = json!({"app": "Mail", "steps": [
+        {"enter": {"recipient": "sam@example.com"}},
+        {"choose": {"what": "the gender field", "option": "Female"}}
+    ]});
+    let hook = |id: &str, question: &Question, _: &Sim| match id {
+        // Nothing opens a gender list: there is none.
+        "move" => Some(pick(question, "stuck", 0.9)),
+        _ => None,
+    };
+    let app = || {
+        App::with(|sim| {
+            sim.compose_open = true;
+            sim.quirks.insert(Quirk::FocusStays);
+        })
+    };
+    let deep = run_with(app(), flow.clone(), |_| {}, hook).await;
+    assert_eq!(deep.result.stop, FlowStopReason::StepFailed);
+    assert_eq!(deep.app.sim().fields["To"], "sam@example.com");
+    assert!(loops(&deep, 1).contains(&FlowLoop::Checkpoint));
+    let off = run_with(
+        app(),
+        flow,
+        |request| request.deliberation = Deliberation::Off,
+        hook,
+    )
+    .await;
+    assert_eq!(
+        off.app.sim().fields["To"],
+        "sam@example.comFemale",
+        "without deliberation the stray text stays"
+    );
+}

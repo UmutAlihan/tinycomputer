@@ -76,6 +76,9 @@ enum Quirk {
     DisabledArchive,
     /// A promo toast with a Close button sits over the page until closed.
     PromoToast,
+    /// Text typed with no target lands at the end of the field typed into
+    /// last, as a browser keeps the focus there.
+    FocusStays,
 }
 
 #[derive(Debug, Default)]
@@ -112,6 +115,8 @@ struct Sim {
     checked: BTreeSet<&'static str>,
     /// Times the shop went back a page.
     backs: u32,
+    /// The field typed or pasted into last: where the focus stays.
+    focused: Option<String>,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -749,6 +754,14 @@ impl AgentBackend for App {
                 }
             }
             JevOperation::TypeText if name == "Mumbai, BOM" => {}
+            JevOperation::TypeText if target.is_none() && sim.has(Quirk::FocusStays) => {
+                if let Some(field) = sim.focused.clone() {
+                    sim.fields
+                        .entry(field)
+                        .or_default()
+                        .push_str(&text.unwrap_or_default());
+                }
+            }
             // Text with no target goes to the focused field: the booking
             // form's search box once it is open.
             JevOperation::TypeText if target.is_none() => {
@@ -756,6 +769,7 @@ impl AgentBackend for App {
                     .insert("Search city".to_owned(), text.unwrap_or_default());
             }
             JevOperation::TypeText if !(name == "Body" && sim.has(Quirk::BodyIgnoresSetValue)) => {
+                sim.focused = Some(name.clone());
                 sim.fields.insert(name, text.unwrap_or_default());
             }
             _ => {}
@@ -772,9 +786,10 @@ impl AgentBackend for App {
         if is_city_row(Some(target)) {
             return not_a_text_field();
         }
-        self.sim()
-            .fields
-            .insert(target.name.clone().unwrap_or_default(), text.to_owned());
+        let mut sim = self.sim();
+        let name = target.name.clone().unwrap_or_default();
+        sim.focused = Some(name.clone());
+        sim.fields.insert(name, text.to_owned());
         DesktopResponse::ok("paste", json!({}))
     }
 
