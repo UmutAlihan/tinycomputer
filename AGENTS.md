@@ -171,7 +171,7 @@ for something the envelope can express.
   fails closed; never fall back to a default click.
 - **Thresholds are documented.** A constant in the flow runtime (`act.rs`, `ground.rs`, `enter.rs`,
   `reflect.rs`, `steps.rs`, `survey.rs`, `wide.rs`, `view/`, `vote.rs`, `mod.rs`, and deliberation's `evidence/`,
-  `escalate/`, `duel/`, `checkpoint/`) that a decision is thresholded on appears in `docs/decision-thresholds.md`.
+  `escalate/`, `duel/`, `checkpoint/`) that a decision is thresholded on appears in `docs/decision-thresholds.md`; change both together.
 - **A loop change needs a simulator test.** Reproduce the behaviour in
   `agentic/flow/test.rs` (the scripted apps and the oracle Jev) before
   changing it, and assert the new behaviour there.
