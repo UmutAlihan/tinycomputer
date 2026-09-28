@@ -955,6 +955,8 @@ async fn describe_documents_every_member_and_its_examples_really_work() {
     assert_eq!(confidential, tinycomputer_bus::agent::names::CONFIDENTIAL);
     assert!(described.step_kinds.iter().any(|kind| kind == "browse"));
     assert!(!described.planner_configured);
+    assert!(!described.rescue_configured);
+    assert!(capabilities(Vec::new(), true, true, true).rescue_configured);
 
     let flight = &described.examples[0];
     assert_eq!(flight.member, "StartTask");
