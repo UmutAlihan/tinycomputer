@@ -339,6 +339,84 @@ fn values_are_shown_only_when_allowed_and_long_cards_are_clipped() {
 }
 
 #[test]
+fn a_card_s_rich_text_body_is_gated_on_include_values_but_its_name_is_not() {
+    let root = "webarea \"Docs\"";
+    let card = |item: usize, order: usize| {
+        vec![
+            node(
+                &format!("Doc {item}"),
+                "text",
+                &[root, "list \"Docs\"", &format!("listitem #{item}")],
+                order,
+            ),
+            Candidate {
+                role: "text".to_owned(),
+                value: Some(json!(format!("body text of doc {item}"))),
+                path: vec![
+                    root.to_owned(),
+                    "list \"Docs\"".to_owned(),
+                    format!("listitem #{item}"),
+                    "textbox \"Body\"".to_owned(),
+                ],
+                order: order + 1,
+                ..Candidate::default()
+            },
+        ]
+    };
+    let mut text_nodes = Vec::new();
+    text_nodes.extend(card(1, 0));
+    text_nodes.extend(card(2, 10));
+    let page = screen(Vec::new(), text_nodes);
+    let digest = digest(&page);
+    let list = digest
+        .regions
+        .iter()
+        .find(|region| region.list.is_some())
+        .expect("the doc list stays one region");
+
+    let hidden = digest.render(
+        &page,
+        &Rendering {
+            budget: 100_000,
+            ..Rendering::default()
+        },
+    );
+    let lines = view(&hidden)["regions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|region| region["id"] == list.id)
+        .unwrap()["elements"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(lines[0], "card 1: Doc 1");
+    assert!(
+        !lines[0].as_str().unwrap().contains("body text"),
+        "a rich-text body must not leak when include_values is false: {lines:?}"
+    );
+
+    let shown = digest.render(
+        &page,
+        &Rendering {
+            budget: 100_000,
+            include_values: true,
+            ..Rendering::default()
+        },
+    );
+    let shown_lines = view(&shown)["regions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|region| region["id"] == list.id)
+        .unwrap()["elements"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(shown_lines[0], "card 1: Doc 1 · body text of doc 1");
+}
+
+#[test]
 fn sibling_containers_of_different_roles_never_share_one_card_list() {
     let root = "webarea \"App\"";
     let page = screen(
