@@ -127,6 +127,7 @@ pub enum Guidance {
 #[derive(Clone)]
 pub struct Rescuer {
     model: Arc<dyn LanguageModel>,
+    configuration: Option<LanguageModelConfiguration>,
 }
 
 impl std::fmt::Debug for Rescuer {
@@ -139,7 +140,24 @@ impl Rescuer {
     /// A rescuer asking `model`.
     #[must_use]
     pub fn new(model: Arc<dyn LanguageModel>) -> Self {
-        Self { model }
+        Self {
+            model,
+            configuration: None,
+        }
+    }
+
+    /// This rescuer, reporting `configuration` as its route and model in
+    /// `Describe`.
+    #[must_use]
+    pub fn with_configuration(mut self, configuration: LanguageModelConfiguration) -> Self {
+        self.configuration = Some(configuration);
+        self
+    }
+
+    /// The route and model this rescuer was configured with, when known.
+    #[must_use]
+    pub fn configuration(&self) -> Option<&LanguageModelConfiguration> {
+        self.configuration.as_ref()
     }
 
     /// Guidance for the failure `briefing` describes.

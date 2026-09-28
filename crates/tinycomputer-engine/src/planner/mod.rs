@@ -100,6 +100,7 @@ sending, deleting, publishing, or submitting with a stop_before step.";
 #[derive(Clone)]
 pub struct Planner {
     model: Arc<dyn LanguageModel>,
+    configuration: Option<LanguageModelConfiguration>,
 }
 
 impl std::fmt::Debug for Planner {
@@ -112,7 +113,24 @@ impl Planner {
     /// A planner asking `model`.
     #[must_use]
     pub fn new(model: Arc<dyn LanguageModel>) -> Self {
-        Self { model }
+        Self {
+            model,
+            configuration: None,
+        }
+    }
+
+    /// This planner, reporting `configuration` as its route and model in
+    /// `Describe`.
+    #[must_use]
+    pub fn with_configuration(mut self, configuration: LanguageModelConfiguration) -> Self {
+        self.configuration = Some(configuration);
+        self
+    }
+
+    /// The route and model this planner was configured with, when known.
+    #[must_use]
+    pub fn configuration(&self) -> Option<&LanguageModelConfiguration> {
+        self.configuration.as_ref()
     }
 
     /// Drafts a flow for `task`.
