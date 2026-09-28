@@ -61,7 +61,7 @@ accepted, so a scripted Jev server can stand in for the real one.
 
 ### Why a Jev call can fail
 
-`JevRuntime::configure` itself can fail, a bad key, an unapproved endpoint —
+`JevRuntime::configure` itself can fail (a bad key, an unapproved endpoint)
 before anything runs. Once running, every Jev call funnels its failure
 through the same small set of error codes:
 

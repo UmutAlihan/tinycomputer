@@ -13,11 +13,11 @@ a moment.
 
 Every fact is either **shared** or **secret**.
 
-- A **shared** fact, name, date of birth, email, phone, is part of the
+- A **shared** fact (name, date of birth, email, phone) is part of the
   brief Jev works from. Jev needs to be able to tell "Ms" from "Mr" or pick
   "Female" from a dropdown, and that requires actually seeing the value.
-- A **secret** fact, a card number, a passport number, a password, a
-  one-time code, is never shown to a model at all. A model only ever sees
+- A **secret** fact (a card number, a passport number, a password, a
+  one-time code) is never shown to a model at all. A model only ever sees
   the fact's *name*, written as `${name}`; the actual value is looked up by
   a surface at the exact moment it types it, through `Facts::get`, and never
   passed through anything that talks to a language model.
