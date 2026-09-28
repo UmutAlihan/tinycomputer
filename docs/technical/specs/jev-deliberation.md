@@ -155,7 +155,7 @@ journal all apply. Every rung checks the budget first. A run short of calls
 stops climbing and decides on what it has, never failing for lack of
 deliberation.
 
-### 3. Tree grounding (`ground.rs`)
+### 3. Tree grounding (`ground/`)
 
 Narrowing is a two-level tree: a region, then a knockout of `CAP`-sized
 groups, then the final Choice. Wherever the region answer's lead is under
@@ -252,7 +252,7 @@ deep level. A pick short of that is vouched for once more ("is it?" against
 "is it only similar?", widened), and the press is refused unless that
 belief reaches the floor.
 
-### 7. Backtracking (`act.rs`, `reflect.rs`)
+### 7. Backtracking (`act/recover.rs`, `reflect.rs`)
 
 After an undo, the step's frontier offers the best runner-up that is not
 banned. On the next `activate` it is confirmed with one `confirm` and pressed
