@@ -67,6 +67,9 @@ pub(crate) fn check(
         &mut count,
         &mut errors,
     );
+    let mut picked = BTreeSet::new();
+    picks(&flow.steps, &mut picked);
+    conditions_on_picks(&flow.steps, "", &picked, &mut errors);
     if count > MAX_STEPS {
         errors.push(format!(
             "the flow has {count} steps; at most {MAX_STEPS} are allowed"
