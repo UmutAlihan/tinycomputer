@@ -472,6 +472,10 @@ fn pressing_launching_settling_and_navigating() {
     assert_eq!(fake.last("wait")["timeout"], 400);
     let loaded = surface.navigate("https://flights.test/search");
     assert_eq!(loaded.data.unwrap()["url"], "https://flights.test/search");
+    let back = surface.back("browser");
+    assert!(back.ok, "{:?}", back.error);
+    assert_eq!(fake.last("back")["action"], "back");
+    assert!(back.data.unwrap().get("url").is_some());
     let refused = Fake::scripted(|command| {
         (command["action"] == "navigate")
             .then(|| failure("Domain 'evil.test' is not in the allowed domains list"))

@@ -672,6 +672,10 @@ impl Surface for BrowserSurface {
             page.map(|page| json!({"url": page.url, "title": page.title})),
         )
     }
+
+    fn back(&self, _app: &str) -> DesktopResponse {
+        self.perform("back", Action::Back)
+    }
 }
 
 /// How the engine addresses `reference`: a ref sight minted by its mark's
