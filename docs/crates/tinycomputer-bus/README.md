@@ -71,7 +71,7 @@ for the engineering write-up this page is a friendlier tour of.
 
 | Folder | What it holds | Read next |
 |---|---|---|
-| `names/` | The one interface name, the one object path, and one constant per member (56 desktop members plus 8 task members) | [Members and names](members-and-names.md) |
+| `names/` | The one interface name, the one object path, and one constant per member (80 in total: 54 desktop, 5 Jev-driven, 8 task, and 13 browser) | [Members and names](members-and-names.md) |
 | `envelope/` | `DesktopResponse`, the reply shape every desktop member uses, and the structured `DesktopError` it carries on failure | [The envelope and errors](envelope-and-errors.md) |
 | `vocabulary/` | The small shared enums every payload draws from: surfaces, mouse buttons, modifier keys, element properties | [The shared vocabulary](vocabulary.md) |
 | `observation/`, `interaction/`, `input/`, `apps/`, `clipboard/`, `notifications/`, `waiting/`, `system/` | One module per family of desktop members: reading the screen, acting on a ref, synthesizing keys and clicks, managing windows and applications, and so on | [Members and names](members-and-names.md) |
