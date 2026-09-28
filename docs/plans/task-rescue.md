@@ -19,5 +19,8 @@ commands green.
   [`../evals/2026-09-28-rescue.md`](../evals/2026-09-28-rescue.md). Both runs
   got past steps that had stalled every earlier run, and the furthest step
   reached moved from 18 to 20 of 26.
-- Guidance now says how many following steps it covers (phase 5), which
-  run 2's third rescue needed. It has not been re-run live since.
+- Guidance now says how many following steps it covers (phase 5). Run 3
+  used it (`covers: 2`) and reached step 25 of 26.
+- Open: a `verify` of typed field values cannot pass under a task, because
+  `include_values` is off. The planner, or the rescuer's protocol, should
+  steer away from such checks.
