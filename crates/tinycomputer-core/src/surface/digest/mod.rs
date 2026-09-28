@@ -232,7 +232,7 @@ impl Digest {
     /// a list.
     fn lines(screen: &Screen, region: &Region, include_values: bool) -> Vec<String> {
         if let Some((depth, parent)) = &region.list {
-            return card_lines(screen, *depth, parent);
+            return card_lines(screen, *depth, parent, include_values);
         }
         region
             .members
