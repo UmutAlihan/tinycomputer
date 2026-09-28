@@ -267,3 +267,21 @@ async fn guidance_may_cover_the_steps_after_the_failed_one_but_never_a_stop_befo
     let (rescuer, _) = scripted(&[Ok(covering)]);
     assert!(rescuer.guide(&briefing).await.is_err());
 }
+
+#[tokio::test]
+async fn guidance_for_a_failed_stop_before_must_keep_a_guard() {
+    let mut briefing = briefing();
+    briefing.failed = 3;
+    briefing.failure = "the control that pays was not found".to_owned();
+    let unguarded = r#"{"action": "retry", "reason": "x", "steps": ["continue to Payment"]}"#;
+    let guarded = r#"{"action": "retry", "reason": "the options page comes first",
+      "steps": ["continue to Options", {"stop_before": "proceeding to the Payment step"}]}"#;
+    let (rescuer, model) = scripted(&[Ok(unguarded), Ok(guarded)]);
+    let Guidance::Retry { steps, .. } = rescuer.guide(&briefing).await.unwrap() else {
+        panic!("expected steps");
+    };
+    assert_eq!(steps.len(), 2);
+    let seen = model.seen.lock().unwrap().clone();
+    let repair = &seen.last().unwrap()[3].text;
+    assert!(repair.contains("stop_before"), "{repair}");
+}
