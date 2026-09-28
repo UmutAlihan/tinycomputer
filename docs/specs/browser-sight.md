@@ -79,8 +79,10 @@ a caret.
    dialogs (`dialog`, `alertdialog`, `aria-modal`) and fixed layers (a
    `dialog` when it covers 30% of the viewport, else a `popover`; not a top
    bar with links), landmarks (`banner`, `navigation`, `main`, `form`, …),
-   named sections and groups, lists, and cards (`listitem #3`, `row #2`,
-   `article #1`), in the tree's label format so card grouping and the digest
+   named sections and groups, lists (an unnamed one after the first of its
+   kind numbered in page order, `list 2`, so two lists' first cards stay
+   apart), and cards (`listitem #3`, `row #2`, `article #1`), in the tree's
+   label format so card grouping and the digest
    work unchanged. The screen's surface is `sheet` (or `alert`) when a dialog
    is on top at the middle of the viewport.
 6. **Text.** Visible words outside controls and fields, within a screen of
