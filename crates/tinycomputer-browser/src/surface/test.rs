@@ -749,3 +749,50 @@ fn text_is_never_filled_or_pasted_into_an_element_that_does_not_take_it() {
     );
     assert_eq!(fake.last("focus")["selector"], "@e216");
 }
+
+#[test]
+fn an_unnamed_control_is_named_by_what_it_shows_but_a_field_never_is() {
+    // A list of cities whose rows carry a `combobox` role and an
+    // `aria-labelledby` that points nowhere: no accessible name at all.
+    let tree = r#"- main
+  - combobox [ref=e10]
+    - generic
+      - text: Mumbai
+      - text: Chhatrapati Shivaji Maharaj International Airport
+    - text: BOM
+  - combobox [ref=e11]
+    - text: Srinagar
+  - textbox [ref=e12]
+    - text: what was typed
+  - combobox [ref=e13]: typed value
+    - text: suggestion
+  - button "Search" [ref=e14]
+    - text: Search
+"#;
+    let parsed = screen(tree, "Flights");
+    let described = |reference: &str| {
+        parsed
+            .candidates
+            .iter()
+            .find(|candidate| candidate.ref_id == reference)
+            .unwrap()
+            .description
+            .clone()
+    };
+    assert_eq!(
+        described("e10").as_deref(),
+        Some("Mumbai Chhatrapati Shivaji Maharaj International Airport BOM")
+    );
+    assert_eq!(described("e11").as_deref(), Some("Srinagar"));
+    assert_eq!(
+        described("e12"),
+        None,
+        "a text field's content stays private"
+    );
+    assert_eq!(
+        described("e13"),
+        None,
+        "a control holding a value is a field"
+    );
+    assert_eq!(described("e14"), None, "a named control keeps its name");
+}

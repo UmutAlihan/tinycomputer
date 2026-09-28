@@ -19,6 +19,9 @@ const FIELD_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "textarea", "
 /// Roles a value is typed into.
 const TYPED_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "spinbutton", "textarea"];
 
+/// Roles whose inner text is what was typed into them.
+const TEXT_ENTRY_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbutton"];
+
 /// Longest description an unnamed control takes from the text inside it.
 const MAX_CONTENT_NAME: usize = 120;
 
@@ -166,9 +169,13 @@ pub(crate) fn screen(tree: &str, title: &str) -> Screen {
             if !line.has("disabled") {
                 // A control with no name of its own — a list row whose
                 // `aria-labelledby` points nowhere — is named by what it
-                // shows. One that holds a value is a field, and what is
-                // inside it is its content, private unless values are shared.
-                if node.name.is_none() && node.value.is_none() {
+                // shows. A text field — or a control holding a value — is not:
+                // what is inside it is its content, private unless values
+                // are shared.
+                if node.name.is_none()
+                    && node.value.is_none()
+                    && !TEXT_ENTRY_ROLES.contains(&line.role.as_str())
+                {
                     unnamed.push((line.depth, candidates.len()));
                 }
                 candidates.push(node);
