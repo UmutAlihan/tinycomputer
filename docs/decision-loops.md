@@ -483,14 +483,11 @@ judging loop off, the `do` loop just grounds and presses something each turn.
 
 ## Reading a run
 
-Find the failed step's note in the report (the lab's `timeline.txt`), read
-what Jev was shown for that step (the trace's `jev.jsonl`, or the debug
-journal, [`jev-journal.md`](jev-journal.md)), and decide whether the fault is
-the observation, the question, the flow, or the engine. The failure table in
-[`flow-examples.md`](flow-examples.md) maps common notes to their causes.
-Then reproduce it in the simulator in
-`crates/tinycomputer-engine/src/agentic/flow/test.rs` (a scripted mail app,
-booking widgets, and an oracle Jev that answers from their state) and fix it.
+Find the failed step's note in the report (`timeline.txt`), read what Jev
+was shown for it (`jev.jsonl`, or [`jev-journal.md`](jev-journal.md)), and
+decide whether the fault is the observation, the question, the flow, or the
+engine; [`flow-examples.md`](flow-examples.md) maps common notes to causes.
+Reproduce it in the simulator (`agentic/flow/test.rs`), then fix it.
 
 ## The wide strategy, and the thresholds
 
