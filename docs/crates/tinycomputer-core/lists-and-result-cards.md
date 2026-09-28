@@ -15,8 +15,8 @@ surface labels each item in a repeated container with an ordinal, like
 `listitem #3`, and every node under that item carries the same label
 somewhere in its `path`. `result_groups(screen)` (and the more general
 `result_families(screen)`) look for the ancestor path under which two or
-more same-role ordinal containers repeat, the most containers first, the
-deeper one winning any tie, and treat that as *the* list. A page can have
+more same-role ordinal containers repeat (the most containers first, the
+deeper one winning any tie) and treat that as *the* list. A page can have
 more than one repeating thing on it (a strip of selectable dates above a list
 of flights, say); `result_families` returns every one of them, longest
 first, while `result_groups` just gives you the biggest.
