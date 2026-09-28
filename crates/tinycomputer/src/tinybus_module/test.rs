@@ -486,7 +486,7 @@ async fn a_task_without_jev_fails_with_a_hint_and_reports_what_it_did() -> tinyb
     let report = service
         .call(
             &names::methods::TASK_REPORT.try_into()?,
-            json!([{"id": id}]),
+            json!([{"id": id, "trace": false}]),
         )
         .await?;
     let report: AgentResponse<TaskReport> = serde_json::from_value(report)?;
@@ -687,4 +687,40 @@ fn the_catalogue_marks_exactly_the_confidential_members() {
             member.name
         );
     }
+}
+
+#[tokio::test]
+async fn a_task_report_request_is_one_a_confidential_call_can_carry() -> tinybus::Result<()> {
+    use tinycomputer_bus::agent::{TaskId, TaskRef, TaskReportRequest};
+
+    let bus = MemoryBus::new();
+    Broker::new().spawn(bus.clone());
+    let server = Connection::connect(bus.connect().await?).await?;
+    setup(server.clone(), json!({})).await?;
+    let client = Connection::connect(bus.connect().await?).await?;
+    let proxy = client.proxy(names::INTERFACE, names::OBJECT_PATH, names::INTERFACE)?;
+
+    // A bare `{"id": ...}` has a stream handle's shape, and the client
+    // refuses to put one in a confidential body before anything is sent.
+    let bare = proxy
+        .call_confidential::<serde_json::Value>(
+            names::methods::TASK_REPORT,
+            (TaskRef {
+                id: TaskId::new("t-1"),
+            },),
+        )
+        .await
+        .expect_err("a bare id is refused client-side");
+    assert!(bare.to_string().contains("stream handle"), "{bare}");
+
+    // The report's own request always carries `trace`, so it gets past the
+    // client; this unattested test module then fails attestation instead.
+    let request = TaskReportRequest::new(TaskId::new("t-1"));
+    if let Err(error) = proxy
+        .call_confidential::<serde_json::Value>(names::methods::TASK_REPORT, (request,))
+        .await
+    {
+        assert!(!error.to_string().contains("stream handle"), "{error}");
+    }
+    Ok(())
 }
