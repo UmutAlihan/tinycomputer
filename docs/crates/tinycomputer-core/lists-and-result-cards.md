@@ -15,8 +15,8 @@ surface labels each item in a repeated container with an ordinal, like
 `listitem #3`, and every node under that item carries the same label
 somewhere in its `path`. `result_groups(screen)` (and the more general
 `result_families(screen)`) look for the ancestor path under which two or
-more same-role ordinal containers repeat — the most containers first, the
-deeper one winning any tie — and treat that as *the* list. A page can have
+more same-role ordinal containers repeat, the most containers first, the
+deeper one winning any tie, and treat that as *the* list. A page can have
 more than one repeating thing on it (a strip of selectable dates above a list
 of flights, say); `result_families` returns every one of them, longest
 first, while `result_groups` just gives you the biggest.
@@ -38,14 +38,14 @@ or not, in document order:
 
 - An actionable element (something you could click or type into) contributes
   its name or description unconditionally, and its held value only when the
-  caller asked to see values (`include_values`) — the same rule
+  caller asked to see values (`include_values`), the same rule
   [`element_line`](surfaces-and-screens.md) applies everywhere else in this
   crate.
 - A ref-less text node (something with no actions of its own, like a plain
   price label) contributes its name or description unconditionally too, since
   most of a card's price, airline name, and departure time text arrives this
   way and would otherwise never be visible at all. Its held *value*, though,
-  is gated the same way as an actionable element's — unless the text node
+  is gated the same way as an actionable element's, unless the text node
   sits inside a rich-text area or a token field (`webarea`, `document`,
   `textbox`, `searchbox`, `combobox`, `textarea`), in which case its value
   mirrors that field's actual contents rather than naming anything of its
@@ -61,8 +61,8 @@ Not every button inside a card should count as "the" way to open it. A
 result card might have a "Share" icon, a "Save" star, and a "Select" button;
 only the last one is what a person would actually click to act on that
 result. `prefers()` chooses whichever actionable element's name contains one
-of a short list of opener words — `select`, `book`, `choose`, `view`,
-`details`, `continue`, `reserve`, `deal`, `see` — over one that does not. If
+of a short list of opener words, `select`, `book`, `choose`, `view`,
+`details`, `continue`, `reserve`, `deal`, `see`, over one that does not. If
 nothing in the card matches an opener word, the group is left with whatever
 actionable element came last, which still gives a caller *something* to act
 on rather than nothing.
@@ -88,5 +88,5 @@ deliberately name-free (its `fields` are just a list of text, in order): it
 is the flow runtime, in `tinycomputer-engine`, that turns a page's `Group`s
 into named `Record`s once it knows what the fields probably mean. From
 there, [ranking by price, time, or stops](prices-times-and-dates.md) becomes
-plain arithmetic — see that page for how "book the cheapest one" turns into
+plain arithmetic, see that page for how "book the cheapest one" turns into
 a deterministic sort instead of a question sent to Jev.

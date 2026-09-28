@@ -19,7 +19,7 @@ or a result list. A region too large to take in at once (more than 24
 elements, by default) is split one ancestor level deeper, recursively, up to
 10 levels down. A list of repeated cards is always kept as one region rather
 than being split apart, even if splitting it would otherwise shrink the
-pieces below the size limit — a result list is one thing, not twenty.
+pieces below the size limit, a result list is one thing, not twenty.
 
 Every region gets three properties:
 
@@ -32,7 +32,7 @@ Every region gets three properties:
 ### What counts as "in front"
 
 A region is `Front` when its elements sit inside a role that overlays the
-page — `sheet`, `dialog`, `alertdialog`, `alert`, `popover` — or under a
+page, `sheet`, `dialog`, `alertdialog`, `alert`, `popover`, or under a
 container whose own label contains a word like `cookie`, `consent`, `gdpr`,
 `newsletter`, `subscribe`, `popup`, `modal`, or `overlay`. The word check is
 skipped at the very root of the tree: a page whose window happens to be
@@ -47,7 +47,7 @@ model should see first too.
 
 A region is `Noise` when every one of its members shares an ancestor whose
 label contains a word like `ads`, `advert`, `sponsored`, `promoted`,
-`footer`, `contentinfo`, or `copyright` — again skipping the very root.
+`footer`, `contentinfo`, or `copyright`, again skipping the very root.
 Unlike a front region, noise is collapsed by default: shown as one line
 naming the region, how many elements it holds, and a few examples, unless a
 relevance score explicitly rescues it (see below).
@@ -64,7 +64,7 @@ digest(&screen).regions.iter().find(|r| r.name.contains("contentinfo")).kind == 
 A region whose members repeat under two or more same-role numbered
 containers (`listitem #1`, `listitem #2`, …) gets a `list` field instead of
 being rendered element by element. `render()` then shows it as one line per
-card — its combined text and its "open this" control — instead of every
+card, its combined text and its "open this" control, instead of every
 button and label inside every card. See
 [lists and result cards](lists-and-result-cards.md) for how a card's text and
 its primary control are chosen; the digest just decides that a region *is* a
@@ -86,8 +86,8 @@ request sends to Jev. `Rendering` carries:
 
 Regions are spent against the budget in rank order: in front first, then by
 relevance (highest first), then in the order they originally appeared. A
-region that fits is rendered in full; one that does not — or one that is
-muted outright as noise or a distraction with no rescuing relevance score —
+region that fits is rendered in full; one that does not, or one that is
+muted outright as noise or a distraction with no rescuing relevance score , 
 is collapsed to a single summary line instead, such as:
 
 ```
@@ -112,12 +112,12 @@ The result is wrapped once more as `untrusted_accessibility_data`, with
 - `front()`: an iterator over just the front regions.
 - `layout()`: a string built from every region's kind and name, ignoring its
   contents. It changes when a dialog opens or the page moves to a different
-  screen, and does not change when someone types into a field — so a
+  screen, and does not change when someone types into a field, so a
   higher-level attention pass that is keyed on "has the shape of the page
   changed" only re-runs when it actually should.
 - `ranked(rendering)`: every element index in the order the digest would show
   them (front first, then by relevance, then reading order, noise and
-  distractions last) — useful for anything that wants the digest's ordering
+  distractions last), useful for anything that wants the digest's ordering
   without needing the rendered text.
 
 ## Why this lives in `tinycomputer-core` and not the engine

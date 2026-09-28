@@ -14,13 +14,13 @@ For the plain-language version of why that separation matters, see
 `consequence(label)` reads a control's visible label and classifies what
 pressing it would commit the user to:
 
-- `Consequence::Reversible` — nothing that cannot be undone or navigated away
+- `Consequence::Reversible`, nothing that cannot be undone or navigated away
   from. This is the default: most buttons ("Book", "Continue", "Next") are
   reversible, because a booking flow keeps leading to more forms before
   anything is actually charged.
-- `Consequence::Irreversible` — a message sent, data deleted, a post
+- `Consequence::Irreversible`, a message sent, data deleted, a post
   published, a reservation confirmed. Needs explicit human approval.
-- `Consequence::Payment` — money changes hands. Never made on its own; always
+- `Consequence::Payment`, money changes hands. Never made on its own; always
   stopped at, or held for approval.
 
 ```rust
@@ -33,7 +33,7 @@ assert_eq!(consequence("Continue to traveller details"), Consequence::Reversible
 ```
 
 The check is a whole-word match against two short word lists (`PAYMENT` and
-`IRREVERSIBLE`), not a machine-learned classifier — a control's label is
+`IRREVERSIBLE`), not a machine-learned classifier, a control's label is
 lower-cased, punctuation is turned into spaces, and each list is checked as a
 whole-word phrase so that, say, "Payment history" does not accidentally
 match "pay" as a substring of something else. An **empty** label is treated
@@ -42,7 +42,7 @@ harmless, so the safe default wins.
 
 ### Counters are a deliberate exception
 
-A stepper's minus button often says something that sounds irreversible —
+A stepper's minus button often says something that sounds irreversible , 
 "Remove Adult, 2 Adult Remaining" reads a lot like "Remove" on its own would.
 But all it does is lower a number that the plus button right next to it
 would put back. `adjusts_a_count(label)` recognizes this shape: a decrease
@@ -74,7 +74,7 @@ assert!(payment_evidence("https://ota.test/traveller", &[card], &[]).is_some());
 assert!(payment_evidence("https://ota.test/results", &[], &["Book"]).is_none());
 ```
 
-The rule: a card field is enough on its own — either a `cc-*` autocomplete
+The rule: a card field is enough on its own, either a `cc-*` autocomplete
 attribute, or a label/name matching card wording ("card number", "cvv",
 "expiry date", "upi id", …). Without a card field, a payment-shaped URL path
 (`payment`, `billing`, `checkout`, …) *and* a payment-classified control
@@ -92,9 +92,9 @@ is what a caller shows a person at a checkpoint rather than a bare boolean.
 Desktop applications have no URL and no HTML `autocomplete` attribute, so
 `payment_evidence` on its own cannot run there. `screen_payment_evidence(screen)`
 builds the same kind of evidence out of a plain `Screen`: it looks at fields
-that may take input (marked as such, or carrying no role and no actions —
+that may take input (marked as such, or carrying no role and no actions , 
 meaning nothing says they cannot), reads their labels, and separately looks
-at *nearby* text (within five nodes in document order — enough room for the
+at *nearby* text (within five nodes in document order, enough room for the
 usual wrapper elements between a label and its field, not enough to reach a
 footer far down the page) for strong card wording like "CVV" or "card
 number" that a promotional line would never use ("save 10% with your credit
@@ -155,7 +155,7 @@ sees when a task stops for one of these reasons.
 
 ## Where these checks are enforced
 
-None of these functions click anything or block anything by themselves —
+None of these functions click anything or block anything by themselves , 
 they only classify. The engine's flow runtime is what actually reads a
 `Consequence` or a `PaymentEvidence` before a destructive click and decides
 whether to proceed, hold for approval, or refuse. See

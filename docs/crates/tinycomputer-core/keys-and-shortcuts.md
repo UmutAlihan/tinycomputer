@@ -49,7 +49,7 @@ assert_eq!(Key::Settings.browser(Platform::MacOs), None);
 ```
 
 A few shortcuts are spelled differently between the two engines even for the
-same key and platform — `Redo` on macOS is `cmd+shift+z` for the desktop but
+same key and platform, `Redo` on macOS is `cmd+shift+z` for the desktop but
 `Meta+Shift+z` for the browser (capitalization aside, both are "the same
 shortcut"), and `Back`/`Forward` use bracket keys on desktop macOS
 (`cmd+[`/`cmd+]`) but arrow keys everywhere in the browser
@@ -65,5 +65,5 @@ the mapping in one place also means that if agent-desktop or agent-browser
 ever change how they expect a shortcut spelled, there is exactly one place
 in this repository that needs to change (see this repository's rule that
 `vendor/agent-desktop` and `vendor/agent-browser` are fixed elsewhere and
-picked up here as a gitlink bump — nothing about *how a key is spelled* lives
+picked up here as a gitlink bump, nothing about *how a key is spelled* lives
 upstream, only how the underlying press is carried out).

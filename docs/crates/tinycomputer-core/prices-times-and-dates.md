@@ -13,7 +13,7 @@ judgment.
 
 ## `Record`: one card as named fields
 
-A `Record` is just a field name mapped to the text shown for it —
+A `Record` is just a field name mapped to the text shown for it , 
 `{"airline": "IndiGo", "price": "₹6,840"}`. `Record::from_pairs` builds one
 from `(name, text)` pairs directly, which is mostly how tests and examples
 construct them; in a live run, the flow runtime builds these from the
@@ -41,7 +41,7 @@ because that convention differs by locale (`$1,234.56` versus
 *later* in the number is the decimal mark, and the earlier one is just a
 thousands separator. When only `,` appears, it is treated as a decimal mark
 if it is followed by exactly two digits and nothing else (`6,50`), and as a
-thousands separator otherwise — which correctly reads the Indian grouping
+thousands separator otherwise, which correctly reads the Indian grouping
 convention (`1,23,456`) as a whole number rather than mangling it. A named
 currency is always found by scanning for the *earliest* amount-before-a-name
 in the text, not the first currency name in the module's own list, so
@@ -50,7 +50,7 @@ whichever currency happens to be checked first internally.
 
 Prices found without any currency marker at all (a bare "6840" with no
 symbol, code, or name anywhere near it) are still read as a number, but with
-`currency: None` — which matters for ranking, described below.
+`currency: None`, which matters for ranking, described below.
 
 ## `parse_clock`, `parse_duration`, `parse_stops`
 
@@ -76,7 +76,7 @@ otherwise reads the number immediately before the word "stop".
 `Criterion::parse(text)` reads plain words like "cheapest" or "fewest stops"
 into one of six criteria (`LowestPrice`, `HighestPrice`, `Earliest`,
 `Latest`, `FewestStops`, `Shortest`), and returns `None` when the wording
-does not map cleanly onto one of them — the deliberate cue for a caller to
+does not map cleanly onto one of them, the deliberate cue for a caller to
 fall back to asking a decision model instead of guessing.
 
 `rank(records, criterion)` sorts a slice of `Record`s best-first for a given
@@ -96,14 +96,14 @@ Each criterion looks for a field whose *name* hints at what it needs
 (`price`/`fare`/`cost`/`total` for price criteria, `depart`/`time`/`start`
 for time criteria, and so on), and falls back to scanning every field's text
 if no name matches. For price specifically, the fallback scan only accepts a
-value that actually showed a currency — so a flight number like `6E-2135`
+value that actually showed a currency, so a flight number like `6E-2135`
 never gets mistaken for a price just because it contains digits. A record
 whose value cannot be read at all is not dropped from the ranking; it is
 placed after every readable one, in its original order, so a caller always
 gets back a full, stable ordering rather than a filtered list.
 
 `rank` returns `None`, not an empty ranking, when *no* record in the whole
-set could be read for that criterion — the same "hand this to a model
+set could be read for that criterion, the same "hand this to a model
 instead" signal `Criterion::parse` gives for wording it does not recognize.
 That is the whole point of the module: ranking by an unambiguous criterion
 never needs a model, but the moment the data genuinely cannot support it,
@@ -122,7 +122,7 @@ first or last with a numeric month (`2000-01-31`, `2000/1/1`), or any order
 once the month is spelled out, even abbreviated (`31 Jan 2000`,
 `January 31, 2000`). A form like `01/02/2000`, which genuinely means
 different days depending on the country reading it, is deliberately never
-read — guessing wrong there is worse than not guessing.
+read, guessing wrong there is worse than not guessing.
 
 ```rust
 use tinycomputer_core::{Date, parse_date};

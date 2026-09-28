@@ -13,11 +13,11 @@ a moment.
 
 Every fact is either **shared** or **secret**.
 
-- A **shared** fact — name, date of birth, email, phone — is part of the
+- A **shared** fact, name, date of birth, email, phone, is part of the
   brief Jev works from. Jev needs to be able to tell "Ms" from "Mr" or pick
   "Female" from a dropdown, and that requires actually seeing the value.
-- A **secret** fact — a card number, a passport number, a password, a
-  one-time code — is never shown to a model at all. A model only ever sees
+- A **secret** fact, a card number, a passport number, a password, a
+  one-time code, is never shown to a model at all. A model only ever sees
   the fact's *name*, written as `${name}`; the actual value is looked up by
   a surface at the exact moment it types it, through `Facts::get`, and never
   passed through anything that talks to a language model.
@@ -26,11 +26,11 @@ A fact becomes secret in one of three ways, and only one of them is up to
 the caller:
 
 1. the caller explicitly marks it secret (`Facts::with_secrets`)
-2. its *name* labels something sensitive — see `is_sensitive_name` below
+2. its *name* labels something sensitive, see `is_sensitive_name` below
 3. its *value* looks like a real card number (passes the Luhn checksum)
 
 A caller can make any fact secret. A caller cannot make a fact that matches
-rule 2 or 3 shared, even by trying — `Facts::new` computes secrecy from the
+rule 2 or 3 shared, even by trying, `Facts::new` computes secrecy from the
 name and value themselves, and there is no method that removes an entry from
 that set once it is in.
 
@@ -65,7 +65,7 @@ assert!(!is_sensitive_name("date of birth"));
 ## `mask`: turning a value back into `${name}`
 
 Once a value has left the model's view (typed into a field, say), it can
-still show up in text coming back the other way — a screen reading back
+still show up in text coming back the other way, a screen reading back
 what was typed, or a page confirming the last four digits. `Facts::mask`
 replaces every secret value it finds, longest value first (so a shorter
 value that happens to be a substring of a longer one is not replaced
@@ -88,14 +88,14 @@ the first place.
 ## The rest of the surface
 
 - `Facts::merged(other)` combines two sets of facts, keeping a name secret if
-  either side marked it so — merging never demotes a secret back to shared.
+  either side marked it so, merging never demotes a secret back to shared.
 - `Facts::names()`, `Facts::shared()`, `Facts::secret_names()`,
   `Facts::missing(wanted)` give you the bookkeeping views a caller needs: what
   is known, what a model may be briefed with, which names are secret (so even
   their *existence* can be surfaced without their values), and which of a
   wanted list is not supplied at all.
 - `Facts` implements `Debug` by hand, printing only the fact *names*, never
-  values — so an accidental `{:?}` in a log line cannot leak a secret the way
+  values, so an accidental `{:?}` in a log line cannot leak a secret the way
   a derived `Debug` would.
 
 ## Why this crate, and not the engine
