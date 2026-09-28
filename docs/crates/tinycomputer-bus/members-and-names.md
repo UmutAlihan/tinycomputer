@@ -32,8 +32,8 @@ constants turn a footgun into a compile error.
 
 `names::METHODS` is the full list, in the exact order the interface dispatches
 them, and `crates/tinycomputer` (the module itself) asserts its own dispatch
-table and its embedded manifest against that list. So the three copies, the
-constants here, the module's dispatch table, and the module's manifest ,
+table and its embedded manifest against that list. So the three copies
+(the constants here, the module's dispatch table, and the module's manifest)
 cannot drift apart without a test failing.
 
 ## Reading the observation-then-action pattern
@@ -64,7 +64,7 @@ Source: [`observation/types.rs`](../../../crates/tinycomputer-bus/src/observatio
   pointed at the interesting container).
 - **`Find`** searches instead of walking: give it a role, a name, states to
   require, and get back matches. Its filter fields all combine with AND. Its
-  selection fields (`count`, `first`, `last`, `nth`) are mutually exclusive ,
+  selection fields (`count`, `first`, `last`, `nth`) are mutually exclusive:
   asking for two of them at once is an `INVALID_ARGS` error, not a silent
   pick of one.
 - **`Get`** reads one property (`text`, `value`, `title`, `bounds`, `role`,
