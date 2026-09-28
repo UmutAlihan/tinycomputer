@@ -4,7 +4,8 @@
 //! that turns the typed requests in [`tinycomputer_bus::browser`] into engine
 //! commands and the engine's replies into typed results. It holds no bus, no
 //! agent loop, and no model; `tinycomputer-engine` drives it, and `tinycomputer`
-//! serves it over `TinyBus` as `ai.tinyhumans.tinycomputer.Browser`.
+//! serves it over `TinyBus` as the `Browser…` members of the module's one
+//! interface.
 //!
 //! [agent-browser]: https://github.com/vercel-labs/agent-browser
 //!
@@ -22,7 +23,8 @@
 //! - `AgentBrowser` (feature `agent-browser`) — the [`Launcher`] for
 //!   agent-browser linked in-process.
 //! - [`Error`] — what can go wrong, as a taxonomy of what a caller should do
-//!   next, each variant mapped to one published wire name.
+//!   next, each variant mapped to one published wire name, and to the
+//!   envelope error a bus member replies with ([`Error::envelope`]).
 //!
 //! Every browser contract type is re-exported, so `tinycomputer_browser::Action`
 //! is the same type as `tinycomputer_bus::browser::Action`.
