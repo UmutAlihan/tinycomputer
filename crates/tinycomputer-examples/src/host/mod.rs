@@ -432,7 +432,11 @@ fn verify_allowlisted(module: &Path) -> Result<(), LabError> {
 #[must_use]
 pub fn module_path() -> PathBuf {
     std::env::var_os("TINYCOMPUTER_MODULE").map_or_else(
-        || PathBuf::from(format!("target/lab/{}", library_name())),
+        || {
+            let target = std::env::var_os("CARGO_TARGET_DIR")
+                .map_or_else(|| PathBuf::from("target"), PathBuf::from);
+            target.join("lab").join(library_name())
+        },
         PathBuf::from,
     )
 }

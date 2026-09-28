@@ -22,6 +22,8 @@ tinycomputer-engine = { workspace = true }
 tinybus = { workspace = true, features = ["modules"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+# The task runners pull screenshots over the bus as base64 chunks.
+base64 = { workspace = true }
 tokio = { workspace = true }
 # The optional multimodal author the lab puts in front of Jev: an LLM that
 # writes flows from a brief and checks screenshots. Lab-only on purpose — the
