@@ -75,7 +75,7 @@ pub(super) fn judge(reply: &str, briefing: &Briefing) -> Result<Guidance, String
 
 /// How many steps after the failed one the answer's `covers` drops, or why
 /// it may not.
-pub(super) fn covered(value: &Value, briefing: &Briefing) -> Result<usize, String> {
+fn covered(value: &Value, briefing: &Briefing) -> Result<usize, String> {
     let covers = value
         .get("covers")
         .and_then(Value::as_u64)
@@ -104,7 +104,7 @@ pub(super) fn covered(value: &Value, briefing: &Briefing) -> Result<usize, Strin
 /// covering one (`covered`, above): a step that might hold a guard on some
 /// path is never dropped, even when [`ends_in_guard`] would not credit it
 /// with actually running one.
-pub(super) fn guards(step: &FlowStep) -> bool {
+fn guards(step: &FlowStep) -> bool {
     match step.action() {
         FlowAction::StopBefore(_) => true,
         FlowAction::If(branch) => branch.then.iter().chain(&branch.otherwise).any(guards),
@@ -120,7 +120,7 @@ pub(super) fn guards(step: &FlowStep) -> bool {
 /// one branch of an `if`, or inside a `repeat_until` body that can run zero
 /// times, can be skipped entirely, resuming the rest of the flow with no
 /// checkpoint in front of the irreversible action it was meant to gate.
-pub(super) fn ends_in_guard(step: &FlowStep) -> bool {
+fn ends_in_guard(step: &FlowStep) -> bool {
     match step.action() {
         FlowAction::StopBefore(_) => true,
         FlowAction::If(branch) => {

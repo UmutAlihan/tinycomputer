@@ -106,7 +106,7 @@ pub(super) fn render(briefing: &Briefing) -> String {
 }
 
 /// The screen's lines, cut to [`SCREEN_CHARS`].
-pub(super) fn screen(lines: &[String]) -> String {
+fn screen(lines: &[String]) -> String {
     let mut text = String::new();
     for line in lines {
         let line = line.trim();
@@ -127,7 +127,7 @@ pub(super) fn screen(lines: &[String]) -> String {
     }
 }
 
-pub(super) fn outcome_word(outcome: RescueOutcome) -> &'static str {
+fn outcome_word(outcome: RescueOutcome) -> &'static str {
     match outcome {
         RescueOutcome::Running => "still running",
         RescueOutcome::Recovered => "its steps finished",

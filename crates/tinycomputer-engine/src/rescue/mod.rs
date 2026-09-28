@@ -15,14 +15,19 @@
 //! [`Briefing`] with every fact value already redacted, including from the
 //! screen, which is wrapped as untrusted data.
 
+mod judge;
+mod render;
+
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use serde_json::Value;
-use tinycomputer_bus::agent::{Rescue, RescueOutcome};
-use tinycomputer_bus::{FLOW_GUIDE, Flow, FlowAction, FlowStep, StepReport};
+use tinycomputer_bus::agent::Rescue;
+use tinycomputer_bus::{FLOW_GUIDE, Flow, FlowStep, StepReport};
 
-use crate::planner::{LanguageModel, REPAIRS, Role, Turn, json_object};
+use crate::planner::{LanguageModel, REPAIRS, Role, Turn};
+use judge::judge;
+pub(crate) use judge::resumed;
+use render::render;
 
 /// Rescues a task gets when its budget does not say, and the most it may
 /// ask for.
