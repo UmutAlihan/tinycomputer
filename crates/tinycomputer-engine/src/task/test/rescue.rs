@@ -274,3 +274,31 @@ async fn walls_budgets_and_run_errors_are_never_rescued() {
         assert!(model.seen.lock().unwrap().is_empty(), "{stop:?}");
     }
 }
+
+#[tokio::test]
+async fn steps_the_guidance_covers_are_dropped_and_the_guard_is_kept() {
+    let covering = r#"{"action": "retry", "reason": "the search opens the cheapest result itself",
+      "steps": ["press Search Flights"], "covers": 1}"#;
+    let (tasks, script, _) = rescued(
+        vec![
+            failed_at_step_two(),
+            finished_run(FlowStopReason::Completed, vec![], &[], None),
+        ],
+        &[Ok(covering)],
+    );
+    let view = begin(&tasks, TaskBudget::default());
+    assert!(matches!(
+        settle(&tasks, &view.id).await.status,
+        TaskStatus::Done { .. }
+    ));
+    let steps = script.requests.lock().unwrap()[1].flow.steps.clone();
+    assert_eq!(
+        steps,
+        [
+            FlowStep::Intent("press Search Flights".to_owned()),
+            flow(flights()).steps[3].clone()
+        ],
+        "\"open the cheapest result\" is covered; the stop_before stays"
+    );
+    assert_eq!(tasks.report(&view.id).data.unwrap().rescues[0].covers, 1);
+}

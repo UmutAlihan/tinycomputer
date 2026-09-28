@@ -101,7 +101,10 @@ async fn guidance_comes_back_as_steps_to_run_in_place_of_the_failed_one() {
     else {
         panic!("expected steps");
     };
-    assert_eq!(covers, 0, "nothing after the failed step is covered by default");
+    assert_eq!(
+        covers, 0,
+        "nothing after the failed step is covered by default"
+    );
     assert_eq!(reason, "the calendar is still open over the form");
     assert_eq!(steps.len(), 2);
     let flow = resumed(&briefing, steps, covers);
