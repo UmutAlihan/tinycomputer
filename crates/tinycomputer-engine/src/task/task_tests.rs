@@ -2,9 +2,18 @@
 //!
 //! The runner hands back queued `RunFlow` replies and records every request,
 //! so each pause, resume, and failure path is exercised without Jev or a
-//! surface.
+//! surface. This root holds that runner and the helpers every topic in
+//! `task_tests/` shares.
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+mod approval_tests;
+mod human_tests;
+mod output_tests;
+mod plan_tests;
+mod rescue_tests;
+mod start_tests;
+mod status_tests;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -160,6 +169,3 @@ fn failed_at_step_two() -> DesktopResponse {
         None,
     )
 }
-
-mod output_tests;
-mod rescue_tests;
