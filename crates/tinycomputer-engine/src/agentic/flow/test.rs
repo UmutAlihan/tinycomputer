@@ -69,6 +69,11 @@ enum Quirk {
     /// A list of cities whose rows carry a `combobox` role but take no
     /// text, above the one real search field.
     CityRows,
+    /// The shop's history is stuck: going back or loading an address
+    /// reports success and changes nothing.
+    StuckHistory,
+    /// The Archive button shows disabled.
+    DisabledArchive,
 }
 
 #[derive(Debug, Default)]
@@ -99,12 +104,106 @@ struct Sim {
     /// Trip-type tabs: the selected one, and how many clicks on the others
     /// the page ignores first, as a page still loading its scripts does.
     trip: Option<(&'static str, u8)>,
+    /// A web shop's page stack, newest last; empty for the mail app.
+    pages: Vec<&'static str>,
+    /// The shop's extras: travel insurance and seat protection checkboxes.
+    insurance: bool,
+    protection: bool,
+    /// Times the shop went back a page.
+    backs: u32,
     quirks: BTreeSet<Quirk>,
 }
 
 impl Sim {
     fn has(&self, quirk: Quirk) -> bool {
         self.quirks.contains(&quirk)
+    }
+
+    /// The shop page showing, or `None` for the mail app.
+    fn page(&self) -> Option<&'static str> {
+        self.pages.last().copied()
+    }
+
+    /// A reply carrying the shop's address, as a browser's does.
+    fn located(&self, command: &str) -> DesktopResponse {
+        DesktopResponse::ok(
+            command,
+            self.page().map_or_else(|| json!({}), |page| json!({"url": page})),
+        )
+    }
+}
+
+/// The shop's pages.
+const EXTRAS: &str = "https://shop.test/extras";
+const TERMS: &str = "https://shop.test/terms";
+const REVIEW: &str = "https://shop.test/review";
+
+/// The shop's screen: an extras page with two checkboxes, a terms link, and
+/// Continue; the terms and review pages beyond it.
+fn shop_screen(sim: &Sim) -> Screen {
+    let page = sim.page().unwrap_or(EXTRAS);
+    let (window, candidates, context) = match page {
+        TERMS => (
+            "Insurance terms",
+            vec![node(
+                "Download terms",
+                "link",
+                &["Click"],
+                &["main "Terms""],
+                100.0,
+            )],
+            vec!["Terms and conditions of travel insurance".to_owned()],
+        ),
+        REVIEW => (
+            "Review",
+            vec![node("Pay", "button", &["Click"], &["main "Review""], 100.0)],
+            vec!["Review your booking".to_owned()],
+        ),
+        _ => {
+            let checkbox = |name: &str, checked: bool, y: f64| {
+                let mut box_node = node(name, "checkbox", &["Click"], &["form "Extras""], y);
+                if checked {
+                    box_node.states = vec!["checked".to_owned()];
+                }
+                box_node
+            };
+            (
+                "Extras",
+                vec![
+                    checkbox("Seat protection", sim.protection, 100.0),
+                    checkbox("Travel insurance", sim.insurance, 140.0),
+                    node(
+                        "Insurance terms",
+                        "link",
+                        &["Click"],
+                        &["form "Extras""],
+                        180.0,
+                    ),
+                    node("Continue", "button", &["Click"], &["form "Extras""], 260.0),
+                ],
+                vec!["Choose your extras".to_owned()],
+            )
+        }
+    };
+    Screen {
+        app: "browser".to_owned(),
+        window: Some(window.to_owned()),
+        surface: "window".to_owned(),
+        candidates,
+        context,
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    }
+}
+
+/// What pressing `name` does in the shop.
+fn press_shop(sim: &mut Sim, name: &str) {
+    match name {
+        "Seat protection" => sim.protection = !sim.protection,
+        "Travel insurance" => sim.insurance = !sim.insurance,
+        "Insurance terms" => sim.pages.push(TERMS),
+        "Continue" => sim.pages.push(REVIEW),
+        _ => {}
     }
 }
 
@@ -412,6 +511,9 @@ fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<C
 impl App {
     fn screen(&self) -> Screen {
         let sim = self.sim();
+        if sim.page().is_some() {
+            return shop_screen(&sim);
+        }
         let window = if sim.compose_open {
             "New Message"
         } else {
@@ -450,13 +552,11 @@ impl App {
                 &[&root, "toolbar"],
                 40.0,
             ));
-            candidates.push(node(
-                "Archive",
-                "button",
-                &["Click"],
-                &[&root, "toolbar"],
-                40.0,
-            ));
+            let mut archive = node("Archive", "button", &["Click"], &[&root, "toolbar"], 40.0);
+            if sim.has(Quirk::DisabledArchive) {
+                archive.states = vec!["disabled".to_owned()];
+            }
+            candidates.push(archive);
             for index in 0..sim.extra_buttons {
                 let region = if sim.has(Quirk::OneRegion) {
                     "list \"Messages\"".to_owned()
@@ -582,6 +682,10 @@ impl AgentBackend for App {
                     sim.picked.push(reference);
                 }
                 sim.clicks.push(name.clone());
+                if sim.page().is_some() {
+                    press_shop(&mut sim, &name);
+                    return sim.located("click");
+                }
                 match name.as_str() {
                     "New Message" => sim.compose_open = true,
                     "Send" => sim.sent = true,
@@ -657,9 +761,27 @@ impl AgentBackend for App {
         DesktopResponse::ok("press", json!({}))
     }
 
+    fn back(&self, _app: &str) -> DesktopResponse {
+        let mut sim = self.sim();
+        if sim.page().is_none() {
+            return DesktopResponse::err(
+                "back",
+                tinycomputer_bus::DesktopError::new("ACTION_NOT_SUPPORTED", "no history"),
+            );
+        }
+        sim.backs += 1;
+        if !sim.has(Quirk::StuckHistory) && sim.pages.len() > 1 {
+            sim.pages.pop();
+        }
+        sim.located("back")
+    }
+
     fn launch(&self, app: &str) -> DesktopResponse {
         let mut sim = self.sim();
         sim.launched.push(app.to_owned());
+        if sim.page().is_some() {
+            return sim.located("launch");
+        }
         if sim.has(Quirk::FailLaunch) {
             return DesktopResponse::err(
                 "launch",
@@ -678,6 +800,11 @@ impl AgentBackend for App {
             );
         }
         sim.navigated.push(url.to_owned());
+        if !sim.has(Quirk::StuckHistory)
+            && let Some(at) = sim.pages.iter().position(|page| *page == url)
+        {
+            sim.pages.truncate(at + 1);
+        }
         DesktopResponse::ok("navigate", json!({"url": url, "title": "Flights"}))
     }
 }
@@ -846,6 +973,47 @@ fn pick(question: &Question, needle: &str, probability: f64) -> Answer {
             })
             .collect(),
         choice: key,
+        confidence: 0.5,
+    })
+}
+
+/// A Choice answer putting `weights` on the options whose key or description
+/// holds each needle, the rest of the probability spread evenly over the
+/// other options; the winner is the heaviest.
+fn weighted(question: &Question, weights: &[(&str, f64)]) -> Answer {
+    let Question::Choice(choice) = question else {
+        panic!("weighted needs a choice question");
+    };
+    let mut probabilities = BTreeMap::new();
+    for (needle, weight) in weights {
+        if let Some((key, _)) = choice.criteria.iter().find(|(key, description)| {
+            !probabilities.contains_key(*key)
+                && (*key == needle
+                    || description
+                        .as_ref()
+                        .is_some_and(|description| description.to_string().contains(needle)))
+        }) {
+            probabilities.insert(key.clone(), *weight);
+        }
+    }
+    let rest = choice.criteria.len().saturating_sub(probabilities.len());
+    let left = (1.0 - probabilities.values().sum::<f64>()).max(0.0);
+    for key in choice.criteria.keys() {
+        if !probabilities.contains_key(key) {
+            probabilities.insert(
+                key.clone(),
+                left / f64::from(u32::try_from(rest.max(1)).unwrap()),
+            );
+        }
+    }
+    let winner = probabilities
+        .iter()
+        .max_by(|left, right| left.1.total_cmp(right.1))
+        .map(|(key, _)| key.clone())
+        .unwrap();
+    Answer::Choice(ChoiceAnswer {
+        choice: winner,
+        probabilities,
         confidence: 0.5,
     })
 }
@@ -5242,3 +5410,5 @@ fn an_option_still_offered_after_filtering_was_not_taken() {
     };
     assert!(steps::left_unchosen(&screen, asked, true).is_none());
 }
+
+mod deliberation;
