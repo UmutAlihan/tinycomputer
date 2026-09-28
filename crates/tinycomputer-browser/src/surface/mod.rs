@@ -280,7 +280,8 @@ impl BrowserSurface {
   const element = document.activeElement;
   if (!element) return false;
   const tag = (element.tagName || '').toLowerCase();
-  if (tag === 'textarea' || element.isContentEditable) return true;
+  if (element.isContentEditable) return true;
+  if (tag === 'textarea') return !element.readOnly && !element.disabled;
   if (tag !== 'input') return false;
   const type = (element.getAttribute('type') || 'text').toLowerCase();
   return ['text', 'search', 'email', 'tel', 'url', 'number', 'password'].includes(type)
