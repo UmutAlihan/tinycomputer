@@ -182,7 +182,7 @@ fn judge(reply: &str, briefing: &Briefing) -> Result<Guidance, String> {
 /// The flow that runs after a rescue: `guidance` in place of the failed step,
 /// then every step after it, unchanged.
 #[must_use]
-pub fn resumed(briefing: &Briefing, guidance: Vec<FlowStep>) -> Flow {
+pub(crate) fn resumed(briefing: &Briefing, guidance: Vec<FlowStep>) -> Flow {
     let rest = briefing
         .flow
         .steps
