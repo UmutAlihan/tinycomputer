@@ -803,7 +803,7 @@ fn an_unnamed_control_is_named_by_what_it_shows_but_a_field_never_is() {
 /// A page read by sight: one field and one result link a card covers.
 fn sighted_fake() -> Fake {
     Fake::scripted(|command| match command["action"].as_str().unwrap() {
-        "evaluate" if command["script"].as_str().unwrap().contains("data-tc-seen") => {
+        "evaluate" if command["script"].as_str().unwrap().contains("__tinycomputerSeen") => {
             Some(ok(&json!({"result": {
                 "ok": true,
                 "title": "Flights",
