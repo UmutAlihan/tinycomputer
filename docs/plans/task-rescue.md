@@ -14,5 +14,10 @@ commands green.
 
 ## Remaining
 
-- A live run on the Emirates plan, where the date calendar stays open and
-  flight cards are not read, to see whether a rescue gets past either.
+- The live evaluation is in
+  [`../evals/2026-09-28-rescue.md`](../evals/2026-09-28-rescue.md). Both runs
+  got past steps that had stalled every earlier run, and the furthest step
+  reached moved from 18 to 20 of 26.
+- Next: let guidance say how many following steps it also covers, never past
+  a `stop_before`. Without that, a rescue that fills several fields leaves the
+  plan's own steps for them still to run.
