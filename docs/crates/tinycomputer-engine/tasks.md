@@ -107,7 +107,7 @@ Every `TaskView.status` is one of nine states (`TaskStatus` in
 `TaskStatus::is_final()` is true for `Done`, `Failed`, `Cancelled`, and a
 non-continuable `Checkpoint`. `next_calls` (in `task/mod.rs`) computes which
 member calls make sense for the current state and is echoed back as
-`TaskView.next`, so a caller does not have to hardcode the state machine —
+`TaskView.next`, so a caller does not have to hardcode the state machine:
 it can just try one of the calls the last view offered.
 
 ## Pausing and resuming
