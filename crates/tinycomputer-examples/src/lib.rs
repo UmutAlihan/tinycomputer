@@ -15,8 +15,10 @@
 //! assert_eq!(JevProvider::OpenRouter, JevProvider::OpenRouter);
 //! ```
 
+pub mod host;
 pub mod journal;
 pub mod lab;
+pub mod task;
 
 use tinycomputer_browser::Perception;
 use tinycomputer_bus::{Deliberation, FlowStrategy};
