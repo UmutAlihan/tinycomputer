@@ -527,5 +527,5 @@
     if (floating === 'alertdialog') { surface = 'alert'; break; }
     if (floating === 'dialog') { surface = 'sheet'; break; }
   }
-  return { ok: true, surface, unreachable, nodes };
+  return { ok: true, title: document.title, surface, unreachable, nodes };
 })
