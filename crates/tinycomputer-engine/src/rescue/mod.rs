@@ -190,10 +190,12 @@ fn judge(reply: &str, briefing: &Briefing) -> Result<Guidance, String> {
         _ => return Err("Set `action` to \"retry\", \"skip\", or \"give_up\".".to_owned()),
     };
     let failed_guards = briefing.flow.steps.get(briefing.failed).is_some_and(guards);
-    if failed_guards && !steps.iter().any(guards) {
+    if failed_guards && !steps.last().is_some_and(ends_in_guard) {
         return Err(
             "The failed step is a stop_before, which guards an irreversible action: \
-             never skip it, and your steps must end in front of it with a stop_before too."
+             never skip it, and your steps must end in front of it with a stop_before too, \
+             unconditionally — not only inside one branch of an `if`, and never only inside \
+             a `repeat_until`, which can run zero times."
                 .to_owned(),
         );
     }
