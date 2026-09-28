@@ -353,7 +353,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
         let groups = if pool.len() <= CAP {
             vec![pool]
-        } else if operation == "activate" && self.enabled(FlowLoop::Narrowing) {
+        } else if self.enabled(FlowLoop::Narrowing) {
             log.used(FlowLoop::Narrowing);
             pool.chunks(CAP).map(<[Candidate]>::to_vec).collect()
         } else {
