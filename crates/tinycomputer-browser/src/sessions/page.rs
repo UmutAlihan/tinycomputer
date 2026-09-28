@@ -1,25 +1,16 @@
 //! The calls on a session's page: navigation, snapshots, actions, reading,
 //! evaluation, and screenshots.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
-
-use serde_json::{Value, json};
+use serde_json::Value;
 use tinycomputer_bus::browser::{
-    Action, ActionOutcome, DownloadId, DownloadInfo, DownloadState, DownloadWaitRequest,
-    EvaluateRequest, NavigateRequest, OutputChunk, OutputId, OutputRef, PageState, PageText,
-    ReadFormat, ReadRequest, ScreenshotRequest, SessionId, SessionInfo, SessionOptions, Snapshot,
-    SnapshotRequest, Target,
+    Action, ActionOutcome, EvaluateRequest, NavigateRequest, OutputRef, PageState, PageText,
+    ReadFormat, ReadRequest, ScreenshotRequest, SessionId, Snapshot, SnapshotRequest, Target,
 };
 
 use super::Browser;
-use super::{Browser, Session};
 use crate::convert;
-use crate::engine::{Engine, Launcher};
 use crate::error::{Error, Result};
-use crate::outputs::{OutputStore, within_cap};
+use crate::outputs::within_cap;
 use crate::reply;
 
 impl Browser {

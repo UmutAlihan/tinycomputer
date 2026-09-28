@@ -10,17 +10,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
-use tinycomputer_bus::browser::{
-    Action, ActionOutcome, DownloadId, DownloadInfo, DownloadState, DownloadWaitRequest,
-    EvaluateRequest, NavigateRequest, OutputChunk, OutputId, OutputRef, PageState, PageText,
-    ReadFormat, ReadRequest, ScreenshotRequest, SessionId, SessionInfo, SessionOptions, Snapshot,
-    SnapshotRequest, Target,
-};
+use tinycomputer_bus::browser::{DownloadInfo, PageState, SessionId, SessionInfo, SessionOptions};
 
 use crate::convert;
 use crate::engine::{Engine, Launcher};
 use crate::error::{Error, Result};
-use crate::outputs::{OutputStore, within_cap};
+use crate::outputs::OutputStore;
 use crate::reply;
 
 mod artifacts;

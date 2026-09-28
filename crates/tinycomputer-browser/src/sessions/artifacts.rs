@@ -1,25 +1,12 @@
 //! What sessions leave behind: held outputs and downloads.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
-
 use serde_json::{Value, json};
 use tinycomputer_bus::browser::{
-    Action, ActionOutcome, DownloadId, DownloadInfo, DownloadState, DownloadWaitRequest,
-    EvaluateRequest, NavigateRequest, OutputChunk, OutputId, OutputRef, PageState, PageText,
-    ReadFormat, ReadRequest, ScreenshotRequest, SessionId, SessionInfo, SessionOptions, Snapshot,
-    SnapshotRequest, Target,
+    DownloadId, DownloadInfo, DownloadState, DownloadWaitRequest, OutputChunk, OutputId, SessionId,
 };
 
 use super::Browser;
-use super::{Browser, Session};
-use crate::convert;
-use crate::engine::{Engine, Launcher};
-use crate::error::{Error, Result};
-use crate::outputs::{OutputStore, within_cap};
-use crate::reply;
+use crate::error::Result;
 
 impl Browser {
     /// Reads up to `len` bytes of a held output from `offset`.
