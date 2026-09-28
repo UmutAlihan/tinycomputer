@@ -128,7 +128,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     }
 
     /// Runs `steps` in order, recursing into `if` and `repeat_until`.
-    pub(super) fn run_steps<'s>(
+    pub(in crate::agentic::flow) fn run_steps<'s>(
         &'s mut self,
         steps: &'s [FlowStep],
         prefix: String,
@@ -273,27 +273,27 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         self.step_cleared.clear();
     }
 
-    pub(super) fn enabled(&self, flow_loop: FlowLoop) -> bool {
+    pub(in crate::agentic::flow) fn enabled(&self, flow_loop: FlowLoop) -> bool {
         !self.disabled.contains(&flow_loop)
     }
 
     /// Whether the run deliberates on evidence at all, and `flow_loop` —
     /// one of deliberation's loops — is on.
-    pub(super) fn deliberates(&self, flow_loop: FlowLoop) -> bool {
+    pub(in crate::agentic::flow) fn deliberates(&self, flow_loop: FlowLoop) -> bool {
         self.deliberation != Deliberation::Off && self.enabled(flow_loop)
     }
 
     /// Whether the run deliberates at the deep level.
-    pub(super) fn deep(&self) -> bool {
+    pub(in crate::agentic::flow) fn deep(&self) -> bool {
         self.deliberation == Deliberation::Deep
     }
 
     /// Jev evaluations the run may still make.
-    pub(super) fn room(&self) -> u32 {
+    pub(in crate::agentic::flow) fn room(&self) -> u32 {
         self.max_calls.saturating_sub(self.metrics.calls)
     }
 
-    pub(super) fn model(&self) -> &str {
+    pub(in crate::agentic::flow) fn model(&self) -> &str {
         &self.runtime.configuration.model
     }
 

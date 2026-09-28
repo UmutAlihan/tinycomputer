@@ -36,10 +36,13 @@
 //! See `docs/specs/jev-intent-flows.md` for the design and its rationale.
 
 mod act;
+mod action;
 mod ask;
 mod attention;
 mod backend;
+mod brief;
 mod checkpoint;
+mod decide;
 mod denoise;
 mod duel;
 mod enter;
@@ -48,8 +51,10 @@ mod evidence;
 mod expect;
 mod ground;
 mod ledger;
+mod look;
 mod memory;
 mod reflect;
+mod run;
 mod steps;
 mod survey;
 mod validate;

@@ -10,7 +10,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// framings as the run votes with — concurrently, each one charged as an
     /// evaluation — and the answers are averaged. On a web page it also
     /// carries a page-kind question, whose answer briefs the next request.
-    pub(super) async fn ask(
+    pub(in crate::agentic::flow) async fn ask(
         &mut self,
         log: &mut StepLog,
         request: EvaluationRequest,
@@ -30,7 +30,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// speculative. When the budget has no room for all of them at full
     /// votes, the batch is cut from the end — never below the first — so the
     /// reply may be shorter than `requests`.
-    pub(super) async fn ask_batch(
+    pub(in crate::agentic::flow) async fn ask_batch(
         &mut self,
         log: &mut StepLog,
         mut requests: Vec<EvaluationRequest>,
@@ -183,7 +183,7 @@ const PAGE_KIND: &str = "page_kind";
 /// brief is kept on the first briefed question only, then the longest lists
 /// of screen text and elements in the shared state lose their last entries.
 /// What remains is the part of the screen read first.
-pub(super) fn fit(request: &mut EvaluationRequest, limit: usize) {
+pub(in crate::agentic::flow) fn fit(request: &mut EvaluationRequest, limit: usize) {
     let size =
         |request: &EvaluationRequest| serde_json::to_vec(request).map_or(0, |json| json.len());
     if size(request) <= limit {

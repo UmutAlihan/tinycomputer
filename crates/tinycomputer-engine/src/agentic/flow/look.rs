@@ -11,7 +11,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// is reported to Jev as a blank screen with a note, so a keyboard move can
     /// still make progress; only [`MAX_BLIND_LOOKS`] such looks in a row fail
     /// the step.
-    pub(super) async fn look(&mut self) -> Result<Screen, Halt> {
+    pub(in crate::agentic::flow) async fn look(&mut self) -> Result<Screen, Halt> {
         let started = Instant::now();
         let observed =
             observe_async(self.backend.clone(), self.app.clone(), None, Depth::Full).await;
@@ -61,7 +61,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// Called only when a step did not find what it needs in the budgeted
     /// view — a note editor below a long folder list — so the common case
     /// still reads one bounded snapshot.
-    pub(super) async fn explore(&self, screen: &mut Screen) {
+    pub(in crate::agentic::flow) async fn explore(&self, screen: &mut Screen) {
         for root in std::mem::take(&mut screen.unexplored)
             .into_iter()
             .take(MAX_EXPLORED)

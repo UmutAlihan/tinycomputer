@@ -4,7 +4,7 @@ use super::*;
 
 impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     /// Runs one desktop action, charging it to the budget and the step log.
-    pub(super) async fn act<F>(
+    pub(in crate::agentic::flow) async fn act<F>(
         &mut self,
         log: &mut StepLog,
         action: &str,
