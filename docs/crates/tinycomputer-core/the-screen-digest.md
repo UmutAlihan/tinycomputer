@@ -64,7 +64,7 @@ digest(&screen).regions.iter().find(|r| r.name.contains("contentinfo")).kind == 
 A region whose members repeat under two or more same-role numbered
 containers (`listitem #1`, `listitem #2`, …) gets a `list` field instead of
 being rendered element by element. `render()` then shows it as one line per
-card, its combined text and its "open this" control, instead of every
+card (its combined text and its "open this" control) instead of every
 button and label inside every card. See
 [lists and result cards](lists-and-result-cards.md) for how a card's text and
 its primary control are chosen; the digest just decides that a region *is* a
