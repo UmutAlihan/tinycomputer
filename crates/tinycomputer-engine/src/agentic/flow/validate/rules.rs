@@ -266,7 +266,7 @@ fn bare(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeSet<St
     }
 }
 
-pub(super) fn undefined(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeSet<String>) {
+fn undefined(errors: &mut Vec<String>, path: &str, value: &str, defined: &BTreeSet<String>) {
     for name in references(value) {
         if !defined.contains(&name) {
             errors.push(format!(

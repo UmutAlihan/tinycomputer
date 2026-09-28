@@ -236,7 +236,7 @@ pub(in crate::agentic::flow) fn distractions(
 /// `covered`: a distraction Escape clears. Live on Emirates, the date
 /// calendar stayed open over the form and covered the Class button the next
 /// step needed.
-pub(super) fn covering(screen: &Screen, intent: &[String], cleared: &BTreeSet<String>) -> Option<Distraction> {
+fn covering(screen: &Screen, intent: &[String], cleared: &BTreeSet<String>) -> Option<Distraction> {
     if cleared.contains(ESCAPED) {
         return None;
     }

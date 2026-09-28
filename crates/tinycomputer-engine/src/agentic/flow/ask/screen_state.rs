@@ -44,7 +44,7 @@ pub(in crate::agentic::flow) fn state(
 /// — ref-less, so it never appears in `screen.candidates` — which is why this
 /// reads the merged, document-ordered view over `candidates` and
 /// `text_nodes` instead.
-pub(super) fn field_contents(screen: &Screen) -> Vec<Value> {
+fn field_contents(screen: &Screen) -> Vec<Value> {
     let ordered = ordered_nodes(screen);
     let mut fields = Vec::new();
     for node in &screen.candidates {
