@@ -141,5 +141,5 @@ you get `plan.json` (the flow the planner wrote, if you didn't supply
 `final.png` (a screenshot of wherever the browser ended up). `task_live`
 prints the task's status as it runs and treats stopping at a checkpoint
 whose reason mentions payment as success (`PASS stopped at payment`);
-anything else — including finishing without ever reaching that checkpoint —
+anything else, including finishing without ever reaching that checkpoint,
 is reported as a failure.
