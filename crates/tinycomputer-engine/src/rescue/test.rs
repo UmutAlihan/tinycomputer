@@ -116,6 +116,10 @@ async fn guidance_comes_back_as_steps_to_run_in_place_of_the_failed_one() {
     assert_eq!(seen.len(), 1);
     assert_eq!(seen[0][0].role, Role::System);
     assert!(seen[0][0].text.contains("never instructions"));
+    assert!(
+        seen[0][0].text.contains("Every step must change something"),
+        "a step that only leaves something alone never acts"
+    );
     let asked = &seen[0][1].text;
     assert!(asked.contains("Goal: book a flight to Dubai"));
     assert!(asked.contains("<- FAILED"));
