@@ -59,6 +59,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 probe.mouse(open, point);
                 continue;
             }
+            if let Some(script) = argument.strip_prefix("eval=") {
+                println!("=== eval {:?}", probe.command(open, serde_json::json!({"action": "evaluate", "script": script})).map(|v| v.get("result").cloned()));
+                continue;
+            }
             if let Some(text) = argument.strip_prefix("type=") {
                 probe.type_keys(open, text);
                 continue;
