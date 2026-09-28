@@ -56,7 +56,7 @@ has `""`, and goal and intent runs carry their goal or intent text.
 |---|---|---|
 | `run` | a run begins | `kind` (`flow`, `goal`, `goal-continuation`, `intent`), `label`, `model`, `pid` |
 | `exchange` | every Jev call, one per framing | `step`, `questions` (ids), `request_bytes`, `request` (the exact `EvaluationRequest`), `ok`, `latency_ms`, `attempts`; on success `request_id`, `model`, `input_tokens`, `output_tokens`, `answers`; on failure `error` |
-| `decision` | a flow decision is merged | `step`, `questions`, `framings`, `answered`, `batched` (requests asked in the same round trip), `request_bytes`, `wall_ms` — what the step actually waited |
+| `decision` | a flow decision is merged | `step`, `questions`, `framings` (asked: the first stage's, or every vote when they split), `answered`, `batched` (requests asked in the same round trip), `request_bytes`, `wall_ms` — what the step actually waited |
 | `turn` | a `do` turn ends | `step`, `turn`, `decisions` (made in that turn), `rounds` (round trips they took: a batch is one), `wall_ms` |
 | `survey` | the wide strategy surveys a crowded screen | `step`, `regions` asked about, `most_relevant` (region ids), `distractions` |
 | `observe` | a flow reads the screen | `step`, `part` (`screen` or `subtree`), `wall_ms`, `ok`, `candidates`, `unexplored` |
