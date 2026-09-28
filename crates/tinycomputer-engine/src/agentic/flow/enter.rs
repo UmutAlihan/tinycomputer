@@ -336,7 +336,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         // are not interchangeable: split date parts and card expiry MM/YY
         // boxes are the same shape but hold different text. `distinct`
         // would collapse them to one offered choice — position in the pool
-        // is what tells them apart, so every field stays offered.
+        // is what tells them apart, so no lookalike field is deduplicated
+        // away. `CAP` below still limits how many fields one request offers.
         let offered = fields
             .iter()
             .filter(|field| !taken.contains(&signature(field)))
