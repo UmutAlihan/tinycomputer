@@ -122,8 +122,8 @@ struct LastAction {
 /// Bookkeeping across the turns of one `do` step.
 #[derive(Debug, Default)]
 struct DoState {
-    /// The turn under way, when it began, and how many decisions the run
-    /// had made by then: the journal's `turn` event.
+    /// The turn under way, when it began, and how many decisions and round
+    /// trips the run had made by then: the journal's `turn` event.
     turn: Option<(u32, Instant, u32, u32)>,
     last: Option<LastAction>,
     banned: BTreeSet<String>,
