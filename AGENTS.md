@@ -230,17 +230,13 @@ cargo test --all-features
 
 Supporting commands:
 
-- `cargo fmt --all` — format before committing.
-- `cargo test <filter>` — run a focused subset while iterating.
-- `cargo test -p tinycomputer-bus` — run one crate's suite.
-- `cargo run -p tinycomputer-examples --bin basic` — run the bundled example.
+- `cargo fmt --all` before committing; `cargo test <filter>` or
+  `cargo test -p <crate>` while iterating; `cargo test --doc` for doctests.
+- `scripts/build-module` — build and attest the module; prints its path.
 - `cargo run -p tinycomputer-examples --bin verify_module -- <path>` — load a built
   `cdylib` through the real TinyBus dynamic loader.
-- `cargo doc --no-deps --all-features` — build the rustdoc CI also builds with
-  `RUSTDOCFLAGS="-D warnings"`.
-- `cargo test --doc` — run doctests alone when editing documentation examples.
-- `cargo test --all-features --no-fail-fast` — see every failing crate at once;
-  plain `cargo test` stops at the first.
+- `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features` — as CI.
+- `cargo test --all-features --no-fail-fast` — every failing crate at once.
 - `cargo run -p tinycomputer-examples --bin jev_journal -- latest` — summarise
   the last journaled run (see below).
 
