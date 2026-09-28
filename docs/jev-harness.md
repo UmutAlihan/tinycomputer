@@ -68,7 +68,9 @@ measures them against.
 ## The life of one flow decision
 
 Every flow question reaches Jev through `FlowRun::ask`
-(`agentic/flow/mod.rs`). In order:
+(`agentic/flow/mod.rs`), or, for several independent requests at once,
+`FlowRun::ask_batch`, which runs the steps below for each and sends every
+framing of every request together: one round trip. In order:
 
 1. **Build.** A step's code builds the questions (`ask.rs`) and the shared
    state (`ask::state`: app, window, surface, current step, visible text,
@@ -108,15 +110,30 @@ The step's code then thresholds the merged answers (see
 
 ## Where the time goes
 
-A step is a sequence of waits; nothing inside one step runs in parallel
-except the framings of a single decision. One `do` turn is roughly:
+A step is a sequence of waits. Within one, the framings of a decision run
+in parallel, and so do decisions that do not depend on each other
+(`ask_batch`). One `do` turn is roughly:
 
 ```text
-look (observe)  →  judge (1 decision)  →  [ground (1+ decisions)]  →  act  →  settle
+look (observe)  →  judge + ground's first round (1 round trip)  →  [ground (0+ rounds)]  →  act  →  settle
 ```
 
-So a turn's wall time is the observation, plus each decision's *slowest*
-framing, plus the action, plus settling. The levers:
+Two narrow-strategy decisions are batched:
+
+- **A step's first turn** asks the judge and grounding's first round for an
+  `activate` move together: before anything is done a step almost always
+  activates, and the target's pool and purpose do not depend on the judge.
+  If the judge picks another move, that round's calls were spent for
+  nothing. Later turns are not speculated on: after an action the judge
+  most often ends the step.
+- **Narrowing** asks the region question and a knockout cut along the
+  regions together, instead of up to three region rounds and then a
+  knockout.
+
+On a crowded page that takes an `activate` turn from up to five round trips
+(judge, two regions, knockout, Choice) to two (judge with region and
+knockout, Choice). So a turn's wall time is the observation, plus each
+round trip's *slowest* framing, plus the action, plus settling. The levers:
 
 | Lever | Effect on latency | Effect on accuracy |
 |---|---|---|

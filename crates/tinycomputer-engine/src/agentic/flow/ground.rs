@@ -4,9 +4,15 @@
 //! 1. **Memory**: an element that grounded the same step before is offered
 //!    first and confirmed with one yes/no question.
 //! 2. **Narrowing**: a pool larger than [`CAP`] is split by region (the
-//!    ancestor it sits under) and Jev picks a region before an element. If
-//!    regions do not split it, a knockout of `CAP`-sized groups does.
+//!    ancestor it sits under). One round trip asks which region holds the
+//!    element and a knockout of `CAP`-sized groups cut along the regions;
+//!    the chosen region's winners go on to the Choice.
 //! 3. **Choice** over at most `CAP` elements.
+//!
+//! The first round is built by [`FlowRun::opening`] without being asked, so
+//! a `do` turn can send it with its judge, and finished by
+//! [`FlowRun::resume`].
+//!
 //! 4. **Consistency and corroboration**: a low-confidence pick is re-asked
 //!    with relabelled options, and confirmed with a yes/no question, in one
 //!    request. It is used only if the evidence agrees.
