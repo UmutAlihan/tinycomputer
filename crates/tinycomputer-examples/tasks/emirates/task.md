@@ -5,7 +5,8 @@ to the payment page. Never pay: stop in front of the payment step.
 What we found when we researched the site for an automated browser:
 
 - Emirates' own site, https://www.emirates.com/in/english/, loads and serves
-  its booking widget. It opens with a cookie sheet ("Accept" dismisses it).
+  its booking widget. A first visit opens with a cookie sheet ("Accept"
+  dismisses it); a later one does not, so only dismiss it if it shows.
 - The "Search flights" tab has "Flight" chosen. Its "Departure airport" button
   opens a list of airports as options ("Mumbai (Bombay), India Chhatrapati
   Shivaji International BOM"); "Arrival airport" works the same way ("Dubai").
