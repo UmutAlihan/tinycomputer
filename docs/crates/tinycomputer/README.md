@@ -1,11 +1,15 @@
 # crates/tinycomputer
 
-This is the crate that actually ships. Everything else in the workspace,
-`tinycomputer-bus`, `tinycomputer-desktop`, `tinycomputer-engine`,
-`tinycomputer-browser`, `tinycomputer-cursor`, exists to be assembled here into
-one native library that a [TinyBus](what-is-tinybus.md) host can load. If you
-only ever install a release archive and call it from another program, this is
-the crate whose behavior you are depending on.
+tinycomputer is the TinyBus module that ships tinycomputer, a decision model
+(Jev) based harness for desktop and browser automation written in Rust. Jev
+answers the small closed questions about what to press; the harness does
+everything else: reading the screen, asking, checking the answer, acting,
+verifying, and enforcing safety. This crate is where the harness gets built
+into one native library a TinyBus host can load, so it is what you are
+depending on if you install a release archive and call it from another
+program. Everything else in the workspace, `tinycomputer-bus`,
+`tinycomputer-desktop`, `tinycomputer-engine`, `tinycomputer-browser`,
+`tinycomputer-cursor`, exists to be assembled here.
 
 ## What it is
 

@@ -115,7 +115,7 @@ not just described in the prompt:
 - **A failed `stop_before` can never be skipped, and guidance replacing one
   must end in a `stop_before` of its own.** This is checked with `ends_in_guard`,
   which is deliberately stricter than "any step in the guidance holds a
-  `stop_before`", an `if` only counts if *both* branches are non-empty and
+  `stop_before`": an `if` only counts if *both* branches are non-empty and
   each ends in one, and a `repeat_until` body never counts, because it can
   run zero times and let nothing gate the action after it. A guard that
   could be skipped along some path is not a guard.
@@ -142,7 +142,7 @@ worth nothing the moment a step near it happened to fail. So:
 - covering (dropping) a step that guards something is refused outright,
   regardless of `covers`'s count;
 - if the *failed* step itself was a guard, the replacement steps must
-  themselves end in one, unconditionally, "not only inside one branch of
+  themselves end in one, unconditionally: "not only inside one branch of
   an `if`, and never only inside a `repeat_until`", as the rescuer's own
   protocol puts it.
 
