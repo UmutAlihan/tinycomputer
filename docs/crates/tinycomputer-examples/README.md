@@ -52,29 +52,29 @@ build and environment: `scripts/lab` (see [the lab](the-lab.md)) and
 
 ## Cross-links
 
-- [How tinycomputer works](../../how-it-works.md) — the big picture these
+- [How tinycomputer works](../../how-it-works.md): the big picture these
   examples exercise pieces of.
-- [Giving it a task](../../giving-it-a-task.md) — the task API that
+- [Giving it a task](../../giving-it-a-task.md): the task API that
   `task_live` and `task_fixture` drive from the outside.
-- [Writing flows](../../writing-flows.md) — the language the scenario and
+- [Writing flows](../../writing-flows.md): the language the scenario and
   task flows are written in.
-- [How it decides](../../how-it-decides.md) — what Jev is, and what a
+- [How it decides](../../how-it-decides.md): what Jev is, and what a
   decision loop is.
 - [Catching mistakes](../../catching-mistakes.md) and
-  [rescue](../../rescue.md) — what happens when a step goes wrong, which
+  [rescue](../../rescue.md): what happens when a step goes wrong, which
   `--disable` and `TASK_RESCUES` let you turn off to measure.
-- [Memory and saving](../../memory-and-saving.md) — the grounding hints
+- [Memory and saving](../../memory-and-saving.md): the grounding hints
   `target/lab-runs/memory.json` carries between runs.
-- [Seeing the screen](../../seeing-the-screen.md) — what a flow or task
+- [Seeing the screen](../../seeing-the-screen.md): what a flow or task
   actually reads, which the journal and the trace both record.
-- [Safety and privacy](../../safety-and-privacy.md) — why `--send` only ever
+- [Safety and privacy](../../safety-and-privacy.md): why `--send` only ever
   addresses your own inbox, why payment is never entered, and why journals
   are git-ignored.
-- [Watching a run](../../watching-a-run.md) — the cursor and other ways to
+- [Watching a run](../../watching-a-run.md): the cursor and other ways to
   watch a run live, beyond the timeline and the journal.
-- [Glossary](../../glossary.md) — short definitions of terms used across
+- [Glossary](../../glossary.md): short definitions of terms used across
   these pages (Jev, flow, task, decision loop, and so on).
 - [`docs/technical/lab.md`](../../technical/lab.md),
   [`docs/technical/docker-lab.md`](../../technical/docker-lab.md), and
-  [`docs/technical/jev-journal.md`](../../technical/jev-journal.md) — the
+  [`docs/technical/jev-journal.md`](../../technical/jev-journal.md): the
   technical reference these friendlier pages point back to for detail.
