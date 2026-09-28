@@ -195,4 +195,4 @@ pub(super) fn check(
 }
 
 #[cfg(test)]
-mod test;
+mod expect_tests;

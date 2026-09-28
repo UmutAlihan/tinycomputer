@@ -64,4 +64,4 @@ pub(super) struct Cleared {
 }
 
 #[cfg(test)]
-mod test;
+mod attention_tests;

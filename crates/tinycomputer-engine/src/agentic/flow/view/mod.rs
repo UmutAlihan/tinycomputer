@@ -215,4 +215,4 @@ fn is_form_control(candidate: &Candidate) -> bool {
 }
 
 #[cfg(test)]
-mod test;
+mod view_tests;
