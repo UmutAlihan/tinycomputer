@@ -41,6 +41,9 @@ fails the task.
     rescue fills fields the plan filled in three steps. A covered step may
     never hold a `stop_before`, at any depth, and `covers` may not run past
     the end of the flow; either answer goes back as invalid.
+  - When the failed step is itself a `stop_before` (the control it guards
+    was not found), the guidance must hold a `stop_before` too, so a rescue
+    can move the guard to where the page puts it but never remove it.
   - `{"action": "give_up", "reason"}` is for when no step can help: the site
     blocks, a person must act, or the goal is out of reach.
 - **Validation.** The guidance, followed by the steps after the failed one,

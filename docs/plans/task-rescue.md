@@ -21,6 +21,8 @@ commands green.
   reached moved from 18 to 20 of 26.
 - Guidance now says how many following steps it covers (phase 5). Run 3
   used it (`covers: 2`) and reached step 25 of 26.
+- Run 5 reached the payment checkpoint: the first complete Emirates run.
+  Guidance for a failed `stop_before` must now keep one.
 - Tasks now run with `include_values` on, secrets masked, so a `verify` of
   typed values can pass. The rescuer's screen text shows what fields hold,
   redacted (`Workspace::visible_text`).

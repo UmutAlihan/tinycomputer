@@ -267,7 +267,8 @@ screen's visible text as untrusted data, and the fact names — every fact value
 redacted. It answers with up to six steps to run in place of the failed one,
 checked by the flow validator, or gives up. Its `covers` count drops as many
 of the steps right after the failed one when its steps already do them, but
-never a step holding a `stop_before`. The task then runs the guidance and
+never a step holding a `stop_before`, and guidance for a failed `stop_before`
+must hold one itself. The task then runs the guidance and
 every remaining step unchanged, `stop_before` included, from what the budget
 has left.
 
