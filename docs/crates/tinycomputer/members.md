@@ -1,6 +1,6 @@
 # Members, by family
 
-The module serves 67 members on one interface,
+The module serves 80 members on one interface,
 `ai.tinyhumans.tinycomputer.Desktop`, in the order
 `crates/tinycomputer_bus::names::METHODS` declares them, which is also the
 order they are dispatched in
@@ -10,10 +10,13 @@ code.
 
 Every member here except the eight task members (their own section below)
 takes at most one request payload and always answers with a `DesktopResponse`
-whose `ok` flag picks between `data` and a structured `error`. It never
-answers with a bare `TinyBus` transport error for something the caller did;
-that is reserved for the module failing to even start the command, which is
-rare enough that you should treat it as a bug report if you see one. See
+whose `ok` flag picks between `data` and a structured `error`. That includes
+the 13 browser members: they take one object, the session beside the member's
+own fields, and answer in the same envelope, reusing a desktop error code
+wherever the meaning is shared. The module never answers with a bare
+`TinyBus` transport error for something the caller did; that is reserved for
+the module failing to even start the command, which is rare enough that you
+should treat it as a bug report if you see one. See
 [calling-it.md](calling-it.md) for what that envelope actually looks like on
 the wire.
 
