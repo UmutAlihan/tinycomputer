@@ -48,7 +48,7 @@ Intent flows (`RunFlow`, `ValidateFlow`, `FlowGuide`) live in `flow/`; see
 the task loop above.
 
 `sage/` lets Levanto Sage take the decisions in place of Jev, for measuring
-it behind the same loops (`JevRuntime::sage`). It sends each Jev request to
+it behind the same loops (`JevRuntime::sage`, or `provider: "sage"`). It sends each Jev request to
 Sage as one batch group and maps the answers back:
 
 - a yes/no gets Sage's probability of yes;
@@ -56,6 +56,8 @@ Sage as one batch group and maps the answers back:
 - a score gets a Sage five-level scale, spread back over the request's own
   levels.
 
-Every call still goes through `JevRuntime::evaluate`. It is not reachable over
-the bus; `task_live` selects it with `TINYCOMPUTER_DECISIONS=sage`. See
+Every call still goes through `JevRuntime::evaluate`. A host selects it over
+the bus with the module's `jev` configuration, `provider: "sage"` (contract
+2.8), which `JevRuntime::configure` builds; `task_live` does so with
+`TINYCOMPUTER_DECISIONS=sage`. The recorded comparison is
 `docs/technical/evals/2026-09-29-sage.md`.

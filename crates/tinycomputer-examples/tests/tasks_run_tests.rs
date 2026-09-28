@@ -26,6 +26,9 @@ fn run(name: &str, scratch: &str) -> io::Result<Output> {
         .arg(name)
         .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
         .env("TINYCOMPUTER_BROWSER_EXECUTABLE", "/nonexistent/chrome")
+        // A module named here is not built, so the stand-in `cargo` is only
+        // ever asked to run the runner.
+        .env("TINYCOMPUTER_MODULE", "/nonexistent/libtinycomputer")
         .env_remove("TASK_OUT")
         .output()
 }

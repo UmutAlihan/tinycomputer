@@ -39,7 +39,8 @@ use std::sync::Arc;
 
 use tinycomputer_bus::agent::{
     AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, PlanTaskRequest,
-    StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport, TaskView,
+    StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport,
+    TaskReportRequest, TaskView,
 };
 
 use super::runner::jev_not_configured;
@@ -66,9 +67,9 @@ pub(crate) struct DesktopService {
     jev: Option<agentic::JevRuntime>,
     pub(super) tasks: Arc<agentic::Tasks>,
     browser: Arc<Browser>,
-    /// The configured `browser.executable`, used by a `BrowserOpenSession`
-    /// that names none.
-    executable: Option<String>,
+    /// The configured `browser` settings, filled into a
+    /// `BrowserOpenSession` wherever the caller left them unset.
+    browser_defaults: crate::tinybus_module::config::BrowserDefaults,
 }
 
 #[tinybus::interface(name = "ai.tinyhumans.tinycomputer.Desktop")]
@@ -171,8 +172,11 @@ impl DesktopService {
 
     /// Everything a task did.
     #[tinybus(confidential)]
-    async fn task_report(&self, request: TaskRef) -> TinyBusResult<AgentResponse<TaskReport>> {
-        self.on_tasks(move |tasks| tasks.report(&request.id)).await
+    async fn task_report(
+        &self,
+        request: TaskReportRequest,
+    ) -> TinyBusResult<AgentResponse<TaskReport>> {
+        self.on_tasks(move |tasks| tasks.report_for(&request)).await
     }
 
     /// The tasks this module holds, newest first.
@@ -474,14 +478,13 @@ impl DesktopService {
     /// Launches or attaches a browser and returns its session.
     async fn browser_open_session(
         &self,
-        mut options: SessionOptions,
+        options: SessionOptions,
     ) -> TinyBusResult<DesktopResponse> {
-        if options.executable.is_none() && options.endpoint.is_none() {
-            options.executable.clone_from(&self.executable);
-        }
         Ok(browser_reply(
             "browser-open-session",
-            self.browser.open_session(options).await,
+            self.browser
+                .open_session(self.browser_defaults.apply(options))
+                .await,
         ))
     }
 

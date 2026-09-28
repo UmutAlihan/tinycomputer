@@ -188,7 +188,17 @@ fn members() -> Vec<MemberDoc> {
         member(
             methods::TASK_REPORT,
             "Everything a task did: steps, records, rescues, artifacts, and learned hints.",
-            task_id(),
+            object(
+                json!({
+                    "id": {"type": "string"},
+                    "trace": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "include every Jev exchange StartTask.trace recorded; false keeps the report small"
+                    }
+                }),
+                &["id"],
+            ),
             "TaskReport",
         ),
         member(

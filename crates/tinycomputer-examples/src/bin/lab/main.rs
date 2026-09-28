@@ -23,7 +23,7 @@ use std::{
 
 use tinycomputer_bus::{Deliberation, FLOW_GUIDE, FlowLoop, FlowStrategy};
 use tinycomputer_examples::lab::{
-    host::{Host, HostOptions, LabError, module_path},
+    host::{Host, LabError, jev_config, module_path, openrouter_key},
     record::{RunRecord, report, scorecard},
     scenario::{SCENARIOS, find},
 };
@@ -171,14 +171,13 @@ fn failed_run_record(scenario: &str, mode: &str, error: &LabError) -> RunRecord 
 }
 
 async fn load(options: &Options) -> Result<Host, LabError> {
-    Host::load(
-        &module_path(),
-        &HostOptions {
-            headed: options.headed,
-            jev_model: std::env::var("TINYCOMPUTER_LAB_JEV_MODEL").ok(),
-        },
-    )
-    .await
+    let model = std::env::var("TINYCOMPUTER_LAB_JEV_MODEL").unwrap_or_else(|_| "jev-latest".into());
+    let config = serde_json::json!({
+        "jev": jev_config(openrouter_key()?, Some(model))?,
+        "headed": options.headed,
+        "session_id": "tinycomputer-lab",
+    });
+    Host::load(&module_path(), config).await
 }
 
 fn parse(args: &[String]) -> Result<Options, LabError> {

@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 /// The OpenAI-compatible route the planner, the rescuer, and the shaper call
-/// their models through (contract 2.7).
+/// their models through (contract 2.8).
 ///
 /// Each route has exactly one approved base URL, which the module's private
 /// `planner` configuration may only repeat as its `endpoint_url`.
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum LanguageModelProvider {
     /// `OpenRouter` (`https://openrouter.ai/api/v1`), with an `OpenRouter`
-    /// key. The default, and the only route before contract 2.7.
+    /// key. The default, and the only route before contract 2.8.
     #[default]
     OpenRouter,
     /// Tiny Humans' OpenAI-compatible gateway

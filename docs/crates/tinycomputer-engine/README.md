@@ -83,9 +83,10 @@ A few things run alongside that column rather than inside it:
 - the **workspace** (`workspace/`) sits underneath the flow runtime, so a
   step that says `open Mail` or `browse https://…` reaches the right surface.
 
-`JevRuntime` also has a second mode: `JevRuntime::sage` answers the same
-loops with Levanto Sage instead of Jev, for measuring one decision model
-against the other behind identical code. See [sage.md](sage.md).
+`JevRuntime` also has other decision models behind the same loops: OpenJEV
+(`provider: "open_jev"`) and Levanto Sage (`provider: "sage"`, or
+`JevRuntime::sage`), selected by the module's `jev` configuration. See
+[jev-runtime.md](jev-runtime.md) and [sage.md](sage.md).
 
 ## Reading order
 

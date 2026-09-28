@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// The first three are routes to Jev itself; `open_jev` is `OpenJEV`'s public
 /// Jev-compatible API, answering as the `openjev` model; `sage` puts Levanto
 /// Sage behind the same loops in place of Jev. Each has exactly one approved
-/// endpoint, which [`JevConfig::endpoint_url`] may only repeat (contract 2.7
+/// endpoint, which [`JevConfig::endpoint_url`] may only repeat (contract 2.8
 /// added `open_jev` and `sage`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -70,7 +70,7 @@ pub struct JevConfig {
     pub sdk_name: Option<String>,
     /// Sage only: score each choice in one pass rather than one pass per
     /// option, trading some calibration for latency. Absent means `false`;
-    /// ignored by every other provider (contract 2.7).
+    /// ignored by every other provider (contract 2.8).
     pub fast: Option<bool>,
 }
 

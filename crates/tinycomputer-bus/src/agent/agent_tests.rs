@@ -11,7 +11,7 @@ use serde_json::json;
 
 use super::{
     AgentError, AgentResponse, AwaitTaskRequest, ContinueTaskRequest, InputField, InputKind,
-    PaymentMode, StartTaskRequest, SurfaceKind, TaskId, TaskStatus, TaskView,
+    PaymentMode, StartTaskRequest, SurfaceKind, TaskId, TaskReportRequest, TaskStatus, TaskView,
 };
 
 #[test]
@@ -299,6 +299,22 @@ fn rescues_pin_their_wire_form() {
             .unwrap()
             .contains_key("rescues")
     );
+}
+
+#[test]
+fn a_report_request_always_carries_its_trace_flag() {
+    // A confidential body holding a bare `{"id": "..."}` is refused by the
+    // TinyBus client as a stream handle, so `trace` is never skipped.
+    let request = TaskReportRequest::new(TaskId::new("t-1"));
+    assert_eq!(
+        serde_json::to_value(&request).unwrap(),
+        json!({"id": "t-1", "trace": true})
+    );
+    let bare: TaskReportRequest = serde_json::from_value(json!({"id": "t-1"})).unwrap();
+    assert_eq!(bare, request);
+    let lean: TaskReportRequest =
+        serde_json::from_value(json!({"id": "t-1", "trace": false})).unwrap();
+    assert!(!lean.trace);
 }
 
 #[test]

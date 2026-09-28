@@ -1,8 +1,13 @@
 # Live tasks
 
-`task_live` runs a whole plain-language task the same way an outside host
-would through the task API: give it a task and some facts, and it plans a
-flow, starts it, follows it until it stops, and reports what happened. The
+`task_live` runs a whole plain-language task exactly as an outside host
+would: it loads the built, attested module through the TinyBus loader and
+uses nothing but its bus members. Give it a task and some facts, and it
+plans a flow (`PlanTask`), starts it (`StartTask`), follows it until it
+stops (`AwaitTask`), and collects what happened (`TaskReport`, and
+`BrowserScreenshot` with `BrowserReadOutput` for the final screenshot). The
+module is built with `scripts/build-module`, which `tasks/run` calls for
+you. The
 two examples saved under `tasks/`, booking a flight to Kashmir, and one to
 Dubai on Emirates, are real websites, not a fixture, so this is the closest
 thing in the repository to what tinycomputer looks like doing actual work
@@ -24,7 +29,7 @@ scripts/docker-lab -- crates/tinycomputer-examples/tasks/run kashmir
 `tasks/run` is a small wrapper: it points at `tasks/kashmir/task.md` and
 `tasks/kashmir/facts.json`, sets a realistic browser user agent (booking
 sites are quick to turn away anything that announces itself as headless),
-and builds and runs `task_live`. Swap `kashmir` for `emirates` to run the
+builds and attests the module, and builds and runs `task_live`. Swap `kashmir` for `emirates` to run the
 other one. The task name becomes a path, so it is restricted to letters,
 digits, `_`, and `-`, so nothing can climb out of `tasks/` with `/` or `..`.
 
@@ -79,6 +84,7 @@ open -a "Google Chrome" --args --remote-debugging-port=9222
 TINYCOMPUTER_BROWSER_ENDPOINT=http://127.0.0.1:9222 \
   TASK_FILE=crates/tinycomputer-examples/tasks/kashmir/task.md \
   FACTS_FILE=crates/tinycomputer-examples/tasks/kashmir/facts.json \
+  TINYCOMPUTER_MODULE="$(scripts/build-module)" \
   cargo run -p tinycomputer-examples --bin task_live
 ```
 
@@ -98,6 +104,7 @@ they control.
 | Variable | For |
 |---|---|
 | `OPENROUTER_API_KEY` | Jev and the planner |
+| `TINYCOMPUTER_MODULE` | the attested module; `scripts/build-module` prints it (`tasks/run` sets it) |
 | `TASK_FILE` | the task, in plain language |
 | `FACTS_FILE` | the JSON facts file described above |
 
@@ -121,7 +128,11 @@ they control.
 | `TINYCOMPUTER_BROWSER_EXECUTABLE` | which browser binary to launch |
 | `TINYCOMPUTER_BROWSER_USER_AGENT` | the user agent it announces |
 | `TINYCOMPUTER_BROWSER_ARGS` | space-separated extra launch arguments |
+| `TINYCOMPUTER_BROWSER_PERCEPTION` | `sight` (default) or `tree`: how pages are read |
 | `TINYCOMPUTER_BROWSER_ENDPOINT` | attach to a running Chrome (e.g. `http://127.0.0.1:9222`) instead of launching one |
+
+All but the endpoint become the module's `browser` configuration; the
+endpoint becomes the task's `constraints.browser_endpoint`.
 
 **Optional, the cursor:**
 
@@ -129,9 +140,9 @@ they control.
 |---|---|---|
 | `TASK_CURSOR` | `natural` | the on-screen cursor's pace: `off`, `brisk`, `natural`, `calm` |
 
-The cursor is drawn by the `tinycomputer-cursor-overlay` helper, which
-`task_live` expects to find beside itself once it has been built with
-`cargo build -p tinycomputer-cursor --features overlay`.
+The cursor is drawn by the `tinycomputer-cursor-overlay` helper (build it
+with `cargo build -p tinycomputer-cursor --features overlay`), found beside
+the running binary or at `TINYCOMPUTER_CURSOR_OVERLAY`.
 
 ## What it writes and how it ends
 

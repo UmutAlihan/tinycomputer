@@ -133,7 +133,7 @@ matter most:
 |---|---|
 | `jev` | the decision model and its key: Jev (`type_safe`, `open_router`, `tiny_humans_open_router`), OpenJEV (`open_jev`), or Levanto Sage (`sage`). Without it, only the primitives work |
 | `planner` | a key for the planner, which also brings rescues and output shapes, on OpenRouter (default) or Tiny Humans' gateway (`provider: "tiny_humans"`); the rescuer may take its own `rescue_route`. Without it, you write flows yourself |
-| `browser.executable` | which Chrome to use, if it can't find one |
+| `browser` | how browsers launch: `executable`, `user_agent`, `args`, and page `perception` |
 | `cursor` | the on-screen cursor you can watch: `off`, `brisk`, `natural`, or `calm` |
 
 Every key is described in

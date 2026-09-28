@@ -232,19 +232,14 @@ cargo test --all-features
 
 Supporting commands:
 
-- `cargo fmt --all` — format before committing.
-- `cargo test <filter>` — run a focused subset while iterating.
-- `cargo test -p tinycomputer-bus` — run one crate's suite.
-- `cargo run -p tinycomputer-examples --bin basic` — run the bundled example.
-- `cargo run -p tinycomputer-examples --bin verify_module -- <path>` — load a built
-  `cdylib` through the real TinyBus dynamic loader.
-- `cargo doc --no-deps --all-features` — build the rustdoc CI also builds with
-  `RUSTDOCFLAGS="-D warnings"`.
-- `cargo test --doc` — run doctests alone when editing documentation examples.
-- `cargo test --all-features --no-fail-fast` — see every failing crate at once;
-  plain `cargo test` stops at the first.
-- `cargo run -p tinycomputer-examples --bin jev_journal -- latest` — summarise
-  the last journaled run (see below).
+- `cargo fmt --all` before committing; `cargo test <filter>` or
+  `cargo test -p <crate>` while iterating; `cargo test --doc` for doctests.
+- `scripts/build-module` — build and attest the module; prints its path.
+- `cargo run -p tinycomputer-examples --bin verify_module -- <path>` — load it.
+- `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features` — as CI.
+- `cargo test --all-features --no-fail-fast` — every failing crate at once.
+- `cargo run -p tinycomputer-examples --bin jev_journal -- latest` — the last
+  journaled run.
 
 Never skip, ignore, or delete a failing test to make a command pass. Fix the
 root cause, or stop and report the blocker.
@@ -374,27 +369,32 @@ and minimal features unless a new module capability requires more.
 - Payload types pin their serde representation in a unit test. That
   representation is the wire form: a host and a module that disagree about a
   field name fail at runtime with a decode error.
-- Use descriptive, behavioral test names: `rejects_a_stale_ref`, not
-  `test_click_2`.
+- Use behavioral test names: `rejects_a_stale_ref`, not `test_click_2`.
 - Every test must pass on a machine with no display server, no granted
   permission, and nothing running — CI is such a machine. Assert on the shape of
   a reply, not on a successful outcome that depends on how the box is set up.
 - Cover the failure paths, not just the happy path. Every new error variant
   needs a test that produces it.
-- For async behavior, standardize on one runtime (`tokio` as a dev-dependency
-  for tests) rather than mixing runtimes.
+- For async behavior, use one runtime: `tokio`, as a dev-dependency.
 - A test that needs files makes a uniquely named directory under
   `std::env::temp_dir()` and removes it; a test never sets or reads process
   environment variables, which parallel tests share.
-- Tests must be deterministic and independent of network, wall-clock time, and
-  execution order. Gate any live/network test behind a feature or an env var and
-  name it `live_*` so it is easy to exclude.
+- Tests are deterministic, free of network, wall-clock, and order dependence;
+  gate a live test behind a feature or env var and name it `live_*`.
 - Maintain at least 90% line coverage in every source file. Add or update tests
   with every behavior change, and note any deliberately untested edge case in
   the pull request description.
 
 Write the test first when fixing a bug: a failing test that reproduces the
 report, then the fix that turns it green.
+
+**Test through the bus.** A host only reaches the module over TinyBus, so
+prove a feature there: an in-memory-bus test in `tinybus_module_tests/`, and
+live runs through the loaded module (`scripts/build-module`, then the lab,
+`task_live`, or `task_fixture`, all via `tinycomputer_examples::host`), never
+the engine built in-process. In-process runs hide what only the bus enforces:
+confidential delivery, attestation, frame limits, and request shapes (a bare
+`{"id"}` in a confidential call is refused as a stream handle).
 
 ## Documentation
 

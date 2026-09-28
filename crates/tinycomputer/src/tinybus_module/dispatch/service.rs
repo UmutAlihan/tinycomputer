@@ -10,7 +10,7 @@ use tinycomputer_bus::{DesktopResponse, JevConfig};
 use tinycomputer_engine as agentic;
 
 use super::DesktopService;
-use crate::tinybus_module::config::{browser_executable, cursor_config};
+use crate::tinybus_module::config::{BrowserDefaults, cursor_config};
 use crate::tinybus_module::runner::WorkspaceRunner;
 use crate::{Desktop, Result};
 
@@ -68,9 +68,9 @@ impl DesktopService {
                 Ok::<_, crate::Error>((planner, rescuer, shaper))
             })
             .transpose()?;
-        let executable = browser_executable(config)?;
+        let browser_defaults = BrowserDefaults::from_config(config)?;
         let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone(), browser.clone());
-        runner.executable.clone_from(&executable);
+        runner.defaults.clone_from(&browser_defaults);
         runner.cursor = cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
         if let Some((planner, rescuer, shaper)) = planner {
@@ -85,7 +85,7 @@ impl DesktopService {
             jev,
             tasks,
             browser,
-            executable,
+            browser_defaults,
         })
     }
 

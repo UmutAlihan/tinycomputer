@@ -58,7 +58,7 @@ pub mod methods {
     /// The full record of a task: steps, extracted records, artifacts, and
     /// (when requested at start) every Jev exchange.
     ///
-    /// Takes a [`crate::agent::TaskRef`] and returns a
+    /// Takes a [`crate::agent::TaskReportRequest`] and returns a
     /// [`crate::agent::AgentResponse`] of [`crate::agent::TaskReport`].
     /// Confidential: it carries page data.
     pub const TASK_REPORT: &str = "TaskReport";

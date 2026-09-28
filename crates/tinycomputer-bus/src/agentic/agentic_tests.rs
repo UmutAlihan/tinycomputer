@@ -25,7 +25,7 @@ fn configuration_serializes_the_key_but_never_debug_prints_it() {
 fn decision_model_selection_round_trips_and_stays_additive() {
     use super::JevConfiguration;
 
-    // A 2.6 configuration decodes unchanged: TypeSafe Jev, no `fast`.
+    // A 2.7 configuration decodes unchanged: TypeSafe Jev, no `fast`.
     let legacy: JevConfig = serde_json::from_value(json!({"api_key": "k"})).unwrap();
     assert_eq!(legacy.provider, JevProvider::TypeSafe);
     assert_eq!(legacy.fast, None);
@@ -52,7 +52,7 @@ fn decision_model_selection_round_trips_and_stays_additive() {
     assert_eq!(JevProvider::OpenJev.default_model(), "openjev");
     assert_eq!(JevProvider::Sage.default_model(), "levanto-sage");
 
-    // The summary leaves `fast` out when false, so a 2.6 reader sees the
+    // The summary leaves `fast` out when false, so a 2.7 reader sees the
     // same object it always did.
     let summary = JevConfiguration {
         provider: JevProvider::OpenJev,

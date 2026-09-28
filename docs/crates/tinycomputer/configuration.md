@@ -202,26 +202,35 @@ never sent to a provider it was not given for:
 `rescue_model`, and `output_model`, for example `{"provider": "tiny_humans",
 "model": "anthropic/claude-sonnet-5"}`; no key is ever in them.
 
-## `browser.executable`
+## `browser`
 
 ```json
 {
   "browser": {
-    "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    "executable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+    "args": ["--disable-blink-features=AutomationControlled"],
+    "perception": "sight"
   }
 }
 ```
 
-Names the Chrome or Chromium binary a browser session should launch, for when
-the platform's own discovery would not find one, for example a headless
-container with Chrome installed somewhere nonstandard. This applies to a
-task's browser session and to a session a caller opens directly with
-`BrowserOpenSession`: that member launches the configured
-`browser.executable` whenever the request names neither its own `executable`
-nor an `endpoint` to attach to. Most installs never need this: leave
-`browser` out entirely and the linked `agent-browser` engine looks for Chrome
-itself. `browser` is only ever an object with this one optional key; sending
-anything else under `browser` is rejected rather than ignored.
+How the module launches every browser it opens — each task's, and each
+`BrowserOpenSession` that leaves the setting unset. Every key is optional:
+
+| Key | What it does |
+|---|---|
+| `executable` | the Chrome or Chromium binary to launch, for when the platform's own discovery would not find one, for example a container with Chrome installed somewhere nonstandard |
+| `user_agent` | the `User-Agent` every launched browser sends; booking sites turn away a browser that announces itself as headless |
+| `args` | extra launch arguments, as an array of strings |
+| `perception` | how a task reads a page: `sight` (the default) reads the rendered page as a person sees it, `tree` the accessibility tree alone ([`browser-sight.md`](../../technical/specs/browser-sight.md)) |
+
+Most installs never need any of this: leave `browser` out entirely and the
+linked `agent-browser` engine looks for Chrome itself. An unknown key under
+`browser`, or a value of the wrong shape, is rejected rather than ignored,
+so a misspelt setting fails the load instead of silently doing nothing.
+An attached session (below) launches nothing, so it takes no `executable`
+and no `args`; it still sends the `user_agent`.
 
 This is independent of `constraints.browser_endpoint` on an individual
 `StartTask` request, and of `endpoint` on a `BrowserOpenSession` request,

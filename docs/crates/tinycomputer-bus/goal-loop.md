@@ -159,7 +159,7 @@ to: `TypeSafe` (the default, `TypeSafe`'s own System One API), `OpenRouter`,
 or `TinyHumansOpenRouter` (Tiny Humans' authenticated OpenRouter proxy) for
 Jev; `OpenJev` (`open_jev`, OpenJEV's Jev-compatible API, model `openjev`);
 or `Sage` (Levanto Sage in place of Jev, with `JevConfig::fast`), both added
-in contract 2.7. `JevProvider::default_model` names the model each answers as
+in contract 2.8. `JevProvider::default_model` names the model each answers as
 when `model` is absent. `JevConfiguration` is the non-secret summary of a
 retained client (provider, model, endpoint override, Sage's `fast`) a caller
 can ask for without ever seeing the key back; `Describe` serves it as

@@ -64,7 +64,9 @@ Start with these, in order:
 - [`lab.md`](lab.md) and [`docker-lab.md`](docker-lab.md): running flows on a
   real desktop, and anything that launches Chromium in a container.
 - [`evals/`](evals): recorded results of live runs. [`evals/2026-09-29-sage.md`](evals/2026-09-29-sage.md)
-  compares Levanto Sage with Jev behind the same flows.
+  compares Levanto Sage with Jev behind the same flows;
+  [`evals/2026-09-29-bus-runners.md`](evals/2026-09-29-bus-runners.md) runs
+  every demo through the bus.
 
 The contract for what this module serves, and why it is shaped that way, is in
 [`specs/desktop-module-contract.md`](specs/desktop-module-contract.md), with its

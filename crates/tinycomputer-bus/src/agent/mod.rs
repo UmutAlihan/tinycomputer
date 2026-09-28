@@ -55,7 +55,7 @@ pub use types::{
     InputField, InputKind, LanguageModelConfiguration, LanguageModelProvider, MemberDoc,
     PaymentMode, PlanTaskRequest, Rescue, RescueOutcome, StartTaskRequest, StepView,
     SurfaceAvailability, SurfaceKind, TaskBudget, TaskConstraints, TaskId, TaskOutput, TaskPlan,
-    TaskRef, TaskReport, TaskStatus, TaskView,
+    TaskRef, TaskReport, TaskReportRequest, TaskStatus, TaskView,
 };
 
 #[cfg(test)]

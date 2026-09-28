@@ -76,12 +76,15 @@ Lists journaled runs, or summarises and prints one. See
 scripts/docker-lab -- crates/tinycomputer-examples/tasks/run kashmir
 ```
 
-`task_live` runs a plain-language task end to end: the planner writes a
-flow, the task controller runs it with live Jev, and the run is followed
-until it stops at the payment checkpoint. See [live tasks](live-tasks.md).
+`task_live` runs a plain-language task end to end over the bus: it loads
+the attested module, the module's planner writes a flow, the task runs with
+live Jev, and the run is followed until it stops at the payment
+checkpoint. See [live tasks](live-tasks.md).
 
-`task_fixture` runs the same kind of task, but against the local travel
-fixture instead of a real website, so the result is exact and repeatable:
+`task_fixture` runs the same kind of task, also over the bus, but against
+the local travel fixture instead of a real website, so the result is exact
+and repeatable. It answers the phone number the task asks for with
+`ContinueTask`:
 
 ```sh
 scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture

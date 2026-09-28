@@ -50,11 +50,11 @@ reading `model` can tell which one ran.
 
 A host selects Sage over the bus through the module's private `jev`
 configuration, `{"provider": "sage", "api_key": "...", "fast": false}`
-(contract 2.7), which `JevRuntime::configure` turns into this same runtime;
+(contract 2.8), which `JevRuntime::configure` turns into this same runtime;
 `endpoint_url` may only repeat `https://sage.levanto.ai/`. `Describe` then
 reports `Capabilities.decision_model` as provider `sage`, model
-`levanto-sage`. `JevRuntime::sage` remains for building one directly, as
-the examples crate does when measuring.
+`levanto-sage`. `JevRuntime::sage` remains for building one directly in
+code.
 
 ## Latency modes
 
@@ -70,13 +70,11 @@ lever the eval names but has not yet measured.
 
 ## Switching an example to Sage
 
-`crates/tinycomputer-examples/src/bin/task_live/main.rs` reads
-`TINYCOMPUTER_DECISIONS`: set to `sage`, it builds a `JevRuntime::sage`
-instead of the default Jev-backed one, using `SAGE_API_KEY` for the
-credential and `SAGE_FAST` for the latency mode. Every other setting
-(deliberation, votes, rescue budget) stays exactly as the example already
-configures it, so a run can be repeated against either model with nothing
-else changed.
+`task_live` reads `TINYCOMPUTER_DECISIONS`: set to `sage`, it hands the
+loaded module `{"provider": "sage", "api_key": $SAGE_API_KEY, "fast":
+$SAGE_FAST == 1}` as its `jev` configuration, so Sage takes every decision
+over the bus exactly as a host would select it. The planner and the rescuer
+still use `OPENROUTER_API_KEY`.
 
 ## What the live eval found
 
@@ -108,8 +106,6 @@ the fairer comparison still to run.
 - `crates/tinycomputer-engine/src/agentic/sage/mod.rs`, `SageEvaluator`,
   `batch`, `sage_question`, `answer_for`.
 - `crates/tinycomputer-engine/src/agentic/runtime.rs`, `JevRuntime::sage`.
-- `crates/tinycomputer-examples/src/bin/task_live/main.rs`, the
-  `TINYCOMPUTER_DECISIONS` / `SAGE_API_KEY` / `SAGE_FAST` switch.
 - [jev-runtime.md](jev-runtime.md), the one door every decision, Jev's or
   Sage's, goes through.
 - [`docs/technical/evals/2026-09-29-sage.md`](../../technical/evals/2026-09-29-sage.md),

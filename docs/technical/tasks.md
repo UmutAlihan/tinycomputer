@@ -244,7 +244,7 @@ It is compiled into the module (the `planner` feature) and stays off until the
 host sends a `planner` object in the module's private configuration, with an
 `api_key` and an optional `model` (default `anthropic/claude-sonnet-5`), on
 the `open_router` route by default or `provider: "tiny_humans"` for Tiny
-Humans' OpenAI-compatible gateway (contract 2.7;
+Humans' OpenAI-compatible gateway (contract 2.8;
 [`../crates/tinycomputer/configuration.md`](../crates/tinycomputer/configuration.md)). Without it, a plain-language `StartTask` returns
 `needs_plan` with the guide, and `PlanTask` returns an error saying no planner
 is configured.
