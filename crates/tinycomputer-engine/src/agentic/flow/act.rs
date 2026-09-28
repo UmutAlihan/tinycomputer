@@ -550,16 +550,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 Ok(Move::Acted(None))
             }
             operation @ ("activate" | "expand" | "scroll") => Ok(Move::Acted(
-                self.activate(
-                    log,
-                    screen,
-                    intent,
-                    operation,
-                    banned,
-                    judged.prepared.get(operation),
-                    judged.speculated.clone(),
-                )
-                .await?
+                self.activate(log, screen, intent, operation, banned, judged)
+                    .await?
                 .map(Box::new),
             )),
             other => {
@@ -600,8 +592,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         intent: &str,
         operation: &str,
         banned: &BTreeSet<String>,
-        prepared: Option<&Prepared>,
-        speculated: Option<Speculated>,
+        judged: &Judgement,
     ) -> Result<Option<Candidate>, Halt> {
         let (capability, jev_operation, verb) = match operation {
             "expand" => ("Expand", JevOperation::Expand, "expand"),
@@ -609,6 +600,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             _ => ("Click", JevOperation::Click, "click"),
         };
         let purpose = activate_purpose(verb, intent);
+        let prepared = judged.prepared.get(operation);
+        let speculated = judged.speculated.clone();
         let grounded = match (prepared, speculated) {
             (Some(prepared), _) => self.resolve(log, screen, &purpose, prepared).await?,
             (None, Some(speculated)) if operation == "activate" => {
