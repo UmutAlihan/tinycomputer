@@ -17,7 +17,7 @@
 //!   happening, which member calls make sense now, and — in [`TaskStatus`] —
 //!   exactly what the task needs.
 //! - **No refs, selectors, or coordinates** at this level. Those belong to the
-//!   Desktop and Browser interfaces.
+//!   desktop and browser members.
 //! - **Shared facts brief, secret facts stay templates.** A traveller's name
 //!   and date of birth brief the decision model, so it knows whom it books
 //!   for; a card or passport number is only ever shown to a model as

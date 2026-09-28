@@ -13,6 +13,16 @@
 //! So the module sets a stable error *name* on every failure and puts the
 //! human-readable detail in the message. The names are published here so a host
 //! matches on a constant.
+//!
+//! # The code a failure travels as
+//!
+//! A browser member replies with the same [`crate::DesktopResponse`] envelope
+//! as a desktop member, and its [`crate::DesktopError::code`] is [`code`] of
+//! the name: the desktop's own spelling wherever the meaning is the same
+//! (`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `POLICY_DENIED`,
+//! `INVALID_ARGS`), so one handler serves both surfaces. The full name rides
+//! along in `details.name`, and [`recovery`] fills the envelope's recovery
+//! hint.
 
 /// The prefix every error name in this contract begins with.
 pub const PREFIX: &str = "ai.tinyhumans.tinycomputer.Browser.Error";
@@ -107,6 +117,72 @@ pub fn is_agent_recoverable(name: &str) -> bool {
         name,
         INVALID_INPUT | NO_SUCH_ELEMENT | STALE_REF | NOT_ACTIONABLE | TIMEOUT | PAGE_ERROR
     )
+}
+
+/// The envelope code a failure named `name` travels as.
+///
+/// Where the desktop members already have a code for the same situation this
+/// is that code, so a caller driving both surfaces matches one vocabulary. A
+/// name this build does not know is `INTERNAL`, as [`MODULE_FAILED`] is.
+///
+/// # Examples
+///
+/// ```
+/// # use tinycomputer_bus::browser::errors;
+/// assert_eq!(errors::code(errors::STALE_REF), "STALE_REF");
+/// assert_eq!(errors::code(errors::NO_SUCH_ELEMENT), "ELEMENT_NOT_FOUND");
+/// assert_eq!(errors::code(errors::BLOCKED_BY_POLICY), "POLICY_DENIED");
+/// ```
+#[must_use]
+pub fn code(name: &str) -> &'static str {
+    match name {
+        INVALID_INPUT => "INVALID_ARGS",
+        NO_SUCH_SESSION => "SESSION_NOT_FOUND",
+        NO_SUCH_ELEMENT => "ELEMENT_NOT_FOUND",
+        STALE_REF => "STALE_REF",
+        NOT_ACTIONABLE => "NOT_ACTIONABLE",
+        TIMEOUT => "TIMEOUT",
+        BLOCKED_BY_POLICY => "POLICY_DENIED",
+        BROWSER_UNAVAILABLE => "BROWSER_UNAVAILABLE",
+        PAGE_ERROR => "PAGE_ERROR",
+        NO_SUCH_OUTPUT => "OUTPUT_NOT_FOUND",
+        LIMIT_EXCEEDED => "LIMIT_EXCEEDED",
+        _ => "INTERNAL",
+    }
+}
+
+/// The machine-readable way out of a failure named `name`, when there is one.
+///
+/// The strategies are the desktop's where they mean the same thing
+/// (`refresh_snapshot_then_retry_original`), so an agent recovering from a
+/// stale ref does not care which surface it was on.
+///
+/// # Examples
+///
+/// ```
+/// # use tinycomputer_bus::browser::errors;
+/// let hint = errors::recovery(errors::STALE_REF).expect("a stale ref has a way out");
+/// assert!(hint.retryable && hint.requires_fresh_snapshot);
+/// assert!(errors::recovery(errors::BLOCKED_BY_POLICY).is_none());
+/// ```
+#[must_use]
+pub fn recovery(name: &str) -> Option<crate::RecoveryHint> {
+    let hint = |strategy: &str, retryable, requires_fresh_snapshot| crate::RecoveryHint {
+        strategy: strategy.to_owned(),
+        retryable,
+        requires_fresh_snapshot,
+        retry_after_ms: None,
+    };
+    match name {
+        STALE_REF => Some(hint("refresh_snapshot_then_retry_original", true, true)),
+        NO_SUCH_ELEMENT => Some(hint("refresh_snapshot_then_choose_again", true, true)),
+        NOT_ACTIONABLE => Some(hint("inspect_state_then_retry_original", true, true)),
+        TIMEOUT => Some(hint("retry_original", true, false)),
+        INVALID_INPUT => Some(hint("fix_request_then_retry", false, false)),
+        NO_SUCH_SESSION => Some(hint("open_session_then_retry_original", false, false)),
+        NO_SUCH_OUTPUT => Some(hint("capture_again_then_read", false, false)),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

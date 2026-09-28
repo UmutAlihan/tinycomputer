@@ -181,14 +181,22 @@ members share it; their names do not collide.
 | Primitives | `Snapshot`, `Click`, `SetValue`, `Press`, `Launch`, … (54 desktop members) | the caller | the caller | the caller already knows the interface, or wants full control |
 | Goals and flows | `ResolveIntent`, `RunGoal`, `RunFlow`, `ValidateFlow`, `FlowGuide` | the caller (a flow) or nobody (a goal) | Jev | the caller knows what it wants but not the interface |
 | Tasks | `Describe`, `PlanTask`, `StartTask`, `AwaitTask`, `ContinueTask`, `CancelTask`, `TaskReport`, `ListTasks` | the caller or the planner | Jev | an outside agent wants a job done, across the browser and desktop apps, with pauses for approvals |
+| Browser primitives | `BrowserOpenSession`, `BrowserNavigate`, `BrowserSnapshot`, `BrowserPerform`, `BrowserReadPage`, `BrowserScreenshot`, `BrowserReadOutput`, … (13 members) | the caller | the caller | the caller wants to drive a web page itself, or inspect a task's session |
 
-The browser's own typed contract (`OpenSession`, `Navigate`, `Snapshot`,
-`Perform`, `ReadPage`, `Screenshot`, downloads, and outputs) is defined in
-`tinycomputer-bus/src/browser/` under the name `ai.tinyhumans.tinycomputer.Browser`
-and implemented by `tinycomputer_browser::Browser`. The module does not serve
-those as bus members yet, and a direct `RunFlow` call runs on the desktop
-alone. Today the browser is reached through tasks, whose runner gives every
-task a `Workspace` with a browser session.
+`Describe` returns all four levels as `Capabilities.catalogue`: every member,
+its family, and one sentence on what it is for.
+
+The browser primitives are defined in `tinycomputer-bus/src/browser/`,
+implemented by `tinycomputer_browser::Browser`, and served with a `Browser`
+prefix, because several (`Snapshot`, `Screenshot`) would otherwise collide
+with a desktop member of a different shape. Each takes one object with the
+session beside the member's own fields, and replies in the same
+`DesktopResponse` envelope as a desktop member; a failure reuses the desktop's
+code where the meaning is shared, so `STALE_REF` means "snapshot again" on
+either surface. The module holds one `Browser`: the task runner opens each
+task's session on it, so the primitives can read a task's screenshots and
+see its session. A direct `RunFlow` call still runs on the desktop alone;
+tasks are how a flow reaches the browser.
 
 `RunGoal` and `ResolveIntent` are the older, single-goal loop: one goal string,
 one Choice over operation and target per turn, and success predicates the

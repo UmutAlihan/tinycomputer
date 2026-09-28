@@ -91,21 +91,24 @@ pub(super) fn records(
 }
 
 pub(super) fn next_calls(status: &TaskStatus) -> Vec<String> {
+    use tinycomputer_bus::agent::names::methods::{
+        AWAIT_TASK, CANCEL_TASK, CONTINUE_TASK, START_TASK, TASK_REPORT,
+    };
     let calls: &[&str] = match status {
-        TaskStatus::Running => &["AwaitTask", "CancelTask"],
+        TaskStatus::Running => &[AWAIT_TASK, CANCEL_TASK],
         TaskStatus::NeedsInput { .. } | TaskStatus::NeedsApproval { .. } => {
-            &["ContinueTask", "CancelTask"]
+            &[CONTINUE_TASK, CANCEL_TASK]
         }
-        TaskStatus::NeedsHuman { .. } => &["ContinueTask", "CancelTask", "TaskReport"],
+        TaskStatus::NeedsHuman { .. } => &[CONTINUE_TASK, CANCEL_TASK, TASK_REPORT],
         TaskStatus::Checkpoint {
             continuable: true, ..
-        } => &["ContinueTask", "TaskReport"],
-        TaskStatus::NeedsPlan { .. } => &["StartTask"],
-        TaskStatus::Failed { .. } => &["TaskReport", "StartTask"],
+        } => &[CONTINUE_TASK, TASK_REPORT],
+        TaskStatus::NeedsPlan { .. } => &[START_TASK],
+        TaskStatus::Failed { .. } => &[TASK_REPORT, START_TASK],
         // A final checkpoint's workspace is only ever released by
         // `CancelTask`, so it must stay offered even though the task is done.
-        TaskStatus::Checkpoint { .. } => &["CancelTask", "TaskReport"],
-        TaskStatus::Done { .. } | TaskStatus::Cancelled => &["TaskReport"],
+        TaskStatus::Checkpoint { .. } => &[CANCEL_TASK, TASK_REPORT],
+        TaskStatus::Done { .. } | TaskStatus::Cancelled => &[TASK_REPORT],
     };
     calls.iter().map(|call| (*call).to_owned()).collect()
 }

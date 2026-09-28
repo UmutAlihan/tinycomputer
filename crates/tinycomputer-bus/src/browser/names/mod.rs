@@ -1,112 +1,126 @@
-//! The bus identity of the tinycomputer browser interface: interface name, object path, and
-//! one constant per member.
+//! The browser members' bus identity: where they are served, and one constant
+//! per member, in dispatch order.
+//!
+//! A `TinyBus` module exports one interface at one object path, so the
+//! browser members are served on the module's interface beside the desktop
+//! and task members, exactly as [`crate::agent::names`] are. Each carries a
+//! `Browser` prefix: several (`Snapshot`, `Screenshot`) would otherwise
+//! collide with a desktop member of a different shape, and a prefix on every
+//! one of them keeps the family obvious to a model reading a member list.
 //!
 //! Nothing here is a string literal at a call site. A host names a member
-//! through [`methods`] and the object through [`OBJECT_PATH`], so a rename is a
-//! compile error in every consumer rather than a runtime "unknown method".
+//! through [`methods`], so a rename is a compile error in every consumer
+//! rather than a runtime "unknown method". [`METHODS`] also appears, in the
+//! same order, at the end of [`crate::names::METHODS`], and `crates/tinycomputer`
+//! asserts its dispatch table against that list.
 //!
-//! [`METHODS`] is kept in the same order as the interface's dispatch table in
-//! `crates/tinycomputer/src/tinybus_module`, and that crate asserts the two
-//! agree, so a member added to one and forgotten in the other fails the build.
+//! Every member takes one JSON object and returns a [`crate::DesktopResponse`],
+//! the same envelope the desktop members use; a failure carries one of the
+//! codes in [`crate::browser::errors`].
 
-/// The well-known interface name the module claims on the bus.
-pub const INTERFACE: &str = "ai.tinyhumans.tinycomputer.Browser";
+/// The interface the browser members are served on.
+pub const INTERFACE: &str = crate::names::INTERFACE;
 
-/// The object path the module serves its interface at.
-pub const OBJECT_PATH: &str = "/ai/tinyhumans/tinycomputer/Browser";
+/// The object path the browser members are served at.
+pub const OBJECT_PATH: &str = crate::names::OBJECT_PATH;
 
-/// One constant per member of [`INTERFACE`].
+/// One constant per browser member of [`INTERFACE`].
 pub mod methods {
     /// Launches or attaches a browser and returns the session that owns it.
     ///
-    /// Takes a [`crate::browser::SessionOptions`] and returns a [`crate::browser::SessionInfo`].
-    pub const OPEN_SESSION: &str = "OpenSession";
+    /// Takes a [`crate::browser::SessionOptions`]; its `data` is a
+    /// [`crate::browser::SessionInfo`].
+    pub const OPEN_SESSION: &str = "BrowserOpenSession";
 
     /// Closes a session and everything it owns.
     ///
-    /// Takes a [`crate::browser::SessionId`] and returns nothing. Closing a session that
-    /// is already gone succeeds: a host retrying a close must not have to
-    /// distinguish "never existed" from "already cleaned up".
-    pub const CLOSE_SESSION: &str = "CloseSession";
+    /// Takes a [`crate::browser::SessionRef`]; its `data` is
+    /// `{"session": id, "closed": true}`. Closing a
+    /// session that is already gone succeeds: a host retrying a close must
+    /// not have to distinguish "never existed" from "already cleaned up".
+    pub const CLOSE_SESSION: &str = "BrowserCloseSession";
 
-    /// Lists the sessions this module is currently holding open.
+    /// Lists the sessions this module is holding open, a task's included.
     ///
-    /// Takes nothing and returns a `Vec<`[`crate::browser::SessionInfo`]`>`.
-    pub const LIST_SESSIONS: &str = "ListSessions";
+    /// Takes nothing; its `data` is an array of
+    /// [`crate::browser::SessionInfo`].
+    pub const LIST_SESSIONS: &str = "BrowserListSessions";
 
     /// Navigates the session's active page.
     ///
-    /// Takes a [`crate::browser::SessionId`] and a [`crate::browser::NavigateRequest`], and
-    /// returns the [`crate::browser::PageState`] the navigation settled on.
-    pub const NAVIGATE: &str = "Navigate";
+    /// Takes a [`crate::browser::SessionRequest`] of
+    /// [`crate::browser::NavigateRequest`]; its `data` is the
+    /// [`crate::browser::PageState`] the navigation settled on.
+    pub const NAVIGATE: &str = "BrowserNavigate";
 
     /// Captures the accessibility tree of the active page, with element refs.
     ///
-    /// Takes a [`crate::browser::SessionId`] and a [`crate::browser::SnapshotRequest`], and
-    /// returns a [`crate::browser::Snapshot`]. The refs it hands back are what
+    /// Takes a [`crate::browser::SessionRequest`] of
+    /// [`crate::browser::SnapshotRequest`]; its `data` is a
+    /// [`crate::browser::Snapshot`]. The refs it hands back are what
     /// [`PERFORM`] resolves as [`crate::browser::Target::Ref`].
-    pub const SNAPSHOT: &str = "Snapshot";
+    pub const SNAPSHOT: &str = "BrowserSnapshot";
 
     /// Performs one interaction against the active page.
     ///
-    /// Takes a [`crate::browser::SessionId`] and an [`crate::browser::Action`], and returns an
+    /// Takes a [`crate::browser::SessionRequest`] of
+    /// [`crate::browser::Action`]; its `data` is an
     /// [`crate::browser::ActionOutcome`].
-    pub const PERFORM: &str = "Perform";
+    pub const PERFORM: &str = "BrowserPerform";
 
     /// Extracts the active page as agent-readable text.
     ///
-    /// Takes a [`crate::browser::SessionId`] and a [`crate::browser::ReadRequest`], and returns a
+    /// Takes a [`crate::browser::SessionRequest`] of
+    /// [`crate::browser::ReadRequest`]; its `data` is a
     /// [`crate::browser::PageText`].
-    pub const READ_PAGE: &str = "ReadPage";
+    pub const READ_PAGE: &str = "BrowserReadPage";
 
     /// Evaluates JavaScript in the active page and returns its value.
     ///
-    /// Takes a [`crate::browser::SessionId`] and an [`crate::browser::EvaluateRequest`], and
-    /// returns the resolved value as arbitrary JSON.
-    pub const EVALUATE: &str = "Evaluate";
+    /// Takes a [`crate::browser::SessionRequest`] of
+    /// [`crate::browser::EvaluateRequest`]; its `data` is the resolved value
+    /// as arbitrary JSON.
+    pub const EVALUATE: &str = "BrowserEvaluate";
 
     /// Captures a screenshot and holds it for collection.
     ///
-    /// Takes a [`crate::browser::SessionId`] and a [`crate::browser::ScreenshotRequest`], and
-    /// returns an [`crate::browser::OutputRef`] naming the held image. The image itself
-    /// is pulled with [`READ_OUTPUT`] — see [`crate::browser::output`] for why it is not
-    /// returned inline.
-    pub const SCREENSHOT: &str = "Screenshot";
+    /// Takes a [`crate::browser::SessionRequest`] of
+    /// [`crate::browser::ScreenshotRequest`]; its `data` is an
+    /// [`crate::browser::OutputRef`] naming the held image. The image itself
+    /// is pulled with [`READ_OUTPUT`] — see [`crate::browser::output`] for why
+    /// it is not returned inline.
+    pub const SCREENSHOT: &str = "BrowserScreenshot";
 
-    /// Reads one chunk of a held output.
+    /// Reads one chunk of a held output: a screenshot this interface took,
+    /// or one a task view or report names.
     ///
-    /// Takes an output id, a byte offset, and a maximum length, and returns an
+    /// Takes a [`crate::browser::ReadOutputRequest`]; its `data` is an
     /// [`crate::browser::OutputChunk`].
-    pub const READ_OUTPUT: &str = "ReadOutput";
+    pub const READ_OUTPUT: &str = "BrowserReadOutput";
 
     /// Releases a held output before it expires.
     ///
-    /// Takes an output id and returns nothing. Releasing an output that is
-    /// already gone succeeds, for the same reason [`CLOSE_SESSION`] does.
-    pub const RELEASE_OUTPUT: &str = "ReleaseOutput";
+    /// Takes an [`crate::browser::OutputRequest`]; its `data` is
+    /// `{"output": id, "released": true}`.
+    /// Releasing an output that is already gone succeeds, for the same reason
+    /// [`CLOSE_SESSION`] does.
+    pub const RELEASE_OUTPUT: &str = "BrowserReleaseOutput";
 
     /// Lists retained downloads for one browser session.
     ///
-    /// Takes a [`crate::browser::SessionId`] and returns a `Vec<`[`crate::browser::DownloadInfo`]`>`.
-    pub const LIST_DOWNLOADS: &str = "ListDownloads";
+    /// Takes a [`crate::browser::SessionRef`]; its `data` is an array of
+    /// [`crate::browser::DownloadInfo`].
+    pub const LIST_DOWNLOADS: &str = "BrowserListDownloads";
 
     /// Waits for the next terminal download not returned by an earlier wait.
     ///
-    /// Takes a [`crate::browser::SessionId`] and [`crate::browser::DownloadWaitRequest`], and
-    /// returns a [`crate::browser::DownloadInfo`].
-    pub const WAIT_DOWNLOAD: &str = "WaitDownload";
-
-    /// Reports the contract version the module serves.
-    ///
-    /// Takes nothing and returns `(u32, u32)`. A host compares it with
-    /// [`crate::is_compatible`] before its first real call.
-    pub const CONTRACT_VERSION: &str = "ContractVersion";
+    /// Takes a [`crate::browser::SessionRequest`] of
+    /// [`crate::browser::DownloadWaitRequest`]; its `data` is a
+    /// [`crate::browser::DownloadInfo`].
+    pub const WAIT_DOWNLOAD: &str = "BrowserWaitDownload";
 }
 
-/// Every member of [`INTERFACE`], in the order the interface dispatches them.
-///
-/// `crates/tinycomputer` asserts its declared manifest methods against this
-/// list, so the two cannot drift.
+/// Every browser member of [`INTERFACE`], in dispatch order.
 pub const METHODS: &[&str] = &[
     methods::OPEN_SESSION,
     methods::CLOSE_SESSION,
@@ -121,7 +135,6 @@ pub const METHODS: &[&str] = &[
     methods::RELEASE_OUTPUT,
     methods::LIST_DOWNLOADS,
     methods::WAIT_DOWNLOAD,
-    methods::CONTRACT_VERSION,
 ];
 
 #[cfg(test)]

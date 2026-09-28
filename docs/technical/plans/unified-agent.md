@@ -42,8 +42,11 @@ contract commands and the per-file coverage gate green.
 - [x] Upstream: trim agent-browser's dependencies so `cargo deny` passes
       (`image` codecs, `rustls-pemfile`), folded into the same upstream PR.
       The fork's `library-target` branch is that PR's head and is pinned.
-- [ ] The `Browser` interface in the cdylib, plus tabs, cookies, storage
-      state, upload, dialog, find, and wait members.
+- [x] The browser members in the cdylib (contract 2.6): sessions, navigate,
+      snapshot, perform (which covers wait), read, evaluate, screenshot,
+      outputs, and downloads, `Browser`-prefixed on the module interface,
+      in the desktop envelope, sharing the task runner's `Browser`.
+- [ ] Tabs, cookies, storage state, upload, dialog, and find members.
 - [ ] Browser tests in the Docker lab; a CI job on the Playwright image;
       `cargo deny`.
 

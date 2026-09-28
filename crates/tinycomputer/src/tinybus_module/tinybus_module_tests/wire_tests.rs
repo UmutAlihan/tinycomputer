@@ -7,6 +7,7 @@ use serde_json::json;
 use tinybus::broker::Broker;
 use tinybus::transport::memory::MemoryBus;
 use tinybus::{Connection, Interface};
+use tinycomputer_bus::browser::names::methods as browser_methods;
 use tinycomputer_bus::{DesktopResponse, PermissionsRequest, names};
 
 #[tokio::test]
@@ -97,12 +98,17 @@ async fn an_unknown_member_is_a_transport_error_not_an_envelope() -> tinybus::Re
 /// The payloads are the same rejected-before-anything-happens ones the engine
 /// sweep in `desktop/desktop_tests/members_tests.rs` uses, and safe for the
 /// same reasons — see the note there. `ClipboardClear` is absent for that
-/// note's reason: there is no invalid input to hand it.
+/// note's reason: there is no invalid input to hand it. The browser members
+/// name a session or an output that was never opened, so none reaches a
+/// browser; `BrowserOpenSession` is absent because every input to it launches
+/// one.
 fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
     let empty_ref = json!([{ "ref_id": "" }]);
     let no_app = json!([{ "app": "" }]);
     let nothing = json!([]);
     let empty = json!([{}]);
+    let no_session = json!([{ "session": "s-0" }]);
+    let no_output = json!([{ "output": "o-0" }]);
 
     vec![
         (
@@ -175,6 +181,27 @@ fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
         (names::methods::VERSION, nothing.clone()),
         (names::methods::STATUS, nothing.clone()),
         (names::methods::PERMISSIONS, empty),
+        (browser_methods::CLOSE_SESSION, no_session.clone()),
+        (browser_methods::LIST_SESSIONS, nothing),
+        (
+            browser_methods::NAVIGATE,
+            json!([{ "session": "s-0", "url": "https://example.com" }]),
+        ),
+        (browser_methods::SNAPSHOT, no_session.clone()),
+        (
+            browser_methods::PERFORM,
+            json!([{ "session": "s-0", "action": "press", "key": "Tab" }]),
+        ),
+        (browser_methods::READ_PAGE, no_session.clone()),
+        (
+            browser_methods::EVALUATE,
+            json!([{ "session": "s-0", "expression": "1" }]),
+        ),
+        (browser_methods::SCREENSHOT, no_session.clone()),
+        (browser_methods::READ_OUTPUT, no_output.clone()),
+        (browser_methods::RELEASE_OUTPUT, no_output),
+        (browser_methods::LIST_DOWNLOADS, no_session.clone()),
+        (browser_methods::WAIT_DOWNLOAD, no_session),
     ]
 }
 
@@ -204,6 +231,7 @@ fn the_wire_sweep_covers_every_member_except_the_one_with_no_safe_input() {
             &names::methods::TASK_REPORT,
             &names::methods::LIST_TASKS,
             &names::methods::CLIPBOARD_CLEAR,
+            &browser_methods::OPEN_SESSION,
         ],
         "the task members answer in their own reply shape; see the agent tests below"
     );
@@ -232,6 +260,19 @@ fn every_agentic_member_requires_confidential_delivery() {
                 .expect("valid ordinary member")
         )
     );
+}
+
+#[test]
+fn the_catalogue_marks_exactly_the_confidential_members() {
+    let service = service();
+    for member in tinycomputer_bus::catalogue::MEMBERS {
+        assert_eq!(
+            service.requires_confidential(&member.name.try_into().expect("valid member")),
+            member.confidential,
+            "{} disagrees with the served interface",
+            member.name
+        );
+    }
 }
 
 #[tokio::test]

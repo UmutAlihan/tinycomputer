@@ -143,3 +143,48 @@ pub struct OutputChunk {
     /// Whether this chunk reaches the end of the output.
     pub eof: bool,
 }
+
+/// A held output named in a request that carries nothing else.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutputRequest {
+    /// The output, as [`OutputRef::id`] reported it.
+    pub output: OutputId,
+}
+
+/// Which part of a held output to read.
+///
+/// Read from offset zero, then from each chunk's end, until a chunk reports
+/// `eof`; then release the output.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReadOutputRequest {
+    /// The output, as [`OutputRef::id`] reported it.
+    pub output: OutputId,
+    /// The byte to start at. Defaults to the start.
+    #[serde(default)]
+    pub offset: u64,
+    /// The most bytes to return. Defaults to [`ReadOutputRequest::DEFAULT_LEN`];
+    /// the module caps it at a size that keeps the encoded chunk inside one
+    /// bus frame.
+    #[serde(default = "ReadOutputRequest::default_len")]
+    pub max_len: u64,
+}
+
+impl ReadOutputRequest {
+    /// The chunk size a request that names none gets: 1 MiB, which a host
+    /// reassembles a viewport screenshot from in one or two reads.
+    pub const DEFAULT_LEN: u64 = 1024 * 1024;
+
+    /// Reads `output` from the start in chunks of [`Self::DEFAULT_LEN`].
+    #[must_use]
+    pub fn new(output: OutputId) -> Self {
+        Self {
+            output,
+            offset: 0,
+            max_len: Self::DEFAULT_LEN,
+        }
+    }
+
+    const fn default_len() -> u64 {
+        Self::DEFAULT_LEN
+    }
+}

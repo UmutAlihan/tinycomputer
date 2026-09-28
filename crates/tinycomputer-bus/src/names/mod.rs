@@ -211,7 +211,10 @@ pub mod methods {
 /// Every member of [`INTERFACE`], in the order the interface dispatches them.
 ///
 /// `crates/tinycomputer` asserts both its dispatch table and its declared
-/// manifest methods against this list, so the three cannot drift.
+/// manifest methods against this list, so the three cannot drift. The browser
+/// members come last, from [`crate::browser::names::methods`]; their names
+/// carry a `Browser` prefix, so they are not repeated in [`methods`].
+/// [`crate::catalogue::MEMBERS`] says what each one is for.
 pub const METHODS: &[&str] = &[
     methods::RESOLVE_INTENT,
     methods::RUN_GOAL,
@@ -280,6 +283,19 @@ pub const METHODS: &[&str] = &[
     methods::VERSION,
     methods::STATUS,
     methods::PERMISSIONS,
+    crate::browser::names::methods::OPEN_SESSION,
+    crate::browser::names::methods::CLOSE_SESSION,
+    crate::browser::names::methods::LIST_SESSIONS,
+    crate::browser::names::methods::NAVIGATE,
+    crate::browser::names::methods::SNAPSHOT,
+    crate::browser::names::methods::PERFORM,
+    crate::browser::names::methods::READ_PAGE,
+    crate::browser::names::methods::EVALUATE,
+    crate::browser::names::methods::SCREENSHOT,
+    crate::browser::names::methods::READ_OUTPUT,
+    crate::browser::names::methods::RELEASE_OUTPUT,
+    crate::browser::names::methods::LIST_DOWNLOADS,
+    crate::browser::names::methods::WAIT_DOWNLOAD,
 ];
 
 #[cfg(test)]

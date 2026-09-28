@@ -1,15 +1,15 @@
 # TinyBus Adapter
 
-This module is the boundary between the engine in `src/desktop/` and TinyBus
-module ABI v1. `DesktopService` exposes each of `Desktop`'s methods as a typed
-bus member, and `setup` registers its object and claims the well-known interface
-name. Neither the name, the object path, nor the payload types are spelled here:
+This module is the boundary between the engines and TinyBus module ABI v1.
+`DesktopService` exposes each of `Desktop`'s methods, the task controller, and
+each of `Browser`'s methods as a typed bus member, and `setup` registers its
+object and claims the well-known interface name. Neither the name, the object path, nor the payload types are spelled here:
 they come from `tinycomputer-bus`, so a rename is a compile error in every
 consumer instead of an `UnknownMethod` at runtime.
 
 ## Why the members are written out
 
-`dispatch.rs` is fifty-six near-identical `async fn`s. They cannot be generated
+`dispatch.rs` is eighty near-identical `async fn`s. They cannot be generated
 by a `macro_rules!` inside the `impl` block: `#[tinybus::interface]` reads that
 block's items to build its dispatch table, and a macro invocation there is still
 unexpanded when the attribute runs. Writing them out is what lets the macro see
@@ -29,6 +29,22 @@ That is affordable because `Desktop` is four small fields and constructs its
 platform adapter per call: nothing platform-specific has to cross a thread
 boundary or survive an `await`. The module asks for two worker threads for the
 same reason — one to run a blocking command on, one to keep answering on.
+
+## The browser members
+
+The thirteen `Browser…` members await the module's one `Browser` directly —
+its calls are async, and serialized per session inside it — except the two
+held-output calls, which base64-encode up to four mebibytes and so run on the
+blocking pool. The same `Browser` is handed to `WorkspaceRunner`, so a task's
+session appears in `BrowserListSessions` and a screenshot a task view names
+is readable with `BrowserReadOutput`. `browser_reply` wraps each result in
+the `DesktopResponse` envelope, the error converted by
+`tinycomputer_browser::Error::envelope`. `BrowserOpenSession` takes the
+configured `browser.executable` when the request names neither an executable
+nor an endpoint.
+
+`test/browser.rs` drives them over the in-memory bus against a scripted
+engine, so no browser is launched.
 
 ## Configuration
 

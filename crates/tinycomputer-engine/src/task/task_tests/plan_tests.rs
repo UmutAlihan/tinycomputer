@@ -1,45 +1,6 @@
-//! Tests for describing the interface and for planning a plain-language
-//! task before running it.
+//! Tests for planning a plain-language task before running it.
 
 use super::*;
-
-#[tokio::test]
-async fn describe_documents_every_member_and_its_examples_really_work() {
-    let (tasks, _) = controller(Vec::new());
-    let described = capabilities(Vec::new(), true, &tasks);
-    let names = described
-        .members
-        .iter()
-        .map(|member| member.name.as_str())
-        .collect::<Vec<_>>();
-    assert_eq!(names, tinycomputer_bus::agent::names::METHODS);
-    let confidential = described
-        .members
-        .iter()
-        .filter(|member| member.confidential)
-        .map(|member| member.name.as_str())
-        .collect::<Vec<_>>();
-    assert_eq!(confidential, tinycomputer_bus::agent::names::CONFIDENTIAL);
-    assert!(described.step_kinds.iter().any(|kind| kind == "browse"));
-    assert!(!described.planner_configured);
-    assert!(!described.rescue_configured);
-    assert!(!described.output_configured);
-
-    let flight = &described.examples[0];
-    assert_eq!(flight.member, "StartTask");
-    let request: StartTaskRequest = serde_json::from_value(flight.request.clone()).unwrap();
-    let (tasks, _) = controller(Vec::new());
-    let view = tasks.start(&request).data.unwrap();
-    let TaskStatus::NeedsInput { fields } = view.status else {
-        panic!("the example leaves one fact for the caller to supply");
-    };
-    assert_eq!(fields.len(), 1);
-    assert_eq!(fields[0].name, "phone");
-    assert_eq!(fields[0].kind, InputKind::Phone);
-    for example in &described.examples[1..] {
-        assert!(names.contains(&example.member.as_str()));
-    }
-}
 
 /// A model that always answers with the same text.
 struct Fixed(Result<String, String>);

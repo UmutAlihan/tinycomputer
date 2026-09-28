@@ -1,10 +1,15 @@
-//! `Describe`: everything a model needs to drive the Agent members, in one
-//! reply — what is available, the flow guide, each member's input schema,
-//! and worked requests to adapt.
+//! `Describe`: everything a model needs to drive the module, in one reply —
+//! what is available, the flow guide, each task member's input schema,
+//! worked requests to adapt, and a catalogue of every other member.
+//!
+//! The schemas here are written by hand, so each field of a request type
+//! must be added here when it is added to the contract; `test.rs` checks the
+//! `StartTask` and `PlanTask` schemas name every field their types serialize.
 
 use serde_json::{Value, json};
 use tinycomputer_bus::agent::names::{CONFIDENTIAL, methods};
 use tinycomputer_bus::agent::{Capabilities, Example, MemberDoc, SurfaceAvailability};
+use tinycomputer_bus::browser::names::methods as browser;
 use tinycomputer_bus::{CONTRACT_VERSION, FLOW_GUIDE, STEP_KINDS};
 
 /// The capabilities reply for a module with these surfaces, whether Jev is
@@ -26,6 +31,7 @@ pub fn capabilities(
         guide: FLOW_GUIDE.to_owned(),
         members: members(),
         examples: examples(),
+        catalogue: tinycomputer_bus::catalogue::summaries(),
     }
 }
 
@@ -39,10 +45,78 @@ fn member(name: &str, summary: &str, input: Value, output: &str) -> MemberDoc {
     }
 }
 
+fn surfaces() -> Value {
+    json!({"type": "array", "items": {"enum": ["desktop", "browser"]}})
+}
+
 fn task_id() -> Value {
     json!({"type": "object", "required": ["id"], "properties": {
         "id": {"type": "string", "description": "the task id StartTask returned"}
     }})
+}
+
+/// `StartTask`'s input schema: every field of `StartTaskRequest`.
+fn start_task_input() -> Value {
+    let object = |properties: Value, required: &[&str]| json!({"type": "object", "required": required, "properties": properties});
+    object(
+        json!({
+            "task": {"type": "string", "description": "the goal in plain language"},
+            "flow": {"type": "object", "description": "a flow written from the guide"},
+            "facts": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+                "description": "values the flow may type, by name; secret ones never reach a model"
+            },
+            "secret_facts": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "names among facts to keep secret beyond the ones recognised as sensitive"
+            },
+            "constraints": {"type": "object", "properties": {
+                "payment": {
+                    "enum": ["stop_at_payment", "fill_then_approve"],
+                    "default": "stop_at_payment"
+                },
+                "surfaces": surfaces(),
+                "origins": {"type": "array", "items": {"type": "string"}},
+                "allow_destructive": {"type": "boolean"},
+                "browser_endpoint": {"type": "string"},
+                "headed": {"type": "boolean"}
+            }},
+            "budget": {"type": "object", "properties": {
+                "max_actions": {"type": "integer"},
+                "max_model_calls": {"type": "integer"},
+                "votes": {"type": "integer"},
+                "strategy": {"enum": ["narrow", "wide"], "default": "narrow"},
+                "deliberation": {"enum": ["off", "standard", "deep"], "default": "deep"},
+                "max_elapsed_ms": {"type": "integer"},
+                "max_rescues": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "description": "how often a failed step may be rescued by the reasoning model; 0 turns rescues off"
+                }
+            }},
+            "memory": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": "TaskReport.learned from an earlier run, so this one reads less"
+            },
+            "output": {
+                "type": "object",
+                "required": ["instructions"],
+                "description": "the shape to return the answer in, as done.result; needs output_configured",
+                "properties": {
+                    "instructions": {"type": "string"},
+                    "schema": {
+                        "type": "object",
+                        "description": "a JSON Schema with an object at the top, using only type, properties, required, additionalProperties, items, enum, minItems, maxItems, description, title"
+                    }
+                }
+            },
+            "trace": {"type": "boolean"}
+        }),
+        &[],
+    )
 }
 
 fn members() -> Vec<MemberDoc> {
@@ -61,7 +135,12 @@ fn members() -> Vec<MemberDoc> {
                 json!({
                     "task": {"type": "string"},
                     "fact_names": {"type": "array", "items": {"type": "string"}},
-                    "surfaces": {"type": "array", "items": {"enum": ["desktop", "browser"]}}
+                    "secret_facts": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "names among fact_names the plan may only type"
+                    },
+                    "surfaces": surfaces()
                 }),
                 &["task"],
             ),
@@ -70,31 +149,7 @@ fn members() -> Vec<MemberDoc> {
         member(
             methods::START_TASK,
             "Starts a task from a flow (or a plain-language task, with a planner) and returns at once.",
-            object(
-                json!({
-                    "task": {"type": "string", "description": "the goal in plain language"},
-                    "flow": {"type": "object", "description": "a flow written from the guide"},
-                    "facts": {
-                        "type": "object",
-                        "additionalProperties": {"type": "string"},
-                        "description": "values the flow may type, by name; they never reach a model"
-                    },
-                    "constraints": {"type": "object", "properties": {
-                        "surfaces": {"type": "array", "items": {"enum": ["desktop", "browser"]}},
-                        "origins": {"type": "array", "items": {"type": "string"}},
-                        "allow_destructive": {"type": "boolean"},
-                        "browser_endpoint": {"type": "string"},
-                        "headed": {"type": "boolean"}
-                    }},
-                    "budget": {"type": "object", "properties": {
-                        "max_actions": {"type": "integer"},
-                        "max_model_calls": {"type": "integer"},
-                        "max_elapsed_ms": {"type": "integer"}
-                    }},
-                    "trace": {"type": "boolean"}
-                }),
-                &[],
-            ),
+            start_task_input(),
             "TaskView",
         ),
         member(
@@ -126,7 +181,7 @@ fn members() -> Vec<MemberDoc> {
         member(methods::CANCEL_TASK, "Stops a task.", task_id(), "TaskView"),
         member(
             methods::TASK_REPORT,
-            "Everything a task did: steps, reads, and learned hints.",
+            "Everything a task did: steps, records, rescues, artifacts, and learned hints.",
             task_id(),
             "TaskReport",
         ),
@@ -183,6 +238,55 @@ fn examples() -> Vec<Example> {
             title: "Approve the irreversible action the task stopped before".to_owned(),
             member: methods::CONTINUE_TASK.to_owned(),
             request: json!({"id": "t-1", "approve": true}),
+        },
+        Example {
+            title: "Collect a task's findings as JSON in a fixed shape".to_owned(),
+            member: methods::START_TASK.to_owned(),
+            request: json!({
+                "flow": {
+                    "app": "browser",
+                    "steps": [
+                        {"browse": "https://news.ycombinator.com"},
+                        {"extract": {"what": "the stories on the front page", "fields": ["title", "points"], "into": "stories"}}
+                    ]
+                },
+                "output": {
+                    "instructions": "the five stories with the most points, highest first",
+                    "schema": {
+                        "type": "object",
+                        "required": ["stories"],
+                        "properties": {"stories": {
+                            "type": "array",
+                            "maxItems": 5,
+                            "items": {"type": "object", "required": ["title", "points"], "properties": {
+                                "title": {"type": "string"},
+                                "points": {"type": "string"}
+                            }}
+                        }}
+                    }
+                },
+                "constraints": {"surfaces": ["browser"]}
+            }),
+        },
+        Example {
+            title: "Drive the browser yourself: open a session".to_owned(),
+            member: browser::OPEN_SESSION.to_owned(),
+            request: json!({"headless": true}),
+        },
+        Example {
+            title: "Navigate the session, then snapshot it for refs".to_owned(),
+            member: browser::NAVIGATE.to_owned(),
+            request: json!({"session": "s-1", "url": "https://example.com"}),
+        },
+        Example {
+            title: "Click a ref from the latest BrowserSnapshot".to_owned(),
+            member: browser::PERFORM.to_owned(),
+            request: json!({"session": "s-1", "action": "click", "target": {"kind": "ref", "value": "e3"}}),
+        },
+        Example {
+            title: "Read a held screenshot, from offset 0 until eof".to_owned(),
+            member: browser::READ_OUTPUT.to_owned(),
+            request: json!({"output": "o-1", "offset": 0}),
         },
     ]
 }

@@ -10,6 +10,7 @@
 use super::DesktopService;
 use serde_json::json;
 
+mod browser_tests;
 mod config_tests;
 mod manifest_tests;
 mod tasks_tests;

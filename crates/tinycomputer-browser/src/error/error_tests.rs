@@ -7,6 +7,7 @@
 
 use super::Error;
 use tinycomputer_bus::browser::errors;
+use tinycomputer_bus::{DeliveryDisposition, RetryDisposition};
 
 #[test]
 fn every_variant_maps_to_a_published_name() {
@@ -117,4 +118,74 @@ fn every_variant() -> Vec<Error> {
         Error::connection_lost("websocket closed"),
         Error::failed("something else"),
     ]
+}
+
+#[test]
+fn every_variant_has_an_envelope_code_and_its_wire_name() {
+    for error in every_variant() {
+        let envelope = error.envelope();
+        assert_eq!(envelope.code, errors::code(error.wire_name()));
+        assert_eq!(envelope.message, error.to_string());
+        let details = envelope.details.expect("details carry the wire name");
+        assert_eq!(details["name"], error.wire_name());
+        assert_eq!(
+            details["agent_recoverable"],
+            errors::is_agent_recoverable(error.wire_name())
+        );
+    }
+}
+
+#[test]
+fn a_stale_ref_envelope_matches_the_desktop_recovery() {
+    let envelope = Error::StaleRef {
+        reference: "e3".to_owned(),
+    }
+    .envelope();
+    assert_eq!(envelope.code, "STALE_REF");
+    let hint = envelope.recovery.expect("a stale ref has a way out");
+    assert_eq!(hint.strategy, "refresh_snapshot_then_retry_original");
+    assert!(
+        envelope
+            .suggestion
+            .is_some_and(|s| s.contains("BrowserSnapshot"))
+    );
+    assert_eq!(envelope.disposition.retry, RetryDisposition::Safe);
+}
+
+#[test]
+fn a_timeout_may_have_reached_the_page() {
+    let envelope = Error::timeout("navigate", 30_000).envelope();
+    assert_eq!(envelope.code, "TIMEOUT");
+    assert_eq!(envelope.disposition.delivery, DeliveryDisposition::Unknown);
+    assert!(envelope.suggestion.is_none());
+}
+
+#[test]
+fn a_refused_navigation_says_not_to_retry() {
+    let envelope = Error::BlockedByPolicy {
+        url: "https://evil.test/".to_owned(),
+    }
+    .envelope();
+    assert_eq!(envelope.code, "POLICY_DENIED");
+    assert!(envelope.recovery.is_none());
+    assert!(
+        envelope
+            .suggestion
+            .is_some_and(|s| s.starts_with("do not retry"))
+    );
+    assert_eq!(
+        envelope.disposition.delivery,
+        DeliveryDisposition::NotDelivered
+    );
+}
+
+#[test]
+fn a_lost_connection_suggests_a_new_session() {
+    let envelope = Error::connection_lost("closed").envelope();
+    assert_eq!(envelope.code, "SESSION_NOT_FOUND");
+    assert!(
+        envelope
+            .suggestion
+            .is_some_and(|s| s.contains("BrowserOpenSession"))
+    );
 }

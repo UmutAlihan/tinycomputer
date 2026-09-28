@@ -8,6 +8,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod approval_tests;
+mod describe_tests;
 mod human_tests;
 mod output_tests;
 mod plan_tests;

@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 use tinybus::{Error as TinyBusError, Result as TinyBusResult};
+use tinycomputer_browser::{AgentBrowser, Browser};
 use tinycomputer_bus::agent::{SurfaceAvailability, SurfaceKind};
 use tinycomputer_bus::{DesktopResponse, JevConfig};
 use tinycomputer_engine as agentic;
@@ -20,6 +21,16 @@ impl DesktopService {
     ///
     /// Propagates whatever [`Desktop::from_config`] rejects.
     pub(crate) fn from_config(config: &serde_json::Value) -> Result<Self> {
+        Self::with_browser(config, Arc::new(Browser::new(Arc::new(AgentBrowser))))
+    }
+
+    /// Builds the service from the module configuration blob, opening browser
+    /// sessions on `browser`.
+    ///
+    /// # Errors
+    ///
+    /// Propagates whatever [`Desktop::from_config`] rejects.
+    pub(crate) fn with_browser(config: &serde_json::Value, browser: Arc<Browser>) -> Result<Self> {
         let cursor = Arc::new(cursor_config(config)?);
         let desktop = Desktop::from_config(config)?.with_cursor(cursor.clone());
         let jev = config
@@ -56,8 +67,9 @@ impl DesktopService {
                 Ok::<_, crate::Error>((planner, rescuer, shaper))
             })
             .transpose()?;
-        let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone());
-        runner.executable = browser_executable(config)?;
+        let executable = browser_executable(config)?;
+        let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone(), browser.clone());
+        runner.executable.clone_from(&executable);
         runner.cursor = cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
         if let Some((planner, rescuer, shaper)) = planner {
@@ -71,6 +83,8 @@ impl DesktopService {
             desktop,
             jev,
             tasks,
+            browser,
+            executable,
         })
     }
 

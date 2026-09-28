@@ -14,7 +14,8 @@ payload vocabulary has to be published as an ordinary library. This is it.
 
 | module          | what it holds                                                      |
 | --------------- | ------------------------------------------------------------------ |
-| `names`         | interface name, object path, one constant per member — 56 of them   |
+| `names`         | interface name, object path, one constant per member — 80 of them   |
+| `catalogue`     | every member's family, one-line summary, and confidentiality        |
 | `envelope`      | `DesktopResponse` and the structured `DesktopError` it carries      |
 | `vocabulary`    | surfaces, modifiers, buttons, element properties                    |
 | `observation`   | `Snapshot`, `Find`, `Get`, `Is`, `Screenshot` payloads              |
@@ -25,6 +26,9 @@ payload vocabulary has to be published as an ordinary library. This is it.
 | `notifications` | notification-centre payloads                                        |
 | `waiting`       | the `Wait` payload                                                  |
 | `system`        | the `Permissions` payload                                           |
+| `agent`         | the task members' requests, views, reports, and `Capabilities`      |
+| `flow`          | the flow grammar `RunFlow` and `StartTask` carry                    |
+| `browser`       | the `Browser…` members' payloads, names, and error codes            |
 | `version`       | `CONTRACT_VERSION` and the bind rule a host applies to it           |
 
 Two dependencies, both pure Rust: `serde` and `serde_json`.

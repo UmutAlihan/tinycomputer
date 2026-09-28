@@ -2,7 +2,10 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{ImageFormat, OutputChunk, OutputId, OutputRef, ScreenshotRequest};
+use super::{
+    ImageFormat, OutputChunk, OutputId, OutputRef, OutputRequest, ReadOutputRequest,
+    ScreenshotRequest,
+};
 use serde_json::json;
 
 #[test]
@@ -130,4 +133,37 @@ fn image_formats_deserialize_from_their_wire_spellings() {
             format
         );
     }
+}
+
+#[test]
+fn a_read_output_request_defaults_to_the_start_in_one_mebibyte_chunks() {
+    let request: ReadOutputRequest =
+        serde_json::from_value(json!({"output": "o-1"})).expect("deserializes");
+    assert_eq!(request, ReadOutputRequest::new(OutputId::new("o-1")));
+    assert_eq!(request.offset, 0);
+    assert_eq!(request.max_len, 1024 * 1024);
+}
+
+#[test]
+fn a_read_output_request_has_a_pinned_wire_form() {
+    let request = ReadOutputRequest {
+        output: OutputId::new("o-1"),
+        offset: 10,
+        max_len: 20,
+    };
+    assert_eq!(
+        serde_json::to_value(request).expect("serializes"),
+        json!({"output": "o-1", "offset": 10, "max_len": 20})
+    );
+}
+
+#[test]
+fn an_output_request_is_one_named_field() {
+    assert_eq!(
+        serde_json::to_value(OutputRequest {
+            output: OutputId::new("o-2")
+        })
+        .expect("serializes"),
+        json!({"output": "o-2"})
+    );
 }
