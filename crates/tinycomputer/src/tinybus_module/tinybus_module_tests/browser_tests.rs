@@ -306,3 +306,27 @@ async fn a_malformed_request_is_a_bus_error_not_a_panic() -> tinybus::Result<()>
     assert!(reply.is_err(), "a request with no session does not decode");
     Ok(())
 }
+
+#[tokio::test]
+async fn the_output_sweep_runs_until_the_browser_is_gone() {
+    use crate::tinybus_module::dispatch::sweep_every;
+
+    let scratch = Scratch::new("sweep");
+    let browser = Arc::new(Browser::with_scratch(
+        Arc::new(ScriptedLauncher::default()),
+        scratch.0.clone(),
+    ));
+    let sweep = tokio::spawn(sweep_every(
+        Arc::downgrade(&browser),
+        std::time::Duration::from_millis(1),
+    ));
+    // It sweeps while the browser lives…
+    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+    assert!(!sweep.is_finished());
+    // …and ends on its own once the browser is dropped.
+    drop(browser);
+    tokio::time::timeout(std::time::Duration::from_secs(1), sweep)
+        .await
+        .expect("the sweep ends once the browser is gone")
+        .expect("the sweep does not panic");
+}
