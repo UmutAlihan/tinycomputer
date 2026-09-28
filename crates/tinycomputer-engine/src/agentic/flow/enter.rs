@@ -340,8 +340,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let offered = fields
             .iter()
             .filter(|field| !taken.contains(&signature(field)))
-            .cloned()
             .take(CAP)
+            .cloned()
             .collect::<Vec<_>>();
         if !open.is_empty() && !offered.is_empty() {
             let keys = numbered(offered.len());
