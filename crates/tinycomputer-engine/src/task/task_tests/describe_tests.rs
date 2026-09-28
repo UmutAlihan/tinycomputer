@@ -26,8 +26,16 @@ fn describe_reports_the_decision_model_and_each_task_model() {
     assert!(bare.decision_model.is_none());
     assert!(bare.planner_model.is_none() && bare.rescue_model.is_none());
     let wire = serde_json::to_value(&bare).unwrap();
-    for absent in ["decision_model", "planner_model", "rescue_model", "output_model"] {
-        assert!(wire.get(absent).is_none(), "{absent} is left out when unset");
+    for absent in [
+        "decision_model",
+        "planner_model",
+        "rescue_model",
+        "output_model",
+    ] {
+        assert!(
+            wire.get(absent).is_none(),
+            "{absent} is left out when unset"
+        );
     }
 
     let on = |provider, model: &str| LanguageModelConfiguration {
@@ -38,12 +46,16 @@ fn describe_reports_the_decision_model_and_each_task_model() {
     let model = Arc::new(Model::default());
     let tasks = tasks
         .with_planner(
-            crate::planner::Planner::new(model.clone())
-                .with_configuration(on(LanguageModelProvider::TinyHumans, "anthropic/claude-sonnet-5")),
+            crate::planner::Planner::new(model.clone()).with_configuration(on(
+                LanguageModelProvider::TinyHumans,
+                "anthropic/claude-sonnet-5",
+            )),
         )
         .with_rescuer(
-            crate::rescue::Rescuer::new(model.clone())
-                .with_configuration(on(LanguageModelProvider::OpenRouter, "openai/gpt-6-luna-pro")),
+            crate::rescue::Rescuer::new(model.clone()).with_configuration(on(
+                LanguageModelProvider::OpenRouter,
+                "openai/gpt-6-luna-pro",
+            )),
         )
         .with_shaper(crate::shape::Shaper::new(model));
     let sage = JevConfiguration {
@@ -59,7 +71,10 @@ fn describe_reports_the_decision_model_and_each_task_model() {
         described.planner_model.unwrap().provider,
         LanguageModelProvider::TinyHumans
     );
-    assert_eq!(described.rescue_model.unwrap().model, "openai/gpt-6-luna-pro");
+    assert_eq!(
+        described.rescue_model.unwrap().model,
+        "openai/gpt-6-luna-pro"
+    );
     assert!(described.output_configured);
     assert!(
         described.output_model.is_none(),

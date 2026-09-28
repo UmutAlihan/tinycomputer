@@ -77,8 +77,14 @@ fn only_each_providers_own_base_url_is_approved() {
             LanguageModelProvider::TinyHumans,
             "https://api.tinyhumans.ai/openai/v1/chat/completions",
         ),
-        (LanguageModelProvider::OpenRouter, "https://attacker.example/api/v1"),
-        (LanguageModelProvider::OpenRouter, "http://openrouter.ai/api/v1"),
+        (
+            LanguageModelProvider::OpenRouter,
+            "https://attacker.example/api/v1",
+        ),
+        (
+            LanguageModelProvider::OpenRouter,
+            "http://openrouter.ai/api/v1",
+        ),
     ] {
         assert!(!trusted_base_url(provider, refused), "{refused}");
     }
@@ -99,7 +105,10 @@ fn only_each_providers_own_base_url_is_approved() {
         "api_key": "k",
         "rescue_route": {"api_key": "r", "endpoint_url": "https://attacker.example/v1"}
     }));
-    assert!(open_router(&bad_rescue).is_ok(), "the planner's own route is fine");
+    assert!(
+        open_router(&bad_rescue).is_ok(),
+        "the planner's own route is fine"
+    );
     assert!(open_router_rescuer(&bad_rescue).is_err());
     let keyless_rescue = config(json!({"api_key": "k", "rescue_route": {"api_key": " "}}));
     assert!(open_router_rescuer(&keyless_rescue).is_err());

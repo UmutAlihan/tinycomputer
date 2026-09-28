@@ -20,12 +20,8 @@ fn runtime_configuration_covers_all_providers_and_rejects_empty_keys() {
         request.endpoint_url = Some("http://127.0.0.1:1/decisions".to_owned());
         let runtime = JevRuntime::configure(&request).expect("configuration is valid");
         assert_eq!(runtime.configuration().provider, provider);
-        let mut keyless = request.clone();
-        keyless.endpoint_url = None;
-        keyless = JevConfig {
-            provider,
-            ..JevConfig::default()
-        };
+        let mut keyless = JevConfig::default();
+        keyless.provider = provider;
         assert!(JevRuntime::configure(&keyless).is_err(), "{provider:?}");
     }
     assert!(JevRuntime::configure(&JevConfig::default()).is_err());
@@ -52,7 +48,9 @@ fn each_provider_selects_its_decision_model() {
     let openjev = configured(serde_json::json!({"api_key": "k", "provider": "open_jev"}));
     assert_eq!(openjev.provider, JevProvider::OpenJev);
     assert_eq!(openjev.model, "openjev", "OpenJEV answers as its own model");
-    let alias = configured(serde_json::json!({"api_key": "k", "provider": "openjev", "model": "openjev-2"}));
+    let alias = configured(
+        serde_json::json!({"api_key": "k", "provider": "openjev", "model": "openjev-2"}),
+    );
     assert_eq!(alias.provider, JevProvider::OpenJev);
     assert_eq!(alias.model, "openjev-2");
 
@@ -64,14 +62,12 @@ fn each_provider_selects_its_decision_model() {
     assert!(sage.fast);
     assert!(!configured(serde_json::json!({"api_key": "k", "provider": "sage"})).fast);
     assert!(
-        !configured(serde_json::json!({"api_key": "k", "provider": "open_router", "fast": true})).fast,
+        !configured(serde_json::json!({"api_key": "k", "provider": "open_router", "fast": true}))
+            .fast,
         "`fast` is Sage's alone"
     );
     // The constructor the examples use builds the same runtime.
-    assert_eq!(
-        JevRuntime::sage("k", true).unwrap().configuration(),
-        &sage
-    );
+    assert_eq!(JevRuntime::sage("k", true).unwrap().configuration(), &sage);
 }
 
 #[test]
@@ -101,8 +97,14 @@ fn only_each_providers_own_endpoint_is_approved() {
             );
         }
     }
-    assert_eq!(approved_endpoint(JevProvider::OpenJev), "https://api.openjev.sh/v1/systemone");
-    assert!(trusted_endpoint(JevProvider::Sage, "https://sage.levanto.ai"));
+    assert_eq!(
+        approved_endpoint(JevProvider::OpenJev),
+        "https://api.openjev.sh/v1/systemone"
+    );
+    assert!(trusted_endpoint(
+        JevProvider::Sage,
+        "https://sage.levanto.ai"
+    ));
     for refused in [
         "https://sage.levanto.ai.evil.example/",
         "https://sage.levanto.ai/v1/decide",
