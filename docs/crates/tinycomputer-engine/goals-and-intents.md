@@ -53,7 +53,7 @@ pub async fn run_goal(
 
 `RunGoalRequest` describes a bounded loop: an application, a goal in plain
 words ("the playlist is playing"), a budget (`max_steps`, `max_elapsed_ms`,
-`max_model_calls`), and optional scoping, `window` / `window_id` to stay on
+`max_model_calls`), and optional scoping: `window` / `window_id` to stay on
 one window, `allowed_operations` and `allowed_targets` to restrict what the
 loop may do, and `text` values consumed in order by text-entering steps.
 
@@ -110,7 +110,7 @@ The gate (`agentic::policy::gate_with_evidence`) is the same threshold logic
 Destructiveness itself comes from two sources, taken as the higher of the
 two: Jev's own answer to a yes/no "would this be hard to undo" question, and
 a small deterministic word list (`deterministic_destructive` in
-`policy.rs`), "delete", "send", "purchase", "buy", "pay", "submit",
+`policy.rs`): "delete", "send", "purchase", "buy", "pay", "submit",
 "confirm", "overwrite", "quit without saving", "empty trash", "sign out",
 checked against the goal text and the target's own label. The word list
 exists so that an action that is obviously irreversible is never left to a
