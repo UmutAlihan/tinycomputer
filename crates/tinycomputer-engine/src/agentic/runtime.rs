@@ -118,7 +118,7 @@ impl JevRuntime {
     }
 
     /// This runtime with the debug journal written under `dir`, whatever
-    /// [`JOURNAL_ENV`] says.
+    /// [`JOURNAL_ENV`](crate::JOURNAL_ENV) says.
     ///
     /// Every Jev exchange of every run, with its latency, and the time each
     /// flow spends observing, acting, and on each step, is appended to
