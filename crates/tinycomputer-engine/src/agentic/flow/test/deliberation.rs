@@ -541,6 +541,17 @@ async fn views_never_pull_a_judgement_below_the_bar_lower() {
             )),
             "done" if !text_of(question, "view").is_empty() => Some(noul(0.2)),
             "done" => Some(noul(if sim.clicks.is_empty() { 0.05 } else { 0.64 })),
+            // Nearly there, and only 0.64 on "fully": the judge reads 0.64.
+            "progress" if !sim.clicks.is_empty() => Some(Answer::Score(ScoreAnswer {
+                score: 3.64,
+                legend: BTreeMap::new(),
+                probabilities: [("3", 0.36), ("4", 0.64)]
+                    .into_iter()
+                    .map(|(level, probability)| (level.to_owned(), probability))
+                    .chain((0..3).map(|level| (level.to_string(), 0.0)))
+                    .collect(),
+                confidence: 0.5,
+            })),
             _ => None,
         },
     )
