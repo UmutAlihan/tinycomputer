@@ -30,6 +30,7 @@
 
 mod agentic;
 mod planner;
+mod rescue;
 mod task;
 mod workspace;
 
@@ -38,8 +39,9 @@ pub use agentic::{
     run_flow, run_goal, validate_flow,
 };
 pub use planner::{Completion, LanguageModel, Planner, REPAIRS, Role, Turn};
+pub use rescue::{Briefing, Guidance, MAX_RESCUE_STEPS, MAX_RESCUES, Rescuer, SCREEN_CHARS};
 #[cfg(feature = "planner")]
-pub use planner::{PLANNER_MODEL, PlannerConfig, open_router};
+pub use planner::{PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer};
 pub use task::{FlowFuture, FlowRunner, MAX_AWAIT_MS, MAX_TASKS, Tasks, TextFuture, capabilities};
 pub use tinycomputer_bus::DesktopResponse;
 use tinycomputer_desktop::Desktop;
