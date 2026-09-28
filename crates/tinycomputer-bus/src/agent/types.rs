@@ -544,6 +544,11 @@ pub struct Capabilities {
     pub members: Vec<MemberDoc>,
     /// Worked requests, ready to adapt.
     pub examples: Vec<Example>,
+    /// Every member the module serves — task, flow, desktop, and browser —
+    /// with its family and a one-line summary, so a caller knows the
+    /// primitives exist without reading the contract.
+    #[serde(default)]
+    pub catalogue: Vec<crate::catalogue::MemberSummary>,
 }
 
 /// Whether a surface is usable, and why not.

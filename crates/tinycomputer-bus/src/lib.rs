@@ -111,6 +111,7 @@ pub mod agent;
 pub mod agentic;
 pub mod apps;
 pub mod browser;
+pub mod catalogue;
 pub mod clipboard;
 pub mod envelope;
 pub mod flow;
