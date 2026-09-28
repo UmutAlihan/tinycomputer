@@ -35,7 +35,7 @@ pub struct Workspace<D, W> {
 }
 ```
 
-`active` flips only after a call on that side actually succeeds, a failed
+`active` flips only after a call on that side actually succeeds. A failed
 `navigate` or `launch` never makes the browser active, so a call that names
 no application is never accidentally routed to a side that just failed to
 open.

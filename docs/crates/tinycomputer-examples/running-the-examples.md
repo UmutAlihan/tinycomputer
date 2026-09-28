@@ -105,8 +105,8 @@ scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run browser_fixture
 ```
 
 Drives the travel fixture in a real browser and checks each layer the
-browser surface relies on — snapshot parsing, result-card grouping and
-ranking, payment-page detection — without asking Jev anything. It is the
+browser surface relies on (snapshot parsing, result-card grouping and
+ranking, payment-page detection) without asking Jev anything. It is the
 fast check that the browser adapter itself still works, before spending
 credit on a flow or task that exercises Jev on top of it.
 
@@ -125,7 +125,7 @@ Opens each URL given on the command line and prints what a flow would see
 there: the title, what is in front (a cookie sheet, say), the first
 actionable controls, any repeated result cards, and whether a captcha or
 login wall is blocking the page. This is the research step before pointing
-`task_live` at a site you have not tried yet — it is how the notes in
+`task_live` at a site you have not tried yet: it is how the notes in
 [`tasks/kashmir/task.md`](../../../crates/tinycomputer-examples/tasks/kashmir/task.md)
 and
 [`tasks/emirates/task.md`](../../../crates/tinycomputer-examples/tasks/emirates/task.md)
@@ -146,7 +146,7 @@ shows rather than navigating anywhere. `PROBE_WAIT_SECS` changes how long it
 waits after navigating or acting before it reads the page (8 seconds by
 default). `PROBE_JS` runs a script and prints the result; `PROBE_GREP`
 prints the raw snapshot lines containing that text, case-insensitively.
-Values are never printed for any control — only its role and name — so a
+Values are never printed for any control (only its role and name), so a
 card number or password typed in an earlier step cannot leak into the
 output.
 
