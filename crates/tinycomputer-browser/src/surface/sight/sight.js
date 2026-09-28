@@ -329,10 +329,11 @@
     'rubiconproject.com', 'scorecardresearch.com',
   ];
   const AD_HOST_NAMES = /(^|\.)(adservice\.google|criteo)\.[a-z]{2,}(\.[a-z]{2,})?$/;
-  // One word of a class or id, split at `-` and `_` only: `ad`, not the `ad`
-  // in `header`, `shadow`, `download`, or `adults`, nor in a generated class
-  // such as `css-1ad4k9`. `AdSlot` reads as `adslot`. The short words must
-  // be all one case: Google's generated `gb_Ad` is not an ad.
+  // The words of a class or id, split at `-` and `_` only: `ad`, not the
+  // `ad` in `header`, `shadow`, `download`, or `adults`, nor in a generated
+  // class such as `css-1ad4k9`; `AdSlot` reads as `adslot`. A short word
+  // counts alone (`ads`) or beside a real word (`top-ad`, `div-gpt-ad-1`),
+  // in one case: Google's generated `gb_Ad` and `gb_ad` are not ads.
   const AD_SHORT = /^(ad|ads|dfp|AD|ADS|DFP)$/;
   const AD_WORD = /^(adsbygoogle|ad(slot|unit|box|zone|space|container|wrapper|banner|frame|holder|placement)s?|advert\w*|sponsor\w*)$/i;
   const AD_LABEL = /^(advertisement|sponsored|ad)$/i;
@@ -347,9 +348,15 @@
   };
   const classText = (element) => (typeof element.className === 'string' ? element.className
     : (element.className && element.className.baseVal) || '');
+  const adToken = (token) => {
+    const words = token.split(/[_-]+/).filter(Boolean);
+    if (words.some((word) => AD_WORD.test(word))) return true;
+    if (!words.some((word) => AD_SHORT.test(word))) return false;
+    return words.length === 1 || words.some((word) => /^[a-z]{3,}$/i.test(word) && !AD_SHORT.test(word));
+  };
   const adWords = (element) => `${classText(element)} ${element.id || ''}`
-    .split(/[\s_-]+/)
-    .some((word) => AD_SHORT.test(word) || AD_WORD.test(word));
+    .split(/\s+/)
+    .some(adToken);
   const boilerplate = (element) => BOILERPLATE.test(
     `${classText(element)} ${element.id || ''} ${element.getAttribute('aria-label') || ''} `
     + (element.textContent || '').slice(0, 600),
