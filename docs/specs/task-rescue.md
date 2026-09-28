@@ -83,8 +83,8 @@ fails the task.
   - `gave_up`.
 
   While a rescue is under way the task stays `running`, with summaries
-  "Step n failed; asking for guidance (rescue k of 3)." and then "Rescue k
-  of 3: \<reason\>".
+  "Step n failed; asking for guidance (rescue k of 5)." and then "Rescue k
+  of 5: \<reason\>".
 
 ## What it does not do
 
