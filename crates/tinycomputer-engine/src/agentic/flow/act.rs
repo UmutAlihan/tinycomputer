@@ -74,6 +74,13 @@ pub(super) const CLEAR_MISTAKE: f64 = 0.25;
 /// Next-best candidates a `do` step backtracks into at most, deep and
 /// standard.
 pub(super) const MAX_BRANCHES: (u32, u32) = (3, 1);
+/// The view of the screen alone, without the history that can lead a
+/// judgement.
+pub(super) const SCREEN_VIEW: &str =
+    "Judge only from the screen as it is shown now; no history of actions is given.";
+/// The view of what changed since the step began.
+const CHANGES_VIEW: &str =
+    "Judge from what changed on screen since the step began, and the actions taken.";
 
 /// Generic moves every application offers, with what each is for.
 const MOVES: &[(&str, &str)] = &[
@@ -740,15 +747,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// without the history that can lead it, and what changed since the
     /// step began.
     fn done_views(&self, state: &DoState, screen: &Screen, intent: &str) -> Vec<EvaluationRequest> {
-        let questions = || {
+        let questions = |view: &str| {
             Questions::default()
-                .with("done", completion(intent))
-                .with("not_done", ask::unfinished(intent))
+                .with("done", ask::viewed(completion(intent), view))
+                .with("not_done", ask::viewed(ask::unfinished(intent), view))
         };
         let mut views = vec![ask::request(
             self.model(),
             ask::state(screen, intent, &[], self.include_values),
-            questions(),
+            questions(SCREEN_VIEW),
         )];
         if let Some(first) = &state.first {
             let changed = fingerprint(first) != fingerprint(screen);
@@ -767,7 +774,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                         .collect::<Vec<_>>(),
                     "visible_text": super::view::untrusted_context(screen),
                 }),
-                questions(),
+                questions(CHANGES_VIEW),
             ));
         }
         views

@@ -528,6 +528,20 @@ pub(super) fn unintended(intent: &str, action: &str, expected: &str) -> Question
     })
 }
 
+/// `question` asked over another rendering of the screen, named by `view`,
+/// so it is judged from what that rendering shows (`escalate`'s views).
+pub(super) fn viewed(mut question: Question, view: &str) -> Question {
+    let instructions = match &mut question {
+        Question::Choice(choice) => &mut choice.instructions,
+        Question::Noul(noul) => &mut noul.instructions,
+        Question::Score(score) => &mut score.instructions,
+    };
+    if let Value::Object(fields) = instructions {
+        fields.insert("view".to_owned(), Value::from(view));
+    }
+    question
+}
+
 /// `1`..=`n`: the keys a first Choice uses.
 pub(super) fn numbered(count: usize) -> Vec<String> {
     (1..=count).map(|index| index.to_string()).collect()

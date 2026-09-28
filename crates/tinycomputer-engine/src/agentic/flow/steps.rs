@@ -14,7 +14,7 @@ use crate::workspace::BROWSER;
 
 use super::{
     AgentBackend, Ended, FlowRun, Halt, StepLog,
-    act::DONE,
+    act::{DONE, SCREEN_VIEW},
     ask::{self, Questions, chosen, condition, numbered},
     backend::deliver_text,
     escalate::Belief,
@@ -179,15 +179,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ) -> Result<f64, Halt> {
         log.used(FlowLoop::Completion);
         let screen = self.look().await?;
-        let questions = || {
-            Questions::default()
-                .with("holds", condition(condition_text))
-                .with("negated", ask::negated(condition_text))
-        };
         let request = ask::request(
             self.model(),
             self.state(&screen, condition_text),
-            questions().with("coverage", ask::coverage(condition_text)),
+            Questions::default()
+                .with("holds", condition(condition_text))
+                .with("negated", ask::negated(condition_text))
+                .with("coverage", ask::coverage(condition_text)),
         );
         let mut answers = self.ask(log, request.clone()).await?;
         let belief = Belief {
@@ -201,7 +199,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             vec![ask::request(
                 self.model(),
                 ask::state(&screen, condition_text, &[], self.include_values),
-                questions(),
+                Questions::default()
+                    .with(
+                        "holds",
+                        ask::viewed(condition(condition_text), SCREEN_VIEW),
+                    )
+                    .with(
+                        "negated",
+                        ask::viewed(ask::negated(condition_text), SCREEN_VIEW),
+                    ),
             )]
         } else {
             Vec::new()
