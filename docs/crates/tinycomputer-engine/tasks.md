@@ -168,8 +168,8 @@ The controller tracks cumulative `Spent { actions, model_calls, elapsed_ms }`
 on the task's `State`, and `run_request` (in `task/mod.rs`) computes each new
 run's request with what remains: `max_actions - spent.actions`,
 `max_model_calls - spent.model_calls`, and so on. `max_elapsed_ms` has no
-equivalent inside a single `RunFlowRequest`, a flow run cannot police its
-own wall-clock time from the inside, so it is enforced by the task
+equivalent inside a single `RunFlowRequest` (a flow run cannot police its
+own wall-clock time from the inside), so it is enforced by the task
 controller itself, wrapping the call to the flow runner in a
 `tokio::time::timeout` for whatever time remains. Time spent waiting for the
 caller to answer a pause is not counted: the clock only runs while a flow is
