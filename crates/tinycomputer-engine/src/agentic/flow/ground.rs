@@ -16,9 +16,11 @@
 //! things. The pool is denoised first (`denoise.rs`): what is in view ranks
 //! ahead of what is not. Narrowing keeps the two best regions wherever the
 //! region answer is close — an early wrong branch is the one grounding can
-//! never recover from — and at the deep level asks one flat Choice over the
-//! whole pool beside the tree, to cross-check it. And step 4 gives way to
-//! the evidence gate and its escalation ladder (`escalate`).
+//! never recover from — and at the deep level, when the region answer left
+//! group winners out, the final Choice is asked a second time over every
+//! winner, to cross-check the region against a pick that never used it. And
+//! step 4 gives way to the evidence gate and its escalation ladder
+//! (`escalate`).
 //!
 //! The first round is built by [`FlowRun::opening`] without being asked, so
 //! a `do` turn can send it with its judge, and finished by
@@ -87,9 +89,6 @@ enum First {
     Narrowed {
         groups: Vec<(Option<usize>, Vec<Candidate>)>,
         regions: Option<(Vec<String>, Regions)>,
-        /// The flat Choice over the whole pool a deep run cross-checks the
-        /// tree with: its keys, and the request's position.
-        flat: Option<(Vec<String>, usize)>,
         requests: Vec<EvaluationRequest>,
     },
     /// A pool small enough for one Choice.
@@ -276,23 +275,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             ));
             (keys, regions)
         });
-        let flat = (self.deep() && self.deliberates(FlowLoop::TreeGrounding)).then(|| {
-            let pool = &pool[..pool.len().min(super::view::MAX_CANDIDATES)];
-            let keys = numbered(pool.len());
-            requests.push(ask::request(
-                self.model(),
-                self.state(screen, purpose),
-                Questions::default().with(
-                    "flat",
-                    elements(purpose, pool, &keys, self.include_values),
-                ),
-            ));
-            (keys, requests.len() - 1)
-        });
         First::Narrowed {
             groups,
             regions,
-            flat,
             requests,
         }
     }
@@ -335,25 +320,23 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 Box::pin(self.resume(log, screen, opening, None)).await
             }
             First::Narrowed {
-                groups,
-                regions,
-                flat,
-                ..
+                groups, regions, ..
             } => {
                 let kept = regions.as_ref().map_or_else(Vec::new, |(keys, _)| {
                     answers
                         .get(1)
                         .map_or_else(Vec::new, |answers| self.kept_regions(log, answers, keys))
                 });
-                let cross = flat.and_then(|(keys, position)| {
-                    let (choice, _) = chosen(answers.get(position)?, "flat")?;
-                    let index = keys.iter().position(|key| *key == choice)?;
-                    pool.get(index).cloned()
-                });
-                let winners = answers.first().map_or_else(Vec::new, |knockout| {
-                    winners(knockout, groups, &kept, regions.as_ref())
-                });
-                self.decide(log, screen, &purpose, winners, cross).await
+                let Some(knockout) = answers.first() else {
+                    return Ok(None);
+                };
+                let every = winners(knockout, groups.clone(), &[], regions.as_ref());
+                let chosen = winners(knockout, groups, &kept, regions.as_ref());
+                let wider = (self.deep()
+                    && self.deliberates(FlowLoop::TreeGrounding)
+                    && every.len() > chosen.len())
+                .then_some(every);
+                self.decide(log, screen, &purpose, chosen, wider).await
             }
             First::Chosen { keys, request } => {
                 let pool = &pool[..pool.len().min(super::view::MAX_CANDIDATES)];
@@ -426,15 +409,17 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// The final Choice, re-asked and corroborated when it is not confident.
-    /// `cross` is a pick made independently of it, which a deliberating run
-    /// checks it against.
+    ///
+    /// `wider` is a larger pool the narrowing tree cut `pool` from: a deep
+    /// run asks the same Choice over it in the same round trip, and checks
+    /// the pick against the one made without the cut.
     pub(super) async fn decide(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
         purpose: &str,
         mut pool: Vec<Candidate>,
-        cross: Option<Candidate>,
+        wider: Option<Vec<Candidate>>,
     ) -> Result<Option<Grounded>, Halt> {
         pool.truncate(super::view::MAX_CANDIDATES);
         if pool.is_empty() {
@@ -449,7 +434,27 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 elements(purpose, &pool, &keys, self.include_values),
             ),
         );
-        let answers = self.ask(log, request.clone()).await?;
+        let mut requests = vec![request.clone()];
+        let wider = wider.map(|mut wider| {
+            wider.truncate(CAP);
+            let keys = numbered(wider.len());
+            requests.push(ask::request(
+                self.model(),
+                self.state(screen, purpose),
+                Questions::default().with(
+                    "wider",
+                    elements(purpose, &wider, &keys, self.include_values),
+                ),
+            ));
+            (keys, wider)
+        });
+        let mut replies = self.ask_batch(log, requests).await?.into_iter();
+        let answers = replies.next().unwrap_or_default();
+        let cross = wider.zip(replies.next()).and_then(|((keys, wider), answers)| {
+            let (choice, _) = chosen(&answers, "wider")?;
+            let index = keys.iter().position(|key| *key == choice)?;
+            wider.get(index).cloned()
+        });
         self.settle(
             log,
             screen,
