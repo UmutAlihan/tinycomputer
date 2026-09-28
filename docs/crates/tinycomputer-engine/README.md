@@ -92,13 +92,16 @@ against the other behind identical code. See [sage.md](sage.md).
 If you are new to this crate, read in this order:
 
 1. [jev-runtime.md](jev-runtime.md), what Jev is, how it is configured, and
-   the one door everything calls through.
+   the one door everything calls through, and, if you are curious whether
+   another decision model could sit behind that same door, [sage.md](sage.md).
 2. [goals-and-intents.md](goals-and-intents.md), the older, lower-level
    loops: `ResolveIntent` and `RunGoal`.
 3. [tasks.md](tasks.md), the task controller: the thing most callers
    actually use.
-4. [planner.md](planner.md) and [rescue.md](rescue.md), the two places a
-   language model helps without touching the screen.
+4. [planner.md](planner.md), [rescue.md](rescue.md), and [output.md](output.md),
+   the three places a language model helps without touching the screen:
+   writing the flow, recovering from a failed step, and shaping the
+   finished task's answer.
 5. [workspace.md](workspace.md), how one flow reaches both a desktop
    application and a web page.
 6. [journal.md](journal.md), how to see what a run actually did.
