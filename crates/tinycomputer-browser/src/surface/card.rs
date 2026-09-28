@@ -1,7 +1,7 @@
 //! Clicking through a result card's own cover, and pressing a selection again
 //! when a page ignored the click.
 
-use super::{BrowserSurface, sight};
+use super::sight;
 use super::operations::target;
 
 use std::sync::{Arc, Mutex};

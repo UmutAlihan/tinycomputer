@@ -1,7 +1,7 @@
 //! The [`Surface`] implementation: observing, acting, reading, pasting,
 //! pressing, and navigating, with the engine targets and key spellings they use.
 
-use super::{BrowserSurface, sight};
+use super::sight;
 use super::card::selects_on_click;
 use super::envelope::{covered, failure, not_a_text_field, reply};
 use super::{NETWORK_IDLE_MS, SETTLE_MS, SKELETON_DEPTH, tree};

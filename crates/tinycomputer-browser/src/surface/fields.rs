@@ -1,6 +1,6 @@
 //! Whether the focused element, or the one a ref names, takes typed text.
 
-use super::{BrowserSurface, sight};
+use super::sight;
 use super::envelope::not_a_text_field;
 use super::operations::target;
 
