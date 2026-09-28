@@ -18,7 +18,7 @@ use super::{
     backend::deliver_text,
     memory::{learn, recall, remember},
     validate::{references, substitute, substitute_safe},
-    view::{Candidate, Screen, distinct, element_kind, label, signature},
+    view::{Candidate, Screen, element_kind, label, signature},
 };
 
 /// Least probability a slot assignment needs.
