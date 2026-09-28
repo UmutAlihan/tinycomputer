@@ -105,21 +105,20 @@ pub(in crate::agentic) fn distinct(pool: Vec<Candidate>, include_values: bool) -
         .collect()
 }
 
-/// What kind of element `field` is, and where: its role, its label, and its
-/// ancestors, without the value or states that tell one list row from the
-/// next. A field that refused text strikes every element of its kind: the
-/// rows of a city list each hold their city as a value, and trying them one
-/// by one only spends the step — or, pressed while revealing a field,
-/// chooses a city nobody asked for.
+/// What kind of element `field` is, and where: its role, its accessible
+/// name, and its ancestors — without the value or states that tell one list
+/// row from the next, and without `description`, which an unnamed row's
+/// content can fill in per row (`describe_by_content`), making it just as
+/// row-specific as a value. A field that refused text strikes every element
+/// of its kind: the rows of a city list each hold their city as a value or a
+/// content-derived description, and trying them one by one only spends the
+/// step — or, pressed while revealing a field, chooses a city nobody asked
+/// for.
 pub(in crate::agentic) fn element_kind(field: &Candidate) -> String {
     format!(
         "{}:{}:{}",
         field.role,
-        field
-            .name
-            .as_deref()
-            .or(field.description.as_deref())
-            .unwrap_or_default(),
+        field.name.as_deref().unwrap_or_default(),
         field.path.join(">")
     )
 }
