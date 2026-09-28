@@ -11,9 +11,6 @@
 //! cargo run -p tinycomputer-examples --bin jev_journal -- latest  # summarise
 //! ```
 
-#[cfg(test)]
-mod journal_tests;
-
 use std::time::Duration;
 
 use serde_json::Value;
@@ -74,3 +71,6 @@ fn clip(text: &str, limit: usize) -> String {
     clipped.push('…');
     clipped
 }
+
+#[cfg(test)]
+mod journal_tests;
