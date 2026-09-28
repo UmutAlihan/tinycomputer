@@ -64,16 +64,16 @@ use tinyinference_decisions::{
 
 use super::{
     super::{Evaluator, JevRuntime},
-    ask,
+    act, ask,
     backend::AgentBackend,
     decide::fit,
-    enter, flow_guide, ground, memory, run_flow_with,
+    enter, flow_guide, ground, memory, run_flow, run_flow_with,
     steps::{
         self, already_chosen, already_holds, in_region, lists_more_than, looks_like_date, redacted,
     },
     validate, validate_flow,
-    view::{Candidate, Depth, Screen},
-    vote,
+    view::{self, Candidate, Depth, Screen},
+    survey, vote, wide,
 };
 
 fn runtime(oracle: Oracle) -> JevRuntime {
@@ -176,4 +176,53 @@ fn choice_sizes(requests: &[EvaluationRequest]) -> Vec<usize> {
             _ => None,
         })
         .collect()
+}
+
+/// Two result cards whose "Select" buttons look alike: they differ only by
+/// the card they sit in.
+fn lookalikes() -> App {
+    App::with(|sim| {
+        sim.results = vec![("IndiGo", "₹5,000", "06:00"), ("IndiGo", "₹5,200", "09:00")];
+    })
+}
+
+fn shop() -> App {
+    App::with(|sim| sim.pages = vec![EXTRAS])
+}
+
+fn loops(run: &Run, index: usize) -> &[FlowLoop] {
+    &run.result.steps[index].loops
+}
+
+fn wide(request: &mut RunFlowRequest) {
+    request.strategy = tinycomputer_bus::FlowStrategy::Wide;
+}
+
+/// Answers `move` with "activate", so a step is done by pressing a control.
+fn activate_moves(id: &str, question: &Question, _: &Sim) -> Option<Answer> {
+    (id == "move").then(|| pick(question, "activate", 0.9))
+}
+
+fn asked(requests: &[EvaluationRequest], id: &str) -> usize {
+    requests
+        .iter()
+        .filter(|request| request.questions.contains_key(id))
+        .count()
+}
+
+fn asked_prefix(requests: &[EvaluationRequest], prefix: &str) -> usize {
+    requests
+        .iter()
+        .filter(|request| request.questions.keys().any(|id| id.starts_with(prefix)))
+        .count()
+}
+
+fn flights() -> App {
+    App::with(|sim| {
+        sim.results = vec![
+            ("IndiGo 6E-2135", "₹6,840", "6:45 PM"),
+            ("Vistara UK-707", "₹7,210", "09:10"),
+            ("Air India AI-825", "₹8,050", "05:30"),
+        ];
+    })
 }

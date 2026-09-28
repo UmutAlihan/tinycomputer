@@ -3,29 +3,6 @@
 
 use super::*;
 
-fn wide(request: &mut RunFlowRequest) {
-    request.strategy = tinycomputer_bus::FlowStrategy::Wide;
-}
-
-/// Answers `move` with "activate", so a step is done by pressing a control.
-fn activate_moves(id: &str, question: &Question, _: &Sim) -> Option<Answer> {
-    (id == "move").then(|| pick(question, "activate", 0.9))
-}
-
-fn asked(requests: &[EvaluationRequest], id: &str) -> usize {
-    requests
-        .iter()
-        .filter(|request| request.questions.contains_key(id))
-        .count()
-}
-
-fn asked_prefix(requests: &[EvaluationRequest], prefix: &str) -> usize {
-    requests
-        .iter()
-        .filter(|request| request.questions.keys().any(|id| id.starts_with(prefix)))
-        .count()
-}
-
 #[tokio::test]
 async fn a_wide_turn_judges_and_chooses_its_target_in_one_request() {
     let flow = json!({"app": "Mail", "steps": [{"open": "Mail"}, "start a new email message"]});

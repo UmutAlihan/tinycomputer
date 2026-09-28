@@ -4,24 +4,8 @@
 
 use super::*;
 
-/// Two result cards whose "Select" buttons look alike: they differ only by
-/// the card they sit in.
-fn lookalikes() -> App {
-    App::with(|sim| {
-        sim.results = vec![("IndiGo", "₹5,000", "06:00"), ("IndiGo", "₹5,200", "09:00")];
-    })
-}
-
-fn shop() -> App {
-    App::with(|sim| sim.pages = vec![EXTRAS])
-}
-
 fn select_flow() -> Value {
     json!({"app": "Mail", "steps": ["select the 09:00 flight"]})
-}
-
-fn loops(run: &Run, index: usize) -> &[FlowLoop] {
-    &run.result.steps[index].loops
 }
 
 #[tokio::test]

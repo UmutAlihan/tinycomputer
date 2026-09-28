@@ -2,16 +2,6 @@
 
 use super::*;
 
-fn flights() -> App {
-    App::with(|sim| {
-        sim.results = vec![
-            ("IndiGo 6E-2135", "₹6,840", "6:45 PM"),
-            ("Vistara UK-707", "₹7,210", "09:10"),
-            ("Air India AI-825", "₹8,050", "05:30"),
-        ];
-    })
-}
-
 #[tokio::test]
 async fn pick_ranks_a_measurable_criterion_exactly_and_opens_the_winner() {
     for (by, winner, airline) in [
