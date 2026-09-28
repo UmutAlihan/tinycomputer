@@ -22,9 +22,9 @@
 //! step 4 gives way to the evidence gate and its escalation ladder
 //! (`escalate`).
 //!
-//! The first round is built by [`FlowRun::opening`] without being asked, so
+//! The first round is built by [`FlowRun::opening`](super::FlowRun::opening) without being asked, so
 //! a `do` turn can send it with its judge, and finished by
-//! [`FlowRun::resume`].
+//! [`FlowRun::resume`](super::FlowRun::resume).
 //!
 //! `narrow` holds memory, the opening round, and region narrowing;
 //! `decide` holds the final Choice and its re-asks.

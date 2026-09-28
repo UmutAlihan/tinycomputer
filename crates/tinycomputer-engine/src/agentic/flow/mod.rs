@@ -1,6 +1,6 @@
 //! High-level intent flows run by Jev decision loops.
 //!
-//! A [`Flow`] says *what* to accomplish, step by step, with no UI knowledge.
+//! A [`Flow`](tinycomputer_bus::Flow) says *what* to accomplish, step by step, with no UI knowledge.
 //! This module grounds each step on the live screen by composing many small
 //! Jev questions in deterministic Rust:
 //!

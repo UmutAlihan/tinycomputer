@@ -4,7 +4,7 @@
 //! climbs, one rung at a time, and stops at the first rung that settles it:
 //!
 //! 1. **More framings** (`widen`): the same request asked the ways it was
-//!    not yet asked, up to [`vote::MAX_VOTES`], every answer joining the
+//!    not yet asked, up to [`vote::MAX_VOTES`](super::vote::MAX_VOTES), every answer joining the
 //!    question's ballot.
 //! 2. **A duel** (`duel.rs`): the finalists of a target Choice compared two
 //!    at a time, in both orders.

@@ -6,7 +6,7 @@
 //! newsletter prompt. A distraction left in place takes Jev's attention,
 //! covers the element a step needs, and turns a click into a miss.
 //!
-//! The candidates are found without asking anyone ([`distractions`]): the
+//! The candidates are found without asking anyone ([`distractions`](find::distractions)): the
 //! regions the screen digest puts in front (dialogs, consent and newsletter
 //! regions), and any region holding a plain dismiss control (×, Close, Not
 //! now, Reject all). A region the step itself names is the step's business,
