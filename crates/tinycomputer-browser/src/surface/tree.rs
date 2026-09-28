@@ -147,7 +147,16 @@ pub(crate) fn screen(tree: &str, title: &str) -> Screen {
     for (order, line) in tree.lines().filter_map(parse_line).enumerate() {
         ancestors.retain(|(depth, _, _)| *depth < line.depth);
         unnamed.retain(|(depth, _)| *depth < line.depth);
-        if let Some(text) = line.name.as_deref().or(line.value.as_deref()) {
+        // A text-entry line's value is what was typed into it: private
+        // unless values are shared, and never a safe description for an
+        // enclosing unnamed container. Its accessible name — a label, not
+        // content — still is.
+        let describable = if TEXT_ENTRY_ROLES.contains(&line.role.as_str()) {
+            line.name.as_deref()
+        } else {
+            line.name.as_deref().or(line.value.as_deref())
+        };
+        if let Some(text) = describable {
             for (_, index) in &unnamed {
                 describe_by_content(&mut candidates[*index], text);
             }
