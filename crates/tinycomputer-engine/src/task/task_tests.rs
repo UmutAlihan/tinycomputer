@@ -48,6 +48,10 @@ struct Script {
     released: Mutex<Vec<TaskId>>,
     /// The screenshot `capture` hands back, if any.
     shot: Mutex<Option<tinycomputer_bus::browser::OutputRef>>,
+    /// A capture that never answers, like a hung surface.
+    stuck: std::sync::atomic::AtomicBool,
+    /// `capture` and `release` calls, in the order they arrived.
+    events: Mutex<Vec<&'static str>>,
 }
 
 impl FlowRunner for Script {
@@ -73,11 +77,16 @@ impl FlowRunner for Script {
     }
 
     fn capture(&self, _task: &TaskId) -> super::CaptureFuture {
+        self.events.lock().unwrap().push("capture");
         let shot = self.shot.lock().unwrap().clone();
+        if self.stuck.load(std::sync::atomic::Ordering::SeqCst) {
+            return Box::pin(std::future::pending());
+        }
         Box::pin(async move { shot })
     }
 
     fn release(&self, task: &TaskId) {
+        self.events.lock().unwrap().push("release");
         self.released.lock().unwrap().push(task.clone());
     }
 }

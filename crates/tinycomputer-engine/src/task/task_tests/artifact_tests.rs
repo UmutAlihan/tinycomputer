@@ -77,6 +77,59 @@ async fn a_finished_task_keeps_its_last_screen_after_release() {
         std::slice::from_ref(&view.id)
     );
     assert_eq!(tasks.report(&view.id).data.unwrap().artifacts, [shot()]);
+    // The screenshot is taken while the surface is still held.
+    assert_eq!(*script.events.lock().unwrap(), ["capture", "release"]);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_capture_that_never_answers_does_not_hold_the_task_back() {
+    let (tasks, script) = with_shot(vec![finished_run(
+        FlowStopReason::Completed,
+        vec![step("1", "do", "search for flights", StepOutcome::Done, "")],
+        &[],
+        None,
+    )]);
+    script.stuck.store(true, std::sync::atomic::Ordering::SeqCst);
+    let view = start(
+        &tasks,
+        json!({"app": "browser", "steps": ["search for flights"]}),
+        &[],
+    );
+    // Paused time jumps each wait, so the capture's timeout passes at once.
+    let mut current = view.clone();
+    for _ in 0..10 {
+        if current.status.is_final() {
+            break;
+        }
+        current = settle(&tasks, &view.id).await;
+    }
+    assert!(matches!(current.status, TaskStatus::Done { .. }), "{:?}", current.status);
+    assert_eq!(*script.released.lock().unwrap(), std::slice::from_ref(&view.id));
+    assert!(tasks.report(&view.id).data.unwrap().artifacts.is_empty());
+}
+
+#[tokio::test]
+async fn a_task_cut_off_by_its_time_budget_keeps_its_last_screen() {
+    let (tasks, script) = with_shot(Vec::new());
+    let reply = tasks.start(&StartTaskRequest {
+        flow: Some(flow(json!({"app": "browser", "steps": ["search for flights"]}))),
+        budget: tinycomputer_bus::agent::TaskBudget {
+            max_elapsed_ms: Some(1),
+            ..tinycomputer_bus::agent::TaskBudget::default()
+        },
+        ..StartTaskRequest::default()
+    });
+    let view = reply.data.unwrap();
+    let mut current = view.clone();
+    for _ in 0..10 {
+        if current.status.is_final() {
+            break;
+        }
+        current = settle(&tasks, &view.id).await;
+    }
+    assert!(matches!(current.status, TaskStatus::Failed { .. }), "{:?}", current.status);
+    assert_eq!(tasks.report(&view.id).data.unwrap().artifacts, [shot()]);
+    assert_eq!(*script.events.lock().unwrap(), ["capture", "release"]);
 }
 
 #[tokio::test]
