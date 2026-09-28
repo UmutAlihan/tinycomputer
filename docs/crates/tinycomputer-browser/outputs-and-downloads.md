@@ -1,9 +1,9 @@
 # Screenshots, held outputs, and downloads
 
 Code: `crates/tinycomputer-browser/src/outputs/mod.rs`,
-`crates/tinycomputer-browser/src/sessions/mod.rs` (the `screenshot`,
-`read_output`, `release_output`, `sweep_outputs`, `list_downloads`, and
-`wait_download` methods on `Browser`).
+`crates/tinycomputer-browser/src/sessions/` (the `screenshot` method on
+`Browser` in `page.rs`; `read_output`, `release_output`, `sweep_outputs`,
+`list_downloads`, and `wait_download` in `artifacts.rs`).
 
 ## Why screenshots are held, not just returned
 

@@ -142,7 +142,7 @@ uses to know it is looking at a modal rather than the page underneath it.
 
 Whether an element takes typed text is never decided by its claimed role.
 Sight (and, independently, `BrowserSurface::focused_field_is_editable` in
-`surface/mod.rs`) checks the concrete element: a text-like `<input>` that is
+`surface/fields.rs`) checks the concrete element: a text-like `<input>` that is
 neither read-only nor disabled, a `<textarea>`, or a `contenteditable`
 region. An ARIA role alone proves nothing, measured directly on a booking
 widget where every city row in an autocomplete list is a `<div
