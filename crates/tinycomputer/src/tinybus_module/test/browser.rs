@@ -6,7 +6,7 @@
 //! with no browser installed. Chrome itself is exercised in the Docker lab.
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
 use tinybus::broker::Broker;
@@ -19,12 +19,15 @@ use tinycomputer_bus::{DeliveryDisposition, DesktopResponse, names};
 use super::super::DesktopService;
 
 /// An engine that answers each command the way agent-browser would for a
-/// page at `https://example.com/`, and refuses the ref `e9` as stale.
-struct Scripted;
+/// page at `https://example.com/`, refuses the ref `e9` as stale, and records
+/// every command it is sent.
+struct Scripted(Arc<Mutex<Vec<Value>>>);
 
 impl Engine for Scripted {
     fn execute(&mut self, command: Value) -> Reply<'_> {
-        Box::pin(async move { answer(&command) })
+        let reply = answer(&command);
+        self.0.lock().expect("the log is not poisoned").push(command);
+        Box::pin(async move { reply })
     }
 }
 
@@ -48,12 +51,12 @@ fn answer(command: &Value) -> Value {
     }
 }
 
-#[derive(Debug)]
-struct ScriptedLauncher;
+#[derive(Debug, Default)]
+struct ScriptedLauncher(Arc<Mutex<Vec<Value>>>);
 
 impl Launcher for ScriptedLauncher {
     fn open(&self, _session: &str) -> Box<dyn Engine> {
-        Box::new(Scripted)
+        Box::new(Scripted(self.0.clone()))
     }
 }
 
@@ -78,15 +81,21 @@ impl Drop for Scratch {
 
 /// Serves a scripted-browser service on a fresh bus and returns a proxy to it.
 async fn serve(scratch: &Scratch) -> tinybus::Result<Proxy> {
+    serve_with(scratch, &json!({}), Arc::new(ScriptedLauncher::default())).await
+}
+
+/// Serves a service configured by `config`, whose browser opens sessions on
+/// `launcher`.
+async fn serve_with(
+    scratch: &Scratch,
+    config: &Value,
+    launcher: Arc<ScriptedLauncher>,
+) -> tinybus::Result<Proxy> {
     let bus = MemoryBus::new();
     Broker::new().spawn(bus.clone());
 
-    let browser = Arc::new(Browser::with_scratch(
-        Arc::new(ScriptedLauncher),
-        scratch.0.clone(),
-    ));
-    let service =
-        DesktopService::with_browser(&json!({}), browser).expect("an empty config is valid");
+    let browser = Arc::new(Browser::with_scratch(launcher, scratch.0.clone()));
+    let service = DesktopService::with_browser(config, browser).expect("the config is valid");
     let server = Connection::connect(bus.connect().await?).await?;
     server
         .serve_at(names::OBJECT_PATH.try_into()?, service)
@@ -132,11 +141,7 @@ async fn a_session_runs_open_navigate_click_and_close_over_the_bus() -> tinybus:
     assert_eq!(clicked.command, "browser-perform");
     assert!(clicked.ok);
 
-    let listed = call(&proxy, methods::LIST_SESSIONS, Value::Null).await;
-    let listed: DesktopResponse = match listed {
-        Ok(reply) => reply,
-        Err(_) => proxy.call(methods::LIST_SESSIONS, ()).await?,
-    };
+    let listed: DesktopResponse = proxy.call(methods::LIST_SESSIONS, ()).await?;
     assert_eq!(data(&listed).as_array().map(Vec::len), Some(1));
 
     let closed = call(&proxy, methods::CLOSE_SESSION, json!({"session": session})).await?;
@@ -236,23 +241,45 @@ async fn an_unknown_session_is_refused_before_anything_is_sent() -> tinybus::Res
 #[tokio::test]
 async fn an_open_session_takes_the_configured_executable() -> tinybus::Result<()> {
     let scratch = Scratch::new("executable");
-    let browser = Arc::new(Browser::with_scratch(
-        Arc::new(ScriptedLauncher),
-        scratch.0.clone(),
-    ));
-    let service = DesktopService::with_browser(
+    let launcher = Arc::new(ScriptedLauncher::default());
+    let proxy = serve_with(
+        &scratch,
         &json!({"browser": {"executable": "/opt/chromium"}}),
-        browser,
+        launcher.clone(),
     )
-    .expect("the configuration is valid");
-    let opened = service.browser_open_session(Default::default()).await?;
-    assert!(opened.ok);
-    let attached = service
-        .browser_open_session(tinycomputer_browser::SessionOptions {
-            endpoint: Some("http://127.0.0.1:9222".to_owned()),
-            ..Default::default()
-        })
-        .await?;
+    .await?;
+
+    assert!(call(&proxy, methods::OPEN_SESSION, json!({})).await?.ok);
+    let attached = call(
+        &proxy,
+        methods::OPEN_SESSION,
+        json!({"endpoint": "http://127.0.0.1:9222"}),
+    )
+    .await?;
     assert_eq!(data(&attached)["launched"], false);
+
+    let launches = launcher
+        .0
+        .lock()
+        .expect("the log is not poisoned")
+        .iter()
+        .filter(|command| command["action"] == "launch")
+        .cloned()
+        .collect::<Vec<_>>();
+    assert_eq!(launches.len(), 2);
+    assert_eq!(launches[0]["executablePath"], "/opt/chromium");
+    assert!(
+        launches[1].get("executablePath").is_none(),
+        "an attached session launches nothing, so it takes no executable"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn a_malformed_request_is_a_bus_error_not_a_panic() -> tinybus::Result<()> {
+    let scratch = Scratch::new("malformed");
+    let proxy = serve(&scratch).await?;
+    let reply = call(&proxy, methods::NAVIGATE, json!({"url": "https://example.com"})).await;
+    assert!(reply.is_err(), "a request with no session does not decode");
     Ok(())
 }
