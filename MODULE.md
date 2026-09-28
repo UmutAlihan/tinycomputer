@@ -35,7 +35,9 @@ is optional:
   object with an optional `pace` and an optional `overlay` path to the
   `tinycomputer-cursor-overlay` helper shipped beside the module;
 - `planner`: an OpenRouter `api_key` and optional `model`, which lets
-  `StartTask` accept a plain-language task;
+  `StartTask` accept a plain-language task, and an optional `rescue_model`
+  (default `openai/gpt-6-luna`) that a task's failed step is handed to for
+  guidance, up to three times, before the task fails;
 - `browser.executable`: the Chrome or Chromium binary to launch.
 
 Configuration is delivered as sensitive host-control traffic and is never

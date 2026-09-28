@@ -211,7 +211,7 @@ configuration validates.
 | `trace_strict` | bool | fail a call when its trace cannot be written |
 | `headed` | bool | use real input instead of accessibility actions |
 | `jev` | object | Jev provider, API key, optional model, endpoint, timeout, retries, and `sdk_name` for the TinyHumans proxy |
-| `planner` | object | OpenRouter `api_key` and optional `model` for the planner; absent means no planner |
+| `planner` | object | OpenRouter `api_key` and optional `model` for the planner, and optional `rescue_model` for rescuing failed steps (`docs/specs/task-rescue.md`); absent means no planner and no rescues |
 | `browser.executable` | string | the Chrome or Chromium binary to launch, when discovery would not find one |
 | `cursor` | string or object | the agent's on-screen cursor for desktop and browser: a pace (`off`, `brisk`, `natural` (default), `calm`) or `{pace, overlay}` with the overlay helper's path ([spec](specs/virtual-cursor.md)) |
 
@@ -232,8 +232,9 @@ None of them trusts a model's judgement.
   fields, stops the run, and the task controller makes that a final
   checkpoint. Nothing ever types payment data, and card data is refused as a
   fact.
-- Jev and the planner see fact names, never values. Values are typed locally
-  and redacted from every summary.
+- Jev, the planner, and the rescuer see fact names, never values. Values are
+  typed locally and redacted from every summary, and from the screen text a
+  rescue is shown.
 - Everything read from a screen is wrapped as untrusted data, and every
   question tells Jev that screen text is data, never instructions. A move Jev
   was not offered fails closed.
