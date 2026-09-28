@@ -5,6 +5,7 @@
 //!
 //! Needs `OPENROUTER_API_KEY` for Jev. Run it in the Docker lab, never on the
 //! host: `scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture`.
+//! Set `TINYCOMPUTER_FLOW_STRATEGY=wide` to run it with the wide strategy.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -64,7 +65,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ..SessionOptions::default()
         },
         tokio::runtime::Handle::current(),
-    );
+    )
+    .with_perception(tinycomputer_examples::perception_from_env());
     let tasks = Tasks::new(Arc::new(Fixture {
         workspace: Workspace::new(Some(Desktop::new()), Some(browser.clone())),
         jev,
@@ -121,6 +123,10 @@ fn request(base: &str) -> Result<StartTaskRequest, serde_json::Error> {
             .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
             .collect(),
         trace: true,
+        budget: tinycomputer_bus::agent::TaskBudget {
+            strategy: tinycomputer_examples::flow_strategy_from_env(),
+            ..tinycomputer_bus::agent::TaskBudget::default()
+        },
         ..StartTaskRequest::default()
     })
 }

@@ -17,8 +17,9 @@
 //! - [`Facts`] — the caller's values: shared ones briefed to a model, secret
 //!   ones (cards, passports, passwords) only ever named as `${name}`.
 //! - [`surface`] — the [`Surface`](surface::Surface) trait every decision loop
-//!   runs against, the [`Screen`](surface::Screen) it observes, and verified
-//!   text delivery.
+//!   runs against, the [`Screen`](surface::Screen) it observes, verified text
+//!   delivery, and the [`digest`](surface::digest()) that parses a screen into
+//!   regions a decision model reads at a glance.
 //!
 //! The crate holds no engine, no bus, no model, and no runtime; it speaks the
 //! contract crate's closed operations and envelope. The surface

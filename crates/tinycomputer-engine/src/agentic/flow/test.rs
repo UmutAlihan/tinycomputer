@@ -12,7 +12,10 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     future::Future,
     pin::Pin,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
     time::Duration,
 };
 
@@ -59,6 +62,11 @@ enum Quirk {
     /// A side drawer lies over the page: every click is refused as covered
     /// until Escape closes it.
     Drawer,
+    /// Every click is refused: the element is not visible.
+    Unclickable,
+    /// A list of cities whose rows carry a `combobox` role but take no
+    /// text, above the one real search field.
+    CityRows,
 }
 
 #[derive(Debug, Default)]
@@ -256,6 +264,52 @@ fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Cand
     }
 }
 
+/// The obstacle sheet's controls: two buttons, and a checkbox holding a
+/// value, to check that value-visibility policy is honored when it is
+/// offered as a dismissal option.
+fn obstacle_sheet(candidates: &mut Vec<Candidate>) {
+    candidates.push(node(
+        "Delete Draft",
+        "button",
+        &["Click"],
+        &["sheet"],
+        500.0,
+    ));
+    candidates.push(node(
+        "Keep Editing",
+        "button",
+        &["Click"],
+        &["sheet"],
+        500.0,
+    ));
+    candidates.push(Candidate {
+        value: Some(json!("unsaved-draft-42")),
+        ..node("Remember", "checkbox", &["Click"], &["sheet"], 500.0)
+    });
+}
+
+/// A city list whose unnamed rows each hold their city as a value and take
+/// no text, above the one real search field.
+fn city_rows(root: &str, candidates: &mut Vec<Candidate>) {
+    for (index, city) in ["Mumbai", "Pune", "Chennai"].into_iter().enumerate() {
+        candidates.push(Candidate {
+            ref_id: format!("@s:city-{index}"),
+            role: "combobox".to_owned(),
+            value: Some(json!(city)),
+            available_actions: vec!["Click".to_owned(), "SetValue".to_owned()],
+            path: vec![root.to_owned(), "list \"Cities\"".to_owned()],
+            ..Candidate::default()
+        });
+    }
+    candidates.push(node(
+        "Search",
+        "textfield",
+        &["SetValue"],
+        &[root, "group \"Where to\""],
+        210.0,
+    ));
+}
+
 /// The simulator's result list: each card's text as ref-less nodes, and its
 /// "Select" button among `candidates`, under an ordinal-labelled list item.
 fn result_cards(sim: &Sim, root: &str, candidates: &mut Vec<Candidate>) -> Vec<Candidate> {
@@ -376,24 +430,14 @@ impl App {
         if let Some(booking) = &sim.booking {
             booking_widget(&sim, booking, &root, &mut candidates);
         }
+        if sim.has(Quirk::CityRows) {
+            city_rows(&root, &mut candidates);
+        }
         let text_nodes = result_cards(&sim, &root, &mut candidates);
         let mut surface = "window".to_owned();
         if sim.obstacle {
             surface = "sheet".to_owned();
-            candidates.push(node(
-                "Delete Draft",
-                "button",
-                &["Click"],
-                &["sheet"],
-                500.0,
-            ));
-            candidates.push(node(
-                "Keep Editing",
-                "button",
-                &["Click"],
-                &["sheet"],
-                500.0,
-            ));
+            obstacle_sheet(&mut candidates);
         }
         Screen {
             app: "Mail".to_owned(),
@@ -455,6 +499,15 @@ impl AgentBackend for App {
             .as_ref()
             .and_then(|target| target.name.clone())
             .unwrap_or_default();
+        if sim.has(Quirk::Unclickable) && operation == JevOperation::Click {
+            return DesktopResponse::err(
+                "click",
+                tinycomputer_bus::DesktopError::new(
+                    "NOT_ACTIONABLE",
+                    "Element exists but is not visible.",
+                ),
+            );
+        }
         if sim.has(Quirk::Drawer) && operation == JevOperation::Click {
             return DesktopResponse::err(
                 "click",
@@ -463,6 +516,9 @@ impl AgentBackend for App {
                     format!("Element '@s:{name}' is covered by <div.drawer> at its click point"),
                 ),
             );
+        }
+        if is_city_row(target.as_ref()) && operation == JevOperation::TypeText {
+            return not_a_text_field();
         }
         match operation {
             JevOperation::Click => {
@@ -504,6 +560,9 @@ impl AgentBackend for App {
     }
 
     fn paste(&self, _app: &str, target: &Candidate, text: &str) -> DesktopResponse {
+        if is_city_row(Some(target)) {
+            return not_a_text_field();
+        }
         self.sim()
             .fields
             .insert(target.name.clone().unwrap_or_default(), text.to_owned());
@@ -550,6 +609,17 @@ impl AgentBackend for App {
         sim.navigated.push(url.to_owned());
         DesktopResponse::ok("navigate", json!({"url": url, "title": "Flights"}))
     }
+}
+
+fn is_city_row(target: Option<&Candidate>) -> bool {
+    target.is_some_and(|target| target.ref_id.starts_with("@s:city-"))
+}
+
+fn not_a_text_field() -> DesktopResponse {
+    DesktopResponse::err(
+        "type-text",
+        tinycomputer_bus::DesktopError::new("NOT_A_TEXT_FIELD", "no input takes the text"),
+    )
 }
 
 // ------------------------------------------------------------------ oracle
@@ -753,7 +823,17 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         "move" => pick(question, "shortcut", 0.9),
         "shortcut" => pick(question, "new_item", 0.9),
         // Every action helps and no field shows an error, unless a test says.
-        "confirm" | "helped" => noul(0.9),
+        "confirm" | "helped" | "dismiss_known" => noul(0.9),
+        _ if id.starts_with("known_") => noul(0.9),
+        // A survey finds the step in "Region 1" and nothing distracting.
+        _ if id.starts_with("relevance_") => {
+            level(if text_of(question, "region").contains("region 1") {
+                4
+            } else {
+                1
+            })
+        }
+        _ if id.starts_with("distraction_") => noul(0.05),
         _ if id.starts_with("error_") => noul(0.05),
         _ if id.starts_with("asks_") => noul(0.9),
         "dismiss" => pick(question, "Keep Editing", 0.9),
@@ -1081,6 +1161,12 @@ async fn a_large_screen_is_narrowed_by_region_before_choosing() {
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert_eq!(run.app.sim().clicks, ["Message 7"]);
     assert!(run.result.steps[0].loops.contains(&FlowLoop::Narrowing));
+    assert_eq!(
+        asked(&run.requests, "region"),
+        1,
+        "one region question, asked alongside the knockout, not a round per level"
+    );
+    assert_eq!(asked(&run.requests, "group_0"), 1);
     assert!(
         choice_sizes(&run.requests)
             .iter()
@@ -3838,6 +3924,68 @@ fn redacted_strips_the_shown_text_but_keeps_the_ref_and_role() {
 }
 
 #[tokio::test]
+async fn a_first_turn_asks_the_judge_and_the_target_in_one_round_trip() {
+    let app = App::default();
+    let scratch = std::env::temp_dir().join(format!(
+        "tinycomputer-flow-batch-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let runtime = runtime(Oracle {
+        app: app.clone(),
+        hook: Box::new(activate_moves),
+        requests: Mutex::new(Vec::new()),
+        fail: false,
+    })
+    .with_journal(&scratch);
+    let request = RunFlowRequest {
+        flow: serde_json::from_value(
+            json!({"app": "Mail", "steps": [{"open": "Mail"}, "start a new email message"]}),
+        )
+        .unwrap(),
+        votes: 1,
+        ..RunFlowRequest::default()
+    };
+    let reply = super::run_flow(app.clone(), runtime, request).await;
+    assert!(reply.ok, "flow run failed: {:?}", reply.error);
+    assert_eq!(app.sim().clicks, ["New Message"]);
+    let run = std::fs::read_dir(&scratch)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let journal = std::fs::read_to_string(run.join(crate::JOURNAL_FILE)).unwrap();
+    let _ = std::fs::remove_dir_all(&scratch);
+    let events = journal
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    let turns = events
+        .iter()
+        .filter(|event| event["event"] == "turn")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        (turns[0]["decisions"].as_u64(), turns[0]["rounds"].as_u64()),
+        (Some(2), Some(1)),
+        "the judge and the target share the first turn's round trip"
+    );
+    assert_eq!(
+        (turns[1]["decisions"].as_u64(), turns[1]["rounds"].as_u64()),
+        (Some(1), Some(1)),
+        "after acting, the judge is asked alone"
+    );
+    let batched = events
+        .iter()
+        .filter(|event| event["event"] == "decision" && event["batched"] == 2)
+        .count();
+    assert_eq!(batched, 2, "both decisions of the batch say so");
+}
+
+#[tokio::test]
 async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
     let app = App::quirky(Quirk::BodyIgnoresSetValue);
     let scratch = std::env::temp_dir().join(format!(
@@ -3911,6 +4059,19 @@ async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
     );
     assert_eq!(of("action").len(), usize::try_from(result.actions).unwrap());
     assert!(of("action").iter().all(|action| action["wall_ms"].is_u64()));
+    assert!(
+        of("decision")
+            .iter()
+            .all(|decision| decision["request_bytes"].as_u64().unwrap() > 0)
+    );
+    let turns = of("turn");
+    assert!(!turns.is_empty(), "every do turn is journaled");
+    assert!(turns.iter().all(|turn| {
+        turn["step"] == "2"
+            && turn["decisions"].is_u64()
+            && turn["rounds"].is_u64()
+            && turn["wall_ms"].is_u64()
+    }));
     assert!(!of("observe").is_empty());
     let steps = of("step");
     assert_eq!(
@@ -3926,4 +4087,768 @@ async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
         .map(|event| event["seq"].as_u64().unwrap())
         .collect::<Vec<_>>();
     assert!(seqs.windows(2).all(|pair| pair[1] == pair[0] + 1));
+}
+
+// ---------------------------------------------------------- wide strategy
+
+fn wide(request: &mut RunFlowRequest) {
+    request.strategy = tinycomputer_bus::FlowStrategy::Wide;
+}
+
+/// Answers `move` with "activate", so a step is done by pressing a control.
+fn activate_moves(id: &str, question: &Question, _: &Sim) -> Option<Answer> {
+    (id == "move").then(|| pick(question, "activate", 0.9))
+}
+
+fn asked(requests: &[EvaluationRequest], id: &str) -> usize {
+    requests
+        .iter()
+        .filter(|request| request.questions.contains_key(id))
+        .count()
+}
+
+fn asked_prefix(requests: &[EvaluationRequest], prefix: &str) -> usize {
+    requests
+        .iter()
+        .filter(|request| request.questions.keys().any(|id| id.starts_with(prefix)))
+        .count()
+}
+
+#[tokio::test]
+async fn a_wide_turn_judges_and_chooses_its_target_in_one_request() {
+    let flow = json!({"app": "Mail", "steps": [{"open": "Mail"}, "start a new email message"]});
+    let narrow = run_with(App::default(), flow.clone(), |_| {}, activate_moves).await;
+    let broad = run_with(App::default(), flow, wide, activate_moves).await;
+
+    assert_eq!(outcomes(&narrow.result), outcomes(&broad.result));
+    assert_eq!(broad.app.sim().clicks, ["New Message"]);
+    assert_eq!(
+        narrow.result.steps[1].jev_calls, 3,
+        "narrow: judge, choose, then judge the result"
+    );
+    assert_eq!(
+        broad.result.steps[1].jev_calls, 2,
+        "wide: one request judges the screen and chooses the control, one judges the result"
+    );
+    let first = &broad.requests[0];
+    for id in [
+        "done",
+        "not_done",
+        "progress",
+        "move",
+        "target_activate",
+        "again_activate",
+    ] {
+        assert!(first.questions.contains_key(id), "the turn asks {id}");
+    }
+}
+
+#[tokio::test]
+async fn a_wide_question_sees_the_screen_as_a_digest_and_the_run_as_memory() {
+    let app = App::quirky(Quirk::BodyIgnoresSetValue);
+    let run = run_with(app, mail_flow(), wide, |_, _, _| None).await;
+    assert_eq!(run.result.stop, FlowStopReason::StoppedBeforeDestructive);
+
+    let entering = run
+        .result
+        .trace
+        .iter()
+        .find(|exchange| exchange.step == "3")
+        .expect("the enter step asks Jev");
+    let state = &entering.state;
+    assert!(state.get("recent_actions").is_none());
+    assert!(state.get("elements").is_none());
+    let regions = &state["screen"]["untrusted_accessibility_data"]["regions"];
+    assert!(
+        regions
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|region| region["elements"].as_array().unwrap())
+            .any(|line| line.as_str().unwrap().contains("textfield \"To\""))
+    );
+    let memory = &state["memory"];
+    assert!(
+        memory["steps_done"][1]
+            .as_str()
+            .unwrap()
+            .starts_with("step 2 (do \"start a new email message\"): Done"),
+        "{memory}"
+    );
+    assert_eq!(
+        memory["next_step"],
+        "verify: the draft shows the recipient, subject and body"
+    );
+    assert!(memory["budget_left"]["actions"].as_u64().unwrap() > 0);
+    for exchange in &run.result.trace {
+        assert!(
+            !exchange.state["memory"]
+                .to_string()
+                .contains("Could we move it"),
+            "the memory holds what happened, never the text that was typed"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_wide_run_without_the_digest_shows_the_flat_list_with_memory() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.disabled_loops = vec![FlowLoop::Digest];
+        },
+        |_, _, _| None,
+    )
+    .await;
+    let state = &run.result.trace[0].state;
+    assert!(state.get("screen").is_none());
+    assert!(state["elements"]["untrusted_accessibility_data"].is_array());
+    assert_eq!(state["memory"]["now"], "start a new email message");
+}
+
+#[tokio::test]
+async fn what_changed_nothing_is_remembered_as_tried_and_failed() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["tidy the inbox"]}),
+        wide,
+        activate_moves,
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Failed);
+    let later = run
+        .result
+        .trace
+        .iter()
+        .find(|exchange| exchange.state["memory"].get("tried_and_failed").is_some())
+        .expect("a later turn is told what did not work");
+    assert_eq!(
+        later.state["memory"]["tried_and_failed"][0],
+        "pressed button \"Archive\": nothing on screen changed"
+    );
+}
+
+#[tokio::test]
+async fn an_obstacle_in_front_is_cleared_from_the_turns_own_request_and_remembered() {
+    let app = App::with(|sim| sim.obstacle = true);
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        wide,
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+    let clicks = run.app.sim().clicks.clone();
+    assert_eq!(clicks, ["Keep Editing"]);
+    let Question::Choice(dismiss) = &run.requests[0].questions["dismiss"] else {
+        panic!("dismiss is a choice");
+    };
+    assert!(
+        !serde_json::to_string(&dismiss.criteria)
+            .unwrap()
+            .contains("Delete Draft"),
+        "an irreversible control is never offered to dismiss with"
+    );
+    assert_eq!(asked(&run.requests, "dismiss"), 1);
+    assert!(
+        run.requests
+            .iter()
+            .filter(|request| request.questions.contains_key("dismiss"))
+            .all(|request| request.questions.contains_key("done")),
+        "the obstacle is asked about in the turn's own request, never alone"
+    );
+    let hint = run
+        .result
+        .learned
+        .iter()
+        .find(|hint| hint.key == "obstacle sheet")
+        .expect("the control that closed the sheet is remembered");
+    assert_eq!(hint.name.as_deref(), Some("Keep Editing"));
+
+    let again = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.memory = vec![hint.clone()];
+        },
+        // Only the remembered control is confirmed; the chooser picks
+        // nothing, so the dismissal can only come from memory.
+        |id, question, _| (id == "dismiss").then(|| pick(question, "none", 0.9)),
+    )
+    .await;
+    assert_eq!(asked(&again.requests, "dismiss_known"), 1);
+    assert_eq!(again.app.sim().clicks, ["Keep Editing"]);
+}
+
+#[tokio::test]
+async fn dismiss_options_honor_the_runs_value_visibility_policy() {
+    let hidden = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.include_values = false;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    let Question::Choice(dismiss) = &hidden.requests[0].questions["dismiss"] else {
+        panic!("dismiss is a choice");
+    };
+    assert!(
+        !serde_json::to_string(&dismiss.criteria)
+            .unwrap()
+            .contains("unsaved-draft-42"),
+        "a held value is hidden from dismiss options when include_values is false"
+    );
+
+    let shown = run_with(
+        App::with(|sim| sim.obstacle = true),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.include_values = true;
+        },
+        |_, _, _| None,
+    )
+    .await;
+    let Question::Choice(dismiss) = &shown.requests[0].questions["dismiss"] else {
+        panic!("dismiss is a choice");
+    };
+    assert!(
+        serde_json::to_string(&dismiss.criteria)
+            .unwrap()
+            .contains("unsaved-draft-42"),
+        "a held value must reach dismiss options when the run allows include_values"
+    );
+}
+
+#[tokio::test]
+async fn a_crowded_screen_is_surveyed_once_and_ranked_instead_of_narrowed() {
+    let app = App::with(|sim| sim.extra_buttons = 60);
+    let run = run_with(
+        app,
+        json!({"app": "Mail", "steps": ["open message 7"]}),
+        wide,
+        |id, question, sim| {
+            if id == "done" {
+                return Some(noul(if sim.clicks.contains(&"Message 7".to_owned()) {
+                    0.95
+                } else {
+                    0.05
+                }));
+            }
+            activate_moves(id, question, sim)
+        },
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+    assert_eq!(run.app.sim().clicks, ["Message 7"]);
+    assert_eq!(
+        asked_prefix(&run.requests, "relevance_"),
+        1,
+        "one survey for the step's page shape, reused on later turns"
+    );
+    assert_eq!(
+        asked(&run.requests, "region"),
+        0,
+        "no region-by-region narrowing"
+    );
+    assert!(run.result.steps[0].loops.contains(&FlowLoop::Survey));
+
+    let survey = run
+        .requests
+        .iter()
+        .find(|request| {
+            request
+                .questions
+                .keys()
+                .any(|id| id.starts_with("relevance_"))
+        })
+        .unwrap();
+    assert!(
+        survey
+            .questions
+            .keys()
+            .any(|id| id.starts_with("distraction_"))
+    );
+    let turn = run
+        .requests
+        .iter()
+        .find(|request| request.questions.contains_key("done"))
+        .unwrap();
+    let Question::Choice(first_group) = &turn.questions["group_activate_0"] else {
+        panic!("a crowded pool is knocked out in the turn's own request");
+    };
+    let first_option = first_group.criteria["1"].as_ref().unwrap().to_string();
+    assert!(
+        first_option.contains("Region 1"),
+        "the region the survey ranked highest is offered first: {first_option}"
+    );
+    let regions = &turn.state["screen"]["untrusted_accessibility_data"]["regions"];
+    assert_eq!(regions[0]["relevance"], 1.0);
+}
+
+#[tokio::test]
+async fn a_hesitant_wide_pick_is_confirmed_before_it_is_pressed() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        wide,
+        |id, question, sim| {
+            if id == "target_activate" {
+                return Some(pick(question, "New Message", 0.5));
+            }
+            activate_moves(id, question, sim)
+        },
+    )
+    .await;
+    assert_eq!(run.app.sim().clicks, ["New Message"]);
+    let confirmations = run
+        .requests
+        .iter()
+        .filter(|request| request.questions.keys().collect::<Vec<_>>() == ["confirm"])
+        .count();
+    assert_eq!(confirmations, 1, "one yes/no settles the hesitant pick");
+
+    let refused = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |request| {
+            wide(request);
+            request.disabled_loops = vec![FlowLoop::Consistency, FlowLoop::Corroboration];
+        },
+        |id, question, sim| {
+            if id == "target_activate" {
+                return Some(pick(question, "New Message", 0.5));
+            }
+            activate_moves(id, question, sim)
+        },
+    )
+    .await;
+    assert!(
+        refused.app.sim().clicks.is_empty(),
+        "with nothing to check a hesitant pick against, it is not pressed"
+    );
+}
+
+#[tokio::test]
+async fn a_journaled_wide_run_records_its_survey_and_each_turns_decisions() {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let app = App::with(|sim| sim.extra_buttons = 60);
+    let scratch = std::env::temp_dir().join(format!(
+        "tinycomputer-wide-journal-{}-{}",
+        std::process::id(),
+        COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
+    let runtime = runtime(Oracle {
+        app: app.clone(),
+        hook: Box::new(|_, _, _| None),
+        requests: Mutex::new(Vec::new()),
+        fail: false,
+    })
+    .with_journal(&scratch);
+    let request = RunFlowRequest {
+        flow: serde_json::from_value(
+            json!({"app": "Mail", "steps": ["start a new email message"]}),
+        )
+        .unwrap(),
+        votes: 1,
+        strategy: tinycomputer_bus::FlowStrategy::Wide,
+        ..RunFlowRequest::default()
+    };
+    let reply = super::run_flow(app, runtime, request).await;
+    assert!(reply.ok, "flow run failed: {:?}", reply.error);
+    let run = std::fs::read_dir(&scratch)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    let events = std::fs::read_to_string(run.join(crate::JOURNAL_FILE))
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .collect::<Vec<_>>();
+    std::fs::remove_dir_all(&scratch).unwrap();
+    let survey = events
+        .iter()
+        .find(|event| event["event"] == "survey")
+        .expect("the crowded screen was surveyed");
+    assert_eq!(survey["step"], "1");
+    assert!(survey["regions"].as_u64().unwrap() >= 2);
+    assert!(survey["most_relevant"][0].is_string());
+    assert_eq!(survey["distractions"], 0);
+    let turns = events
+        .iter()
+        .filter(|event| event["event"] == "turn")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        turns[0]["decisions"], 2,
+        "the first turn: the survey and one wide request"
+    );
+}
+
+#[tokio::test]
+async fn the_memory_keeps_the_last_steps_actions_as_evidence_for_the_next() {
+    // Live, a payment page was judged "seat selection skipped" at 0.48
+    // until the previous step's clicks were back in view (0.95): the click
+    // that left a page is the evidence it was dealt with.
+    let flow = json!({"app": "Mail", "steps": [
+        "start a new email message",
+        {"verify": "a new message is open"}
+    ]});
+    let run = run_with(App::default(), flow, wide, activate_moves).await;
+    let verifying = run
+        .result
+        .trace
+        .iter()
+        .find(|exchange| exchange.step == "2")
+        .unwrap();
+    let recent = verifying.state["memory"]["recent_actions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|line| line.as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert!(
+        recent
+            .iter()
+            .any(|line| line.starts_with("click button \"New Message\"")),
+        "{recent:?}"
+    );
+    assert!(
+        recent
+            .iter()
+            .any(|line| line.starts_with("after the last action: window is now \"New Message\"")),
+        "{recent:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_target_answered_none_is_not_asked_again_the_same_turn() {
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        wide,
+        |id, question, sim| {
+            if id == "target_activate" {
+                return Some(pick(question, "none", 0.95));
+            }
+            activate_moves(id, question, sim)
+        },
+    )
+    .await;
+    assert_eq!(asked(&run.requests, "target"), 0, "no narrow re-ask");
+    assert!(run.app.sim().clicks.is_empty());
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Failed);
+}
+
+#[tokio::test]
+async fn a_gated_stop_before_asks_to_find_the_control_not_to_press_it() {
+    let run = run(App::default(), mail_flow()).await;
+    assert_eq!(run.result.stop, FlowStopReason::StoppedBeforeDestructive);
+    let purposes = run
+        .requests
+        .iter()
+        .filter_map(|request| request.questions.get("target"))
+        .map(|question| text_of(question, "purpose"))
+        .collect::<Vec<_>>();
+    assert!(
+        purposes.iter().any(|purpose| purpose
+            == "find, without pressing it, the control that would perform: sending the email"),
+        "{purposes:?}"
+    );
+
+    let remembered = run_with(
+        App::default(),
+        mail_flow(),
+        |request| {
+            request.memory = vec![GroundingHint {
+                app: "Mail".to_owned(),
+                key: "perform sending the email".to_owned(),
+                role: "button".to_owned(),
+                name: Some("Send".to_owned()),
+                path: vec!["window \"New Message\"".to_owned(), "toolbar".to_owned()],
+            }];
+        },
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(
+        remembered.result.stop,
+        FlowStopReason::StoppedBeforeDestructive
+    );
+    assert!(
+        remembered
+            .requests
+            .iter()
+            .any(|request| request.questions.keys().collect::<Vec<_>>() == ["confirm"]),
+        "a hint stored under the step's own words is still recalled: {:?}",
+        remembered
+            .requests
+            .iter()
+            .map(|r| r.questions.keys().cloned().collect::<Vec<_>>())
+            .collect::<Vec<_>>()
+    );
+}
+
+#[tokio::test]
+async fn a_picked_card_whose_control_is_covered_is_uncovered_and_opened() {
+    // Live on Google Flights the cheapest card's "Select flight" link was
+    // refused as covered and the pick failed; it now presses Escape and
+    // tries the same card once more, as a `do` step's click does.
+    let app = flights();
+    app.sim().quirks.insert(Quirk::Drawer);
+    let run = run(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "lowest price"}}
+        ]}),
+    )
+    .await;
+    assert_eq!(run.result.steps[0].outcome, StepOutcome::Done);
+    let sim = run.app.sim();
+    assert_eq!(sim.presses, ["escape"]);
+    assert_eq!(sim.picked, ["@s:select-1"]);
+}
+
+#[tokio::test]
+async fn a_picked_card_that_cannot_be_opened_says_why() {
+    let app = flights();
+    app.sim().quirks.insert(Quirk::Unclickable);
+    let run = run(
+        app,
+        json!({"app": "Mail", "steps": [
+            {"pick": {"from": "the flight results", "by": "lowest price"}}
+        ]}),
+    )
+    .await;
+    let step = &run.result.steps[0];
+    assert_eq!(step.outcome, StepOutcome::Failed);
+    assert!(
+        step.note.starts_with(
+            "could not open the picked item (Element exists but is not visible.): IndiGo"
+        ),
+        "{}",
+        step.note
+    );
+    assert!(
+        run.app.sim().presses.is_empty(),
+        "only a covered click is retried"
+    );
+}
+
+#[test]
+fn the_control_pressed_last_turn_is_offered_last_even_with_new_states() {
+    let toggle = node(
+        "Destination",
+        "button",
+        &["Click"],
+        &["window \"Book\"", "form"],
+        10.0,
+    );
+    let other = node(
+        "Srinagar",
+        "option",
+        &["Click"],
+        &["window \"Book\"", "listbox"],
+        20.0,
+    );
+    let mut pool = vec![
+        Candidate {
+            states: vec!["expanded".to_owned()],
+            ..toggle.clone()
+        },
+        other.clone(),
+    ];
+    super::wide::pressed_last(&mut pool, Some(&toggle));
+    assert_eq!(pool[0].name.as_deref(), Some("Srinagar"));
+    let mut grown = vec![
+        Candidate {
+            name: Some("Destination POPULAR DESTINATIONS Mumbai".to_owned()),
+            ..toggle.clone()
+        },
+        other.clone(),
+    ];
+    super::wide::pressed_last(&mut grown, Some(&toggle));
+    assert_eq!(
+        grown[0].name.as_deref(),
+        Some("Srinagar"),
+        "a button whose name grew by the list it opened is the same button"
+    );
+    assert_eq!(pool[1].name.as_deref(), Some("Destination"));
+
+    let mut untouched = vec![toggle.clone(), other];
+    super::wide::pressed_last(&mut untouched, None);
+    assert_eq!(untouched[0].name.as_deref(), Some("Destination"));
+}
+
+#[test]
+fn survey_answers_follow_a_region_by_name_when_its_id_moves() {
+    let form = node(
+        "From",
+        "textbox",
+        &["Click"],
+        &["webarea \"Book\"", "form \"Search\""],
+        1.0,
+    );
+    let ad = node(
+        "Deal",
+        "link",
+        &["Click"],
+        &["webarea \"Book\"", "region \"Offers\""],
+        2.0,
+    );
+    let before = Screen {
+        app: "IndiGo".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: vec![form.clone(), ad.clone()],
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    let digest = super::view::digest(&before);
+    let mut attention = super::survey::Attention::default();
+    attention
+        .relevance
+        .insert(digest.region_of(0).unwrap().name.clone(), 0.9);
+    attention
+        .distractions
+        .insert(digest.region_of(1).unwrap().name.clone());
+
+    // A dropdown opens above both: every region's id moves on by one.
+    let mut after = before.clone();
+    after.candidates.insert(
+        0,
+        node(
+            "Srinagar",
+            "option",
+            &["Click"],
+            &["webarea \"Book\"", "listbox"],
+            0.0,
+        ),
+    );
+    let moved = super::view::digest(&after);
+    let (relevance, distractions) = attention.for_digest(&moved);
+    let form_id = moved.region_of(1).unwrap().id.clone();
+    let ad_id = moved.region_of(2).unwrap().id.clone();
+    assert_eq!(relevance.get(&form_id), Some(&0.9));
+    assert!(distractions.contains(&ad_id));
+    assert_eq!(relevance.len(), 1, "the new listbox has no answer yet");
+}
+
+#[test]
+fn lookalikes_are_offered_once_and_the_first_in_page_order_is_kept() {
+    let search = |order: usize, y: f64| Candidate {
+        ref_id: format!("@s:search-{order}"),
+        role: "combobox".to_owned(),
+        available_actions: vec!["SetValue".to_owned()],
+        bounds: Some(json!({"x": 10.0, "y": y})),
+        path: vec!["main".to_owned(), "button \"destinationCity\"".to_owned()],
+        order,
+        ..Candidate::default()
+    };
+    let named = node("Pax Selection", "combobox", &["SetValue"], &["main"], 5.0);
+    let pool = super::view::distinct(
+        vec![
+            search(1, 10.0),
+            named.clone(),
+            search(2, 20.0),
+            search(3, 0.0),
+        ],
+        false,
+    );
+    let refs = pool.iter().map(|c| c.ref_id.as_str()).collect::<Vec<_>>();
+    assert_eq!(refs, ["@s:search-1", "@s:Pax Selection"]);
+}
+
+#[tokio::test]
+async fn a_field_that_refuses_the_text_is_struck_and_the_real_one_is_used() {
+    // A page gives each suggested city a `combobox` role and no name, each
+    // holding its city as a value; Jev takes one for "the destination
+    // search", as it did live. It refuses the text, and the step must strike
+    // every row of its kind, not try them one by one.
+    let run = run_with(
+        App::quirky(Quirk::CityRows),
+        json!({"app": "Mail", "steps": [{"enter": {"destination search": "Srinagar"}}]}),
+        |_| {},
+        |id, question, _| {
+            id.starts_with("slot_").then(|| {
+                let offered = serde_json::to_string(question).unwrap();
+                let needle = if offered.contains(r#""what":"combobox""#) {
+                    r#""what":"combobox""#
+                } else {
+                    "Search"
+                };
+                pick(question, needle, 0.9)
+            })
+        },
+    )
+    .await;
+    let step = &run.result.steps[0];
+    assert_eq!(step.outcome, StepOutcome::Done, "{}", step.note);
+    let fills = step
+        .actions
+        .iter()
+        .map(|action| (action.target.as_ref().unwrap().ref_id.clone(), action.ok))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        fills,
+        [
+            ("@s:city-0".to_owned(), false),
+            ("@s:Search".to_owned(), true)
+        ],
+        "one refusal strikes every row of its kind, then the real field"
+    );
+    assert_eq!(run.app.sim().fields["Search"], "Srinagar");
+}
+
+#[tokio::test]
+async fn a_row_that_refused_the_text_is_never_pressed_while_revealing_a_field() {
+    // Live, after a city row refused the text, the reveal loop pressed that
+    // row and chose a city nobody asked for.
+    let run = run_with(
+        App::quirky(Quirk::CityRows),
+        json!({"app": "Mail", "steps": [{"enter": {"destination search": "Srinagar"}}]}),
+        |_| {},
+        |id, question, _| {
+            let offered = serde_json::to_string(question).unwrap();
+            let row = r#""what":"combobox""#;
+            match id {
+                // Jev keeps wanting a row: for the text, and to reveal.
+                _ if id.starts_with("slot_") || id == "target" => Some(if offered.contains(row) {
+                    pick(question, row, 0.9)
+                } else {
+                    pick(question, "none", 0.9)
+                }),
+                "move" => Some(pick(question, "activate", 0.9)),
+                _ => None,
+            }
+        },
+    )
+    .await;
+    let step = &run.result.steps[0];
+    let rows = step
+        .actions
+        .iter()
+        .filter(|action| {
+            action
+                .target
+                .as_ref()
+                .is_some_and(|target| target.ref_id.starts_with("@s:city-"))
+        })
+        .map(|action| action.action.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(rows, ["fill destination search"], "{:?}", step.actions);
+    assert_eq!(step.outcome, StepOutcome::Failed);
+    assert_eq!(
+        step.note,
+        "no field that takes text was found for: destination search; 1 element(s) the page offered as fields refused the text"
+    );
 }

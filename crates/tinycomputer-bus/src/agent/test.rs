@@ -60,12 +60,13 @@ fn secrets_and_the_payment_mode_pin_their_wire_form() {
         "facts": {"first name": "Asha", "frequent flyer": "6E1234"},
         "secret_facts": ["frequent flyer"],
         "constraints": {"payment": "fill_then_approve", "origins": ["https://.goindigo.in"]},
-        "budget": {"votes": 7}
+        "budget": {"votes": 7, "strategy": "wide"}
     }))
     .unwrap();
     assert_eq!(request.secret_facts, ["frequent flyer"]);
     assert_eq!(request.constraints.payment, PaymentMode::FillThenApprove);
     assert_eq!(request.budget.votes, Some(7));
+    assert_eq!(request.budget.strategy, Some(crate::FlowStrategy::Wide));
     assert_eq!(
         serde_json::to_value(PaymentMode::StopAtPayment).unwrap(),
         json!("stop_at_payment")

@@ -6,8 +6,9 @@
 //! confident enough to act on, and which controls a flow must not press.
 
 pub(in crate::agentic) use tinycomputer_core::surface::{
-    Candidate, Depth, MAX_CANDIDATES, Screen, change_note, describe, exact_named_match,
-    fingerprint, label, signature, target_payload, untrusted_context,
+    Candidate, Depth, Digest, MAX_CANDIDATES, Region, RegionKind, Rendering, Screen, change_note,
+    describe, digest, element_line, exact_named_match, fingerprint, label, signature,
+    target_payload, untrusted_context,
 };
 
 /// Least probability a target choice needs to be used without re-asking.
@@ -78,6 +79,115 @@ pub(in crate::agentic) fn is_destructive(
         || (screen.surface == "sheet" && candidate.name.is_none())
         || (!is_form_control(candidate)
             && tinycomputer_core::screen_payment_evidence(screen).is_some())
+}
+
+/// `pool` with every element Jev could not tell apart from an earlier one
+/// left out: of candidates whose descriptions match, bounds aside, the first
+/// in page order is kept.
+///
+/// Offered side by side, lookalikes split the vote: measured on a booking
+/// widget with nine unnamed search boxes in one dropdown, each framing of a
+/// voted slot question picked a different one, and the merged answer fell
+/// under the slot floor although every framing had found the right box.
+pub(in crate::agentic) fn distinct(pool: Vec<Candidate>, include_values: bool) -> Vec<Candidate> {
+    let mut seen = std::collections::BTreeSet::new();
+    pool.into_iter()
+        .filter(|candidate| {
+            let mut key = describe(candidate, include_values);
+            if let Some(fields) = key
+                .get_mut("untrusted_accessibility_data")
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                fields.remove("bounds");
+            }
+            seen.insert(key.to_string())
+        })
+        .collect()
+}
+
+/// What kind of element `field` is, and where: its role, its accessible
+/// name, and its ancestors — without the value or states that tell one list
+/// row from the next, and without `description`, which an unnamed row's
+/// content can fill in per row (`describe_by_content`), making it just as
+/// row-specific as a value. A field that refused text strikes every element
+/// of its kind: the rows of a city list each hold their city as a value or a
+/// content-derived description, and trying them one by one only spends the
+/// step — or, pressed while revealing a field, chooses a city nobody asked
+/// for.
+pub(in crate::agentic) fn element_kind(field: &Candidate) -> String {
+    format!(
+        "{}:{}:{}",
+        field.role,
+        field.name.as_deref().unwrap_or_default(),
+        field.path.join(">")
+    )
+}
+
+/// Words a purpose is phrased with that say nothing about which element
+/// serves it.
+const PURPOSE_FILLER: &[&str] = &[
+    "the",
+    "and",
+    "for",
+    "with",
+    "into",
+    "from",
+    "that",
+    "this",
+    "click",
+    "press",
+    "expand",
+    "scroll",
+    "perform",
+    "accomplish",
+    "step",
+    "choose",
+    "type",
+    "use",
+];
+
+/// Reorders `pool` so the elements whose label shares a word stem with
+/// `purpose` come first, keeping the order within each group.
+///
+/// Jev leans toward the first options it is shown: measured on a payment
+/// page, "perform: paying for the booking" picked `button "Pay ₹6,840"` at
+/// 0.44 when it came first and 0.01 when it came fifth. Putting the
+/// elements the purpose names first spends that lean where it helps.
+pub(in crate::agentic) fn named_first(purpose: &str, pool: &mut [Candidate]) {
+    let wanted = stems(purpose)
+        .into_iter()
+        .filter(|word| !PURPOSE_FILLER.contains(&word.as_str()))
+        .collect::<Vec<_>>();
+    if wanted.is_empty() {
+        return;
+    }
+    pool.sort_by_key(|candidate| {
+        let named = stems(&label(candidate))
+            .iter()
+            .any(|word| wanted.iter().any(|want| same_stem(word, want)));
+        !named
+    });
+}
+
+/// The lower-cased words of `text` at least three characters long.
+fn stems(text: &str) -> Vec<String> {
+    text.split(|character: char| !character.is_alphanumeric())
+        .filter(|word| word.chars().count() >= 3)
+        .map(str::to_lowercase)
+        .collect()
+}
+
+/// Whether two words share a stem: the shorter is a prefix of the longer,
+/// or they share their first four characters ("pay" and "paying", "book"
+/// and "booking").
+fn same_stem(left: &str, right: &str) -> bool {
+    let (short, long) = if left.len() <= right.len() {
+        (left, right)
+    } else {
+        (right, left)
+    };
+    let head = short.chars().take(4).collect::<String>();
+    long.starts_with(short) || (head.chars().count() == 4 && long.starts_with(&head))
 }
 
 /// Roles that hold or choose a value rather than submit anything.

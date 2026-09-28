@@ -98,6 +98,13 @@ Choices over elements describe each option with `describe`
 Keys are `1`, `2`, … on a first ask and `A`, `B`, … on the relabelled re-ask,
 so a bias toward a position or a label shows up as disagreement.
 
+An element with no name of its own carries `near`, the nearest named
+container it sits in (`button "destinationCity …"`), and its state line
+reads `combobox in button "destinationCity …"`: on a booking widget that is
+all that tells one unnamed search box from another dropdown's. Elements whose
+descriptions match, bounds aside, are offered once — the first in page order
+— because lookalikes side by side split a voted answer below its floor.
+
 ## The brief
 
 Questions that *choose* — every Choice except `page_kind`, and the `confirm`
@@ -176,6 +183,36 @@ Slot names go to Jev. Slot values never do.
 
 `extract` asks nothing, and `pick` asks nothing when its `by` parses as a
 price, time, duration, or stop-count criterion.
+
+## The wide strategy (`wide.rs`, `survey.rs`)
+
+With `strategy: "wide"` the state keeps `app`, `window`, `surface`,
+`current_step`, `visible_text`, and `field_contents`, and replaces
+`elements` and `recent_actions` with:
+
+| Field | Holds |
+|---|---|
+| `screen` | the digest: `in_front` (a dialog, sheet, popover, or consent banner), `regions` (id, where, `relevance` once surveyed, one `eN role "name"` line per element, or one `card N: text → eN control` line per card of a list), and `collapsed` (one line per noise, distraction, or over-budget region) |
+| `memory` | `steps_done`, `now`, `recent_actions` (the last 24 history lines, across steps), `tried_and_failed`, `next_step`, `variables_read`, `budget_left` |
+
+A `do` turn asks, in one request, the judging questions above plus:
+
+| Id | Type | Given | Answer used as |
+|---|---|---|---|
+| `dismiss` | Choice | the safe controls of the region in front, plus `escape` | clears the obstacle when `blocked` is at 0.70, with no further request |
+| `dismiss_known` | Noul | the control that closed this overlay on an earlier run | used at 0.5 |
+| `target_<move>` | Choice | up to 20 candidates for `activate`, `expand`, or `scroll`, the purpose's named elements first | the narrow thresholds: at 0.70, or 0.45 when named; else one `confirm` |
+| `again_<move>` | Choice | the same, reversed and lettered | consistency, as `again` |
+| `group_<move>_<n>` | Choice each | a pool over 20, up to two groups | a knockout; several winners get one final `target` |
+| `known_<move>` | Noul | a remembered element | used at 0.5 |
+
+A crowded screen (over 40 actionable elements) is surveyed first, once per
+page shape per step:
+
+| Id | Type | Given | Answer used as |
+|---|---|---|---|
+| `relevance_<region>` | Score, 5 levels | one region: where, how many elements, six examples, whether it held a remembered element | ranks regions: what is shown in full and offered first |
+| `distraction_<region>` | Noul | the same region | at 0.70 the region is collapsed and ranked last |
 
 ## The goal loop's questions (`agentic/policy.rs`)
 

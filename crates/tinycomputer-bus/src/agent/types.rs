@@ -189,6 +189,8 @@ pub struct TaskBudget {
     /// How many ways each decision is asked before its answers are averaged;
     /// the module's default when unset.
     pub votes: Option<u32>,
+    /// How each flow run asks its decisions; the narrow strategy when unset.
+    pub strategy: Option<crate::FlowStrategy>,
     /// Wall-clock time, excluding time spent waiting for the caller.
     pub max_elapsed_ms: Option<u64>,
 }

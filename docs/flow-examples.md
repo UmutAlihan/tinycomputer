@@ -241,7 +241,7 @@ What is different on the web:
 | `failed: not accomplished after 8 turns` | the judge never reached 0.75 | the `done`/`progress` answers per turn: stuck low, or oscillating? |
 | `note: that made things worse; undid it` in history | progress fell a quarter, or `helped` came back under 0.2 | the turn after the action: its `progress` and `helped` |
 | a click on the wrong element | a low-confidence `target` that `again` + `confirm` let through, or a wrong memory hint | the grounding exchanges for that step: `target`, `again`, `confirm` |
-| `no field was found for: …` | a slot matched no field at 0.40, and `asks_…` said the form does ask | the `slot_*` answers and the element list in `request.state` |
+| `no field that takes text was found for: …` | a slot matched no field at 0.40, and `asks_…` said the form does ask; "… refused the text" when a page offered list rows or buttons as fields (`NOT_A_TEXT_FIELD`) | the `slot_*` answers and the element list in `request.state`; the refused `fill` actions in the step report |
 | `the Jev call budget ran out` (stop `ModelBudget`) | the call budget ran out | `jev_journal` summary: calls per step; voting multiplies them |
 
 Start from the step report, find that step's events in the journal

@@ -16,6 +16,10 @@
 //! - `steps` implements the remaining step kinds.
 //! - `memory` remembers which element grounded which step.
 //! - `vote` asks each decision several ways at once and averages the answers.
+//! - `wide` is the wide strategy: one request per `do` turn over a digest of
+//!   the screen, carrying the judgement, the obstacle, and every move's
+//!   target; `survey` ranks a crowded screen's regions first, and `ledger`
+//!   is the working memory every wide question sees.
 //!
 //! Every request carries the run's brief — the goal, whom it is for, the
 //! plan and where the run is in it, what it has chosen so far, and what kind
@@ -30,11 +34,14 @@ mod ask;
 mod backend;
 mod enter;
 mod ground;
+mod ledger;
 mod memory;
 mod steps;
+mod survey;
 mod validate;
 mod view;
 mod vote;
+mod wide;
 
 pub(crate) use validate::{check as check_flow, missing_inputs};
 
@@ -51,8 +58,8 @@ use std::{
 use serde_json::{Value, json};
 use tinycomputer_bus::{
     DesktopError, DesktopResponse, FLOW_GUIDE, Flow, FlowAction, FlowActionRecord, FlowBrief,
-    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, GroundingHint, JevExchange, JevMetrics,
-    JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
+    FlowLoop, FlowRunResult, FlowStep, FlowStopReason, FlowStrategy, GroundingHint, JevExchange,
+    JevMetrics, JevTarget, RunFlowRequest, StepOutcome, StepReport, ValidateFlowRequest,
 };
 use tinycomputer_core::Facts;
 use tinyinference_decisions::{Answer, EvaluationRequest, Question};
@@ -227,6 +234,22 @@ pub(super) struct FlowRun<'r, B> {
     /// so an ordinary step's destructive gate can recognize a control the
     /// flow has already named as irreversible, in its own words.
     pub(super) stop_before: Vec<String>,
+    /// How decisions are asked.
+    strategy: FlowStrategy,
+    /// The run's working memory, for the wide strategy's questions.
+    ledger: ledger::Ledger,
+    /// The current step's survey of a crowded screen, if one was asked.
+    attention: Option<survey::Attention>,
+    /// Decisions made so far: each one request, whatever its framings.
+    decisions: u32,
+    /// Round trips to Jev: a batch of decisions asked at once is one.
+    rounds: u32,
+    /// Variables read from the screen so far, by name.
+    read: Vec<String>,
+    /// Kinds of element (`view::element_kind`) that refused text in this
+    /// step: options in a list, never pressed by a `do` move while the step
+    /// looks for somewhere to type.
+    pub(super) refused: BTreeSet<String>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -322,6 +345,13 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             trace: Vec::new(),
             started: Instant::now(),
             step: String::new(),
+            strategy: request.strategy,
+            ledger: ledger::Ledger::default(),
+            attention: None,
+            decisions: 0,
+            rounds: 0,
+            read: Vec::new(),
+            refused: BTreeSet::new(),
         }
     }
 
@@ -354,6 +384,8 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let (kind, text) = describe_step(&action, &self.vars, &self.facts);
         let mut log = StepLog::default();
         self.step.clone_from(&path);
+        self.ledger.begin();
+        self.refused.clear();
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
         let wall_ms = millis(started.elapsed());
@@ -399,10 +431,12 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
                 "wall_ms": wall_ms,
             })
         });
-        self.history.push(format!(
+        let finished = format!(
             "step {path} ({kind} {text:?}): {:?}, {}",
             ended.outcome, ended.note
-        ));
+        );
+        self.ledger.finish(&finished);
+        self.history.push(finished);
         if !matches!(&action, FlowAction::If(_) | FlowAction::RepeatUntil(_)) || halt.is_some() {
             self.reports.push(StepReport {
                 path,
@@ -462,85 +496,122 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
     pub(super) async fn ask(
         &mut self,
         log: &mut StepLog,
-        mut request: EvaluationRequest,
+        request: EvaluationRequest,
     ) -> Result<BTreeMap<String, Answer>, Halt> {
+        let mut answers = self.ask_batch(log, vec![request]).await?;
+        answers
+            .pop()
+            .ok_or_else(|| Halt::Failed("no Jev evaluation completed".to_owned()))
+    }
+
+    /// Asks Jev several independent requests at once: one round trip, not
+    /// one per request. Each is briefed, masked, fitted, and voted on
+    /// exactly as [`FlowRun::ask`] would, every framing of every request is
+    /// in flight together, and the answers come back in request order.
+    ///
+    /// The first request is the one the caller needs; the rest may be
+    /// speculative. When the budget has no room for all of them at full
+    /// votes, the batch is cut from the end — never below the first — so the
+    /// reply may be shorter than `requests`.
+    pub(super) async fn ask_batch(
+        &mut self,
+        log: &mut StepLog,
+        mut requests: Vec<EvaluationRequest>,
+    ) -> Result<Vec<BTreeMap<String, Answer>>, Halt> {
         if self.metrics.calls >= self.max_calls {
             return Err(Halt::Stop(FlowStopReason::ModelBudget));
         }
-        if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
-            log.used(FlowLoop::PageKind);
-            request
-                .questions
-                .insert(PAGE_KIND.to_owned(), ask::page_kind());
-        }
-        self.brief_into(&mut request);
-        self.mask(&mut request);
-        fit(&mut request, MAX_REQUEST_BYTES);
         let room = self.max_calls - self.metrics.calls;
         let votes = if self.enabled(FlowLoop::Vote) {
-            self.votes.min(room)
+            self.votes.max(1)
         } else {
             1
         };
+        let affordable = usize::try_from(room / votes).unwrap_or(usize::MAX).max(1);
+        requests.truncate(affordable);
+        let votes = votes.min(room);
         if votes > 1 {
             log.used(FlowLoop::Vote);
         }
-        let framings = vote::framings(&request, votes);
+        let batched = requests.len();
+        let mut asked = Vec::with_capacity(batched);
+        for mut request in requests {
+            if self.enabled(FlowLoop::PageKind) && self.app == crate::workspace::BROWSER {
+                log.used(FlowLoop::PageKind);
+                request
+                    .questions
+                    .insert(PAGE_KIND.to_owned(), ask::page_kind());
+            }
+            self.brief_into(&mut request);
+            self.mask(&mut request);
+            fit(&mut request, MAX_REQUEST_BYTES);
+            let framings = vote::framings(&request, votes);
+            let handles = framings
+                .iter()
+                .map(|framing| {
+                    let runtime = self.runtime.clone();
+                    let step = self.step.clone();
+                    let request = framing.request.clone();
+                    tokio::spawn(async move { runtime.evaluate(Some(&step), &request).await })
+                })
+                .collect::<Vec<_>>();
+            asked.push((request, framings, handles));
+        }
+        self.rounds = self.rounds.saturating_add(1);
         let asked_at = Instant::now();
-        let asked = framings
-            .iter()
-            .map(|framing| {
-                let runtime = self.runtime.clone();
-                let step = self.step.clone();
-                let request = framing.request.clone();
-                tokio::spawn(async move { runtime.evaluate(Some(&step), &request).await })
-            })
-            .collect::<Vec<_>>();
-        let mut answered = Vec::new();
-        let mut failure = None;
-        for (framing, handle) in framings.into_iter().zip(asked) {
-            match handle.await {
-                Ok(Ok(evaluation)) => {
-                    merge_metrics(&mut self.metrics, &evaluation);
-                    log.calls = log.calls.saturating_add(1);
-                    answered.push((framing, evaluation.response.answers));
+        let mut replies = Vec::with_capacity(batched);
+        for (request, framings, handles) in asked {
+            self.decisions = self.decisions.saturating_add(1);
+            let mut answered = Vec::new();
+            let mut failure = None;
+            for (framing, handle) in framings.into_iter().zip(handles) {
+                match handle.await {
+                    Ok(Ok(evaluation)) => {
+                        merge_metrics(&mut self.metrics, &evaluation);
+                        log.calls = log.calls.saturating_add(1);
+                        answered.push((framing, evaluation.response.answers));
+                    }
+                    Ok(Err(error)) => {
+                        failure.get_or_insert(error);
+                    }
+                    Err(_) => {}
                 }
-                Ok(Err(error)) => {
-                    failure.get_or_insert(error);
+            }
+            let answers = match (answered.is_empty(), failure) {
+                (true, Some(failure)) => return Err(Halt::Error(provider_error(&failure))),
+                (true, None) => {
+                    return Err(Halt::Failed("no Jev evaluation completed".to_owned()));
                 }
-                Err(_) => {}
-            }
-        }
-        let answers = match (answered.is_empty(), failure) {
-            (true, Some(failure)) => return Err(Halt::Error(provider_error(&failure))),
-            (true, None) => {
-                return Err(Halt::Failed("no Jev evaluation completed".to_owned()));
-            }
-            _ => vote::merge(&answered),
-        };
-        // The decision's wall time: its framings run at once, so this is
-        // the slowest of them plus the merge, which is what the step waited.
-        self.runtime.journal.record("decision", || {
-            json!({
-                "step": self.step,
-                "questions": request.questions.keys().collect::<Vec<_>>(),
-                "framings": votes,
-                "answered": answered.len(),
-                "wall_ms": millis(asked_at.elapsed()),
-            })
-        });
-        if self.tracing {
-            self.trace.push(JevExchange {
-                step: self.step.clone(),
-                state: request.state.clone(),
-                questions: serde_json::to_value(&request.questions).unwrap_or_default(),
-                answers: serde_json::to_value(&answers).unwrap_or_default(),
+                _ => vote::merge(&answered),
+            };
+            // The decision's wall time: its framings run at once, and the
+            // batch's requests with them, so this is the slowest framing so
+            // far plus the merge — what the step waited for this answer.
+            self.runtime.journal.record("decision", || {
+                json!({
+                    "step": self.step,
+                    "questions": request.questions.keys().collect::<Vec<_>>(),
+                    "framings": votes,
+                    "answered": answered.len(),
+                    "batched": batched,
+                    "request_bytes": serde_json::to_vec(&request).map_or(0, |bytes| bytes.len()),
+                    "wall_ms": millis(asked_at.elapsed()),
+                })
             });
+            if self.tracing {
+                self.trace.push(JevExchange {
+                    step: self.step.clone(),
+                    state: request.state.clone(),
+                    questions: serde_json::to_value(&request.questions).unwrap_or_default(),
+                    answers: serde_json::to_value(&answers).unwrap_or_default(),
+                });
+            }
+            if let Some((kind, _)) = ask::chosen(&answers, PAGE_KIND) {
+                self.page = Some(kind);
+            }
+            replies.push(answers);
         }
-        if let Some((kind, _)) = ask::chosen(&answers, PAGE_KIND) {
-            self.page = Some(kind);
-        }
-        Ok(answers)
+        Ok(replies)
     }
 
     /// Adds the run's brief — the goal, whom it is for, the plan with this

@@ -285,12 +285,17 @@ step, when:
 - or the screen shows payment evidence (a card number, CVV, or expiry field),
   so a button that only says "Continue" on a card form is caught too.
 
-When a click is refused because it is covered — a result list's whole card
-often lies a transparent click layer over its own controls, so the card's own
-button is "covered" by the card itself — the runtime presses Escape once and
-retries the *same* already-vetted target. Escape never chooses a new element,
-so nothing exposed by dismissing whatever covered the click is ever pressed
-without going through grounding and `is_destructive` again on a later turn.
+When a click is refused because it is covered, two things happen. On the
+browser, a result card often lays a click layer — or its own text — over its
+own link, so the link is "covered" by the card itself; the browser surface
+then clicks through at the link's position, but only when the exact target
+(matched by name, and on the page, by the one element under that point with
+that label) sits in the same card as the cover and no dialog is involved.
+Anything else comes back covered, and the runtime presses Escape once and
+retries the *same* already-vetted target — in a `do` step's click and in
+`pick`'s alike. Escape never chooses a new element, so nothing exposed by
+dismissing whatever covered the click is ever pressed without going through
+grounding and `is_destructive` again on a later turn.
 
 A dismissal the completion judge would otherwise never see ends the step
 immediately: when the last action pressed a control whose own words the
@@ -319,11 +324,11 @@ silently cut.
    remembered element is looked up by role, name, and the last two ancestor
    labels (never by ref, which changes every snapshot). It is confirmed with
    one Noul and used if the answer is at least 0.5.
-2. **Narrowing.** A pool over 20 is grouped by ancestor. Jev is shown the
-   regions ("toolbar, 12 elements, e.g. New Message, Reply, Delete") and picks
-   one, for up to three rounds, going one level deeper each time. If regions
-   stop splitting the pool, a **knockout** asks one Choice per group of 20 in a
-   single request and keeps each group's winner.
+2. **Narrowing.** A pool over 20 is grouped by ancestor, and one round trip
+   asks two requests: which region ("toolbar, 12 elements, e.g. New Message,
+   Reply, Delete") holds the element, and a **knockout** of one Choice per
+   group of 20, the groups cut along the regions. The chosen region's
+   winners go on to the Choice; all winners do if it holds none.
 3. **Choice.** One Choice over what is left.
 4. **Consistency and corroboration.** A pick at 0.70 or above (`ACT`) is used
    straight away, and so is one at 0.45 or above whose name appears word for
@@ -356,12 +361,16 @@ rounds:
    list, then assigned greedily from the most confident proposal down, so two
    slots can never claim one field. A proposal under 0.4 (`SLOT_FLOOR`) is
    dropped.
-5. Deliver each text in screen order with `deliver_text`.
+5. Deliver each text in screen order with `deliver_text`. A field that
+   refuses it (`NOT_A_TEXT_FIELD`: on the web, focusing it reached no text
+   input — a list row a page gave a `combobox` role) is struck for the step
+   with every element of its kind, and no `do` move of the step presses one.
 
 `deliver_text` in `tinycomputer-core/src/surface/delivery.rs` is how text
 reliably lands:
 
-1. Set the value through the accessibility API (or agent-browser's `fill`).
+1. Set the value through the accessibility API (or agent-browser's `fill`,
+   once focusing the element shows it takes typed text).
 2. Read it back. If the field holds the text (whitespace-insensitive), it was
    delivered through `set_value` and verified.
 3. If it does not, give the application a moment (`settle`) and read again.
@@ -474,34 +483,18 @@ judging loop off, the `do` loop just grounds and presses something each turn.
 
 ## Reading a run
 
-Find the failed step's note in the report (the lab's `timeline.txt`), read
-what Jev was shown for that step (the trace's `jev.jsonl`, or the debug
-journal, [`jev-journal.md`](jev-journal.md)), and decide whether the fault is
-the observation, the question, the flow, or the engine. The failure table in
-[`flow-examples.md`](flow-examples.md) maps common notes to their causes.
-Then reproduce it in the simulator in
-`crates/tinycomputer-engine/src/agentic/flow/test.rs` (a scripted mail app,
-booking widgets, and an oracle Jev that answers from their state) and fix it.
+Find the failed step's note in the report (`timeline.txt`), read what Jev
+was shown for it (`jev.jsonl`, or [`jev-journal.md`](jev-journal.md)), and
+decide whether the fault is the observation, the question, the flow, or the
+engine; [`flow-examples.md`](flow-examples.md) maps common notes to causes.
+Reproduce it in the simulator (`agentic/flow/test.rs`), then fix it.
 
-## Thresholds at a glance
+## The wide strategy, and the thresholds
 
-| Constant | Value | Where | Meaning |
-|---|---|---|---|
-| `DONE` | 0.75 | `act.rs` | completion that ends a step after acting; also the bar for `verify`, `wait_for`, `if`, `repeat_until` |
-| `ALREADY_DONE` | 0.85 | `act.rs` | completion that skips a step before acting |
-| `BLOCKED` | 0.70 | `act.rs` | obstacle probability that triggers dismissal |
-| `LEANS_DONE` | 0.50 | `act.rs` | completion under which a `finished` move is overruled after acting |
-| `REGRESSION` | 0.25 | `act.rs` | progress drop that triggers undo |
-| `UNHELPFUL` | 0.20 | `act.rs` | `helped` probability that triggers undo |
-| `SHORTCUT_FLOOR` | 0.50 | `act.rs` | least probability for pressing a shortcut |
-| `STALL_TURNS` | 3 | `act.rs` | unchanged turns before a step fails |
-| `ACT` | 0.70 | `view/mod.rs` | element choice used without re-asking |
-| `NAMED_FLOOR` | 0.45 | `ground.rs` | element choice used when its name is in the purpose |
-| `CORROBORATED` | 0.80 | `ground.rs` | corroboration that accepts a target alone |
-| `AGREED` | 0.50 | `ground.rs` | corroboration that accepts a target the re-ask agreed on |
-| `SLOT_FLOOR` | 0.40 | `enter.rs` | least probability for a slot assignment |
-| `LOCATE_FLOOR` | 0.50 | `steps.rs` | least probability for a `read`, `pick`, or `stop_before` target |
-| `CAP` | 20 | `ask.rs` | most options in one Choice |
-| `DO_TURNS` | 8 | `steps.rs` | turns a `do` step may spend |
-| `MAX_ACTIONS` / `MAX_CALLS` | 120 / 5000 | `mod.rs` | per-run caps on actions and Jev calls |
-| `MAX_VOTES` | 9 | `vote.rs` | most framings one decision is asked in |
+`strategy: "wide"` keeps every loop and threshold above and changes how they
+are asked: one request per `do` turn over a digest of the screen, carrying
+the judgement, `dismiss` for whatever is in front, and a target for every
+move; a crowded screen is surveyed first for which regions matter; and every
+question sees the run's working memory in place of the flat history
+([`specs/jev-wide-turns.md`](specs/jev-wide-turns.md)). Every constant a
+decision is thresholded on is in [`decision-thresholds.md`](decision-thresholds.md).

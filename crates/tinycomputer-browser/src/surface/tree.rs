@@ -19,6 +19,23 @@ const FIELD_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "textarea", "
 /// Roles a value is typed into.
 const TYPED_ROLES: &[&str] = &["textbox", "searchbox", "combobox", "spinbutton", "textarea"];
 
+/// Roles whose inner text is what was typed into them.
+const TEXT_ENTRY_ROLES: &[&str] = &["textbox", "searchbox", "textarea", "spinbutton"];
+
+/// [`TEXT_ENTRY_ROLES`] plus `combobox`: every role whose own *value* is
+/// typed or selected content, private unless values are shared, and so must
+/// never be propagated as an enclosing unnamed container's content-derived
+/// description. `combobox` is not in `TEXT_ENTRY_ROLES` itself because an
+/// unnamed, valueless combobox — a city-search row's own container — must
+/// still be describable by what it shows; it is only the role's *value*,
+/// once it holds one, that is never safe to show as someone else's
+/// description.
+const VALUE_BEARING_ROLES: &[&str] =
+    &["textbox", "searchbox", "textarea", "spinbutton", "combobox"];
+
+/// Longest description an unnamed control takes from the text inside it.
+const MAX_CONTENT_NAME: usize = 120;
+
 /// Container roles that repeat as the cards of a list; each gets an ordinal
 /// among its same-role siblings (`listitem #3`) so a card's contents share
 /// one distinct label in their paths.
@@ -135,8 +152,26 @@ pub(crate) fn screen(tree: &str, title: &str) -> Screen {
     // Per depth, how many siblings of each role have been seen under the
     // current parent.
     let mut siblings: Vec<std::collections::BTreeMap<String, usize>> = Vec::new();
+    // Unnamed controls still open, by depth and index in `candidates`: the
+    // text inside one is what it shows, and becomes its description.
+    let mut unnamed: Vec<(usize, usize)> = Vec::new();
     for (order, line) in tree.lines().filter_map(parse_line).enumerate() {
         ancestors.retain(|(depth, _, _)| *depth < line.depth);
+        unnamed.retain(|(depth, _)| *depth < line.depth);
+        // A value-bearing line's value is what was typed or selected into
+        // it: private unless values are shared, and never a safe
+        // description for an enclosing unnamed container. Its accessible
+        // name — a label, not content — still is.
+        let describable = if VALUE_BEARING_ROLES.contains(&line.role.as_str()) {
+            line.name.as_deref()
+        } else {
+            line.name.as_deref().or(line.value.as_deref())
+        };
+        if let Some(text) = describable {
+            for (_, index) in &unnamed {
+                describe_by_content(&mut candidates[*index], text);
+            }
+        }
         let path = ancestors
             .iter()
             .map(|(_, label, _)| label.clone())
@@ -152,6 +187,17 @@ pub(crate) fn screen(tree: &str, title: &str) -> Screen {
         let node = candidate(&line, path, order);
         if line.reference().is_some() {
             if !line.has("disabled") {
+                // A control with no name of its own — a list row whose
+                // `aria-labelledby` points nowhere — is named by what it
+                // shows. A text field — or a control holding a value — is not:
+                // what is inside it is its content, private unless values
+                // are shared.
+                if node.name.is_none()
+                    && node.value.is_none()
+                    && !TEXT_ENTRY_ROLES.contains(&line.role.as_str())
+                {
+                    unnamed.push((line.depth, candidates.len()));
+                }
                 candidates.push(node);
             }
         } else {
@@ -209,6 +255,23 @@ fn candidate(line: &Line, path: Vec<String>, order: usize) -> Candidate {
         order,
         ..Candidate::default()
     }
+}
+
+/// Adds `text` to what an unnamed control shows, up to
+/// [`MAX_CONTENT_NAME`] characters.
+fn describe_by_content(candidate: &mut Candidate, text: &str) {
+    let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if text.is_empty() {
+        return;
+    }
+    let mut shown = candidate.description.take().unwrap_or_default();
+    if shown.chars().count() < MAX_CONTENT_NAME && !shown.contains(&text) {
+        if !shown.is_empty() {
+            shown.push(' ');
+        }
+        shown.push_str(&text);
+    }
+    candidate.description = Some(shown.chars().take(MAX_CONTENT_NAME).collect());
 }
 
 fn remember(line: &Line, context: &mut Vec<String>) {

@@ -14,7 +14,7 @@ use tinycomputer_cursor::{CursorPace, OverlayCommand, OverlaySink, ScreenCursor}
 
 use super::cursor::viewport_origin;
 use super::tree::{parse_line, screen};
-use super::{BrowserSurface, browser_key};
+use super::{BrowserSurface, Perception, browser_key};
 use crate::fake::{Fake, failure, ok};
 use crate::sessions::Browser;
 
@@ -335,7 +335,10 @@ fn a_click_covered_by_its_own_card_lands_on_the_card() {
     let reply = surface.execute(JevOperation::Click, Some(select), None);
     assert!(reply.ok, "{:?}", reply.error);
     let script = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
-    assert!(script.ends_with(r#"(60, 40, "Select flight")"#), "{script}");
+    assert!(
+        script.ends_with(r#"(60, 40, "Select flight", null)"#),
+        "{script}"
+    );
     let mouse = fake
         .actions()
         .iter()
@@ -397,11 +400,15 @@ fn pasting_focuses_selects_and_inserts_without_a_clipboard() {
             .paste("", &node("e2", &["Click", "SetValue"]), "Srinagar")
             .ok
     );
-    let actions = fake.actions();
-    let tail = &actions[actions.len() - 9..];
+    let actions = fake
+        .actions()
+        .into_iter()
+        .filter(|action| ["focus", "evaluate", "press", "inserttext"].contains(&action.as_str()))
+        .collect::<Vec<_>>();
     assert_eq!(
-        tail.iter().step_by(3).collect::<Vec<_>>(),
-        ["focus", "press", "inserttext"]
+        &actions[actions.len() - 4..],
+        ["focus", "evaluate", "press", "inserttext"],
+        "focus, check it takes text, select, insert"
     );
     assert_eq!(fake.last("inserttext")["text"], "Srinagar");
     let before = fake.actions().len();
@@ -432,8 +439,10 @@ fn a_paste_stops_at_the_first_failed_step() {
             .code,
         "NO_SUCH_ELEMENT"
     );
-    let unselectable = Fake::scripted(|command| {
-        (command["action"] == "press").then(|| failure("Operation timed out"))
+    let unselectable = Fake::scripted(|command| match command["action"].as_str().unwrap() {
+        "press" => Some(failure("Operation timed out")),
+        "evaluate" => Some(ok(&json!({"result": true}))),
+        _ => None,
     });
     let Harness { surface, .. } = harness("paste-select", unselectable);
     assert_eq!(
@@ -566,6 +575,15 @@ fn boxed_fake(refuse: bool) -> Fake {
             &json!({"x": 400.0, "y": 300.0, "width": 120.0, "height": 32.0}),
         )),
         "evaluate" if refuse => Some(failure("Evaluation failed: CSP")),
+        // The focused element takes text, so a fill goes ahead.
+        "evaluate"
+            if command["script"]
+                .as_str()
+                .unwrap()
+                .contains("activeElement") =>
+        {
+            Some(ok(&json!({"result": true})))
+        }
         "evaluate" => Some(ok(
             &json!({"result": [100.0, 50.0, 1280.0, 880.0, 1280.0, 800.0]}),
         )),
@@ -705,4 +723,192 @@ fn a_page_that_will_not_say_where_its_window_is_still_gets_its_action() {
     );
     assert_eq!(fake.last("click")["selector"], "@e5");
     assert!(drawn.glides().is_empty());
+}
+
+#[test]
+fn text_is_never_filled_or_pasted_into_an_element_that_does_not_take_it() {
+    // A `div` with a `combobox` role — a city in a list of suggestions —
+    // focuses, but what takes focus is no input: the page's check says no.
+    let rows = Fake::scripted(|command| match command["action"].as_str().unwrap() {
+        "evaluate" => Some(ok(&json!({"result": false}))),
+        _ => None,
+    });
+    let Harness { fake, surface, .. } = harness("not-a-field", rows);
+    let row = node("e216", &["Click", "SetValue"]);
+    let filled = surface.execute(
+        JevOperation::TypeText,
+        Some(row.clone()),
+        Some("Srinagar".to_owned()),
+    );
+    assert_eq!(filled.error.unwrap().code, "NOT_A_TEXT_FIELD");
+    let pasted = surface.paste("", &row, "Srinagar");
+    assert_eq!(pasted.error.unwrap().code, "NOT_A_TEXT_FIELD");
+    let actions = fake.actions();
+    assert!(
+        !actions
+            .iter()
+            .any(|action| action == "fill" || action == "inserttext" || action == "press"),
+        "nothing is typed: {actions:?}"
+    );
+    assert_eq!(fake.last("focus")["selector"], "@e216");
+}
+
+#[test]
+fn an_unnamed_control_is_named_by_what_it_shows_but_a_field_never_is() {
+    // A list of cities whose rows carry a `combobox` role and an
+    // `aria-labelledby` that points nowhere: no accessible name at all.
+    let tree = r#"- main
+  - combobox [ref=e10]
+    - generic
+      - text: Mumbai
+      - text: Chhatrapati Shivaji Maharaj International Airport
+    - text: BOM
+  - combobox [ref=e11]
+    - text: Srinagar
+  - textbox [ref=e12]
+    - text: what was typed
+  - combobox [ref=e13]: typed value
+    - text: suggestion
+  - button "Search" [ref=e14]
+    - text: Search
+"#;
+    let parsed = screen(tree, "Flights");
+    let described = |reference: &str| {
+        parsed
+            .candidates
+            .iter()
+            .find(|candidate| candidate.ref_id == reference)
+            .unwrap()
+            .description
+            .clone()
+    };
+    assert_eq!(
+        described("e10").as_deref(),
+        Some("Mumbai Chhatrapati Shivaji Maharaj International Airport BOM")
+    );
+    assert_eq!(described("e11").as_deref(), Some("Srinagar"));
+    assert_eq!(
+        described("e12"),
+        None,
+        "a text field's content stays private"
+    );
+    assert_eq!(
+        described("e13"),
+        None,
+        "a control holding a value is a field"
+    );
+    assert_eq!(described("e14"), None, "a named control keeps its name");
+}
+
+#[test]
+fn a_combobox_s_own_value_never_becomes_an_ancestors_description() {
+    // An unnamed wrapper (a `div role="combobox"` some pages give a whole
+    // autocomplete widget) around a nested combobox that already holds a
+    // typed or selected value: the wrapper must not inherit that value as
+    // its own description, even though it is itself named by what it shows.
+    let tree = r"- main
+  - combobox [ref=e20]
+    - combobox [ref=e21]: Springfield, IL
+    - text: label
+";
+    let parsed = screen(tree, "Flights");
+    let outer = parsed
+        .candidates
+        .iter()
+        .find(|candidate| candidate.ref_id == "e20")
+        .unwrap();
+    assert_eq!(
+        outer.description.as_deref(),
+        Some("label"),
+        "the wrapper is still named by ordinary text, just not by the nested value"
+    );
+    assert!(
+        !outer
+            .description
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Springfield"),
+        "a nested combobox's own value must never reach an ancestor's description: {:?}",
+        outer.description
+    );
+}
+
+/// A page read by sight: one field and one result link a card covers.
+fn sighted_fake() -> Fake {
+    Fake::scripted(|command| match command["action"].as_str().unwrap() {
+        "evaluate"
+            if command["script"]
+                .as_str()
+                .unwrap()
+                .contains("__tinycomputerSeen") =>
+        {
+            Some(ok(&json!({"result": {
+                "ok": true,
+                "title": "Flights",
+                "surface": "window",
+                "unreachable": 0,
+                "nodes": [
+                    {"id": "1", "role": "textbox", "name": "To", "states": [], "path": []},
+                    {"id": "2", "role": "link", "name": "", "states": [], "path": []}
+                ]
+            }})))
+        }
+        "click" => Some(failure(
+            "Element is covered by <div.layer> at its click point, so the input would land on that element instead.",
+        )),
+        "boundingbox" => Some(ok(
+            &json!({"x": 10.0, "y": 20.0, "width": 100.0, "height": 40.0}),
+        )),
+        "evaluate" => Some(ok(&json!({"result": true}))),
+        _ => None,
+    })
+}
+
+#[test]
+fn sight_reads_the_page_and_its_refs_reach_their_marks() {
+    let Harness { fake, surface, .. } = harness("sight", sighted_fake());
+    let screen = surface.observe("flights", None, Depth::Skeleton).unwrap();
+    assert!(!fake.actions().iter().any(|action| action == "snapshot"));
+    assert_eq!(screen.app, "flights");
+    let field = screen.candidates[0].clone();
+    assert_eq!(field.ref_id, "seen:1");
+
+    let typed = surface.execute(
+        JevOperation::TypeText,
+        Some(field),
+        Some("Srinagar".to_owned()),
+    );
+    assert!(typed.ok, "{:?}", typed.error);
+    let fill = fake.last("fill");
+    assert_eq!(fill["selector"], r#"[data-tc-seen="1"]"#, "{fill}");
+    assert_eq!(fake.last("focus")["selector"], r#"[data-tc-seen="1"]"#);
+
+    // An unnamed link a card covers is still clicked through its card: its
+    // mark names it exactly.
+    let link = screen.candidates[1].clone();
+    let reply = surface.execute(JevOperation::Click, Some(link), None);
+    assert!(reply.ok, "{:?}", reply.error);
+    let script = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
+    assert!(
+        script.ends_with(r#"(60, 40, "", "[data-tc-seen=\"2\"]")"#),
+        "{script}"
+    );
+
+    surface.observe("", Some("seen:1"), Depth::Full).unwrap();
+    let scoped = fake.last("evaluate")["script"].as_str().unwrap().to_owned();
+    assert!(scoped.contains(r#"("[data-tc-seen=\"1\"]", {"#));
+}
+
+#[test]
+fn the_tree_is_read_when_sight_fails_or_is_turned_off() {
+    let Harness { fake, surface, .. } = harness("sight-fallback", page_fake());
+    let screen = surface.observe("", None, Depth::Full).unwrap();
+    assert_eq!(screen.candidates[0].ref_id, "e1");
+    assert!(fake.actions().iter().any(|action| action == "evaluate"));
+
+    let Harness { fake, surface, .. } = harness("sight-off", sighted_fake());
+    let surface = surface.with_perception(Perception::Tree);
+    surface.observe("", None, Depth::Full).unwrap();
+    assert!(!fake.actions().iter().any(|action| action == "evaluate"));
+    assert!(format!("{surface:?}").contains("Tree"));
 }

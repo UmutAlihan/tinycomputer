@@ -4,7 +4,9 @@ A flow ([`tinycomputer_bus::Flow`]) says what to accomplish in one application,
 step by step, with no UI knowledge. This module grounds each step on the live
 screen by composing small Jev questions in deterministic Rust. The design and
 its rationale are in `docs/specs/jev-intent-flows.md`, and
-`docs/decision-loops.md` walks through every loop, question, and threshold.
+`docs/decision-loops.md` walks through every loop and question
+(`docs/decision-thresholds.md` lists the thresholds), and
+`docs/specs/jev-wide-turns.md` specifies the wide strategy.
 
 ## Layout
 
@@ -18,7 +20,10 @@ its rationale are in `docs/specs/jev-intent-flows.md`, and
 | `enter.rs` | slot matching and verified delivery, top to bottom |
 | `steps.rs` | `open`, `choose`, `read`, `verify`, `wait_for`, `stop_before`, `if`, `repeat_until` |
 | `memory.rs` | grounding hints: remember, recall, learn |
-| `view/` | re-exports the screen model from `tinycomputer-core::surface`; keeps the flow's policy: the act threshold and which controls it must not press |
+| `wide.rs` | the wide strategy: one request per `do` turn over the screen digest (judgement, `dismiss`, every move's target), the wide state, resolving prepared targets |
+| `survey.rs` | the wide strategy's attention pass: which regions of a crowded screen matter, which distract |
+| `ledger.rs` | the working memory wide questions see: finished steps, recent actions across steps, tried and failed, next step |
+| `view/` | re-exports the screen model and digest from `tinycomputer-core::surface`; keeps the flow's policy: the act threshold, which controls it must not press, and `named_first` |
 | `backend/` | `AgentBackend` (the core `Surface` trait, which `Desktop` implements in `tinycomputer-desktop/src/surface/`) and the async wrappers that call it off the executor |
 | `test.rs` | a simulated mail app and an oracle Jev that answers from its state |
 

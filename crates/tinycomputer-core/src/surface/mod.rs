@@ -7,16 +7,18 @@
 //! text delivery — depend on nothing but the trait.
 
 mod delivery;
+mod digest;
 mod groups;
 mod screen;
 
 use tinycomputer_bus::{DesktopResponse, JevOperation};
 
 pub use delivery::{deliver_text, holds, tokenized};
+pub use digest::{Digest, Region, RegionKind, Rendering, digest};
 pub use groups::{Group, result_families, result_groups};
 pub use screen::{
-    Candidate, Depth, MAX_CANDIDATES, Screen, change_note, describe, difference, exact_named_match,
-    fingerprint, label, signature, target_payload, untrusted_context,
+    Candidate, Depth, MAX_CANDIDATES, Screen, change_note, describe, difference, element_line,
+    exact_named_match, fingerprint, label, signature, target_payload, untrusted_context,
 };
 
 /// One thing a task can observe and act on: a desktop application or a

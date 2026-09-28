@@ -18,7 +18,7 @@ use super::{
     backend::deliver_text,
     memory::{learn, recall, remember},
     validate::{references, substitute, substitute_safe},
-    view::{Candidate, Screen, label, signature},
+    view::{Candidate, Screen, element_kind, label, signature},
 };
 
 /// Least probability a slot assignment needs.
@@ -122,8 +122,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 },
             ))
         } else {
+            let refused = if self.refused.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "; {} element(s) the page offered as fields refused the text",
+                    self.refused.len()
+                )
+            };
             Err(Halt::Failed(format!(
-                "no field was found for: {}",
+                "no field that takes text was found for: {}{refused}",
                 names(&slots, &pending)
             )))
         }
@@ -200,6 +208,13 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         pending: &mut BTreeSet<usize>,
     ) -> Result<(), Halt> {
         let mut revealed = false;
+        // Fields that refused the text this step: a `div` a page labels a
+        // combobox, or a field that would not hold what was typed. Offered
+        // again, the same wrong field wins again — struck by `element_kind`
+        // so the rows of a city list, each a same-kind box that differs only
+        // by the city it holds, are struck together rather than one at a
+        // time (`a_row_that_refused_the_text_is_never_pressed_while_revealing_a_field`).
+        let mut struck: BTreeSet<String> = BTreeSet::new();
         for _ in 0..3 {
             if pending.is_empty() {
                 break;
@@ -208,7 +223,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             if editable(&screen).len() < pending.len() && !screen.unexplored.is_empty() {
                 self.explore(&mut screen).await;
             }
-            let fields = editable(&screen);
+            let fields = editable(&screen)
+                .into_iter()
+                .filter(|field| !struck.contains(&element_kind(field)))
+                .collect::<Vec<_>>();
             let assignments = if fields.is_empty() {
                 Vec::new()
             } else {
@@ -238,10 +256,19 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
             for assignment in assignments {
                 let slot = &slots[assignment.slot];
-                if self
+                let filled = self
                     .fill(log, slot, &assignment.field, &screen.context)
-                    .await?
-                {
+                    .await?;
+                if !filled {
+                    struck.insert(element_kind(&assignment.field));
+                    self.refused.insert(element_kind(&assignment.field));
+                    self.ledger.tried(format!(
+                        "{} did not take the {}",
+                        label(&assignment.field),
+                        slot.slot
+                    ));
+                }
+                if filled {
                     pending.remove(&assignment.slot);
                     learn(
                         &mut self.learned,
@@ -305,6 +332,12 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .iter()
             .map(|assignment| signature(&assignment.field))
             .collect::<BTreeSet<_>>();
+        // Unlike a click or expand target, two fields that describe alike
+        // are not interchangeable: split date parts and card expiry MM/YY
+        // boxes are the same shape but hold different text. `distinct`
+        // would collapse them to one offered choice — position in the pool
+        // is what tells them apart, so no lookalike field is deduplicated
+        // away. `CAP` below still limits how many fields one request offers.
         let offered = fields
             .iter()
             .filter(|field| !taken.contains(&signature(field)))

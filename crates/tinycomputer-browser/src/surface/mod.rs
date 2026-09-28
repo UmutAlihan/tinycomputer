@@ -12,6 +12,7 @@
 //! the actions are the same with or without it.
 
 mod cursor;
+mod sight;
 mod tree;
 
 use std::sync::{Arc, Mutex};
@@ -41,29 +42,64 @@ const SETTLE_MS: u64 = 400;
 const NETWORK_IDLE_MS: u64 = 2_000;
 
 /// Whether what covers a point belongs to the same result card as the
-/// element that was meant: the card around the covering element names it.
-/// Many result lists lay a transparent click layer over each card, so the
-/// card's own controls are always "covered" — by the card itself.
+/// element that was meant, so the click may go through it. Many result lists
+/// lay a transparent click layer, or the card's own text, over each card's
+/// link, so the card's own controls are always "covered" — by the card
+/// itself.
 ///
-/// A card-level substring match alone is not enough: a short target name
-/// such as "Select" matches almost any card, so `elementsFromPoint` — the
-/// full stack of every element stacked at the click point, topmost first —
-/// is used instead of the single topmost element, and the target's name is
-/// required to *exactly* match one of its own attributes (not merely appear
-/// somewhere inside the card's aggregated text), so a duplicate label
-/// elsewhere in the card can no longer stand in for the actual target.
-const SAME_CARD_JS: &str = r#"((x, y, name) => {
-  if (!name) return false;
+/// The target is found by its name, *exactly*: among the elements stacked at
+/// the point (`elementsFromPoint`, topmost first), or, when the card's
+/// content sits over it — Google Flights puts each card's duration text
+/// above its "Select flight" link — as the one element on the page whose
+/// `aria-label` is that name and whose box holds the point (Google renders
+/// each flight twice, once in a hidden tab). Whitespace runs count as one
+/// space, as they do in an accessible name. A short name such as "Select"
+/// appears in almost any card, so containment is never enough, and a label
+/// two elements at the point share matches neither. A ref sight minted
+/// passes its mark's selector as `exact`, and is the target itself, name or
+/// no name. The click goes through only when what is
+/// on top sits inside the target's own card (`li`, `listitem`, `row`,
+/// `article`) and inside no dialog; a banner or dialog in front still
+/// blocks it.
+const SAME_CARD_JS: &str = r#"((x, y, name, exact) => {
+  if (!name && !exact) return false;
   const stack = document.elementsFromPoint(x, y);
   const top = stack[0];
-  const card = top && top.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
-  if (!top || !card) return false;
-  const shown = (element) => (element.getAttribute('aria-label') || element.innerText || '').trim();
-  // The exact target must itself be part of the stack of elements at this
-  // point (so `top` genuinely overlaps it), and that element must sit
-  // inside the same card `top` does.
-  return stack.some((element) => shown(element) === name && card.contains(element));
+  if (!top) return false;
+  const squash = (text) => text.replace(/\s+/g, ' ').trim();
+  name = squash(name || '');
+  const shown = (element) => squash(element.getAttribute('aria-label') || element.innerText || '');
+  const under = (element) => {
+    const box = element.getBoundingClientRect();
+    return box.width > 0 && box.height > 0
+      && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+  };
+  const labelled = [...document.querySelectorAll('[aria-label]')]
+    .filter((element) => squash(element.getAttribute('aria-label')) === name && under(element));
+  const marked = exact ? document.querySelector(exact) : null;
+  const target = exact ? (marked && under(marked) ? marked : null)
+    : stack.find((element) => shown(element) === name)
+      || (labelled.length === 1 ? labelled[0] : null);
+  if (!target || target === top) return false;
+  const card = target.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
+  const modal = top.closest('dialog,[role="dialog"],[role="alertdialog"],[aria-modal="true"]');
+  return Boolean(card && card.contains(top) && !modal);
 })"#;
+
+/// How a [`BrowserSurface`] reads a page.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Perception {
+    /// As a person looks at it: what is drawn and on top, the words on and
+    /// beside each control, and which boxes take text, read from the
+    /// rendered page. Falls back to the accessibility tree when it cannot
+    /// reach what it sees (a shadow root, a frame in front) or the reading
+    /// fails.
+    #[default]
+    Sight,
+    /// Through the accessibility tree alone: roles and names as the page's
+    /// markup declares them.
+    Tree,
+}
 
 /// One browser session, lazily opened, as a [`Surface`].
 #[derive(Clone)]
@@ -74,6 +110,7 @@ pub struct BrowserSurface {
     handle: tokio::runtime::Handle,
     platform: Platform,
     cursor: Arc<ScreenCursor>,
+    perception: Perception,
 }
 
 impl std::fmt::Debug for BrowserSurface {
@@ -83,6 +120,7 @@ impl std::fmt::Debug for BrowserSurface {
             .field("session", &self.session)
             .field("platform", &self.platform)
             .field("cursor", &self.cursor)
+            .field("perception", &self.perception)
             .finish_non_exhaustive()
     }
 }
@@ -104,7 +142,16 @@ impl BrowserSurface {
             handle,
             platform: Platform::current(),
             cursor: Arc::new(ScreenCursor::off()),
+            perception: Perception::default(),
         }
+    }
+
+    /// The same surface, reading pages with `perception`
+    /// ([`Perception::Sight`] unless told otherwise).
+    #[must_use]
+    pub fn with_perception(mut self, perception: Perception) -> Self {
+        self.perception = perception;
+        self
     }
 
     /// The same surface, drawing on `cursor` — the screen's one agent
@@ -162,7 +209,7 @@ impl BrowserSurface {
     /// or dialog in front still blocks the click. `None` when it is not.
     fn click_through_own_card(&self, reference: &str, name: &str) -> Option<DesktopResponse> {
         let id = self.ensure_session().ok()?;
-        let selector = format!("@{}", reference.trim_start_matches('@'));
+        let selector = sight::selector(reference);
         let bounds = self
             .block(
                 self.browser
@@ -178,8 +225,15 @@ impl BrowserSurface {
         // short would make an exact match against the page's full text
         // impossible for any control with a longer name.
         let name = name.trim();
+        // A ref sight minted names its element exactly, by its mark; a
+        // tree ref is found by its name.
+        let exact = if sight::is_seen(reference) {
+            serde_json::to_string(&selector).ok()?
+        } else {
+            "null".to_owned()
+        };
         let script = format!(
-            "{SAME_CARD_JS}({x}, {y}, {})",
+            "{SAME_CARD_JS}({x}, {y}, {}, {exact})",
             serde_json::to_string(&name).ok()?
         );
         let same_card = self
@@ -212,21 +266,53 @@ impl BrowserSurface {
         ))
     }
 
-    /// Whether the page's currently focused element takes typed text: an
-    /// `<input>`, a `<textarea>`, a `contenteditable` region, or a control
-    /// whose ARIA role names a text box. Typing without a target sends keys
+    /// Whether the page's currently focused element takes typed text: a
+    /// text-like `<input>` that is neither read-only nor disabled, a
+    /// `<textarea>`, or a `contenteditable` region. An ARIA role alone does
+    /// not count: pages give `combobox` and `textbox` roles to list rows and
+    /// buttons that hold no text (measured on a booking widget, whose city
+    /// rows are `div role="combobox"`). Typing without a target sends keys
     /// wherever the browser's own focus happens to be, so this is checked
     /// first: a stale or unexpected focus — an unrelated field, or none at
     /// all — must never silently receive text, including a private value.
     fn focused_field_is_editable(&self) -> bool {
         const SCRIPT: &str = r"(() => {
-  const element = document.activeElement;
+  // Focusing a ref inside an open shadow root or a same-origin frame — the
+  // documented tree fallback's territory — leaves `document.activeElement`
+  // pointing at the shadow host or the `<iframe>` itself, not the nested
+  // field that actually holds the focus; descend into both before judging
+  // editability, so that documented fallback stays usable for text entry.
+  const deepActiveElement = () => {
+    let element = document.activeElement;
+    for (;;) {
+      if (element && element.shadowRoot && element.shadowRoot.activeElement) {
+        element = element.shadowRoot.activeElement;
+        continue;
+      }
+      if (element && element.tagName === 'IFRAME') {
+        try {
+          const inner = element.contentDocument && element.contentDocument.activeElement;
+          if (inner) {
+            element = inner;
+            continue;
+          }
+        } catch (e) {
+          // Cross-origin frame: inaccessible, judge the host element itself.
+        }
+      }
+      return element;
+    }
+  };
+  const element = deepActiveElement();
   if (!element) return false;
   const tag = (element.tagName || '').toLowerCase();
-  if (tag === 'input' || tag === 'textarea') return true;
   if (element.isContentEditable) return true;
-  const role = (element.getAttribute('role') || '').toLowerCase();
-  return ['combobox', 'searchbox', 'textbox'].includes(role);
+  if (tag === 'textarea') return !element.readOnly && !element.disabled;
+  if (tag !== 'input') return false;
+  const type = (element.getAttribute('type') || 'text').toLowerCase();
+  return ['text', 'search', 'email', 'tel', 'url', 'number', 'password',
+    'date', 'time', 'month', 'week', 'datetime-local'].includes(type)
+    && !element.readOnly && !element.disabled;
 })()";
         let Ok(id) = self.ensure_session() else {
             return false;
@@ -238,6 +324,35 @@ impl BrowserSurface {
         .ok()
         .and_then(|data| data.get("result").and_then(Value::as_bool))
         .unwrap_or(false)
+    }
+
+    /// Whether the element `reference` names takes typed text: focusing it
+    /// lands on an input, a text area, an editable region, or a text-box
+    /// role. A page can give any `div` a `combobox` or `textbox` role — a
+    /// city in a list of suggestions, a card — and a fill or a paste into
+    /// one reports success while nothing holds the text.
+    fn takes_text(&self, reference: &str) -> bool {
+        self.perform(
+            "focus",
+            Action::Focus {
+                target: target(reference),
+            },
+        )
+        .ok && self.focused_field_is_editable()
+    }
+
+    /// The page, or the part of it under `root`, read by sight; `None` when
+    /// the reading fails or sees what it cannot reach, and the tree is read
+    /// instead.
+    fn see(&self, root: Option<&str>) -> Option<Screen> {
+        let id = self.ensure_session().ok()?;
+        let reply = self
+            .block(self.browser.command(
+                &id,
+                json!({"action": "evaluate", "script": sight::script(root)}),
+            ))
+            .ok()?;
+        sight::screen(reply.get("result")?)
     }
 
     fn perform(&self, command: &str, action: Action) -> DesktopResponse {
@@ -256,8 +371,16 @@ impl Surface for BrowserSurface {
         root: Option<&str>,
         depth: Depth,
     ) -> std::result::Result<Screen, Box<DesktopResponse>> {
+        if self.perception == Perception::Sight
+            && let Some(mut screen) = self.see(root)
+        {
+            if !app.is_empty() {
+                app.clone_into(&mut screen.app);
+            }
+            return Ok(screen);
+        }
         let request = SnapshotRequest {
-            selector: root.map(|reference| format!("@{}", reference.trim_start_matches('@'))),
+            selector: root.map(sight::selector),
             depth: (depth == Depth::Skeleton && root.is_none()).then_some(SKELETON_DEPTH),
             ..SnapshotRequest::default()
         };
@@ -290,9 +413,7 @@ impl Surface for BrowserSurface {
                         DesktopError::new("INVALID_TARGET", "the operation needs a target"),
                     )
                 },
-                |reference| {
-                    self.perform(command, action(Target::reference(reference), text.clone()))
-                },
+                |reference| self.perform(command, action(self::target(&reference), text.clone())),
             )
         };
         if let Some(reference) = reference
@@ -309,9 +430,12 @@ impl Surface for BrowserSurface {
                 });
                 let name = target.as_ref().and_then(|node| node.name.as_deref());
                 match (&reference, name) {
-                    (Some(reference), Some(name)) if covered(&reply) => self
-                        .click_through_own_card(reference, name)
-                        .unwrap_or(reply),
+                    (Some(reference), name)
+                        if covered(&reply) && (name.is_some() || sight::is_seen(reference)) =>
+                    {
+                        self.click_through_own_card(reference, name.unwrap_or_default())
+                            .unwrap_or(reply)
+                    }
                     _ => reply,
                 }
             }
@@ -338,10 +462,17 @@ impl Surface for BrowserSurface {
                     },
                 )
             }
-            JevOperation::TypeText => targeted("type-text", |target, text| Action::Fill {
-                target,
-                value: text.unwrap_or_default(),
-            }),
+            JevOperation::TypeText => {
+                if let Some(reference) = reference.as_deref()
+                    && !self.takes_text(reference)
+                {
+                    return not_a_text_field();
+                }
+                targeted("type-text", |target, text| Action::Fill {
+                    target,
+                    value: text.unwrap_or_default(),
+                })
+            }
             JevOperation::Check => targeted("check", |target, _| Action::Check {
                 target,
                 checked: true,
@@ -355,7 +486,7 @@ impl Surface for BrowserSurface {
                 Action::Scroll {
                     direction: ScrollDirection::Down,
                     pixels: None,
-                    target: reference.map(Target::reference),
+                    target: reference.as_deref().map(self::target),
                 },
             ),
             JevOperation::Wait => self.perform("wait", pause(500)),
@@ -373,7 +504,7 @@ impl Surface for BrowserSurface {
             return None;
         }
         let id = self.ensure_session().ok()?;
-        let selector = format!("@{}", target.ref_id);
+        let selector = sight::selector(&target.ref_id);
         ["inputvalue", "gettext"].into_iter().find_map(|action| {
             let data = self
                 .block(
@@ -401,11 +532,14 @@ impl Surface for BrowserSurface {
         let focused = self.perform(
             "focus",
             Action::Focus {
-                target: Target::reference(&target.ref_id),
+                target: self::target(&target.ref_id),
             },
         );
         if !focused.ok {
             return focused;
+        }
+        if !self.focused_field_is_editable() {
+            return not_a_text_field();
         }
         if target
             .available_actions
@@ -464,6 +598,18 @@ impl Surface for BrowserSurface {
             "navigate",
             page.map(|page| json!({"url": page.url, "title": page.title})),
         )
+    }
+}
+
+/// How the engine addresses `reference`: a ref sight minted by its mark's
+/// CSS selector, a tree ref as itself.
+fn target(reference: &str) -> Target {
+    if sight::is_seen(reference) {
+        Target::Selector {
+            value: sight::selector(reference),
+        }
+    } else {
+        Target::reference(reference)
     }
 }
 
@@ -550,6 +696,17 @@ fn failure(command: &str, error: &Error) -> DesktopResponse {
         code.push(character.to_ascii_uppercase());
     }
     DesktopResponse::err(command, DesktopError::new(code, error.to_string()))
+}
+
+/// The refusal for text aimed at an element that does not take it.
+fn not_a_text_field() -> DesktopResponse {
+    DesktopResponse::err(
+        "type-text",
+        DesktopError::new(
+            "NOT_A_TEXT_FIELD",
+            "the element does not take typed text: focusing it reaches no input, text area, or editable region",
+        ),
+    )
 }
 
 #[cfg(test)]

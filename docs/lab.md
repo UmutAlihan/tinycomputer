@@ -35,7 +35,8 @@ there), writes `modules.toml`, and runs the `lab` binary from
 Flags: `--headed` (physical input; the target app needs a window to focus),
 `--disable moves,undo,…` (turn decision loops off to measure them),
 `--no-memory` (ignore grounding hints from earlier runs), `--flow <file>` (run
-your own flow against a scenario's checker), `--send` (mail only; addresses
+your own flow against a scenario's checker), `--strategy narrow|wide` (how
+decisions are asked, `specs/jev-wide-turns.md`), `--send` (mail only; addresses
 `TINYCOMPUTER_LAB_SELF_EMAIL` and nothing else).
 
 ## Modes

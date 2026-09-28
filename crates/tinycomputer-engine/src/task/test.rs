@@ -707,6 +707,7 @@ async fn filling_the_payment_form_waits_for_approval_to_pay() {
         },
         budget: tinycomputer_bus::agent::TaskBudget {
             votes: Some(7),
+            strategy: Some(tinycomputer_bus::FlowStrategy::Wide),
             ..tinycomputer_bus::agent::TaskBudget::default()
         },
         ..StartTaskRequest::default()
@@ -721,6 +722,7 @@ async fn filling_the_payment_form_waits_for_approval_to_pay() {
         let requests = script.requests.lock().unwrap();
         let request = &requests[0];
         assert_eq!(request.votes, 7);
+        assert_eq!(request.strategy, tinycomputer_bus::FlowStrategy::Wide);
         assert_eq!(
             request.brief.goal,
             "book the cheapest flight to Srinagar and pay with my card"

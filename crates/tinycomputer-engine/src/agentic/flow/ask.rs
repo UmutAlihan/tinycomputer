@@ -4,12 +4,12 @@
 //! most [`CAP`] options. Independent questions about the same screen share one
 //! request, because they share one `state`.
 
-use std::{collections::BTreeMap, fmt::Write as _};
+use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
 use tinyinference_decisions::{Answer, Choice, EvaluationRequest, Noul, Question, Score};
 
-use super::view::{Candidate, Screen, describe, label, untrusted_context};
+use super::view::{Candidate, Screen, describe, element_line, label, untrusted_context};
 
 /// Most options one Choice offers before narrowing takes over.
 pub(super) const CAP: usize = 20;
@@ -154,21 +154,6 @@ pub(super) fn rich_text(ordered: &[&Candidate], area: &Candidate) -> Option<Stri
         .collect::<Vec<_>>()
         .join("\n");
     (!text.is_empty()).then_some(text)
-}
-
-fn element_line(node: &Candidate, include_values: bool) -> String {
-    let mut line = label(node);
-    if include_values
-        && let Some(value) = node.value.as_ref().and_then(Value::as_str)
-        && !value.is_empty()
-    {
-        let shown: String = value.chars().take(80).collect();
-        let _ = write!(line, " = {shown:?}");
-    }
-    if !node.states.is_empty() {
-        let _ = write!(line, " [{}]", node.states.join(", "));
-    }
-    line
 }
 
 pub(super) fn request(model: &str, state: Value, questions: Questions) -> EvaluationRequest {

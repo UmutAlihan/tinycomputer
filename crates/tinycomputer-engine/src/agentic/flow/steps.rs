@@ -18,7 +18,7 @@ use super::{
     ground::Grounded,
     memory::{learn, remember},
     validate::{MAX_REPEAT, substitute_safe},
-    view::{Candidate, Screen, is_destructive, label, target_payload},
+    view::{Candidate, Screen, element_kind, is_destructive, label, target_payload},
 };
 
 /// Turns a `do` step may spend.
@@ -496,6 +496,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     .available_actions
                     .iter()
                     .any(|action| action == "SetValue")
+                    && !self.refused.contains(&element_kind(candidate))
             })
             .cloned()
             .collect::<Vec<_>>();
@@ -513,6 +514,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             if reply.ok {
                 self.history
                     .push(format!("typed into {} to filter it", label(&target)));
+            } else {
+                self.refused.insert(element_kind(&target));
             }
         }
         Ok(())
@@ -594,6 +597,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             };
             log.confidence = Some(confidence);
             self.vars.insert(read.into.clone(), text.clone());
+            self.read_into(&read.into);
             self.history
                 .push(format!("read {what} from {source} into {}", read.into));
             return Ok(Ended::new(
@@ -646,6 +650,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .collect();
         if let Some(into) = &pick.into {
             self.vars.insert(into.clone(), summary.clone());
+            self.read_into(into);
         }
         let Some(primary) = group.primary.clone() else {
             return Err(Halt::Failed(format!(
@@ -658,15 +663,16 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 label(&primary)
             )));
         }
-        let clicked = primary.clone();
         let reply = self
-            .act(log, "click", Some(&primary), move |backend| {
-                backend.execute(JevOperation::Click, Some(clicked), None)
-            })
+            .press_uncovering(log, "click", &primary, JevOperation::Click)
             .await?;
         if !reply.ok {
+            let why = reply.error.as_ref().map_or_else(
+                || "no reason given".to_owned(),
+                |error| error.message.clone(),
+            );
             return Err(Halt::Failed(format!(
-                "could not open the picked item: {summary}"
+                "could not open the picked item ({why}): {summary}"
             )));
         }
         self.history
@@ -695,6 +701,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             read.into.clone(),
             serde_json::to_string(&rows).unwrap_or_default(),
         );
+        self.read_into(&read.into);
         self.history.push(format!(
             "extracted {} items of {what} into {}",
             rows.len(),
@@ -756,10 +763,19 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     async fn stop_before(&mut self, log: &mut StepLog, action: &str) -> Result<Ended, Halt> {
         let purpose = format!("perform: {action}");
+        // Asked to "perform: paying", Jev weighs the request against the
+        // brief's own rule to stop before paying and hesitates (measured:
+        // 0.44 on the Pay button); asked to find it without pressing it,
+        // which is all a gated step does, it answers 1.0.
+        let question = if self.allow_destructive {
+            purpose.clone()
+        } else {
+            format!("find, without pressing it, the control that would perform: {action}")
+        };
         let screen = self.look().await?;
         let pool = clickable(&screen.candidates);
         let Some(grounded) = self
-            .ground(log, &screen, &purpose, &purpose, pool)
+            .ground(log, &screen, &question, &purpose, pool)
             .await?
             .filter(|grounded| grounded.confidence >= LOCATE_FLOOR)
         else {

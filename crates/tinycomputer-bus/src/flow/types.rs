@@ -322,6 +322,31 @@ pub enum FlowLoop {
     PageKind,
     /// Checking an entered form for validation errors.
     Validation,
+    /// The attention pass of the wide strategy: which regions of a crowded
+    /// screen matter to the step, and which are distraction.
+    Survey,
+    /// The wide strategy's structured screen digest: regions, what is in
+    /// front, noise collapsed. Off, the wide strategy shows the flat element
+    /// list the narrow strategy does.
+    Digest,
+}
+
+/// How the flow runtime spends its Jev decisions.
+///
+/// Both strategies apply the same thresholds and the same safety rules; they
+/// differ in how many requests a turn takes and how much each one shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FlowStrategy {
+    /// Many small requests in sequence: judge the screen, then ground an
+    /// element, narrowing a crowded screen region by region.
+    #[default]
+    Narrow,
+    /// One wide request per turn over a structured digest of the screen,
+    /// carrying the judgement, the obstacle to dismiss, and the candidate
+    /// targets for every move at once, with the run's working memory; a
+    /// crowded screen is surveyed first for which regions matter.
+    Wide,
 }
 
 /// Where an element was found for one step, so a later run can try it first.
@@ -396,6 +421,8 @@ pub struct RunFlowRequest {
     /// Whether to return every Jev exchange in [`FlowRunResult::trace`]. For
     /// development: the trace carries the screen state each question saw.
     pub trace: bool,
+    /// How decisions are asked: [`FlowStrategy::Narrow`] unless set.
+    pub strategy: FlowStrategy,
 }
 
 impl Default for RunFlowRequest {
@@ -413,6 +440,7 @@ impl Default for RunFlowRequest {
             disabled_loops: Vec::new(),
             memory: Vec::new(),
             trace: false,
+            strategy: FlowStrategy::Narrow,
         }
     }
 }
