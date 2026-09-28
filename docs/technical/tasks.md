@@ -166,6 +166,10 @@ spent waiting for the caller does not count.
 - `origins`: the sites a browser session may load, such as
   `https://.goindigo.in` for a site and its subdomains. agent-browser's domain
   filter enforces it. It is a guard rail, not a sandbox.
+- `payment`: `stop_at_payment` (the default) makes the control that pays a
+  final checkpoint; `fill_then_approve` fills the payment form from secret
+  facts and waits at `needs_approval` before pressing it. The latter needs
+  `origins` (`ORIGINS_REQUIRED` otherwise).
 - `allow_destructive`: press irreversible controls including payments without
   pausing or asking for approval. Use with caution; payment controls are never
   gated when this is enabled.
