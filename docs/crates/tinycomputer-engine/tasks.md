@@ -295,7 +295,7 @@ controller first checks whether it looks like a captcha or login wall
 (`NeedsHuman`, above); failing that, and if a rescuer is configured and the
 task's rescue budget is not spent, it is handed to the rescuer for guidance
 before the task is allowed to fail outright. See [rescue.md](rescue.md) for
-that whole path, retry, skip, or give up, and what the rescuer is and is
+that whole path: retry, skip, or give up, and what the rescuer is and is
 not shown.
 
 Only once a rescue is not attempted (no rescuer configured, or the budget is
