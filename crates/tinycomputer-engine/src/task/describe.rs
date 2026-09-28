@@ -55,6 +55,70 @@ fn task_id() -> Value {
     }})
 }
 
+/// `StartTask`'s input schema: every field of `StartTaskRequest`.
+fn start_task_input() -> Value {
+    let object = |properties: Value, required: &[&str]| json!({"type": "object", "required": required, "properties": properties});
+    object(
+        json!({
+            "task": {"type": "string", "description": "the goal in plain language"},
+            "flow": {"type": "object", "description": "a flow written from the guide"},
+            "facts": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+                "description": "values the flow may type, by name; secret ones never reach a model"
+            },
+            "secret_facts": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "names among facts to keep secret beyond the ones recognised as sensitive"
+            },
+            "constraints": {"type": "object", "properties": {
+                "payment": {
+                    "enum": ["stop_at_payment", "fill_then_approve"],
+                    "default": "stop_at_payment"
+                },
+                "surfaces": surfaces(),
+                "origins": {"type": "array", "items": {"type": "string"}},
+                "allow_destructive": {"type": "boolean"},
+                "browser_endpoint": {"type": "string"},
+                "headed": {"type": "boolean"}
+            }},
+            "budget": {"type": "object", "properties": {
+                "max_actions": {"type": "integer"},
+                "max_model_calls": {"type": "integer"},
+                "votes": {"type": "integer"},
+                "strategy": {"enum": ["narrow", "wide"], "default": "narrow"},
+                "deliberation": {"enum": ["off", "standard", "deep"], "default": "deep"},
+                "max_elapsed_ms": {"type": "integer"},
+                "max_rescues": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "description": "how often a failed step may be rescued by the reasoning model; 0 turns rescues off"
+                }
+            }},
+            "memory": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": "TaskReport.learned from an earlier run, so this one reads less"
+            },
+            "output": {
+                "type": "object",
+                "required": ["instructions"],
+                "description": "the shape to return the answer in, as done.result; needs output_configured",
+                "properties": {
+                    "instructions": {"type": "string"},
+                    "schema": {
+                        "type": "object",
+                        "description": "a JSON Schema with an object at the top, using only type, properties, required, additionalProperties, items, enum, minItems, maxItems, description, title"
+                    }
+                }
+            },
+            "trace": {"type": "boolean"}
+        }),
+        &[],
+    )
+}
+
 fn members() -> Vec<MemberDoc> {
     let object = |properties: Value, required: &[&str]| json!({"type": "object", "required": required, "properties": properties});
     vec![
@@ -85,65 +149,7 @@ fn members() -> Vec<MemberDoc> {
         member(
             methods::START_TASK,
             "Starts a task from a flow (or a plain-language task, with a planner) and returns at once.",
-            object(
-                json!({
-                    "task": {"type": "string", "description": "the goal in plain language"},
-                    "flow": {"type": "object", "description": "a flow written from the guide"},
-                    "facts": {
-                        "type": "object",
-                        "additionalProperties": {"type": "string"},
-                        "description": "values the flow may type, by name; secret ones never reach a model"
-                    },
-                    "secret_facts": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "names among facts to keep secret beyond the ones recognised as sensitive"
-                    },
-                    "constraints": {"type": "object", "properties": {
-                        "payment": {
-                            "enum": ["stop_at_payment", "fill_then_approve"],
-                            "default": "stop_at_payment"
-                        },
-                        "surfaces": surfaces(),
-                        "origins": {"type": "array", "items": {"type": "string"}},
-                        "allow_destructive": {"type": "boolean"},
-                        "browser_endpoint": {"type": "string"},
-                        "headed": {"type": "boolean"}
-                    }},
-                    "budget": {"type": "object", "properties": {
-                        "max_actions": {"type": "integer"},
-                        "max_model_calls": {"type": "integer"},
-                        "votes": {"type": "integer"},
-                        "strategy": {"enum": ["narrow", "wide"], "default": "narrow"},
-                        "deliberation": {"enum": ["off", "standard", "deep"], "default": "deep"},
-                        "max_elapsed_ms": {"type": "integer"},
-                        "max_rescues": {
-                            "type": "integer",
-                            "maximum": 5,
-                            "description": "how often a failed step may be rescued by the reasoning model; 0 turns rescues off"
-                        }
-                    }},
-                    "memory": {
-                        "type": "array",
-                        "items": {"type": "object"},
-                        "description": "TaskReport.learned from an earlier run, so this one reads less"
-                    },
-                    "output": {
-                        "type": "object",
-                        "required": ["instructions"],
-                        "description": "the shape to return the answer in, as done.result; needs output_configured",
-                        "properties": {
-                            "instructions": {"type": "string"},
-                            "schema": {
-                                "type": "object",
-                                "description": "a JSON Schema with an object at the top, using only type, properties, required, additionalProperties, items, enum, minItems, maxItems, description, title"
-                            }
-                        }
-                    },
-                    "trace": {"type": "boolean"}
-                }),
-                &[],
-            ),
+            start_task_input(),
             "TaskView",
         ),
         member(
