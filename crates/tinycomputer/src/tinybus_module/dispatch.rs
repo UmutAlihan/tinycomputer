@@ -34,6 +34,7 @@ use tinycomputer_bus::agent::{
     StartTaskRequest, SurfaceAvailability, SurfaceKind, TaskPlan, TaskRef, TaskReport, TaskView,
 };
 
+use super::browser_defaults::BrowserDefaults;
 use super::runner::{WorkspaceRunner, jev_not_configured};
 use crate::{Desktop, Result};
 use tinycomputer_browser::{
@@ -59,9 +60,9 @@ pub(crate) struct DesktopService {
     jev: Option<agentic::JevRuntime>,
     pub(super) tasks: Arc<agentic::Tasks>,
     browser: Arc<Browser>,
-    /// The configured `browser.executable`, used by a `BrowserOpenSession`
-    /// that names none.
-    executable: Option<String>,
+    /// The configured `browser` settings, filled into a
+    /// `BrowserOpenSession` wherever the caller left them unset.
+    browser_defaults: BrowserDefaults,
 }
 
 impl DesktopService {
@@ -117,9 +118,9 @@ impl DesktopService {
                 Ok::<_, crate::Error>((planner, rescuer, shaper))
             })
             .transpose()?;
-        let executable = browser_executable(config)?;
+        let browser_defaults = BrowserDefaults::from_config(config)?;
         let mut runner = WorkspaceRunner::new(desktop.clone(), jev.clone(), browser.clone());
-        runner.executable.clone_from(&executable);
+        runner.defaults.clone_from(&browser_defaults);
         runner.cursor = cursor;
         let mut tasks = agentic::Tasks::new(Arc::new(runner));
         if let Some((planner, rescuer, shaper)) = planner {
@@ -134,7 +135,7 @@ impl DesktopService {
             jev,
             tasks,
             browser,
-            executable,
+            browser_defaults,
         })
     }
 
@@ -558,14 +559,13 @@ impl DesktopService {
     /// Launches or attaches a browser and returns its session.
     async fn browser_open_session(
         &self,
-        mut options: SessionOptions,
+        options: SessionOptions,
     ) -> TinyBusResult<DesktopResponse> {
-        if options.executable.is_none() && options.endpoint.is_none() {
-            options.executable.clone_from(&self.executable);
-        }
         Ok(browser_reply(
             "browser-open-session",
-            self.browser.open_session(options).await,
+            self.browser
+                .open_session(self.browser_defaults.apply(options))
+                .await,
         ))
     }
 
@@ -798,24 +798,6 @@ pub(super) fn desktop_availability(permissions: &DesktopResponse) -> SurfaceAvai
         kind: SurfaceKind::Desktop,
         available: reason.is_none(),
         reason,
-    }
-}
-
-/// The `browser.executable` configuration: the Chrome or Chromium binary to
-/// launch where the platform's own discovery would not find one.
-fn browser_executable(config: &serde_json::Value) -> Result<Option<String>> {
-    let Some(browser) = config.as_object().and_then(|object| object.get("browser")) else {
-        return Ok(None);
-    };
-    let invalid = || crate::Error::ConfigFieldType {
-        field: "browser",
-        expected: "an object whose optional `executable` is a string",
-    };
-    let browser = browser.as_object().ok_or_else(invalid)?;
-    match browser.get("executable") {
-        None => Ok(None),
-        Some(serde_json::Value::String(path)) => Ok(Some(path.clone())),
-        Some(_) => Err(invalid()),
     }
 }
 

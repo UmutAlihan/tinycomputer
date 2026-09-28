@@ -19,6 +19,7 @@
 //! call — nothing platform-specific has to cross a thread boundary or survive
 //! an `await`.
 
+mod browser_defaults;
 mod dispatch;
 mod runner;
 
