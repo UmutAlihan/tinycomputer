@@ -149,7 +149,9 @@ fn a_stale_ref_envelope_matches_the_desktop_recovery() {
             .suggestion
             .is_some_and(|s| s.contains("BrowserSnapshot"))
     );
-    assert_eq!(envelope.disposition.retry, RetryDisposition::Safe);
+    // The engine rejected the ref in its reply to a command it received,
+    // so nothing proves the command never arrived.
+    assert_eq!(envelope.disposition.retry, RetryDisposition::Unknown);
 }
 
 #[test]
@@ -158,6 +160,10 @@ fn a_timeout_may_have_reached_the_page() {
     assert_eq!(envelope.code, "TIMEOUT");
     assert_eq!(envelope.disposition.delivery, DeliveryDisposition::Unknown);
     assert!(envelope.suggestion.is_none());
+    // A click may already have landed: inspect before repeating it.
+    let hint = envelope.recovery.expect("a timeout has a way out");
+    assert_eq!(hint.strategy, "inspect_state_then_retry_original");
+    assert!(hint.requires_fresh_snapshot);
 }
 
 #[test]
@@ -173,10 +179,25 @@ fn a_refused_navigation_says_not_to_retry() {
             .suggestion
             .is_some_and(|s| s.starts_with("do not retry"))
     );
-    assert_eq!(
-        envelope.disposition.delivery,
-        DeliveryDisposition::NotDelivered
-    );
+    // The engine's domain filter can refuse it after receiving the command.
+    assert_eq!(envelope.disposition.delivery, DeliveryDisposition::Unknown);
+}
+
+#[test]
+fn only_local_lookups_claim_nothing_was_delivered() {
+    let not_delivered = |error: Error| {
+        error.envelope().disposition.delivery == DeliveryDisposition::NotDelivered
+    };
+    assert!(not_delivered(Error::NoSuchSession { id: "s-1".into() }));
+    assert!(not_delivered(Error::NoSuchOutput { id: "o-1".into() }));
+    for error in every_variant().into_iter().filter(|error| {
+        !matches!(
+            error,
+            Error::NoSuchSession { .. } | Error::NoSuchOutput { .. }
+        )
+    }) {
+        assert!(!not_delivered(error), "only a local lookup is provably undelivered");
+    }
 }
 
 #[test]
