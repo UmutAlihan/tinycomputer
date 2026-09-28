@@ -98,6 +98,10 @@ impl Surface for Recorder {
     fn navigate(&self, _url: &str) -> DesktopResponse {
         self.note("navigate")
     }
+
+    fn back(&self, _app: &str) -> DesktopResponse {
+        self.note("back")
+    }
 }
 
 fn workspace(with_browser: bool) -> (Workspace<Recorder, Recorder>, Arc<Mutex<Vec<String>>>) {
@@ -167,6 +171,23 @@ fn unnamed_calls_follow_the_side_last_observed_or_opened() {
             "desktop:launch",
             "desktop:execute"
         ]
+    );
+}
+
+#[test]
+fn going_back_follows_the_active_side() {
+    let (workspace, calls) = workspace(true);
+    workspace.back("Mail");
+    workspace.navigate("https://flights.test");
+    workspace.back("browser");
+    assert_eq!(
+        drain(&calls),
+        ["desktop:back", "browser:navigate", "browser:back"]
+    );
+    let bare: Workspace<Recorder, Recorder> = Workspace::new(None, None);
+    assert_eq!(
+        bare.back("browser").error.unwrap().code,
+        "BROWSER_NOT_AVAILABLE"
     );
 }
 
