@@ -5,7 +5,7 @@
 //! page, screenshot it, close. The engine behind it is
 //! [agent-browser](https://github.com/vercel-labs/agent-browser), linked as a
 //! library; these types were ported from the `tinybrowser-bus` crate, which
-//! this module supersedes (`docs/specs/unified-agent.md`).
+//! this module supersedes (`docs/technical/specs/unified-agent.md`).
 //!
 //! Every member takes one JSON object — a [`SessionRequest`] puts the session
 //! beside the member's own fields — and replies with the same

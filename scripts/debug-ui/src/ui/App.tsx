@@ -289,7 +289,7 @@ export default function App() {
     <input ref={fileRef} hidden type="file" accept=".jsonl,application/json" multiple onChange={onInput} />
     <input ref={folderRef} hidden type="file" multiple onChange={onInput} {...({ webkitdirectory: '', directory: '' } as object)} />
     {dragging && <div className="drop-overlay"><div><ArrowDownToLine size={32} /><strong>Drop journal files to inspect</strong></div></div>}
-    <header className="topbar"><div className="brand-mark"><Activity size={18} /></div><div className="brand-name">tinycomputer <span>/</span> <strong>jev inspector</strong></div><div className="topbar-right"><span className="local-badge"><i /> LOCAL DEV SERVER</span><a href="https://github.com/tinyhumansai/tinycomputer/blob/main/docs/jev-journal.md" target="_blank" rel="noreferrer">Journal format</a></div></header>
+    <header className="topbar"><div className="brand-mark"><Activity size={18} /></div><div className="brand-name">tinycomputer <span>/</span> <strong>jev inspector</strong></div><div className="topbar-right"><span className="local-badge"><i /> LOCAL DEV SERVER</span><a href="https://github.com/tinyhumansai/tinycomputer/blob/main/docs/technical/jev-journal.md" target="_blank" rel="noreferrer">Journal format</a></div></header>
     <div className="workspace">
       <aside className="sidebar">
         <div className="sidebar-title"><span>JOURNAL RUNS</span><div className="sidebar-tools"><button className="refresh-button" onClick={() => void refreshRuns(false)} disabled={refreshing} title="Refresh the run list" aria-label="Refresh the run list"><RefreshCw size={13} /></button><span className="count-pill">{runs.length}</span></div></div>

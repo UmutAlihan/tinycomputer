@@ -4,7 +4,7 @@
 #   scripts/docker-lab -- crates/tinycomputer-examples/tasks/run kashmir
 # Set FLOW_FILE to replay a saved plan instead of planning a new one; each
 # task's tasks/<name>/plan.json is the plan its recorded runs replayed
-# (docs/evals/2026-09-28-rescue.md).
+# (docs/technical/evals/2026-09-28-rescue.md).
 set -euo pipefail
 name="${1:?usage: tasks/run <task>}"
 # The name becomes paths under tasks/ and target/, so it must be a plain

@@ -1,5 +1,9 @@
 # tinycomputer-browser
 
+Part of [tinycomputer](../../README.md), a decision model (Jev) based harness for
+desktop and browser automation, written in Rust. This crate is its browser side: it drives Chrome and shows the harness a web page. Its user guide is
+[`docs/crates/tinycomputer-browser/`](../../docs/crates/tinycomputer-browser/README.md).
+
 The agent-browser adapter behind tinycomputer's `Browser` interface. It turns the
 typed requests in `tinycomputer_bus::browser` into agent-browser commands and
 the engine's replies into typed results. agent-browser is linked in-process as
@@ -15,15 +19,15 @@ it as a surface next to the desktop, and `tinycomputer` serves it over TinyBus.
 | `src/linked/` | `AgentBrowser` (feature `agent-browser`): agent-browser's dispatcher linked in-process, one `DaemonState` per session, built without reading the host's `AGENT_BROWSER_*` environment |
 | `src/convert/` | contract requests to agent-browser commands, as pure functions |
 | `src/reply/` | agent-browser replies to typed results |
-| `src/surface/` | `BrowserSurface`: one session as a `tinycomputer-core` `Surface`; `sight/`, which reads the rendered page the way a person looks at it (the default, `docs/specs/browser-sight.md`), and `tree.rs`, which parses snapshot text into a `Screen` when sight cannot reach the page or `Perception::Tree` is chosen |
+| `src/surface/` | `BrowserSurface`: one session as a `tinycomputer-core` `Surface`; `sight/`, which reads the rendered page the way a person looks at it (the default, `docs/technical/specs/browser-sight.md`), and `tree.rs`, which parses snapshot text into a `Screen` when sight cannot reach the page or `Perception::Tree` is chosen |
 | `src/error/` | `Error`: what a caller should do next, one published wire name per variant |
 | `src/outputs/` | held screenshots and PDFs: bounded count, size and lifetime, chunked reads |
 | `src/fake/` | the scripted engine tests use |
 
 `BrowserSurface` opens its session lazily and can attach to a running Chrome
 through `SessionOptions::endpoint` instead of launching one. Closing an
-attached session only disconnects. See `docs/architecture.md` for how the
+attached session only disconnects. See `docs/technical/architecture.md` for how the
 surface compares with the desktop's.
 
-Tests that launch Chromium run in the Docker lab (`docs/docker-lab.md`), never
+Tests that launch Chromium run in the Docker lab (`docs/technical/docker-lab.md`), never
 on the host.

@@ -1,6 +1,6 @@
 # Linux lab for browser automation: Rust plus Playwright's Chromium and its
 # system libraries. Tests that launch a browser, or that write and run fake
-# browser scripts, run here instead of on the host. See docs/docker-lab.md.
+# browser scripts, run here instead of on the host. See docs/technical/docker-lab.md.
 FROM mcr.microsoft.com/playwright:v1.63.0-noble
 
 ARG RUST_TOOLCHAIN=stable

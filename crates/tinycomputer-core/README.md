@@ -1,5 +1,9 @@
 # tinycomputer-core
 
+Part of [tinycomputer](../../README.md), a decision model (Jev) based harness for
+desktop and browser automation, written in Rust. This crate is the shared ground the harness stands on: the screen model, keys, safety rules, and facts. Its user guide is
+[`docs/crates/tinycomputer-core/`](../../docs/crates/tinycomputer-core/README.md).
+
 The shared, engine-free domain of tinycomputer's surfaces. Everything here is
 deterministic and behaves the same for a desktop application and a web page.
 
@@ -12,4 +16,4 @@ deterministic and behaves the same for a desktop application and a web page.
 | `facts/` | `Facts`: the caller's values, shared or secret, redaction, and masking secrets back to `${name}` |
 
 The safety checks are what stop a run before anything irreversible or paid
-happens, whatever a model decided (`docs/specs/unified-agent.md`).
+happens, whatever a model decided (`docs/technical/specs/unified-agent.md`).

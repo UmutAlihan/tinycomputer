@@ -1,7 +1,7 @@
 # Travel fixture
 
 A small static booking site for end-to-end browser runs in the Docker lab
-(`docs/docker-lab.md`). It has the shape of a real booking flow with none of a
+(`docs/technical/docker-lab.md`). It has the shape of a real booking flow with none of a
 real site's unpredictability, so a run's outcome can be checked exactly:
 
 | Page | What it exercises |

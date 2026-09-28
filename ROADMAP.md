@@ -8,12 +8,12 @@ What exists, what is next, and what is deliberately out of scope.
   `DesktopResponse` envelope, the task and browser types, and the contract
   version, with no runtime dependencies
 - Jev-driven control: `RunGoal`, `ResolveIntent`, and intent flows (`RunFlow`)
-  grounded by small decision loops (`docs/decision-loops.md`)
+  grounded by small decision loops (`docs/technical/decision-loops.md`)
 - the browser: agent-browser linked in-process, driven by the same loops as the
   desktop through a shared `Surface` trait
 - the task API for outside agents, with pauses for missing values, approvals,
   and people, a payment checkpoint, and an optional LLM planner
-  (`docs/tasks.md`)
+  (`docs/technical/tasks.md`)
 - the `tinycomputer` module: the vendored `agent-desktop` engine served over
   TinyBus, with a per-member permission preflight and blocking work kept off the
   dispatch task
