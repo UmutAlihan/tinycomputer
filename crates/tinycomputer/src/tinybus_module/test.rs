@@ -7,6 +7,8 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod browser;
+
 use super::{DesktopService, setup};
 use serde_json::json;
 use tinybus::broker::Broker;
@@ -535,7 +537,10 @@ async fn the_runner_keeps_one_workspace_per_task_until_released() {
     use tinycomputer_bus::agent::TaskId;
     use tinycomputer_engine::FlowRunner;
 
-    let runner = super::runner::WorkspaceRunner::new(crate::Desktop::new(), None);
+    let browser = std::sync::Arc::new(tinycomputer_browser::Browser::new(std::sync::Arc::new(
+        tinycomputer_browser::AgentBrowser,
+    )));
+    let runner = super::runner::WorkspaceRunner::new(crate::Desktop::new(), None, browser);
     let task = TaskId::new("t-1");
     // Nothing observed yet, so there is nothing to read.
     assert!(runner.visible_text(&task).await.is_empty());
