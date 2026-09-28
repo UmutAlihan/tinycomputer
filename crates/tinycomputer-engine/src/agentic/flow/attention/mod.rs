@@ -401,33 +401,30 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             return Ok(false);
         };
         cleared.count += 1;
-        let (reply, how) = match distraction.closer.clone() {
-            Some(target) => {
-                cleared.pressed.insert(signature(&target));
-                let pressed = target.clone();
-                let reply = self
-                    .act(
-                        log,
-                        "click (clear distraction)",
-                        Some(&target),
-                        move |backend| backend.execute(JevOperation::Click, Some(pressed), None),
-                    )
-                    .await?;
-                (reply, label(&target))
-            }
-            None => {
-                cleared.pressed.insert(ESCAPED.to_owned());
-                let app = self.app.clone();
-                let reply = self
-                    .act(
-                        log,
-                        "press escape (clear distraction)",
-                        None,
-                        move |backend| backend.press(&app, "escape"),
-                    )
-                    .await?;
-                (reply, "Escape".to_owned())
-            }
+        let (reply, how) = if let Some(target) = distraction.closer.clone() {
+            cleared.pressed.insert(signature(&target));
+            let pressed = target.clone();
+            let reply = self
+                .act(
+                    log,
+                    "click (clear distraction)",
+                    Some(&target),
+                    move |backend| backend.execute(JevOperation::Click, Some(pressed), None),
+                )
+                .await?;
+            (reply, label(&target))
+        } else {
+            cleared.pressed.insert(ESCAPED.to_owned());
+            let app = self.app.clone();
+            let reply = self
+                .act(
+                    log,
+                    "press escape (clear distraction)",
+                    None,
+                    move |backend| backend.press(&app, "escape"),
+                )
+                .await?;
+            (reply, "Escape".to_owned())
         };
         self.history.push(format!(
             "cleared {} out of the way with {how}, ok={}",
