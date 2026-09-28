@@ -5,6 +5,9 @@
 //! claim one field. Each text is then delivered with read-back verification
 //! (`deliver_text`), top to bottom in screen order. A slot with no visible
 //! field first runs a short `do` loop to reveal one.
+//!
+//! `assign` matches slots to fields and asks which the form wants; `fill`
+//! delivers each text and verifies it.
 
 mod assign;
 mod fill;

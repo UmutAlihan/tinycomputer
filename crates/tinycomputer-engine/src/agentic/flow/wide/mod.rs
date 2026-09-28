@@ -27,6 +27,9 @@
 //! [digest](tinycomputer_core::surface::digest) — what is in front, regions
 //! ranked by relevance, lists as cards, noise collapsed — and a memory
 //! section built by the [ledger](super::ledger) in place of the flat history.
+//!
+//! `state` builds what every wide question sees, `judge` asks a turn's one
+//! request, and `resolve` settles what it prepared.
 
 mod judge;
 mod resolve;

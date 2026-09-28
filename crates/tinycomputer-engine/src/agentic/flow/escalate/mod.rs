@@ -27,6 +27,9 @@
 //! journal all apply, and every rung first checks the budget has room: a
 //! run short of calls stops climbing and decides with what it has, rather
 //! than failing for lack of deliberation.
+//!
+//! `belief` climbs the ladder for a yes/no judgement, and `target` for a
+//! target Choice.
 
 mod belief;
 mod target;

@@ -3,6 +3,9 @@
 //! Each loop asks small questions: one Noul, one Score, or one Choice over at
 //! most [`CAP`] options. Independent questions about the same screen share one
 //! request, because they share one `state`.
+//!
+//! `screen_state` builds the shared state, `questions` the questions, and
+//! `answers` reads what comes back.
 
 mod answers;
 mod questions;

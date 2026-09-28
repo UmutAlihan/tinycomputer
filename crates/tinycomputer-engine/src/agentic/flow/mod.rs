@@ -34,6 +34,10 @@
 //! reads `${name}` wherever it would have appeared.
 //!
 //! See `docs/specs/jev-intent-flows.md` for the design and its rationale.
+//!
+//! `FlowRun`'s methods are split by concern: `run` starts a run and runs
+//! its steps, `decide` asks Jev through one door, `brief` builds the brief,
+//! `look` reads the screen, and `action` runs one desktop action.
 
 mod act;
 mod action;

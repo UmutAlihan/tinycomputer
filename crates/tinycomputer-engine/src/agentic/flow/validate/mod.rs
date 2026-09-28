@@ -1,4 +1,7 @@
 //! Flow validation and `${name}` substitution: pure functions, no desktop.
+//!
+//! `rules` walks a flow's steps and checks each one; `substitution` finds
+//! and expands `${name}` references.
 
 mod rules;
 mod substitution;

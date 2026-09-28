@@ -15,6 +15,9 @@
 //! clearly agreed pick (`evidence.rs`) is cleared, with the region's
 //! least-committal control: rejecting or essential-only first, closing next,
 //! accepting last.
+//!
+//! `find` finds the distractions without asking anyone, and `clear` asks
+//! Jev and clears the one it picks.
 
 mod clear;
 mod find;
