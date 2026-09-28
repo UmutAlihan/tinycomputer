@@ -228,6 +228,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
           <div class="badge adults-picker"><button>2 adults</button></div>
           <p class="address">Address: 1 Lake Road</p>
           <div class="css-1ad4k9 sc-hAdSfq"><button>Continue</button></div>
+          <div class="gb_2d gb_Ad"><button>Main menu</button></div>
           <div class="AdSlot_wrapper__x1y2"><a href="/deal">Watch deal</a></div>
         </main>"#,
     )
@@ -244,6 +245,7 @@ async fn live_ad_iframes_and_sponsored_blocks_are_removed() {
         "2 adults",
         "Address: 1 Lake Road",
         "Continue",
+        "Main menu",
     ] {
         assert!(names.iter().any(|name| name == kept), "{kept} in {names:?}");
     }
@@ -345,13 +347,16 @@ async fn live_hidden_elements_are_dropped() {
     let Some(reading) = live_reading(
         r#"<main>
           <button>Visible</button>
-          <div aria-hidden="true"><button>Clone slide</button><p>Hidden words</p></div>
+          <div aria-hidden="true" style="position: absolute; left: 1400px; top: 100px">
+            <button>Clone slide</button><p>Hidden words</p></div>
           <div inert><a href="/x">Inert link</a></div>
           <span style="position: absolute; top: 300px; clip: rect(0 0 0 0)">Screen reader only</span>
           <label><input type="checkbox" style="position: absolute; opacity: 0; width: 1px; height: 1px">
             Keep me signed in</label>
           <label><input type="checkbox"
             style="position: absolute; clip: rect(0 0 0 0); width: 20px; height: 20px"> Send offers</label>
+          <p><span aria-hidden="true">Sort by:</span></p>
+          <div aria-hidden="true" style="margin-top: 1200px"><button>Explore destinations</button></div>
         </main>"#,
     )
     .await
@@ -359,7 +364,9 @@ async fn live_hidden_elements_are_dropped() {
         return;
     };
     let names = shown_names(&reading);
-    assert!(names.iter().any(|name| name == "Visible"), "{names:?}");
+    for kept in ["Visible", "Sort by:", "Explore destinations"] {
+        assert!(names.iter().any(|name| name == kept), "{kept} in {names:?}");
+    }
     for dropped in [
         "Clone slide",
         "Hidden words",
@@ -384,6 +391,19 @@ async fn live_hidden_elements_are_dropped() {
         reading["denoised"],
         json!({"ads": 0, "empty": 0, "hidden": 3})
     );
+
+    // The page a dialog hides is left out; the dialog is what is read.
+    let Some(behind) = live_reading(
+        r#"<main aria-hidden="true"><button>Behind the dialog</button><p>Page words</p></main>
+        <div role="dialog" aria-modal="true" style="position: fixed; inset: 0; background: white">
+          <button>Close</button></div>"#,
+    )
+    .await
+    else {
+        return;
+    };
+    assert_eq!(shown_names(&behind), ["Close"]);
+    assert_eq!(behind["denoised"]["hidden"], 1);
 
     // A page left marked hidden with nothing in front of it — a modal
     // library that forgot to undo its marking — is still what a person sees.
