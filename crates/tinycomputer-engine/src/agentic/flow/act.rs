@@ -299,7 +299,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 self.judge_wide(log, &screen, intent, pressed.as_ref(), &state.banned)
                     .await?
             } else {
-                self.judge(log, &screen, intent, last.as_deref()).await?
+                self.judge_speculating(log, &screen, intent, last.as_deref(), &state.banned)
+                    .await?
             };
             if judged.next == "finished"
                 && judged.done.is_some_and(|done| done < finish_floor(turn))
@@ -552,6 +553,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     operation,
                     banned,
                     judged.prepared.get(operation),
+                    judged.speculated.clone(),
                 )
                 .await?
                 .map(Box::new),
@@ -568,22 +570,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
     }
 
-    /// Grounds and performs an `activate`, `expand`, or `scroll` move.
-    async fn activate(
-        &mut self,
-        log: &mut StepLog,
-        screen: &Screen,
-        intent: &str,
-        operation: &str,
-        banned: &BTreeSet<String>,
-        prepared: Option<&Prepared>,
-    ) -> Result<Option<Candidate>, Halt> {
-        let (capability, jev_operation, verb) = match operation {
-            "expand" => ("Expand", JevOperation::Expand, "expand"),
-            "scroll" => ("Scroll", JevOperation::Scroll, "scroll"),
-            _ => ("Click", JevOperation::Click, "click"),
-        };
-        let pool = screen
+    /// The elements a move of `capability` may target: not banned this
+    /// step, and not of a kind that refused text.
+    fn pool(&self, screen: &Screen, capability: &str, banned: &BTreeSet<String>) -> Vec<Candidate> {
+        screen
             .candidates
             .iter()
             .filter(|candidate| {
@@ -595,11 +585,36 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     && !self.refused.contains(&element_kind(candidate))
             })
             .cloned()
-            .collect::<Vec<_>>();
-        let purpose = format!("{verb} to accomplish: {intent}");
-        let grounded = match prepared {
-            Some(prepared) => self.resolve(log, screen, &purpose, prepared).await?,
-            None => self.ground(log, screen, &purpose, intent, pool).await?,
+            .collect()
+    }
+
+    /// Grounds and performs an `activate`, `expand`, or `scroll` move.
+    async fn activate(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        intent: &str,
+        operation: &str,
+        banned: &BTreeSet<String>,
+        prepared: Option<&Prepared>,
+        speculated: Option<Speculated>,
+    ) -> Result<Option<Candidate>, Halt> {
+        let (capability, jev_operation, verb) = match operation {
+            "expand" => ("Expand", JevOperation::Expand, "expand"),
+            "scroll" => ("Scroll", JevOperation::Scroll, "scroll"),
+            _ => ("Click", JevOperation::Click, "click"),
+        };
+        let purpose = activate_purpose(verb, intent);
+        let grounded = match (prepared, speculated) {
+            (Some(prepared), _) => self.resolve(log, screen, &purpose, prepared).await?,
+            (None, Some(speculated)) if operation == "activate" => {
+                self.resume(log, screen, speculated.opening, Some(speculated.answers))
+                    .await?
+            }
+            _ => {
+                let pool = self.pool(screen, capability, banned);
+                self.ground(log, screen, &purpose, intent, pool).await?
+            }
         };
         let Some(grounded) = grounded else {
             self.history.push(format!(
@@ -741,6 +756,47 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// One request judging the screen against `intent` and proposing a move;
     /// after pressing `last`, it also asks whether that helped.
+    /// Judges the turn and, in the same round trip, asks grounding's first
+    /// round for an `activate` move: most turns activate, and the target's
+    /// pool and purpose do not depend on the judge's answer. A turn that
+    /// ends up activating then waits for one round trip fewer.
+    async fn judge_speculating(
+        &mut self,
+        log: &mut StepLog,
+        screen: &Screen,
+        intent: &str,
+        last: Option<&str>,
+        banned: &BTreeSet<String>,
+    ) -> Result<Judgement, Halt> {
+        let questions = self.judge_questions(log, intent, last);
+        if questions.is_empty() || !self.enabled(FlowLoop::Moves) {
+            return self.judge(log, screen, intent, last).await;
+        }
+        let pool = self.pool(screen, "Click", banned);
+        let opening = self.opening(log, screen, &activate_purpose("click", intent), intent, pool, true);
+        let mut requests = vec![ask::request(
+            self.model(),
+            self.state(screen, intent),
+            questions,
+        )];
+        let speculative = opening.requests();
+        let wanted = speculative.len();
+        requests.extend(speculative);
+        let mut answers = self.ask_batch(log, requests).await?.into_iter();
+        let judged = answers.next().ok_or_else(|| {
+            Halt::Failed("no Jev evaluation completed".to_owned())
+        })?;
+        let rest = answers.collect::<Vec<_>>();
+        let mut judged = Judgement::read(&judged);
+        if rest.len() == wanted {
+            judged.speculated = Some(Speculated {
+                opening,
+                answers: rest,
+            });
+        }
+        Ok(judged)
+    }
+
     async fn judge(
         &mut self,
         log: &mut StepLog,
@@ -836,6 +892,19 @@ pub(super) struct Judgement {
     /// Under the wide strategy: how to clear what is in front, if it is in
     /// the way.
     pub(super) dismissal: Option<Dismissal>,
+    /// Under the narrow strategy: the `activate` target's first grounding
+    /// round, asked in the same round trip as the judge.
+    pub(super) speculated: Option<Speculated>,
+}
+
+/// Grounding's first round for an `activate` move, asked alongside the
+/// judge before it is known the move will be `activate`, and its answers.
+/// Used only if it is; otherwise its calls were spent for nothing, which
+/// the journal shows as a decision with no action after it.
+#[derive(Debug, Clone)]
+pub(super) struct Speculated {
+    pub(super) opening: Opening,
+    pub(super) answers: Vec<BTreeMap<String, Answer>>,
 }
 
 impl Judgement {
@@ -861,6 +930,7 @@ impl Judgement {
             shortcut,
             prepared: BTreeMap::new(),
             dismissal: None,
+            speculated: None,
         }
     }
 
@@ -875,6 +945,12 @@ impl Judgement {
             shortcut: None,
             prepared: BTreeMap::new(),
             dismissal: None,
+            speculated: None,
         }
     }
+}
+
+/// What grounding looks for when a move of `verb` serves `intent`.
+fn activate_purpose(verb: &str, intent: &str) -> String {
+    format!("{verb} to accomplish: {intent}")
 }
