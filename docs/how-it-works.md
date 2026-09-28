@@ -20,13 +20,21 @@ much you already know.
 
 | Level | You say | tinycomputer works out |
 |---|---|---|
-| **Primitives** | "click element `@e12`", "type this into that field" | nothing; you decide every click |
+| **Primitives** | "click element `@e12`", "type this into that field", or, on a web page, "open a browser session", "click ref `e3`" | nothing; you decide every click |
 | **Flows** | "open Mail", "start a new email", "enter the recipient and subject", "stop before sending" | which buttons, fields, and menus make each step happen |
 | **Tasks** | "find the cheapest flight from Delhi to Srinagar on 14 October and fill in my details up to payment" | the plan, the steps, every click, and when to stop and ask you |
 
 Most people want tasks. A task runs in the background, pauses when it needs
 something from you, and always stops before money moves. See
 [Giving it a task](giving-it-a-task.md).
+
+The primitives level covers both surfaces: the desktop members (`Click`,
+`Snapshot`, and the rest) and the 13 browser members, each named with a
+`Browser` prefix (`BrowserOpenSession`, `BrowserNavigate`, `BrowserPerform`,
+and so on), all served on the one interface. A caller reaches for these
+directly when it wants to drive a page or a window itself rather than
+handing over a whole job; see
+[docs/crates/tinycomputer-bus/browser.md](crates/tinycomputer-bus/browser.md).
 
 A flow is a short list of plain-language steps. Tasks are built out of flows,
 and you can write one yourself when you want more control. See

@@ -71,14 +71,14 @@ for the engineering write-up this page is a friendlier tour of.
 
 | Folder | What it holds | Read next |
 |---|---|---|
-| `names/` | The one interface name, the one object path, and one constant per member (56 desktop members plus 8 task members) | [Members and names](members-and-names.md) |
+| `names/` | The one interface name, the one object path, and one constant per member (80 in total: 54 desktop, 5 Jev-driven, 8 task, and 13 browser) | [Members and names](members-and-names.md) |
 | `envelope/` | `DesktopResponse`, the reply shape every desktop member uses, and the structured `DesktopError` it carries on failure | [The envelope and errors](envelope-and-errors.md) |
 | `vocabulary/` | The small shared enums every payload draws from: surfaces, mouse buttons, modifier keys, element properties | [The shared vocabulary](vocabulary.md) |
 | `observation/`, `interaction/`, `input/`, `apps/`, `clipboard/`, `notifications/`, `waiting/`, `system/` | One module per family of desktop members: reading the screen, acting on a ref, synthesizing keys and clicks, managing windows and applications, and so on | [Members and names](members-and-names.md) |
 | `flow/` | `Flow`, the app-agnostic script format, and its authoring guide | [Writing flows, the wire format](flows.md) |
 | `agentic/` | `RunGoal` and `ResolveIntent`: the lower-level, bounded desktop-control loop that flows are built on | [The goal loop](goal-loop.md) |
 | `agent/` | The Agent (task) interface: hand over a job in plain language, get back a paused-or-finished view | [The Agent and task types](agent-and-tasks.md) |
-| `browser/` | The browser interface's own vocabulary: sessions, snapshots, actions, screenshots, downloads | [Browser types](browser.md) |
+| `browser/` | The 13 `Browser…` members' own vocabulary, served on the same interface as the desktop members: sessions, snapshots, actions, screenshots, downloads | [Browser types](browser.md) |
 | `version/` | `CONTRACT_VERSION` and the rule a host uses to decide whether it can bind to a given module | [Versioning and compatibility](versioning.md) |
 
 Each page below explains the *why*, links to the source for the exact field
@@ -88,12 +88,12 @@ wire format, so what you see there is what actually goes over the wire).
 ## Pages
 
 - [The envelope and errors](envelope-and-errors.md): every desktop reply's shape, and how a failure is described.
-- [Members and names](members-and-names.md): the 56 desktop members, grouped by family, and why names are constants rather than strings.
+- [Members and names](members-and-names.md): all 80 members, grouped by family, and why names are constants rather than strings.
 - [The shared vocabulary](vocabulary.md): surfaces, buttons, modifiers, and the other small enums every payload reuses.
 - [Writing flows, the wire format](flows.md): the `Flow` grammar as JSON, `RunFlowRequest`, and how a run reports itself.
 - [The goal loop](goal-loop.md): `RunGoal` and `ResolveIntent`, the bounded loop underneath flows.
 - [The Agent and task types](agent-and-tasks.md): `StartTask`, `ContinueTask`, `TaskStatus`, and the rest of the task API's wire shapes.
-- [Browser types](browser.md): sessions, snapshots, actions, and screenshots for the browser interface.
+- [Browser types](browser.md): sessions, snapshots, actions, and screenshots for the 13 browser members.
 - [Versioning and compatibility](versioning.md): `CONTRACT_VERSION`, `ENVELOPE_VERSION`, and the bind rule.
 
 For the cross-cutting story of how a task decides what to do, see

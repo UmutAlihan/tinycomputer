@@ -11,10 +11,10 @@ know how the other one is built.
 tinycomputer is one of those processes, or more precisely, one of those things
 that *can be* a process, more on that below. It claims the name
 `ai.tinyhumans.tinycomputer.Desktop`, serves one object at
-`/ai/tinyhumans/tinycomputer/Desktop`, and answers 67 methods on it: take a
-snapshot of a window, click a button, run a whole multi-step task. A host,
-whatever program is orchestrating an agent, talks to it the same way it would
-talk to any other TinyBus service.
+`/ai/tinyhumans/tinycomputer/Desktop`, and answers 80 methods on it: take a
+snapshot of a window, click a button, drive a browser session, run a whole
+multi-step task. A host, whatever program is orchestrating an agent, talks to
+it the same way it would talk to any other TinyBus service.
 
 ## Why not just an HTTP API, or a plain Rust library
 
@@ -52,8 +52,9 @@ socket.
   on `DesktopService` in `crates/tinycomputer/src/tinybus_module/dispatch/mod.rs`
   is what turns a plain `impl` block into that interface.
 - **Methods.** Typed request in, typed response out, over the wire as
-  serialized JSON-shaped payloads. `Click`, `Snapshot`, `RunGoal`, and 64
-  others. See [members.md](members.md) for the full list.
+  serialized JSON-shaped payloads. `Click`, `Snapshot`, `RunGoal`,
+  `BrowserNavigate`, and 76 others. See [members.md](members.md) for the full
+  list.
 - **Confidential delivery.** Some methods, `RunGoal` and the task-starting
   calls among them, are marked `#[tinybus(confidential)]`. TinyBus treats
   those calls, and the module's own configuration, as sensitive host-control

@@ -70,3 +70,20 @@ rewritten from `PascalCase` to `SCREAMING_SNAKE_CASE`: `StaleRef` becomes
 `STALE_REF`, matching the convention the desktop adapter's own errors use,
 so a flow reading error codes does not need to know which surface it is
 talking to.
+
+## Where errors surface for the `Browser…` bus members
+
+The same idea applies when a caller reaches `Browser` directly over the bus,
+through one of the 13 `Browser…` members. `crates/tinycomputer`'s dispatch
+wraps each result with `Error::envelope` (`error/mod.rs`), which builds a
+`DesktopError` the same way: `code` is `errors::code` of the wire name (the
+desktop's own spelling wherever the meaning is shared), the full wire name
+rides in `details.name`, and `recovery` comes from `errors::recovery`. A
+failure the browser was never asked to attempt, a request `classify` rejects
+before it reaches agent-browser, is marked not delivered, so a caller knows
+retrying it cannot repeat an effect. This is a separate code path from
+`BrowserSurface`'s (a flow or task drives the page through the engine's
+`Surface` trait; a direct `Browser…` call goes straight through the module's
+dispatch), but both end up at the same `DesktopResponse` shape and the same
+codes, so a caller does not need to know which path produced a given
+failure.

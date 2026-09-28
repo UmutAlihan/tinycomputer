@@ -134,18 +134,22 @@ covers the rescue mechanism itself.
 }
 ```
 
-Names the Chrome or Chromium binary a task's browser session should launch,
-for when the platform's own discovery would not find one, for example a
-headless container with Chrome installed somewhere nonstandard. Most
-installs never need this: leave `browser` out entirely and the linked
-`agent-browser` engine looks for Chrome itself. `browser` is only ever an
-object with this one optional key; sending anything else under `browser` is
-rejected rather than ignored.
+Names the Chrome or Chromium binary a browser session should launch, for when
+the platform's own discovery would not find one, for example a headless
+container with Chrome installed somewhere nonstandard. This applies to a
+task's browser session and to a session a caller opens directly with
+`BrowserOpenSession`: that member launches the configured
+`browser.executable` whenever the request names neither its own `executable`
+nor an `endpoint` to attach to. Most installs never need this: leave
+`browser` out entirely and the linked `agent-browser` engine looks for Chrome
+itself. `browser` is only ever an object with this one optional key; sending
+anything else under `browser` is rejected rather than ignored.
 
 This is independent of `constraints.browser_endpoint` on an individual
-`StartTask` request, which instead attaches to an *already-running* Chrome
-over its DevTools endpoint (for example the user's own signed-in browser)
-rather than launching a fresh one.
+`StartTask` request, and of `endpoint` on a `BrowserOpenSession` request,
+either of which instead attaches to an *already-running* Chrome over its
+DevTools endpoint (for example the user's own signed-in browser) rather than
+launching a fresh one.
 
 ## `cursor`
 

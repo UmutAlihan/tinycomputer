@@ -1,6 +1,6 @@
 # Members, by family
 
-The module serves 67 members on one interface,
+The module serves 80 members on one interface,
 `ai.tinyhumans.tinycomputer.Desktop`, in the order
 `crates/tinycomputer_bus::names::METHODS` declares them, which is also the
 order they are dispatched in
@@ -10,10 +10,13 @@ so this list cannot silently drift from the code.
 
 Every member here except the eight task members (their own section below)
 takes at most one request payload and always answers with a `DesktopResponse`
-whose `ok` flag picks between `data` and a structured `error`. It never
-answers with a bare `TinyBus` transport error for something the caller did;
-that is reserved for the module failing to even start the command, which is
-rare enough that you should treat it as a bug report if you see one. See
+whose `ok` flag picks between `data` and a structured `error`. That includes
+the 13 browser members: they take one object, the session beside the member's
+own fields, and answer in the same envelope, reusing a desktop error code
+wherever the meaning is shared. The module never answers with a bare
+`TinyBus` transport error for something the caller did; that is reserved for
+the module failing to even start the command, which is rare enough that you
+should treat it as a bug report if you see one. See
 [calling-it.md](calling-it.md) for what that envelope actually looks like on
 the wire.
 
@@ -158,6 +161,37 @@ something or finishes. `ContinueTask` answers whatever it is paused on.
 family from a caller's point of view, including facts, secrets, budgets, and
 payment handling; [calling-it.md](calling-it.md) here shows the raw request
 and response shapes.
+
+## Browser (13)
+
+`BrowserOpenSession`, `BrowserCloseSession`, `BrowserListSessions`,
+`BrowserNavigate`, `BrowserSnapshot`, `BrowserPerform`, `BrowserReadPage`,
+`BrowserEvaluate`, `BrowserScreenshot`, `BrowserReadOutput`,
+`BrowserReleaseOutput`, `BrowserListDownloads`, `BrowserWaitDownload`
+
+The primitives for driving a Chrome session directly, on the same interface
+and object path as the desktop members, each carrying a `Browser` prefix so
+none collides with a desktop member of a different shape (`Snapshot` and
+`Screenshot` exist on both sides). `BrowserOpenSession` launches or attaches
+to a browser and returns a `SessionId`; every other member except
+`BrowserListSessions` takes that session beside its own fields.
+`BrowserNavigate`, `BrowserSnapshot`, and `BrowserReadPage` observe the active
+page; `BrowserPerform` acts on a ref, selector, or semantic locator the same
+way the desktop's ref-addressed members act on an accessibility ref, and
+fails loudly rather than reporting success when the target is covered.
+`BrowserScreenshot` hands back an output id rather than an inline image;
+`BrowserReadOutput` pulls it in chunks and `BrowserReleaseOutput` frees it
+early. `BrowserListDownloads` and `BrowserWaitDownload` track files a page
+downloads.
+
+The module holds one `Browser`, shared with the task runner, so a task's own
+browser session shows up in `BrowserListSessions` and a screenshot a task
+view names can be read back with `BrowserReadOutput`, without having to go
+through the task API to see it. See
+[docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md) for
+the full payload shapes and error codes, and
+[docs/crates/tinycomputer-browser/README.md](../tinycomputer-browser/README.md)
+for the engine underneath.
 
 ## Confidential members
 
