@@ -1,3 +1,5 @@
+//! Unit tests for the observed screen model and its change fingerprint.
+
 use super::{Candidate, Screen, fingerprint};
 use serde_json::json;
 
