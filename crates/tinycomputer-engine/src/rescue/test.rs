@@ -93,12 +93,18 @@ const FIX: &str = r#"Thinking done.
 async fn guidance_comes_back_as_steps_to_run_in_place_of_the_failed_one() {
     let (rescuer, model) = scripted(&[Ok(FIX)]);
     let briefing = briefing();
-    let Guidance::Retry { reason, steps } = rescuer.guide(&briefing).await.unwrap() else {
+    let Guidance::Retry {
+        reason,
+        steps,
+        covers,
+    } = rescuer.guide(&briefing).await.unwrap()
+    else {
         panic!("expected steps");
     };
+    assert_eq!(covers, 0, "nothing after the failed step is covered by default");
     assert_eq!(reason, "the calendar is still open over the form");
     assert_eq!(steps.len(), 2);
-    let flow = resumed(&briefing, steps);
+    let flow = resumed(&briefing, steps, covers);
     assert_eq!(flow.steps.len(), 3, "two guidance steps, then the rest");
     assert_eq!(flow.steps[2], briefing.flow.steps[3]);
     assert_eq!(flow.app, "browser");
@@ -209,4 +215,51 @@ fn the_briefing_shows_earlier_rescues_and_cuts_a_long_screen() {
 fn a_rescuer_debug_prints_nothing_of_its_model() {
     let (rescuer, _) = scripted(&[]);
     assert_eq!(format!("{rescuer:?}"), "Rescuer { .. }");
+}
+
+#[tokio::test]
+async fn guidance_may_cover_the_steps_after_the_failed_one_but_never_a_stop_before() {
+    let mut briefing = briefing();
+    // Fail at step 2, the date, so the class choice after it can be covered.
+    briefing.failed = 1;
+    let covering = r#"{"action": "retry", "reason": "the date and class are one picker",
+      "steps": [{"choose": {"what": "the date and class picker", "option": "18 October, Economy"}}],
+      "covers": 1}"#;
+    let (rescuer, _) = scripted(&[Ok(covering)]);
+    let Guidance::Retry { steps, covers, .. } = rescuer.guide(&briefing).await.unwrap() else {
+        panic!("expected steps");
+    };
+    assert_eq!(covers, 1);
+    let flow = resumed(&briefing, steps, covers);
+    assert_eq!(flow.steps.len(), 2, "the guidance, then the stop_before");
+    assert_eq!(flow.steps[1], briefing.flow.steps[3]);
+
+    let past_the_guard = r#"{"action": "retry", "reason": "x",
+      "steps": ["choose Economy"], "covers": 2}"#;
+    let too_far = r#"{"action": "retry", "reason": "x", "steps": ["choose Economy"], "covers": 9}"#;
+    let (rescuer, model) = scripted(&[Ok(past_the_guard), Ok(too_far), Ok(covering)]);
+    assert!(matches!(
+        rescuer.guide(&briefing).await,
+        Ok(Guidance::Retry { covers: 1, .. })
+    ));
+    let seen = model.seen.lock().unwrap().clone();
+    let repairs = seen
+        .last()
+        .unwrap()
+        .iter()
+        .filter(|turn| turn.role == Role::User)
+        .skip(1)
+        .map(|turn| turn.text.clone())
+        .collect::<Vec<_>>();
+    assert!(repairs[0].contains("stop_before"), "{}", repairs[0]);
+    assert!(repairs[1].contains("only 2"), "{}", repairs[1]);
+
+    // A guard nested in a covered `if` is still a guard.
+    briefing.flow.steps[2] = serde_json::from_value(json!({"if": {
+        "condition": "a fare is shown",
+        "then": [{"stop_before": "paying"}]
+    }}))
+    .unwrap();
+    let (rescuer, _) = scripted(&[Ok(covering)]);
+    assert!(rescuer.guide(&briefing).await.is_err());
 }
