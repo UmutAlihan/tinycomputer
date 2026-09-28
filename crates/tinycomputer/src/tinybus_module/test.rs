@@ -259,14 +259,20 @@ fn wire_sweep() -> Vec<(&'static str, serde_json::Value)> {
         (names::methods::PERMISSIONS, empty),
         (browser::CLOSE_SESSION, no_session.clone()),
         (browser::LIST_SESSIONS, nothing),
-        (browser::NAVIGATE, json!([{ "session": "s-0", "url": "https://example.com" }])),
+        (
+            browser::NAVIGATE,
+            json!([{ "session": "s-0", "url": "https://example.com" }]),
+        ),
         (browser::SNAPSHOT, no_session.clone()),
         (
             browser::PERFORM,
             json!([{ "session": "s-0", "action": "press", "key": "Tab" }]),
         ),
         (browser::READ_PAGE, no_session.clone()),
-        (browser::EVALUATE, json!([{ "session": "s-0", "expression": "1" }])),
+        (
+            browser::EVALUATE,
+            json!([{ "session": "s-0", "expression": "1" }]),
+        ),
         (browser::SCREENSHOT, no_session.clone()),
         (browser::READ_OUTPUT, no_output.clone()),
         (browser::RELEASE_OUTPUT, no_output),
