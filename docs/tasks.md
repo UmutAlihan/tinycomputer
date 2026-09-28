@@ -95,7 +95,8 @@ The worker runs a list of flow runs in order (`drive`). Usually that list has
 one entry, the whole flow. For each run it:
 
 1. builds a `RunFlowRequest` (`run_request`) with the facts as variables, the
-   fact names marked private, `include_values` off, the task's grounding memory,
+   fact names marked private, `include_values` on (so Jev can check what was
+   typed; secrets are masked), the task's grounding memory,
    and what is left of the budget;
 2. hands it to the `FlowRunner`, which runs it on the task's workspace;
 3. reads the result (`interpret::run_outcome`) and decides whether to carry
@@ -180,8 +181,12 @@ Facts are the caller's own details: names, email, phone, date of birth. The
 controller keeps them in a `Facts` store (`tinycomputer-core/src/facts/`) and
 follows three rules:
 
-1. Values stay local: Jev and the planner see fact names only. A value is
-   looked up at the moment it is typed into a field. Summaries, step intents
+1. Secret values never leave: Jev sees a secret only as `${name}`,
+   including when a field on screen holds it, and the planner and the
+   rescuer see fact names only. Shared values brief Jev, and Jev reads them
+   back from the fields they were typed into (`include_values` is on), so a
+   `verify` of typed details can pass. A value is looked up at the moment it
+   is typed into a field. Summaries, step intents
    in the view, and the final answer go through `Facts::redact`, which
    replaces each value with `‹name›`.
 2. Facts are only typed: a flow may use `${fact}` only as an `enter` step's

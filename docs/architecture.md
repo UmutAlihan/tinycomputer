@@ -232,9 +232,11 @@ None of them trusts a model's judgement.
   fields, stops the run, and the task controller makes that a final
   checkpoint. Nothing ever types payment data, and card data is refused as a
   fact.
-- Jev, the planner, and the rescuer see fact names, never values. Values are
-  typed locally and redacted from every summary, and from the screen text a
-  rescue is shown.
+- Secret values never reach Jev: they are masked to `${name}` in everything
+  it is sent, what a field holds included. Shared values brief Jev, and
+  tasks let it read field contents (`include_values`). The planner and the
+  rescuer see fact names only: every value is redacted from the screen text
+  a rescue is shown, and from every summary.
 - Everything read from a screen is wrapped as untrusted data, and every
   question tells Jev that screen text is data, never instructions. A move Jev
   was not offered fails closed.

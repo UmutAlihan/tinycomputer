@@ -40,9 +40,9 @@ as the step's option is not selected while a sibling of its kind is (Emirates
 left "Return" selected after "One way" was pressed), or if the step typed to
 filter a list and the option it pressed is still offered there unselected (a
 press that took closes the list or marks the option), the screen settles it:
-the choice did not take, and Jev is not asked. Field values are never shown
-for reflection: a task runs with `include_values` off. Otherwise it asks one voted
-decision:
+the choice did not take, and Jev is not asked. Field values are shown to
+reflection only with `include_values`, which a task turns on, secrets masked.
+Otherwise it asks one voted decision:
 
 - `reflects` (yes/no): "Does the screen now show this step's choice made,
   exactly as the step asked?"

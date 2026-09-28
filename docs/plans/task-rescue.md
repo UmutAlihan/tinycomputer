@@ -21,6 +21,6 @@ commands green.
   reached moved from 18 to 20 of 26.
 - Guidance now says how many following steps it covers (phase 5). Run 3
   used it (`covers: 2`) and reached step 25 of 26.
-- Open: a `verify` of typed field values cannot pass under a task, because
-  `include_values` is off. The planner, or the rescuer's protocol, should
-  steer away from such checks.
+- Tasks now run with `include_values` on, secrets masked, so a `verify` of
+  typed values can pass. The rescuer's screen text shows what fields hold,
+  redacted (`Workspace::visible_text`).
