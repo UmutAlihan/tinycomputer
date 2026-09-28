@@ -181,8 +181,9 @@ pub fn recovery(name: &str) -> Option<crate::RecoveryHint> {
     match name {
         STALE_REF => Some(hint("refresh_snapshot_then_retry_original", true, true)),
         NO_SUCH_ELEMENT => Some(hint("refresh_snapshot_then_choose_again", true, true)),
-        NOT_ACTIONABLE => Some(hint("inspect_state_then_retry_original", true, true)),
-        TIMEOUT | PAGE_ERROR => Some(hint("inspect_state_then_retry_original", true, true)),
+        NOT_ACTIONABLE | TIMEOUT | PAGE_ERROR => {
+            Some(hint("inspect_state_then_retry_original", true, true))
+        }
         INVALID_INPUT => Some(hint("fix_request_then_retry", false, false)),
         NO_SUCH_SESSION => Some(hint("open_session_then_retry_original", false, false)),
         NO_SUCH_OUTPUT => Some(hint("capture_again_then_read", false, false)),
