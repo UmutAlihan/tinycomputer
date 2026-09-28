@@ -31,7 +31,7 @@ is caught rather than quietly changing behaviour.
 
 When tinycomputer is loaded as a module, its host configuration can carry a
 `cursor` key. This is read by `cursor_config` in
-[`crates/tinycomputer/src/tinybus_module/dispatch.rs`](../../../crates/tinycomputer/src/tinybus_module/dispatch.rs),
+[`crates/tinycomputer/src/tinybus_module/config.rs`](../../../crates/tinycomputer/src/tinybus_module/config.rs),
 not by this crate itself, since deciding what a host's configuration means
 is the module's job, not the cursor's.
 

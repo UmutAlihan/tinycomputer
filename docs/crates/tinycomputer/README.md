@@ -78,14 +78,19 @@ crates/tinycomputer/
 │   ├── lib.rs                 crate docs and the entire public re-export surface
 │   └── tinybus_module/
 │       ├── mod.rs             setup() and the module_export! manifest
-│       ├── dispatch.rs        one async fn per member, in contract order
+│       ├── dispatch/          one async fn per member, in contract order
+│       │   ├── mod.rs         the served interface: one impl block
+│       │   ├── service.rs     building the service from its configuration
+│       │   └── browser.rs     what the browser members share
+│       ├── config.rs          the `browser` and `cursor` configuration keys
 │       ├── runner.rs          the task runner: one workspace per task
-│       ├── test.rs            module-local unit and integration tests
+│       ├── tinybus_module_tests.rs  unit tests over the in-memory bus;
+│       ├── tinybus_module_tests/    topics in <topic>_tests.rs
 │       └── README.md          why the adapter is shaped the way it is
 └── tests/                     integration tests against the public API only
 ```
 
-`dispatch.rs` is long on purpose. Read
+`dispatch/mod.rs` is long on purpose. Read
 [what's confidential and why](members.md#confidential-members) before assuming
 any given member is safe to call from an untrusted caller.
 

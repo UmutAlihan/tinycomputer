@@ -49,7 +49,7 @@ socket.
   tinycomputer does not need to.
 - **An interface.** The set of methods the object answers, tied to the same
   name as above. `#[tinybus::interface(name = "ai.tinyhumans.tinycomputer.Desktop")]`
-  on `DesktopService` in `crates/tinycomputer/src/tinybus_module/dispatch.rs`
+  on `DesktopService` in `crates/tinycomputer/src/tinybus_module/dispatch/mod.rs`
   is what turns a plain `impl` block into that interface.
 - **Methods.** Typed request in, typed response out, over the wire as
   serialized JSON-shaped payloads. `Click`, `Snapshot`, `RunGoal`, and 64

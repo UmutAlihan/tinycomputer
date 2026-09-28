@@ -4,8 +4,8 @@ The module serves 67 members on one interface,
 `ai.tinyhumans.tinycomputer.Desktop`, in the order
 `crates/tinycomputer_bus::names::METHODS` declares them, which is also the
 order they are dispatched in
-`crates/tinycomputer/src/tinybus_module/dispatch.rs`. A test in that file
-asserts the two stay in lockstep, so this list cannot silently drift from the
+`crates/tinycomputer/src/tinybus_module/dispatch/mod.rs`. A test in
+`tinybus_module_tests/manifest_tests.rs` asserts the two stay in lockstep, so this list cannot silently drift from the
 code.
 
 Every member here except the eight task members (their own section below)
@@ -162,7 +162,7 @@ and response shapes.
 ## Confidential members
 
 Six members are marked `#[tinybus(confidential)]` in
-`crates/tinycomputer/src/tinybus_module/dispatch.rs`:
+`crates/tinycomputer/src/tinybus_module/dispatch/mod.rs`:
 
 - `ResolveIntent`
 - `RunGoal`
