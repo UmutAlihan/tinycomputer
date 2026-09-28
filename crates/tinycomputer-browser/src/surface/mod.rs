@@ -55,17 +55,19 @@ const NETWORK_IDLE_MS: u64 = 2_000;
 /// each flight twice, once in a hidden tab). Whitespace runs count as one
 /// space, as they do in an accessible name. A short name such as "Select"
 /// appears in almost any card, so containment is never enough, and a label
-/// two elements at the point share matches neither. The click goes through only when what is
+/// two elements at the point share matches neither. A ref sight minted
+/// passes its mark's selector as `exact`, and is the target itself, name or
+/// no name. The click goes through only when what is
 /// on top sits inside the target's own card (`li`, `listitem`, `row`,
 /// `article`) and inside no dialog; a banner or dialog in front still
 /// blocks it.
-const SAME_CARD_JS: &str = r#"((x, y, name) => {
-  if (!name) return false;
+const SAME_CARD_JS: &str = r#"((x, y, name, exact) => {
+  if (!name && !exact) return false;
   const stack = document.elementsFromPoint(x, y);
   const top = stack[0];
   if (!top) return false;
   const squash = (text) => text.replace(/\s+/g, ' ').trim();
-  name = squash(name);
+  name = squash(name || '');
   const shown = (element) => squash(element.getAttribute('aria-label') || element.innerText || '');
   const under = (element) => {
     const box = element.getBoundingClientRect();
@@ -74,8 +76,10 @@ const SAME_CARD_JS: &str = r#"((x, y, name) => {
   };
   const labelled = [...document.querySelectorAll('[aria-label]')]
     .filter((element) => squash(element.getAttribute('aria-label')) === name && under(element));
-  const target = stack.find((element) => shown(element) === name)
-    || (labelled.length === 1 ? labelled[0] : null);
+  const marked = exact ? document.querySelector(exact) : null;
+  const target = exact ? (marked && under(marked) ? marked : null)
+    : stack.find((element) => shown(element) === name)
+      || (labelled.length === 1 ? labelled[0] : null);
   if (!target || target === top) return false;
   const card = target.closest('li,[role="listitem"],[role="row"],article,[role="article"]');
   const modal = top.closest('dialog,[role="dialog"],[role="alertdialog"],[aria-modal="true"]');
@@ -400,9 +404,12 @@ impl Surface for BrowserSurface {
                 });
                 let name = target.as_ref().and_then(|node| node.name.as_deref());
                 match (&reference, name) {
-                    (Some(reference), Some(name)) if covered(&reply) => self
-                        .click_through_own_card(reference, name)
-                        .unwrap_or(reply),
+                    (Some(reference), name)
+                        if covered(&reply) && (name.is_some() || sight::is_seen(reference)) =>
+                    {
+                        self.click_through_own_card(reference, name.unwrap_or_default())
+                            .unwrap_or(reply)
+                    }
                     _ => reply,
                 }
             }
