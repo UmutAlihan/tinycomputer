@@ -149,7 +149,7 @@ async fn a_duel_split_by_position_bias_is_settled_by_contrast() {
 }
 
 #[tokio::test]
-async fn a_close_call_nothing_settles_is_not_pressed() {
+async fn a_close_call_nothing_settles_is_pressed_at_its_best_ranking() {
     let run = run_with(
         lookalikes(),
         select_flow(),
@@ -167,11 +167,14 @@ async fn a_close_call_nothing_settles_is_not_pressed() {
         },
     )
     .await;
+    // Pressing nothing would stall the step; the leader is pressed and its
+    // effect checked, with the other lookalike kept for a backtrack.
+    assert_eq!(run.app.sim().picked.len(), 1);
+    assert!(loops(&run, 0).contains(&FlowLoop::Duel));
     assert!(
-        run.app.sim().picked.is_empty(),
-        "a coin toss between lookalikes fails closed"
+        asked(&run.requests, "is_1") >= 1,
+        "the contrast was asked first"
     );
-    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
 }
 
 #[tokio::test]
@@ -192,9 +195,10 @@ async fn escalation_degrades_gracefully_when_the_budget_is_short() {
     )
     .await;
     assert_eq!(run.result.stop, FlowStopReason::ModelBudget);
-    assert!(
-        run.app.sim().picked.is_empty(),
-        "with no calls left to deliberate, a tie is left rather than guessed"
+    assert_eq!(
+        run.app.sim().picked.len(),
+        1,
+        "with no calls left to deliberate, the pick it has is acted on"
     );
     assert_eq!(asked_prefix(&run.requests, "duel_"), 0);
 }
@@ -319,7 +323,7 @@ async fn a_wrong_navigation_is_undone_by_going_back_and_verified() {
                 },
                 0.9,
             )),
-            "intended" => Some(noul(if sim.page() == Some(TERMS) { 0.1 } else { 0.9 })),
+            "helped" => Some(noul(if sim.page() == Some(TERMS) { 0.1 } else { 0.9 })),
             "done" => Some(noul(if sim.checked.contains(INSURANCE) {
                 0.95
             } else {
@@ -337,7 +341,6 @@ async fn a_wrong_navigation_is_undone_by_going_back_and_verified() {
     for used in [FlowLoop::Expectation, FlowLoop::Checkpoint, FlowLoop::Undo] {
         assert!(loops(&run, 0).contains(&used), "{used:?}");
     }
-    assert!(asked(&run.requests, "intended") >= 1);
 }
 
 #[tokio::test]
@@ -352,7 +355,7 @@ async fn an_unverifiable_undo_fails_the_step_closed() {
         |id, question, sim| match id {
             "move" => Some(pick(question, "activate", 0.9)),
             "target" => Some(pick(question, "Insurance terms", 0.9)),
-            "intended" => Some(noul(if sim.page() == Some(TERMS) { 0.1 } else { 0.9 })),
+            "helped" => Some(noul(if sim.page() == Some(TERMS) { 0.1 } else { 0.9 })),
             "done" => Some(noul(0.05)),
             _ => None,
         },
@@ -385,7 +388,7 @@ async fn a_wrong_toggle_is_pressed_again_and_the_runner_up_is_tried() {
                 question,
                 &[("Seat protection", 0.8), ("Travel insurance", 0.15)],
             )),
-            "intended" => Some(noul(if sim.checked.contains(PROTECTION) {
+            "helped" => Some(noul(if sim.checked.contains(PROTECTION) {
                 0.1
             } else {
                 0.9
@@ -565,4 +568,30 @@ async fn views_never_pull_a_judgement_below_the_bar_lower() {
             .is_some_and(|question| !text_of(question, "view").is_empty())),
         "no view is asked of a judgement that would not pass"
     );
+}
+
+#[tokio::test]
+async fn a_missed_effect_asks_whether_the_press_was_intended() {
+    // The checkbox never shows ticked: the predicted effect is missed, so
+    // the next judgement asks whether the press did what it was meant to,
+    // and a clear "no" undoes it.
+    let run = run_with(
+        App::with(|sim| {
+            sim.pages = vec![EXTRAS];
+            sim.quirks.insert(Quirk::Frozen);
+        }),
+        json!({"app": "Shop", "steps": ["add travel insurance"]}),
+        |request| request.max_actions = 6,
+        |id, question, _| match id {
+            "move" => Some(pick(question, "activate", 0.9)),
+            "target" => Some(pick(question, "Travel insurance", 0.9)),
+            "intended" => Some(noul(0.1)),
+            "done" => Some(noul(0.05)),
+            _ => None,
+        },
+    )
+    .await;
+    assert!(asked(&run.requests, "intended") >= 1);
+    assert!(loops(&run, 0).contains(&FlowLoop::Expectation));
+    assert!(loops(&run, 0).contains(&FlowLoop::Undo));
 }
