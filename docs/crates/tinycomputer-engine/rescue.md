@@ -254,7 +254,7 @@ completion.
 
 - `crates/tinycomputer-engine/src/rescue/mod.rs`, `Briefing`, `Guidance`,
   `Rescuer::guide`; `rescue/judge.rs`, `judge`, `guards`, `ends_in_guard`,
-  `resumed`; `rescue/render.rs`, the prompt.
+  `resumed`; `rescue/render.rs`, the briefing as the model reads it.
 - `crates/tinycomputer-engine/src/task/recovery.rs`, `rescue`, `rescued`,
   `rescue_outcome`, where the rescuer is actually invoked from.
 - `crates/tinycomputer-bus/src/agent/types/report.rs`, `Rescue`,
