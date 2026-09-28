@@ -15,7 +15,7 @@
 //!   it waits for `needs_approval`.
 //!
 //! - **a failed step** — when a rescuer is configured, a step that fails is
-//!   first handed to it ([`crate::Rescuer`]), up to three times a task: its
+//!   first handed to it ([`crate::Rescuer`]), up to five times a task: its
 //!   steps run in place of the failed one and the task carries on. Only when
 //!   it gives up, or the rescues are spent, does the task fail.
 //!

@@ -26,7 +26,7 @@ use crate::planner::{LanguageModel, REPAIRS, Role, Turn, json_object};
 
 /// Rescues a task gets when its budget does not say, and the most it may
 /// ask for.
-pub const MAX_RESCUES: u32 = 3;
+pub const MAX_RESCUES: u32 = 5;
 
 /// The most steps one rescue may put in place of a failed step.
 pub const MAX_RESCUE_STEPS: usize = 6;

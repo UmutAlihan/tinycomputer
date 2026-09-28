@@ -20,7 +20,7 @@
 //! flow in the background and reports it as a status a model can act on,
 //! pausing for missing values, irreversible actions, and always at payment.
 //! With a [`Rescuer`], a failed step is first handed to a reasoning model
-//! for guidance, up to three times a task (`docs/specs/task-rescue.md`).
+//! for guidance, up to five times a task (`docs/specs/task-rescue.md`).
 //!
 //! A [`Workspace`] joins the desktop and the browser into one surface, so a
 //! flow's `browse` and `open` steps move it between a web page and an

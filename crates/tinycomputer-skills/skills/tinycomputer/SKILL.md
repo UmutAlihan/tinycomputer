@@ -37,7 +37,7 @@ Every reply is `{ok, data}` or `{ok: false, error: {code, message, hint, recover
 | `checkpoint` | stopped, usually at a payment page | tell the person the `summary` and where it stopped; they finish from there |
 | `needs_plan` | plain-language task, no planner | write a flow with `guide` and start again with `flow` |
 | `done` | finished | report `answer`; `records` holds anything read or extracted |
-| `failed` | could not finish; a configured rescuer already tried up to three times | explain `reason`; if `recoverable`, try again changed as `hint` says |
+| `failed` | could not finish; a configured rescuer already tried up to five times | explain `reason`; if `recoverable`, try again changed as `hint` says |
 
 ## Writing flows that work
 

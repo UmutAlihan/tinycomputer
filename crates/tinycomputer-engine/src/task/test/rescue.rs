@@ -9,7 +9,7 @@ use tinycomputer_bus::{DesktopResponse, FlowStep, FlowStopReason, StepOutcome};
 
 use super::{Script, controller, failed_at_step_two, finished_run, flow, settle, step};
 use crate::planner::{Completion, LanguageModel, Role, Turn};
-use crate::rescue::Rescuer;
+use crate::rescue::{MAX_RESCUES, Rescuer};
 use crate::task::Tasks;
 
 /// Answers from a queue and records every conversation it was shown.
@@ -158,10 +158,11 @@ async fn a_failed_step_is_rescued_and_the_task_finishes() {
 }
 
 #[tokio::test]
-async fn rescues_stop_after_three_and_the_task_fails_as_before() {
+async fn rescues_stop_at_the_limit_and_the_task_fails_as_before() {
+    let limit = usize::try_from(MAX_RESCUES).unwrap();
     let (tasks, script, model) = rescued(
-        vec![failed_at_step_two(); 4],
-        &[Ok(TWO_STEPS), Ok(TWO_STEPS), Ok(TWO_STEPS), Ok(TWO_STEPS)],
+        vec![failed_at_step_two(); limit + 1],
+        &vec![Ok(TWO_STEPS); limit + 1],
     );
     let view = begin(&tasks, TaskBudget::default());
     let TaskStatus::Failed {
@@ -176,18 +177,18 @@ async fn rescues_stop_after_three_and_the_task_fails_as_before() {
     assert_eq!(reason, "nothing to click");
     assert!(hint.contains("reword it"), "{hint}");
     assert!(recoverable);
-    assert_eq!(model.seen.lock().unwrap().len(), 3);
-    assert_eq!(script.requests.lock().unwrap().len(), 4);
+    assert_eq!(model.seen.lock().unwrap().len(), limit);
+    assert_eq!(script.requests.lock().unwrap().len(), limit + 1);
     let rescues = tasks.report(&view.id).data.unwrap().rescues;
-    assert_eq!(rescues.len(), 3);
-    let asked = model.seen.lock().unwrap()[2][1].text.clone();
+    assert_eq!(rescues.len(), limit);
+    let asked = model.seen.lock().unwrap()[limit - 1][1].text.clone();
     assert!(asked.contains("Earlier rescues of this task"), "{asked}");
 
     // A task may ask for fewer, never more, and zero turns rescue off.
-    for (max, calls) in [(Some(0), 0), (Some(1), 1), (Some(9), 3)] {
+    for (max, calls) in [(Some(0), 0), (Some(1), 1), (Some(99), limit)] {
         let (tasks, _, model) = rescued(
-            vec![failed_at_step_two(); 4],
-            &[Ok(TWO_STEPS), Ok(TWO_STEPS), Ok(TWO_STEPS)],
+            vec![failed_at_step_two(); limit + 1],
+            &vec![Ok(TWO_STEPS); limit],
         );
         let view = begin(
             &tasks,

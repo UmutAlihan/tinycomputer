@@ -273,7 +273,7 @@ must hold one itself. The task then runs the guidance and
 every remaining step unchanged, `stop_before` included, from what the budget
 has left.
 
-A task gets three rescues at most (`budget.max_rescues`, 0 to 3; 0 turns them
+A task gets five rescues at most (`budget.max_rescues`, 0 to 5; 0 turns them
 off), and one rescue may think for two minutes. A rescue that gives up, fails,
 or gives no valid guidance leaves the task `failed`, with the rescuer's reason
 in the `hint`. `TaskReport.rescues` lists each one with its outcome:

@@ -197,7 +197,7 @@ pub struct TaskBudget {
     /// Wall-clock time, excluding time spent waiting for the caller.
     pub max_elapsed_ms: Option<u64>,
     /// How many times a failed step may be rescued by the reasoning model
-    /// before the task fails; the module's default (3, also the most) when
+    /// before the task fails; the module's default (5, also the most) when
     /// unset, and `0` turns rescues off.
     pub max_rescues: Option<u32>,
 }

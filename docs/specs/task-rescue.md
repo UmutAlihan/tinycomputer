@@ -66,7 +66,7 @@ fails the task.
   are kept, and the flow runtime gates irreversible presses as always. A
   later failure, including one in the guidance, can be rescued again.
 - **Limits.**
-  - At most `MAX_RESCUES` (3) rescues per task. `budget.max_rescues` may
+  - At most `MAX_RESCUES` (5) rescues per task; 3 until live runs spent all three on one form. `budget.max_rescues` may
     lower this, and `0` turns rescues off.
   - One rescue may think for at most `RESCUE_TIMEOUT_MS` (2 minutes), and
     never past `max_elapsed_ms`. Its time counts toward that budget.

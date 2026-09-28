@@ -19,7 +19,7 @@
 //!   `standard`, or `off`.
 //! - `TASK_MAX_MINUTES` — optional: cancel the task after this long (20).
 //! - `TASK_RESCUES` — optional: how many failed steps the reasoning model
-//!   may rescue (0 to 3, default 3; 0 turns rescues off).
+//!   may rescue (0 to 5, default 5; 0 turns rescues off).
 //! - `TINYCOMPUTER_RESCUE_MODEL` — optional: the `OpenRouter` model that
 //!   rescues them (`openai/gpt-6-luna` by default).
 //! - `TINYCOMPUTER_BROWSER_EXECUTABLE`, `TINYCOMPUTER_BROWSER_USER_AGENT`, and
