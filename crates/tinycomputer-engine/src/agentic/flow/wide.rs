@@ -250,13 +250,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         if questions.is_empty() {
             return Ok(Judgement::activate());
         }
-        let answers = self
-            .ask(
-                log,
-                ask::request(self.model(), self.state(screen, intent), questions),
-            )
-            .await?;
+        let request = ask::request(self.model(), self.state(screen, intent), questions);
+        let answers = self.ask(log, request.clone()).await?;
         let mut judged = Judgement::read(&answers);
+        judged.request = Some(request);
         if let Some(front) = front {
             judged.dismissal = dismissal(&answers, front.name, known_obstacle, &dismiss_pool);
         }

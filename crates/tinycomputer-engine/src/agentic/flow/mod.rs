@@ -283,6 +283,9 @@ pub(super) struct FlowRun<'r, B> {
     /// The runners-up of the step's latest grounding, best first: the
     /// branches a backtrack tries next (`checkpoint.rs`).
     pub(super) frontier: Vec<Candidate>,
+    /// The last press and what it was meant to do, while the turn after it
+    /// is judged: the judge then asks whether it did (`expect.rs`).
+    pub(super) expecting: Option<(String, String)>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -390,6 +393,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             ballots: BTreeMap::new(),
             location: None,
             frontier: Vec::new(),
+            expecting: None,
         }
     }
 

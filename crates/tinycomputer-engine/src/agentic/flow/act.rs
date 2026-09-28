@@ -1158,11 +1158,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             pool,
             true,
         );
-        let mut requests = vec![ask::request(
-            self.model(),
-            self.state(screen, intent),
-            questions,
-        )];
+        let judging = ask::request(self.model(), self.state(screen, intent), questions);
+        let mut requests = vec![judging.clone()];
         let speculative = opening.requests();
         let wanted = speculative.len();
         requests.extend(speculative);
@@ -1172,11 +1169,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .ok_or_else(|| Halt::Failed("no Jev evaluation completed".to_owned()))?;
         let rest = answers.collect::<Vec<_>>();
         let mut judged = Judgement::read(&judged);
-        judged.request = Some(ask::request(
-            self.model(),
-            self.state(screen, intent),
-            self.judge_questions(&mut StepLog::default(), intent, None),
-        ));
+        judged.request = Some(judging);
         if rest.len() == wanted {
             judged.speculated = Some(Speculated {
                 opening,
