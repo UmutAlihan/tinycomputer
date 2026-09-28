@@ -298,6 +298,52 @@ async fn guidance_for_a_failed_stop_before_must_keep_a_guard() {
 }
 
 #[tokio::test]
+async fn a_replacement_guard_must_run_on_every_path() {
+    let mut briefing = briefing();
+    briefing.failed = 3;
+    briefing.failure = "the control that pays was not found".to_owned();
+    // A `stop_before` in only one branch of the final `if` can be skipped by
+    // taking the other branch, so the resumed flow could reach the rest of
+    // the plan — and the irreversible action it guards — with no
+    // checkpoint in front of it.
+    let one_branch = r#"{"action": "retry", "reason": "x", "steps": ["continue to Options",
+      {"if": {"condition": "a fare is shown",
+        "then": [{"stop_before": "proceeding to the Payment step"}],
+        "else": ["continue anyway"]}}]}"#;
+    // A `repeat_until` body may run zero times, so a guard only inside one
+    // is never a guarantee either.
+    let zero_times = r#"{"action": "retry", "reason": "x", "steps": ["continue to Options",
+      {"repeat_until": {"condition": "the payment step shows",
+        "steps": [{"stop_before": "proceeding to the Payment step"}]}}]}"#;
+    let guarded = r#"{"action": "retry", "reason": "the options page comes first",
+      "steps": ["continue to Options", {"stop_before": "proceeding to the Payment step"}]}"#;
+    let (rescuer, model) = scripted(&[Ok(one_branch), Ok(zero_times), Ok(guarded)]);
+    let Guidance::Retry { steps, .. } = rescuer.guide(&briefing).await.unwrap() else {
+        panic!("expected steps");
+    };
+    assert_eq!(steps.len(), 2);
+    let seen = model.seen.lock().unwrap().clone();
+    let repairs = seen
+        .last()
+        .unwrap()
+        .iter()
+        .filter(|turn| turn.role == Role::User)
+        .skip(1)
+        .map(|turn| turn.text.clone())
+        .collect::<Vec<_>>();
+    assert!(
+        repairs[0].contains("stop_before") && repairs[0].contains("unconditionally"),
+        "an `if` guarding only one branch is rejected: {}",
+        repairs[0]
+    );
+    assert!(
+        repairs[1].contains("stop_before") && repairs[1].contains("unconditionally"),
+        "a `repeat_until` that can run zero times is rejected: {}",
+        repairs[1]
+    );
+}
+
+#[tokio::test]
 async fn a_screen_already_past_the_failed_step_skips_to_what_is_left() {
     // Failed at step 2 (the date) with the class also done: skipping it and
     // one more leaves the stop_before to run next.
