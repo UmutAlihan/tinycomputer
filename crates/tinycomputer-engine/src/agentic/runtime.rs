@@ -24,7 +24,7 @@ pub struct JevRuntime {
     pub(super) client: Arc<dyn Evaluator>,
     pub(super) configuration: JevConfiguration,
     pub(super) pending: Arc<Mutex<HashMap<String, PendingRun>>>,
-    journal: Journal,
+    pub(super) journal: Journal,
 }
 
 impl std::fmt::Debug for JevRuntime {
