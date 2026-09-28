@@ -18,7 +18,7 @@ the only thing that ever looks at the live screen and decides what to click.
 ## Where it sits
 
 The rescuer is called from inside the task controller's `drive` loop
-(`task/mod.rs`), never from the flow runtime itself and never directly by a
+(`task/drive.rs`), never from the flow runtime itself and never directly by a
 caller. When a top-level step fails with a `recoverable` failure, and it is
 not something a person needs to clear first (see
 [tasks.md](tasks.md#pausing-and-resuming)), and a rescuer is configured, and
@@ -66,7 +66,7 @@ pub struct Briefing {
 Every fact value is redacted before it reaches this struct: the task
 controller runs `Facts::redact` and `Facts::mask` over the goal, the
 failure text, every step's text and note, and the screen text, before any
-of it is handed to the rescuer (`rescue` in `task/mod.rs`). The rescuer sees
+of it is handed to the rescuer (`rescue` in `task/recovery.rs`). The rescuer sees
 `${name}` where a secret value would be and `‹name›` where a shared one
 would be, never the value itself. Screen text is additionally wrapped as
 `<untrusted_accessibility_data>` in the rendered prompt, and the protocol
@@ -114,7 +114,7 @@ doing what the next couple of planned steps intended too.
 
 ### The judge: how an answer is validated
 
-`judge`, in `rescue/mod.rs`, is where every rule below is actually enforced,
+`judge`, in `rescue/judge.rs`, is where every rule below is actually enforced,
 not just described in the prompt:
 
 - Between 1 and 6 steps for a `retry`, or the model is asked to try again.
@@ -185,7 +185,7 @@ an `outcome`:
 - **`GaveUp`**: the model gave up, the call itself failed, or no valid
   guidance ever came back within the repair budget.
 
-`rescue_outcome`, in `task/mod.rs`, decides `Recovered` vs `FailedAgain` by
+`rescue_outcome`, in `task/recovery.rs`, decides `Recovered` vs `FailedAgain` by
 checking that steps numbered 1 through the guidance's own step count
 actually reached `Done`, `AlreadyDone`, or `Gated` in the run's reports,
 not just that the run as a whole kept going.
@@ -253,10 +253,12 @@ completion.
 ## Source
 
 - `crates/tinycomputer-engine/src/rescue/mod.rs`, `Briefing`, `Guidance`,
-  `Rescuer::guide`, `judge`, `guards`, `ends_in_guard`, `resumed`.
-- `crates/tinycomputer-engine/src/task/mod.rs`, `rescue`, `rescued`,
+  `Rescuer::guide`; `rescue/judge.rs`, `judge`, `guards`, `ends_in_guard`,
+  `resumed`; `rescue/render.rs`, the prompt.
+- `crates/tinycomputer-engine/src/task/recovery.rs`, `rescue`, `rescued`,
   `rescue_outcome`, where the rescuer is actually invoked from.
-- `crates/tinycomputer-bus/src/agent/types.rs`, `Rescue`, `RescueOutcome`.
+- `crates/tinycomputer-bus/src/agent/types/report.rs`, `Rescue`,
+  `RescueOutcome`.
 - [`docs/technical/specs/task-rescue.md`](../../technical/specs/task-rescue.md),
   the formal spec.
 - [output.md](output.md), how the `collected` values in a briefing are
