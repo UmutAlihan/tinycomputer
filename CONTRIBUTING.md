@@ -36,8 +36,12 @@ cargo run --example basic
 1. Branch from `main` — never commit directly to it. If you use the `worktree`
    helper, work inside `worktrees/<slug>`.
 2. Put each feature area in its own module directory: `mod.rs` for the module
-   root and public surface, `types.rs` for substantial types, `test.rs` for
-   module-local unit tests. Integration tests belong in `tests/`.
+   root and public surface, `types.rs` for substantial types, and
+   `<module>_tests.rs` beside the root for its unit tests, wired with
+   `#[cfg(test)] mod <module>_tests;`. A large test file becomes
+   `<module>_tests.rs` plus topic files `<module>_tests/<topic>_tests.rs`.
+   Integration tests belong in `tests/`, named `*_tests.rs`. Split any file
+   past about 400 lines into a folder module by responsibility.
 3. Add a specific variant to the crate error type rather than encoding new
    failure context into a message string.
 4. Add or update tests with every behavior change, covering the failure paths.
