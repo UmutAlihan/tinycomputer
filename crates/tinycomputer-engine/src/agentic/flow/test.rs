@@ -4964,3 +4964,91 @@ async fn a_row_that_refused_the_text_is_never_pressed_while_revealing_a_field() 
         "no field that takes text was found for: destination search; 1 element(s) the page offered as fields refused the text"
     );
 }
+
+// -------------------------------------------------------------- reflection
+
+/// A reflection hook: `reflects` and `strays` answer by whether the
+/// simulator holds exactly one adult.
+fn one_adult(id: &str, sim: &Sim) -> Option<Answer> {
+    let right = sim.adults == Some(1);
+    match id {
+        "reflects" => Some(noul(if right { 0.9 } else { 0.1 })),
+        "strays" => Some(noul(if right { 0.05 } else { 0.9 })),
+        _ => None,
+    }
+}
+
+#[tokio::test]
+async fn a_choice_that_left_the_wrong_count_is_reflected_on_and_repaired() {
+    let run = run_with(
+        App::with(|sim| sim.adults = Some(1)),
+        json!({"app": "browser", "steps": [
+            {"choose": {"what": "the passengers box", "option": "1 Adult"}}
+        ]}),
+        |_| {},
+        |id, question, sim| {
+            one_adult(id, sim).or_else(|| match id {
+                // Both steppers name "1 Adult"; the wrong one wins first.
+                "target" if sim.adults == Some(1) => Some(pick(question, "Increase", 0.9)),
+                "target" => Some(pick(question, "Decrease", 0.9)),
+                "move" => Some(pick(question, "activate", 0.9)),
+                "done" => Some(noul(if sim.adults == Some(1) { 0.95 } else { 0.05 })),
+                _ => None,
+            })
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed, "{:?}", run.result.steps);
+    assert_eq!(run.app.sim().adults, Some(1), "the repair undid the extra adult");
+    let clicks = run.app.sim().clicks.clone();
+    assert!(clicks[0].starts_with("Increase"), "{clicks:?}");
+    assert!(clicks.iter().any(|click| click.starts_with("Decrease")), "{clicks:?}");
+    let step = &run.result.steps[0];
+    assert_eq!(step.outcome, StepOutcome::Done);
+    assert!(step.loops.contains(&FlowLoop::Reflection));
+}
+
+#[tokio::test]
+async fn a_choice_that_left_the_right_option_is_reflected_on_once() {
+    let run = run_with(
+        App::with(|sim| sim.extra_buttons = 9),
+        json!({"app": "Mail", "steps": [{"choose": {"what": "the message list", "option": "Message 7"}}]}),
+        |_| {},
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.app.sim().clicks, ["Message 7"], "no repair pressed anything");
+    assert!(run.result.steps[0].loops.contains(&FlowLoop::Reflection));
+    let reflections = run
+        .requests
+        .iter()
+        .filter(|request| request.questions.contains_key("reflects"))
+        .count();
+    assert_eq!(reflections, 1);
+}
+
+#[tokio::test]
+async fn a_repair_that_changes_nothing_fails_the_step_with_the_reflection() {
+    let run = run_with(
+        App::with(|sim| sim.adults = Some(1)),
+        json!({"app": "browser", "steps": [
+            {"choose": {"what": "the passengers box", "option": "1 Adult"}}
+        ]}),
+        |_| {},
+        |id, question, sim| {
+            one_adult(id, sim).or_else(|| match id {
+                // Every press adds an adult: the repair only makes it worse.
+                "target" => Some(pick(question, "Increase", 0.9)),
+                "move" => Some(pick(question, "activate", 0.9)),
+                "done" => Some(noul(0.05)),
+                _ => None,
+            })
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    let note = &run.result.steps[0].note;
+    assert!(note.starts_with("reflection:"), "{note}");
+    assert!(note.contains("1 Adult"), "{note}");
+}
