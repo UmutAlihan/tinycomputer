@@ -34,6 +34,11 @@ pub(super) const MAX_DISTRACTIONS: usize = 4;
 pub(super) const MAX_CLEARED: u32 = 3;
 /// Least probability a distraction must win the attention Choice with.
 pub(super) const ATTENTION_FLOOR: f64 = 0.5;
+/// Most elements a distraction holds. A toast, a consent card, or a prompt
+/// is small; a container holding more is the page, and its "close" icon
+/// clears a field or a panel the step may need (live on Emirates, the
+/// booking form's clear icons sat directly under `main`).
+pub(super) const MAX_DISTRACTION_SIZE: usize = 12;
 
 /// Labels of controls that dismiss what they sit on, least committal first:
 /// their rank is their position.
@@ -186,6 +191,20 @@ pub(super) fn distractions(
             .enumerate()
             .filter(|(_, candidate)| candidate.path.starts_with(&path))
             .collect::<Vec<_>>();
+        // A form is the step's, whatever its close icon says: a
+        // newsletter prompt holds one field, a passenger form several.
+        let fields = members
+            .iter()
+            .filter(|(_, member)| {
+                member
+                    .available_actions
+                    .iter()
+                    .any(|action| action == "SetValue" || action == "TypeText")
+            })
+            .count();
+        if members.len() > MAX_DISTRACTION_SIZE || fields > 1 {
+            continue;
+        }
         let front = members.iter().any(|(index, _)| in_front.contains(index));
         let text = path
             .iter()

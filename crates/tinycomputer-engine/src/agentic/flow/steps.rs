@@ -276,9 +276,9 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// A deliberating run records every text field's value first, and puts
     /// back any the attempts changed when the step fails: typing the option
     /// to filter a list lands wherever the focus is, and on a form with no
-    /// such list that is the field filled last (live on Emirates, "Female"
-    /// for a gender the form never asked for turned "Raina" into
-    /// "RainaFemale").
+    /// such list that is the field filled last (live on Emirates, `Female`
+    /// for a gender the form never asked for turned `Raina` into
+    /// `RainaFemale`).
     pub(super) async fn pick_option(
         &mut self,
         log: &mut StepLog,

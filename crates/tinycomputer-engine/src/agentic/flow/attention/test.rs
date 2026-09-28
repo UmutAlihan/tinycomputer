@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use super::{MAX_DISTRACTIONS, distractions};
+use super::{MAX_DISTRACTION_SIZE, MAX_DISTRACTIONS, distractions};
 use crate::agentic::flow::view::{Candidate, Screen, signature};
 
 fn button(name: &str, path: &[&str]) -> Candidate {
@@ -149,4 +149,27 @@ fn at_most_a_handful_of_distractions_are_offered_front_regions_first() {
     let found = distractions(&screen(candidates), "search", &[], &BTreeSet::new());
     assert_eq!(found.len(), MAX_DISTRACTIONS);
     assert!(found[0].name.contains("Sign in"), "{}", found[0].name);
+}
+
+#[test]
+fn a_whole_region_or_a_form_is_never_a_distraction() {
+    // A clear icon sitting directly in `main`, beside the whole form.
+    let mut candidates = (0..=MAX_DISTRACTION_SIZE)
+        .map(|index| button(&format!("Option {index}"), &["main"]))
+        .collect::<Vec<_>>();
+    candidates.push(button("Close", &["main"]));
+    assert!(distractions(&screen(candidates), "search", &[], &BTreeSet::new()).is_empty());
+    // A form group with two fields and a clear icon.
+    let form = ["main", "group \"Passenger\""];
+    let field = |name: &str| Candidate {
+        available_actions: vec!["SetValue".to_owned()],
+        role: "textbox".to_owned(),
+        ..button(name, &form)
+    };
+    let candidates = vec![
+        field("First name"),
+        field("Last name"),
+        button("Close", &form),
+    ];
+    assert!(distractions(&screen(candidates), "enter the name", &[], &BTreeSet::new()).is_empty());
 }
