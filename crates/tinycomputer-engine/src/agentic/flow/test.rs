@@ -268,8 +268,20 @@ fn node(name: &str, role: &str, actions: &[&str], path: &[&str], y: f64) -> Cand
 /// value, to check that value-visibility policy is honored when it is
 /// offered as a dismissal option.
 fn obstacle_sheet(candidates: &mut Vec<Candidate>) {
-    candidates.push(node("Delete Draft", "button", &["Click"], &["sheet"], 500.0));
-    candidates.push(node("Keep Editing", "button", &["Click"], &["sheet"], 500.0));
+    candidates.push(node(
+        "Delete Draft",
+        "button",
+        &["Click"],
+        &["sheet"],
+        500.0,
+    ));
+    candidates.push(node(
+        "Keep Editing",
+        "button",
+        &["Click"],
+        &["sheet"],
+        500.0,
+    ));
     candidates.push(Candidate {
         value: Some(json!("unsaved-draft-42")),
         ..node("Remember", "checkbox", &["Click"], &["sheet"], 500.0)
