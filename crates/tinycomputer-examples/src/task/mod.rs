@@ -133,7 +133,11 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         match host.browser_screenshot(&session.id).await {
             Ok(image) => {
                 std::fs::write(out.join(&name), image)?;
-                println!("screenshot: {} ({})", out.join(&name).display(), session.url);
+                println!(
+                    "screenshot: {} ({})",
+                    out.join(&name).display(),
+                    session.url
+                );
             }
             Err(error) => println!("screenshot of {} failed: {error}", session.id),
         }

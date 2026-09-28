@@ -15,10 +15,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use base64::Engine as _;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use tinybus::{Connection, broker::Broker, module::ModuleHost, transport::memory::MemoryBus};
-use base64::Engine as _;
 use tinycomputer_bus::agent::{
     AgentResponse, AwaitTaskRequest, Capabilities, ContinueTaskRequest, PlanTaskRequest,
     StartTaskRequest, TaskId, TaskPlan, TaskRef, TaskReport, TaskView,
@@ -204,7 +204,11 @@ impl Host {
     ///
     /// Fails on a transport error or an error reply.
     pub async fn plan_task(&self, request: &PlanTaskRequest) -> Result<TaskPlan, LabError> {
-        agent(self.proxy.call(names::methods::PLAN_TASK, (request,)).await?)
+        agent(
+            self.proxy
+                .call(names::methods::PLAN_TASK, (request,))
+                .await?,
+        )
     }
 
     /// `StartTask`, delivered confidentially: it carries the facts.
@@ -230,7 +234,11 @@ impl Host {
             id: id.clone(),
             timeout_ms,
         };
-        agent(self.proxy.call(names::methods::AWAIT_TASK, (request,)).await?)
+        agent(
+            self.proxy
+                .call(names::methods::AWAIT_TASK, (request,))
+                .await?,
+        )
     }
 
     /// `ContinueTask`, delivered confidentially: inputs are facts.
@@ -238,10 +246,7 @@ impl Host {
     /// # Errors
     ///
     /// Fails on a transport error or an error reply.
-    pub async fn continue_task(
-        &self,
-        request: &ContinueTaskRequest,
-    ) -> Result<TaskView, LabError> {
+    pub async fn continue_task(&self, request: &ContinueTaskRequest) -> Result<TaskView, LabError> {
         agent(
             self.proxy
                 .call_confidential(names::methods::CONTINUE_TASK, (request,))
@@ -256,7 +261,11 @@ impl Host {
     /// Fails on a transport error or an error reply.
     pub async fn cancel_task(&self, id: &TaskId) -> Result<TaskView, LabError> {
         let request = TaskRef { id: id.clone() };
-        agent(self.proxy.call(names::methods::CANCEL_TASK, (request,)).await?)
+        agent(
+            self.proxy
+                .call(names::methods::CANCEL_TASK, (request,))
+                .await?,
+        )
     }
 
     /// `TaskReport`, delivered confidentially: it carries page data.

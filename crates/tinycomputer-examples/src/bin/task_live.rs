@@ -119,7 +119,10 @@ async fn main() -> Result<(), LabError> {
     conclude(&host, &view, &out).await?;
     host.shutdown();
     if passed(&view.status) {
-        println!("PASS finished or stopped at payment; artifacts in {}", out.display());
+        println!(
+            "PASS finished or stopped at payment; artifacts in {}",
+            out.display()
+        );
         Ok(())
     } else {
         Err("FAIL the task neither finished nor reached the payment checkpoint".into())
@@ -135,10 +138,15 @@ fn module_config() -> Result<Value, LabError> {
     for (field, variable) in [
         ("executable", "TINYCOMPUTER_BROWSER_EXECUTABLE"),
         ("user_agent", "TINYCOMPUTER_BROWSER_USER_AGENT"),
-        ("perception", "TINYCOMPUTER_BROWSER_PERCEPTION"),
     ] {
         if let Some(value) = optional(variable).filter(|value| !value.trim().is_empty()) {
-            browser.insert(field.to_owned(), json!(value.trim().to_ascii_lowercase_if(field)));
+            browser.insert(field.to_owned(), json!(value.trim()));
+        }
+    }
+    if let Some(perception) = optional("TINYCOMPUTER_BROWSER_PERCEPTION") {
+        let perception = perception.trim().to_ascii_lowercase();
+        if !perception.is_empty() {
+            browser.insert("perception".to_owned(), json!(perception));
         }
     }
     if let Some(args) = optional("TINYCOMPUTER_BROWSER_ARGS") {
@@ -158,22 +166,6 @@ fn module_config() -> Result<Value, LabError> {
         "cursor": optional("TASK_CURSOR").unwrap_or_else(|| "natural".to_owned()),
         "browser": browser,
     }))
-}
-
-/// Lowercases a perception name, which the module matches exactly; every
-/// other browser setting is passed as given.
-trait LowercaseIf {
-    fn to_ascii_lowercase_if(&self, field: &str) -> String;
-}
-
-impl LowercaseIf for str {
-    fn to_ascii_lowercase_if(&self, field: &str) -> String {
-        if field == "perception" {
-            self.to_ascii_lowercase()
-        } else {
-            self.to_owned()
-        }
-    }
 }
 
 /// The surface the task runs on, from `TASK_SURFACE`.
