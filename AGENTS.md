@@ -78,8 +78,7 @@ crates/
 │       ├── lib.rs      # crate docs + public surface, re-exporting the contract
 │       ├── error/mod.rs      # crate-wide `Error` and `Result<T>`
 │       ├── desktop/          # the engine: one method per member, by family
-│       │   ├── mod.rs        # `Desktop`, its configuration, the run path;
-│       │   │                 # the members in one file per payload family
+│       │   ├── mod.rs        # `Desktop`, its configuration; members by family
 │       │   ├── convert.rs    # contract payloads -> engine arguments
 │       │   ├── permission.rs # what each member needs, and the preflight
 │       │   ├── reply.rs      # engine result -> response envelope
@@ -210,16 +209,14 @@ mod <module>_tests;
 ```
 
 A large one becomes `<module>_tests.rs` plus topic files
-`<module>_tests/<topic>_tests.rs`; test-free fixtures there are named for what
-they are (`simulator.rs`, `oracle.rs`). No inline `mod tests` blocks, and no
-general-purpose `utils.rs` or `helpers.rs`: those are a missing module. Prefer
-many small modules that each do one thing well over few broad ones.
+`<module>_tests/<topic>_tests.rs`, with test-free fixtures named for what they
+are (`simulator.rs`). No inline `mod tests` blocks, and no general `utils.rs` or
+`helpers.rs`: those are a missing module. Prefer many small, focused modules.
 
 Keep public exports centralized in each crate's `src/lib.rs` so downstream users
-have one predictable surface. Put shared error variants in
-the owning crate's `src/error/mod.rs` (for the adapter,
-`crates/tinycomputer-desktop/src/error/mod.rs`) and return the crate-wide `Result<T>` from
-fallible public APIs.
+have one predictable surface. Put shared error variants in the owning crate's
+`src/error/mod.rs` (for the adapter, `crates/tinycomputer-desktop/src/error/mod.rs`)
+and return the crate-wide `Result<T>` from fallible public APIs.
 
 ## Build And Test
 
