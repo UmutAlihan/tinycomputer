@@ -34,7 +34,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// A deliberating run settles a judgement near [`DONE`] on its evidence
     /// (`escalate::settle_belief`), at the deep level also asking it over
     /// the screen alone, without the history that can lead it.
-    pub(super) async fn holds(
+    pub(in crate::agentic::flow) async fn holds(
         &mut self,
         log: &mut StepLog,
         condition_text: &str,
@@ -79,7 +79,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(held)
     }
 
-    async fn verify(&mut self, log: &mut StepLog, condition_text: &str) -> Result<Ended, Halt> {
+    pub(super) async fn verify(&mut self, log: &mut StepLog, condition_text: &str) -> Result<Ended, Halt> {
         let held = self.holds(log, condition_text).await?;
         if held >= DONE {
             Ok(Ended::new(
@@ -93,7 +93,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         }
     }
 
-    async fn wait_for(&mut self, log: &mut StepLog, condition_text: &str) -> Result<Ended, Halt> {
+    pub(super) async fn wait_for(&mut self, log: &mut StepLog, condition_text: &str) -> Result<Ended, Halt> {
         for check in 0..WAIT_CHECKS {
             let held = self.holds(log, condition_text).await?;
             if held >= DONE {
@@ -112,7 +112,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         )))
     }
 
-    async fn repeat(
+    pub(super) async fn repeat(
         &mut self,
         log: &mut StepLog,
         repeat: &RepeatStep,
@@ -143,7 +143,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         )))
     }
 
-    async fn branch(
+    pub(super) async fn branch(
         &mut self,
         log: &mut StepLog,
         branch: &IfStep,

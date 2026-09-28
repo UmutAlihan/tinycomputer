@@ -1,50 +1,59 @@
 
 
 //! One function per step kind; `run` dispatches between them.
+//!
+//! - `launch`: `open` and `browse`.
+//! - `condition`: `verify`, `wait_for`, `repeat_until`, and `if`, all built
+//!   on judging one condition (`holds`).
+//! - `choose` and `reveal`: `choose`, and the ways it makes a missing option
+//!   show.
+//! - `read`, `list`, and `stop`: `read`; `pick` and `extract`; `stop_before`.
+//! - `date` and `matching`: the pure rules for reading a date option and
+//!   matching an option to the controls on screen.
 
-use std::collections::BTreeSet;
+mod choose;
+mod condition;
+mod date;
+mod launch;
+mod list;
+mod matching;
+mod read;
+mod reveal;
+mod stop;
 
-use serde_json::{Value, json};
-use tinycomputer_bus::{
-    ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
-    RepeatStep, StepOutcome,
+pub(super) use matching::left_unchosen;
+#[cfg(test)]
+pub(super) use {
+    date::looks_like_date,
+    matching::{
+        already_chosen, already_holds, closest, in_region, lists_more_than, redacted, search_text,
+    },
+    read::readable,
 };
-use tinycomputer_core::surface::{Group, result_families};
-use tinycomputer_core::{Criterion, Record, rank};
 
-use crate::workspace::BROWSER;
+use tinycomputer_bus::FlowAction;
 
-use super::{
-    AgentBackend, Ended, FlowRun, Halt, StepLog,
-    act::{DONE, SCREEN_VIEW},
-    ask::{self, Questions, chosen, condition, numbered},
-    backend::deliver_text,
-    escalate::Belief,
-    ground::Grounded,
-    memory::{learn, remember},
-    validate::{MAX_REPEAT, substitute_safe},
-    view::{Candidate, Screen, element_kind, is_destructive, label, target_payload},
-};
+use super::{Ended, FlowRun, Halt, StepLog, backend::AgentBackend};
 
 /// Turns a `do` step may spend.
-const DO_TURNS: u32 = 8;
+pub(super) const DO_TURNS: u32 = 8;
 /// Turns spent opening the thing a `choose` step picks from.
-const REVEAL_TURNS: u32 = 3;
+pub(super) const REVEAL_TURNS: u32 = 3;
 /// Times `open` checks for a readable window, waiting between checks.
-const WINDOW_CHECKS: u32 = 10;
+pub(super) const WINDOW_CHECKS: u32 = 10;
 /// Times a `wait_for` checks its condition, waiting between checks.
-const WAIT_CHECKS: u32 = 10;
+pub(super) const WAIT_CHECKS: u32 = 10;
 /// Most characters of a picked item's text kept in its variable.
-const MAX_PICK_SUMMARY: usize = 400;
+pub(super) const MAX_PICK_SUMMARY: usize = 400;
 /// Least belief a deep run needs that a control is the one a `stop_before`
 /// names before it presses it irreversibly.
-pub(super) const IRREVERSIBLE_FLOOR: f64 = 0.85;
+pub(in crate::agentic::flow) const IRREVERSIBLE_FLOOR: f64 = 0.85;
 /// Least probability a `read` or `stop_before` target needs.
-const LOCATE_FLOOR: f64 = 0.5;
+pub(super) const LOCATE_FLOOR: f64 = 0.5;
 /// How many lists an `extract` offers Jev when several show.
-const MAX_LISTS: usize = 6;
+pub(super) const MAX_LISTS: usize = 6;
 /// How many of a list's first items an `extract` shows Jev to tell it apart.
-const LIST_PREVIEW: usize = 3;
+pub(super) const LIST_PREVIEW: usize = 3;
 
 /// Runs one step.
 pub(super) async fn run<B: AgentBackend + Sync>(

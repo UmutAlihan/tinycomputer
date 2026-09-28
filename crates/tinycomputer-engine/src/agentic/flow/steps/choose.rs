@@ -29,7 +29,7 @@ use super::*;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
-    async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
+    pub(super) async fn choose(&mut self, log: &mut StepLog, choose: &ChooseStep) -> Result<Ended, Halt> {
         // `what` and `option` are shown to Jev, so a secret is never
         // expanded into them; validation already rejects one there.
         let what = substitute_safe(&choose.what, &self.vars, &self.facts);
@@ -58,7 +58,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// such list that is the field filled last (live on Emirates, `Female`
     /// for a gender the form never asked for turned `Raina` into
     /// `RainaFemale`).
-    pub(super) async fn pick_option(
+    pub(in crate::agentic::flow) async fn pick_option(
         &mut self,
         log: &mut StepLog,
         what: &str,
@@ -81,7 +81,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Puts back every field of `before` whose text the step changed.
-    async fn restore_text(
+    pub(super) async fn restore_text(
         &mut self,
         log: &mut StepLog,
         before: &[(Candidate, String)],
@@ -151,7 +151,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         Ok(())
     }
 
-    async fn try_option(
+    pub(super) async fn try_option(
         &mut self,
         log: &mut StepLog,
         what: &str,
@@ -265,7 +265,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// `AlreadyDone` when `screen` shows `option` chosen already: a checked
     /// option control, or — before this step acts, since what it types to
     /// filter a list would read back as the choice — a field holding it.
-    fn made_already(
+    pub(super) fn made_already(
         &mut self,
         screen: &Screen,
         what: &str,
@@ -290,7 +290,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// The option control on `screen` that fits `option` read as a
     /// description, by Jev; `None` when no control fits well enough.
-    async fn described(
+    pub(super) async fn described(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,

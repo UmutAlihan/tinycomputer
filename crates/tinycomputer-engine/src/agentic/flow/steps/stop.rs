@@ -29,7 +29,7 @@ use super::*;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
-    async fn stop_before(&mut self, log: &mut StepLog, action: &str) -> Result<Ended, Halt> {
+    pub(super) async fn stop_before(&mut self, log: &mut StepLog, action: &str) -> Result<Ended, Halt> {
         let purpose = format!("perform: {action}");
         // Asked to "perform: paying", Jev weighs the request against the
         // brief's own rule to stop before paying and hesitates (measured:

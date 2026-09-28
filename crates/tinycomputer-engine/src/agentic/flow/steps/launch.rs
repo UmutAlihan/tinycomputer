@@ -29,7 +29,7 @@ use super::*;
 
 impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
-    async fn open(&mut self, log: &mut StepLog, app: &str) -> Result<Ended, Halt> {
+    pub(super) async fn open(&mut self, log: &mut StepLog, app: &str) -> Result<Ended, Halt> {
         // The launched application becomes `self.app`, and this step's note
         // joins `history` — both reach Jev on a later step — so a fact here
         // is rejected by validation and never expanded, same as everywhere
@@ -64,7 +64,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Opens `url` in the browser and moves the flow onto the page.
-    async fn browse(&mut self, log: &mut StepLog, url: &str) -> Result<Ended, Halt> {
+    pub(super) async fn browse(&mut self, log: &mut StepLog, url: &str) -> Result<Ended, Halt> {
         // Same reasoning as `open`: the address ends up in this step's note
         // in `history`, so it goes through the fact-safe substitution too.
         let url = substitute_safe(url, &self.vars, &self.facts);
@@ -109,7 +109,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Waits for the application to show a readable window, as a freshly
     /// launched one takes a moment to.
-    async fn await_window(&self) -> bool {
+    pub(super) async fn await_window(&self) -> bool {
         for _ in 0..WINDOW_CHECKS {
             if super::backend::observe_async(
                 self.backend.clone(),

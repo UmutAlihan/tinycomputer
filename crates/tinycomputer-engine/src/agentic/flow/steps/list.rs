@@ -32,7 +32,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Picks the best of a list of results by `pick.by`, stores its text,
     /// and opens it. A criterion over prices, times, durations, or stops is
     /// ranked exactly; anything else is judged by Jev among the records.
-    async fn pick(&mut self, log: &mut StepLog, pick: &PickStep) -> Result<Ended, Halt> {
+    pub(super) async fn pick(&mut self, log: &mut StepLog, pick: &PickStep) -> Result<Ended, Halt> {
         let from = substitute_safe(&pick.from, &self.vars, &self.facts);
         let by = substitute_safe(&pick.by, &self.vars, &self.facts);
         let mut screen = self.look().await?;
@@ -108,7 +108,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Stores every item of the list showing as JSON rows of their text.
     /// Where several lists show, Jev says which one is `what`.
-    async fn extract(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
+    pub(super) async fn extract(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
         let what = substitute_safe(&read.what, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
@@ -146,7 +146,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// first [`LIST_PREVIEW`] items, among the first [`MAX_LISTS`]. A list
     /// not clearly chosen falls back to the longest, the one an `extract`
     /// took before it asked.
-    async fn judge_list(
+    pub(super) async fn judge_list(
         &mut self,
         log: &mut StepLog,
         screen: &super::view::Screen,
@@ -196,7 +196,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Asks Jev which record best meets `by`, among the first
     /// [`ask::MAX_READ_SOURCES`]-sized page of them.
-    async fn judge_pick(
+    pub(super) async fn judge_pick(
         &mut self,
         log: &mut StepLog,
         screen: &super::view::Screen,

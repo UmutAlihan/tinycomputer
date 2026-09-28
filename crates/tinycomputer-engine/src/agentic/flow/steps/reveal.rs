@@ -31,7 +31,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// The next way to make `option` show after attempt `attempt` found
     /// nothing: open `what`, page a calendar, or type the option to filter.
-    async fn another_way(
+    pub(super) async fn another_way(
         &mut self,
         log: &mut StepLog,
         attempt: usize,
@@ -74,7 +74,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Pages a calendar forward, one month at a time, until a control shows
     /// `date`; stops at [`MAX_MONTHS`] or where there is no next month.
-    async fn page_to(&mut self, log: &mut StepLog, date: &str) -> Result<(), Halt> {
+    pub(super) async fn page_to(&mut self, log: &mut StepLog, date: &str) -> Result<(), Halt> {
         for _ in 0..MAX_MONTHS {
             let screen = self.look().await?;
             // Restricted to the same clickable, non-aggregating pool
@@ -109,7 +109,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 
     /// Types `option` wherever the focus is.
-    async fn type_into_focus(&mut self, log: &mut StepLog, option: &str) -> Result<(), Halt> {
+    pub(super) async fn type_into_focus(&mut self, log: &mut StepLog, option: &str) -> Result<(), Halt> {
         let text = search_text(option);
         self.act(log, "type to filter", None, move |backend| {
             backend.execute(JevOperation::TypeText, None, Some(text))
@@ -123,7 +123,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 
     /// Types `option` into the search box of `what`, so an autocomplete
     /// lists it; nothing happens when no field takes text.
-    async fn type_to_filter(
+    pub(super) async fn type_to_filter(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,

@@ -31,7 +31,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     /// Every piece of text a `read` may take, as (label, what Jev is shown,
     /// the text itself): each element's text, its name apart when it says
     /// something the text does not, and the screen's static lines.
-    fn read_sources(&self, screen: &super::view::Screen) -> Vec<(String, Value, String)> {
+    pub(super) fn read_sources(&self, screen: &super::view::Screen) -> Vec<(String, Value, String)> {
         let ordered = ask::ordered_nodes(screen);
         screen
             .candidates
@@ -97,7 +97,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             .collect()
     }
 
-    async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
+    pub(super) async fn read(&mut self, log: &mut StepLog, read: &ReadStep) -> Result<Ended, Halt> {
         let what = substitute_safe(&read.what, &self.vars, &self.facts);
         let mut screen = self.look().await?;
         self.explore(&mut screen).await;
@@ -169,7 +169,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
 ///
 /// A control's numeric value (a radio button's `1`) says less than its name,
 /// so a named control with a number for a value reads as its name.
-pub(super) fn readable(candidate: &Candidate) -> Option<String> {
+pub(in crate::agentic::flow) fn readable(candidate: &Candidate) -> Option<String> {
     let value = candidate
         .value
         .as_ref()

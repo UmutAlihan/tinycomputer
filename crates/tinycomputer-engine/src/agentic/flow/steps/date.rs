@@ -50,7 +50,7 @@ const MONTHS: &[&str] = &[
 /// is a real day of that month (a year, when given, decides February's 28th
 /// against its 29th). `February 31` or `April 31` names no such day, and is
 /// read as ordinary autocomplete text instead of taking the calendar path.
-pub(super) fn looks_like_date(option: &str) -> bool {
+pub(in crate::agentic::flow) fn looks_like_date(option: &str) -> bool {
     let lower = option.to_lowercase();
     let words = lower
         .split(|character: char| !character.is_alphanumeric())

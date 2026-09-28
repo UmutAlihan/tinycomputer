@@ -49,7 +49,7 @@ fn held_text(screen: &Screen) -> Vec<(Candidate, String)> {
 /// The matches whose labels say little besides the option: a container
 /// whose label strings together everything inside it (a calendar button
 /// named with every day of the month) is dropped when a plainer match exists.
-pub(super) fn closest(matches: Vec<Candidate>) -> Vec<Candidate> {
+pub(in crate::agentic::flow) fn closest(matches: Vec<Candidate>) -> Vec<Candidate> {
     let length = |candidate: &Candidate| candidate.name.as_deref().map_or(0, str::len);
     let Some(shortest) = matches.iter().map(length).min() else {
         return matches;
@@ -101,7 +101,7 @@ fn is_one_option(candidate: &Candidate) -> bool {
 
 /// The option control on `screen` that is already checked or selected and
 /// whose label starts with `option`: there is nothing to choose.
-pub(super) fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate> {
+pub(in crate::agentic::flow) fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate> {
     let wanted = plain(option);
     if wanted.is_empty() {
         return None;
@@ -124,7 +124,7 @@ pub(super) fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate>
 /// when the flow did not type it there (`typed`, by `element_kind`): a
 /// passengers box reading "1 Adult" has that choice made, and pressing the
 /// stepper beside it, whose label also mentions "1 Adult", would change it.
-pub(super) fn already_holds(
+pub(in crate::agentic::flow) fn already_holds(
     screen: &Screen,
     option: &str,
     typed: &BTreeSet<String>,
@@ -156,7 +156,7 @@ const SELECTABLE_ROLES: &[&str] = &["tab", "radio", "radiobutton", "option", "me
 /// still offered there unselected — a press that took closes the list or
 /// marks the option. `None` when nothing on screen settles it, and Jev is
 /// asked instead.
-pub(super) fn left_unchosen(screen: &Screen, option: &str, filtered: bool) -> Option<String> {
+pub(in crate::agentic::flow) fn left_unchosen(screen: &Screen, option: &str, filtered: bool) -> Option<String> {
     let wanted = plain(option);
     if wanted.is_empty() {
         return None;
@@ -214,7 +214,7 @@ fn container(path: &[String]) -> &[String] {
 /// strings together a whole list (recent searches, every day of a month)
 /// mentions the option without being it. An option control is never such a
 /// list, however long its label.
-pub(super) fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
+pub(in crate::agentic::flow) fn lists_more_than(candidate: &Candidate, option: &str) -> bool {
     if is_one_option(candidate) {
         return false;
     }
@@ -297,7 +297,7 @@ fn mentions(candidate: &Candidate, option: &str) -> bool {
 /// What to type to find `option` in a search box: its name before any
 /// qualifier, so "Srinagar (SXR)" searches for "Srinagar" — a box matching
 /// on the name would find nothing for the whole of it.
-pub(super) fn search_text(option: &str) -> String {
+pub(in crate::agentic::flow) fn search_text(option: &str) -> String {
     let name = option
         .split(['(', ','])
         .next()
@@ -331,7 +331,7 @@ fn within(pool: Vec<Candidate>, what: &str) -> Vec<Candidate> {
 /// describes. A page rarely echoes a description such as "the outbound
 /// flight list" on an option's own label, so this also checks the option's
 /// ancestor labels (`path`), which the snapshot records outermost first.
-pub(super) fn in_region(candidate: &Candidate, what: &str) -> bool {
+pub(in crate::agentic::flow) fn in_region(candidate: &Candidate, what: &str) -> bool {
     let wanted = plain(what);
     if wanted.is_empty() {
         return true;
@@ -346,7 +346,7 @@ pub(super) fn in_region(candidate: &Candidate, what: &str) -> bool {
 
 /// A copy of `candidate` with its shown text stripped, for logging a private
 /// choice without writing the value it displayed into history.
-pub(super) fn redacted(candidate: &Candidate) -> Candidate {
+pub(in crate::agentic::flow) fn redacted(candidate: &Candidate) -> Candidate {
     Candidate {
         name: None,
         description: None,
