@@ -83,8 +83,10 @@ assert_eq!(cards[1].primary.as_ref().unwrap().name.as_deref(), Some("Select"));
 The digest ([the screen digest](the-screen-digest.md)) uses this same
 card-building logic to render a whole list region as one line per card
 instead of one line per element, so a decision model sees "card 2: IndiGo ·
-₹6,840 → Select" rather than every element inside every card. Once a page's
-cards are `Record`s (a flatter, named-field shape built from a card's text),
-[ranking by price, time, or stops](prices-times-and-dates.md) becomes plain
-arithmetic — see that page for how "book the cheapest one" turns into a
-deterministic sort instead of a question sent to Jev.
+₹6,840 → Select" rather than every element inside every card. `Group` is
+deliberately name-free (its `fields` are just a list of text, in order): it
+is the flow runtime, in `tinycomputer-engine`, that turns a page's `Group`s
+into named `Record`s once it knows what the fields probably mean. From
+there, [ranking by price, time, or stops](prices-times-and-dates.md) becomes
+plain arithmetic — see that page for how "book the cheapest one" turns into
+a deterministic sort instead of a question sent to Jev.
