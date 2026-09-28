@@ -3492,7 +3492,7 @@ fn merged_answers_average_under_the_original_keys() {
             answer(&framings[1], "option 7", 0.5, 2),
         ),
     ];
-    let merged = vote::merge(&answered);
+    let merged = vote::tally(&vote::ballots(&answered));
     let Answer::Choice(target) = &merged["target"] else {
         panic!()
     };
@@ -3502,7 +3502,7 @@ fn merged_answers_average_under_the_original_keys() {
     assert!((ask::probability(&merged, "done").unwrap() - 0.7).abs() < 1e-9);
     assert!((ask::top_level(&merged, "progress").unwrap() - 0.5).abs() < 1e-9);
 
-    let split = vote::merge(&[
+    let split = vote::tally(&vote::ballots(&[
         (
             framings[0].clone(),
             answer(&framings[0], "option 7", 0.9, 4),
@@ -3511,12 +3511,12 @@ fn merged_answers_average_under_the_original_keys() {
             framings[1].clone(),
             answer(&framings[1], "option 9", 0.9, 4),
         ),
-    ]);
+    ]));
     let Answer::Choice(split) = &split["target"] else {
         panic!()
     };
     assert!((split.confidence - 0.5).abs() < 1e-9, "one of two agreed");
-    assert!(vote::merge(&[]).is_empty());
+    assert!(vote::tally(&vote::ballots(&[])).is_empty());
 }
 
 #[tokio::test]

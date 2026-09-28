@@ -162,12 +162,6 @@ fn keys_for(count: usize, index: usize) -> Vec<String> {
         .collect()
 }
 
-/// The answers of every framing that came back, merged per question under
-/// the original keys.
-pub(super) fn merge(answered: &[(Framing, BTreeMap<String, Answer>)]) -> BTreeMap<String, Answer> {
-    tally(&ballots(answered))
-}
-
 /// Every framing's answer to each question, under the original keys, in
 /// framing order: the question's ballot.
 pub(super) fn ballots(
