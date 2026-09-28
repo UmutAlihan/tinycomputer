@@ -39,6 +39,8 @@ replace the single-number bars above at every site they apply to unless
 
 | Constant | Value | Where | Meaning |
 |---|---|---|---|
+| `MAX_DISTRACTIONS` / `MAX_CLEARED` | 4 / 3 | `attention/` | distractions one attention question offers; distractions cleared per step |
+| `ATTENTION_FLOOR` | 0.50 | `attention/` | least probability a distraction must win the attention Choice with, beside the gate's margin and agreement |
 | `ACCEPT_MARGIN` | 0.25 | `evidence/` | least lead of a Choice's winner over the runner-up to act on it as read |
 | `ACCEPT_AGREEMENT` | 0.80 | `evidence/` | least share of framings that picked the winner, or put a judgement on the same side of its threshold, to act on it as read |
 | `ABSTAIN_FLOOR` / `ABSTAIN_AGREEMENT` | 0.20 / 0.40 | `evidence/` | a winner under both is abstained from: nothing serves |

@@ -62,6 +62,7 @@ has `""`, and goal and intent runs carry their goal or intent text.
 | `observe` | a flow reads the screen | `step`, `part` (`screen` or `subtree`), `wall_ms`, `ok`, `candidates`, `unexplored` |
 | `action` | a flow acts | `step`, `action`, `target`, `ok`, `note`, `wall_ms`, `settle_ms` |
 | `reflect` | a `choose` that pressed something is reflected on | `step`, `held` (calibrated belief the choice shows), `attempt` (`first` or `after_repair`); `contradicted` when a selected sibling settled it without Jev |
+| `attention` | a turn or step asks what needs attention first | `step`, `distractions` (container names), `choice`, `verdict` |
 | `evidence` | a deliberating decision is weighed | `step`, `site` (`target`, `done`, `holds`), `p`, `margin`, `agreement`, `spread`, `framings`, `verdict` (`accept`, `deliberate`, `abstain`) |
 | `escalate` | a deliberated decision climbs a rung | `step`, `site`, `rung` (`framings`, `contrast`, `views`), `verdict` after it |
 | `views` | a judgement is asked over other views | `step`, `site`, `readings` (the first is the original), `settled` |

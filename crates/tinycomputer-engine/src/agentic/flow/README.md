@@ -26,6 +26,7 @@ evidence, checked after acting, and undone and retried when wrong.
 | `wide.rs` | the wide strategy: one request per `do` turn over the screen digest (judgement, `dismiss`, every move's target), the wide state, resolving prepared targets |
 | `survey.rs` | the wide strategy's attention pass: which regions of a crowded screen matter, which distract |
 | `ledger.rs` | the working memory wide questions see: finished steps, recent actions across steps, tried and failed, next step |
+| `attention/` | the root of every turn: what needs attention first, the step or a distraction; clears one with its least-committal control |
 | `evidence/` | a question's ballot read into accept, deliberate, or abstain |
 | `escalate/` | the ladder a deliberated decision climbs: more framings, duel, contrast, views; `vouch` for irreversible presses |
 | `duel/` | pairwise duels in both orders, counted Copeland-style |

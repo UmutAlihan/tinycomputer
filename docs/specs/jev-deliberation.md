@@ -46,6 +46,39 @@ it is uncalibrated by construction.
 Deliberation replaces the single-number gate with layers. Most are
 deterministic Rust, and Jev turns are spent only where the evidence is thin.
 
+### 0. Attention: the root of every turn (`flow/attention/`)
+
+Before a step is judged or an element grounded, the runtime asks what on the
+screen needs attention **first**: the step itself, or a distraction in the
+way — a cookie or privacy card, a promo toast lying over the results, a
+newsletter or app prompt. Left in place, a distraction takes Jev's
+attention, covers the element the step needs, and turns a click into a miss.
+Live on Emirates, a promo toast ("Unlimited date changes…", with a Close)
+covered the lower result cards while the flow pressed the fare above it.
+
+- **Candidates, deterministically.** A distraction is the container of a
+  dismiss control (× / Close / Not now / No thanks / Got it / Reject all /
+  Accept essential only / Accept all), with everything under it. A container
+  counts when it is in front (the digest's overlays), when its labels mark
+  it (cookie, consent, privacy, newsletter, subscribe, offer, promo, app,
+  survey…), or when its control is a plain close. An "Accept" or "Reject" in
+  ordinary content is the step's own business and is not offered, nor is a
+  distraction the step itself names ("dismiss the cookie banner"), nor any
+  control that looks irreversible or was already pressed this step.
+- **One question, only when there is a candidate:** a `focus` Choice, "the
+  step" against each distraction (what it shows, what clears it). A clean
+  screen costs nothing.
+- **Cleared only on clear evidence** (`ATTENTION_FLOOR`, with the gate's
+  margin and agreement), with the container's **least committal** control:
+  rejecting or essential-only first, closing next, accepting last. At most
+  `MAX_CLEARED` per step; the screen is looked at again after each.
+- **Where:** at the top of every `do` turn, and once before a `choose`,
+  `enter`, `pick`, `read`, `extract`, or `stop_before` step.
+
+The old obstacle loop (`blocked` at 0.70, then `dismiss`) stays: it catches
+a dialog the step's own judge sees as blocking, which attention may leave
+when it is not in the way of the step.
+
 ### 1. The evidence gate (`flow/evidence/`)
 
 Every framing's own answer is kept as the question's **ballot**
@@ -216,6 +249,7 @@ began at (verified) when it has left it, and only then repairs.
 
 | | `off` | `standard` | `deep` (default) |
 |---|---|---|---|
+| Attention (clear distractions first) | — | yes | yes |
 | Evidence gate | — | yes | yes |
 | More framings | — | yes | yes |
 | Duel | — | yes | yes |
@@ -228,8 +262,8 @@ began at (verified) when it has left it, and only then repairs.
 | Irreversible-press bar | `LOCATE_FLOOR` | `LOCATE_FLOOR` | `IRREVERSIBLE_FLOOR` |
 
 Each part can also be turned off on its own through `disabled_loops`:
-`evidence`, `escalation`, `duel`, `tree_grounding`, `denoise`, `expectation`,
-`checkpoint`, `backtrack`.
+`attention`, `evidence`, `escalation`, `duel`, `tree_grounding`, `denoise`,
+`expectation`, `checkpoint`, `backtrack`.
 
 ## Cost
 
@@ -246,7 +280,7 @@ the votes. To leave room for that, the default votes are now 7 (previously
 
 - Adds `RunFlowRequest.deliberation` (`off`/`standard`/`deep`, default `deep`)
   and `TaskBudget.deliberation`.
-- Adds the eight `FlowLoop`s above.
+- Adds the nine `FlowLoop`s above.
 - Adds `Surface::back`, which refuses by default.
 - `CONTRACT_VERSION` 2.3.
 
@@ -258,7 +292,8 @@ New journal events (see [`../jev-journal.md`](../jev-journal.md)):
 - `views` and `duel` for those rungs;
 - `expect` for each effect check;
 - `checkpoint`, `restore`, and `backtrack` for undo and backtracking;
-- `denoise` for oscillations.
+- `denoise` for oscillations;
+- `attention` for each attention question and what it cleared.
 
 `jev_journal -- <id> --calibration` tabulates each site's verdicts against how
 the steps ended, so the constants can be tuned on live runs rather than
