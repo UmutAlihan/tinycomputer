@@ -269,7 +269,7 @@ let chunk: DesktopResponse = proxy
     .await?;
 ```
 
-(`crates/tinycomputer/src/tinybus_module/test/browser.rs` runs this same
+(`crates/tinycomputer/src/tinybus_module/tinybus_module_tests/browser_tests.rs` runs this same
 sequence against the in-memory bus.)
 
 ## Where the browser fits into flows and tasks

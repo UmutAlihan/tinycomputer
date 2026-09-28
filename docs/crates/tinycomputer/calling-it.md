@@ -151,7 +151,7 @@ back:
 
 `BrowserScreenshot` hands back an output id rather than an inline image;
 read it back in chunks with `BrowserReadOutput` until `eof`, then
-`BrowserReleaseOutput`. `crates/tinycomputer/src/tinybus_module/test/browser.rs`
+`BrowserReleaseOutput`. `crates/tinycomputer/src/tinybus_module/tinybus_module_tests/browser_tests.rs`
 runs this exact open-navigate-click-close sequence over the in-memory bus.
 See [docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md)
 for every field and error code.
