@@ -127,7 +127,7 @@ impl DesktopService {
                     reason: None,
                 },
             ],
-            self.jev.is_some(),
+            self.jev.as_ref().map(agentic::JevRuntime::configuration),
             &self.tasks,
         ))
     }

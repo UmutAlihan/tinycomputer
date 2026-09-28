@@ -128,7 +128,9 @@ impl JevRuntime {
         endpoint: Option<&str>,
     ) -> Result<Self, Box<DesktopError>> {
         let client = match endpoint {
-            Some(endpoint) => tinyinference_decisions::sage::SageClient::with_base_url(api_key, endpoint),
+            Some(endpoint) => {
+                tinyinference_decisions::sage::SageClient::with_base_url(api_key, endpoint)
+            }
             None => tinyinference_decisions::sage::SageClient::new(api_key),
         }
         .map_err(|error| config_error(&error))?;
