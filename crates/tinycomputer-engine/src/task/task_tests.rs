@@ -8,6 +8,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod approval_tests;
+mod artifact_tests;
 mod describe_tests;
 mod errors_tests;
 mod human_tests;
@@ -45,6 +46,8 @@ struct Script {
     screen: Mutex<Vec<String>>,
     /// Tasks let go of, in order.
     released: Mutex<Vec<TaskId>>,
+    /// The screenshot `capture` hands back, if any.
+    shot: Mutex<Option<tinycomputer_bus::browser::OutputRef>>,
 }
 
 impl FlowRunner for Script {
@@ -67,6 +70,11 @@ impl FlowRunner for Script {
     fn visible_text(&self, _task: &TaskId) -> super::TextFuture {
         let texts = self.screen.lock().unwrap().clone();
         Box::pin(async move { texts })
+    }
+
+    fn capture(&self, _task: &TaskId) -> super::CaptureFuture {
+        let shot = self.shot.lock().unwrap().clone();
+        Box::pin(async move { shot })
     }
 
     fn release(&self, task: &TaskId) {
