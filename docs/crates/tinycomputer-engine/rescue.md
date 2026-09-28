@@ -88,7 +88,7 @@ Exactly one JSON object, one of three shapes:
 
 - **`retry`** replaces the failed step with 1 to `MAX_RESCUE_STEPS` (6) flow
   steps. They run next, followed by whatever was left of the original flow.
-- **`skip`** means the screen is already past the failed step, its work
+- **`skip`** means the screen is already past the failed step: its work
   was already done, or a later step's page is already showing, so nothing
   runs in its place; the flow just carries on.
 - **`give_up`** means no step can help: the site is blocking or withholding
