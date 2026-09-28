@@ -262,7 +262,7 @@ async fn the_task_report_schema_requires_the_trace_flag() {
     // A schema-driven caller sends only what is required; a body of only
     // `{"id"}` would be refused client-side as a stream handle.
     let (tasks, _) = controller(Vec::new());
-    let described = capabilities(Vec::new(), true, &tasks);
+    let described = capabilities(Vec::new(), Some(&jev()), &tasks);
     let report = described
         .members
         .iter()
