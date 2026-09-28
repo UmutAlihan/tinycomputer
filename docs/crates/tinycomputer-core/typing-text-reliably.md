@@ -22,9 +22,9 @@ field back after acting on it.
    - If the read-back value holds the text, report success:
      `{"path": "set_value", "verified": true}`.
    - If the read-back value is only attachment tokens (see below), report
-     `{"path": "set_value", "verified": false}`, delivered, but a field like
-     this can never be read back and compared, so it is reported as
-     unverified rather than as a failure.
+     `{"path": "set_value", "verified": false}`. It was delivered, but a
+     field like this can never be read back and compared, so it is reported
+     as unverified rather than as a failure.
    - If nothing could be read at all, same thing: unverified, not failed.
 3. Otherwise, fall back to `paste(app, target, text)`, put the text on the
    clipboard, focus the field, paste, and restore whatever the clipboard held
