@@ -17,23 +17,38 @@
 mod driver;
 mod platform;
 
-use std::io::BufRead;
-use std::sync::mpsc;
+use std::io::{BufRead, BufReader, Read};
+use std::sync::mpsc::{self, Receiver, Sender};
 
+use crate::driver::Driver;
 use tinycomputer_cursor::OverlayCommand;
 
+#[cfg(not(test))]
 fn main() {
-    let (commands, received) = mpsc::channel();
-    std::thread::spawn(move || {
-        for line in std::io::stdin().lock().lines() {
-            let Ok(line) = line else { break };
-            if let Some(command) = OverlayCommand::from_line(&line)
-                && commands.send(command).is_err()
-            {
-                break;
-            }
-        }
+    run(std::io::stdin(), platform::run);
+}
+
+fn run(input: impl Read + Send + 'static, launch: impl FnOnce(Driver)) {
+    let (commands, received): (_, Receiver<OverlayCommand>) = mpsc::channel();
+    let reader = std::thread::spawn(move || {
+        forward_lines(input, &commands);
         // Dropping the sender tells the driver the module has gone.
     });
-    platform::run(driver::Driver::new(received));
+    launch(driver::Driver::new(received));
+    let _ = reader.join();
 }
+
+fn forward_lines(input: impl Read, commands: &Sender<OverlayCommand>) {
+    for line in BufReader::new(input).lines() {
+        let Ok(line) = line else { break };
+        if let Some(command) = OverlayCommand::from_line(&line)
+            && commands.send(command).is_err()
+        {
+            break;
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "test.rs"]
+mod test;
