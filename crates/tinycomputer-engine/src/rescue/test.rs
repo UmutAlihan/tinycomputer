@@ -78,6 +78,7 @@ fn briefing() -> Briefing {
             "18".to_owned(),
             "Class".to_owned(),
         ],
+        rules: vec!["Never pay: stop in front of the control that pays.".to_owned()],
         known: BTreeSet::from(["email".to_owned(), "card".to_owned()]),
         secrets: BTreeSet::from(["card".to_owned()]),
     }
@@ -122,6 +123,10 @@ async fn guidance_comes_back_as_steps_to_run_in_place_of_the_failed_one() {
     );
     let asked = &seen[0][1].text;
     assert!(asked.contains("Goal: book a flight to Dubai"));
+    assert!(asked.contains(
+        "which your steps must keep:\n- Never pay: stop in front of the control that pays."
+    ));
+    assert!(seen[0][0].text.contains("press its Skip"));
     assert!(asked.contains("<- FAILED"));
     assert!(asked.contains("Step 3 failed: the class button is covered"));
     assert!(asked.contains("<untrusted_accessibility_data>\nOctober 2026"));
@@ -209,6 +214,8 @@ fn the_briefing_shows_earlier_rescues_and_cuts_a_long_screen() {
     briefing.screen = vec!["x".repeat(SCREEN_CHARS / 2); 4];
     let text = render(&briefing);
     assert!(!text.contains("Goal:"));
+    briefing.rules.clear();
+    assert!(!render(&briefing).contains("Rules the task runs under"));
     assert!(text.contains("step 2 (no date was taken): the calendar needs a month first"));
     assert!(text.contains("(covering 1 more), one of its steps failed"));
     assert!(text.contains("Variables you may use: none."));
