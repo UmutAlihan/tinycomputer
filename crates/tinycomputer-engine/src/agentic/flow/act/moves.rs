@@ -138,7 +138,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     ///
     /// A `branch` left by a backtrack is tried first, confirmed with one
     /// yes/no question, before anything is grounded afresh.
-    pub(super) async fn activate(
+    async fn activate(
         &mut self,
         log: &mut StepLog,
         screen: &Screen,
