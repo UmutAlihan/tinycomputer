@@ -495,16 +495,19 @@ pub struct Calibration {
     pub verdicts: Vec<VerdictRow>,
     /// Escalation rungs climbed, by rung.
     pub rungs: BTreeMap<String, u32>,
-    /// Duels asked, and how many named a champion.
+    /// Duels asked.
     pub duels: u32,
+    /// Duels that named a champion.
     pub champions: u32,
     /// Expectations checked, by outcome (`met`, `missed`, `unclear`).
     pub expectations: BTreeMap<String, u32>,
-    /// Undos run, and how many the screen verified.
+    /// Undos run.
     pub restores: u32,
+    /// Undos the screen verified.
     pub restored: u32,
-    /// Backtracks tried, and how many were taken.
+    /// Backtracks tried.
     pub backtracks: u32,
+    /// Backtracks whose candidate was confirmed and taken.
     pub branched: u32,
 }
 
