@@ -38,24 +38,24 @@ StartTask  ──> TaskView (Running)
 
 ## Starting a task
 
-`StartTaskRequest` takes either `task` (plain language, needs a planner
+`StartTaskRequest` takes either `task` (plain language; needs a planner
 configured, or the task pauses immediately with `NeedsPlan`) or `flow` (a
 flow you wrote yourself). It also takes:
 
-- `facts`, values the flow may type, by name (`${first name}`, `${card
+- `facts`: values the flow may type, by name (`${first name}`, `${card
   number}`). See [Facts and secrets](#facts-and-secrets) below.
-- `secret_facts`, names among `facts` to keep secret beyond what is
+- `secret_facts`: names among `facts` to keep secret beyond what is
   recognised automatically.
-- `constraints`, where the task may act and how far it may go (see below).
-- `budget`, upper bounds on the work it may do (see below).
-- `memory`, grounding hints from an earlier run, so this one reads less of
+- `constraints`: where the task may act and how far it may go (see below).
+- `budget`: upper bounds on the work it may do (see below).
+- `memory`: grounding hints from an earlier run, so this one reads less of
   the screen to find the same elements again.
-- `trace`, record every Jev exchange for `TaskReport`.
+- `trace`: record every Jev exchange for `TaskReport`.
 
 Before anything runs, the flow is validated with the same checker a flow
 author's `Describe` call uses. A flow that references an undefined
-`${name}` is not rejected outright, that becomes a pause instead (see
-below), but any other structural problem (an unknown step kind, a
+`${name}` is not rejected outright; that becomes a pause instead (see
+below). Any other structural problem (an unknown step kind, a
 `stop_before` guidance that does not itself guard, and so on) fails
 `StartTask` immediately with `INVALID_FLOW`.
 
@@ -135,12 +135,12 @@ Three kinds of pause exist, and each resumes differently:
 ### How a `NeedsHuman` pause is detected
 
 A step failure only becomes `NeedsHuman` when it looks recoverable *and* the
-run has something to retry (a `Resume::Retry` was captured, see
+run has something to retry (a `Resume::Retry` was captured; see
 `human_wall` in `task/mod.rs`). Whether a person, not a rescue, is actually
 needed is decided by reading the screen's visible text for the signs of a
-wall only a person can pass (`tinycomputer_core::human_needed`, a captcha, a
+wall only a person can pass (`tinycomputer_core::human_needed`: a captcha, a
 login form, a one-time-code prompt). If no such wall is detected, the
-failure is left alone (and may be handed to the rescuer instead, see
+failure is left alone (and may be handed to the rescuer instead; see
 [rescue.md](rescue.md)).
 
 ## Budgets, across every run of a task
