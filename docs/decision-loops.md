@@ -361,12 +361,16 @@ rounds:
    list, then assigned greedily from the most confident proposal down, so two
    slots can never claim one field. A proposal under 0.4 (`SLOT_FLOOR`) is
    dropped.
-5. Deliver each text in screen order with `deliver_text`.
+5. Deliver each text in screen order with `deliver_text`. A field that
+   refuses it (`NOT_A_TEXT_FIELD`: on the web, focusing it reached no text
+   input — a list row a page gave a `combobox` role) is struck for the step
+   with every element of its kind, and no `do` move of the step presses one.
 
 `deliver_text` in `tinycomputer-core/src/surface/delivery.rs` is how text
 reliably lands:
 
-1. Set the value through the accessibility API (or agent-browser's `fill`).
+1. Set the value through the accessibility API (or agent-browser's `fill`,
+   once focusing the element shows it takes typed text).
 2. Read it back. If the field holds the text (whitespace-insensitive), it was
    delivered through `set_value` and verified.
 3. If it does not, give the application a moment (`settle`) and read again.
