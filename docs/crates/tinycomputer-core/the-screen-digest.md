@@ -87,7 +87,7 @@ request sends to Jev. `Rendering` carries:
 Regions are spent against the budget in rank order: in front first, then by
 relevance (highest first), then in the order they originally appeared. A
 region that fits is rendered in full; one that does not, or one that is
-muted outright as noise or a distraction with no rescuing relevance score , 
+muted outright as noise or a distraction with no rescuing relevance score,
 is collapsed to a single summary line instead, such as:
 
 ```

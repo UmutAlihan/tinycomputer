@@ -36,8 +36,8 @@ whole window), and `include_values` (whether field values may be shown to
 Jev at all, off by default, since a field's contents can be personal).
 
 One shortcut lives ahead of the Jev call: `visible_completion` checks a
-narrow class of already-satisfied intents directly from the screen —
-currently, "is something playing", without spending a Jev call to confirm
+narrow class of already-satisfied intents directly from the screen,
+currently "is something playing", without spending a Jev call to confirm
 what is already visible. This is a small, deliberately limited optimization,
 not a general pattern; everything else always asks.
 
