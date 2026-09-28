@@ -61,6 +61,7 @@ has `""`, and goal and intent runs carry their goal or intent text.
 | `survey` | the wide strategy surveys a crowded screen | `step`, `regions` asked about, `most_relevant` (region ids), `distractions` |
 | `observe` | a flow reads the screen | `step`, `part` (`screen` or `subtree`), `wall_ms`, `ok`, `candidates`, `unexplored` |
 | `action` | a flow acts | `step`, `action`, `target`, `ok`, `note`, `wall_ms`, `settle_ms` |
+| `reflect` | a `choose` that pressed something is reflected on | `step`, `held` (calibrated belief the choice shows), `attempt` (`first` or `after_repair`); `contradicted` when a selected sibling settled it without Jev |
 | `step` | a flow step ends | `step`, `kind`, `text`, `outcome`, `note`, `turns`, `jev_calls`, `actions`, `loops`, `confidence`, `wall_ms` |
 | `end` | a flow run ends | `stop`, `wall_ms`, `actions`, `metrics`, `learned` |
 

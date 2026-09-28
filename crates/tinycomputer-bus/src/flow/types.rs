@@ -329,6 +329,9 @@ pub enum FlowLoop {
     /// front, noise collapsed. Off, the wide strategy shows the flat element
     /// list the narrow strategy does.
     Digest,
+    /// Checking, after a `choose` pressed something, that the screen shows
+    /// the choice it asked for, and repairing it once when it does not.
+    Reflection,
 }
 
 /// How the flow runtime spends its Jev decisions.

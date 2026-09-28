@@ -36,6 +36,7 @@ mod enter;
 mod ground;
 mod ledger;
 mod memory;
+mod reflect;
 mod steps;
 mod survey;
 mod validate;
@@ -167,6 +168,9 @@ pub(super) struct StepLog {
     pub(super) actions: Vec<FlowActionRecord>,
     pub(super) loops: BTreeSet<FlowLoop>,
     pub(super) confidence: Option<f64>,
+    /// Whether the step typed to filter a list: the option it then pressed
+    /// should leave the list, or show selected (`steps::left_unchosen`).
+    pub(super) filtered: bool,
 }
 
 impl StepLog {
@@ -250,6 +254,10 @@ pub(super) struct FlowRun<'r, B> {
     /// step: options in a list, never pressed by a `do` move while the step
     /// looks for somewhere to type.
     pub(super) refused: BTreeSet<String>,
+    /// Kinds of element (`view::element_kind`) this run typed into: a
+    /// field holding text the flow typed shows no choice the page made
+    /// (`steps::already_holds`).
+    pub(super) typed: BTreeSet<String>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -352,6 +360,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             rounds: 0,
             read: Vec::new(),
             refused: BTreeSet::new(),
+            typed: BTreeSet::new(),
         }
     }
 
@@ -388,6 +397,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         self.refused.clear();
         let started = Instant::now();
         let result = steps::run(self, &mut log, &action, &text, &path).await;
+        let result = self.reflected(&mut log, &action, &text, result).await;
         let wall_ms = millis(started.elapsed());
         let (ended, halt) = match result {
             Ok(ended) => (ended, None),

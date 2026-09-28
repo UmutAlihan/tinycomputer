@@ -34,7 +34,9 @@ use super::{
     ask,
     backend::AgentBackend,
     enter, fit, flow_guide, ground, memory, run_flow_with,
-    steps::{self, already_chosen, in_region, lists_more_than, looks_like_date, redacted},
+    steps::{
+        self, already_chosen, already_holds, in_region, lists_more_than, looks_like_date, redacted,
+    },
     validate, validate_flow,
     view::{Candidate, Depth, Screen},
     vote,
@@ -92,6 +94,11 @@ struct Sim {
     checked_fare: Option<&'static str>,
     /// A line of guidance shown on the page, such as a date layout.
     hint: Option<&'static str>,
+    /// A passengers box with adult steppers, holding this many adults.
+    adults: Option<u8>,
+    /// Trip-type tabs: the selected one, and how many clicks on the others
+    /// the page ignores first, as a page still loading its scripts does.
+    trip: Option<(&'static str, u8)>,
     quirks: BTreeSet<Quirk>,
 }
 
@@ -133,6 +140,12 @@ fn press_booking(sim: &mut Sim, name: &str) {
     };
     match name {
         "Going to?" => booking.searching = true,
+        // Choosing a suggestion closes the list over the chosen city.
+        "Srinagar, SXR" if booking.searching => {
+            booking.searching = false;
+            sim.fields
+                .insert("Destination".to_owned(), "Srinagar, SXR".to_owned());
+        }
         "Departure" => booking.calendar = Some(8),
         "Next Month" => booking.calendar = booking.calendar.map(|month| (month + 1) % 12),
         // The calendar's own aggregated-label container also ends with
@@ -145,6 +158,39 @@ fn press_booking(sim: &mut Sim, name: &str) {
             sim.fields.insert("Departure".to_owned(), day.to_owned());
         }
         _ => {}
+    }
+}
+
+/// Emirates' passengers box: a button that does not show its count, and
+/// steppers whose labels both name the count they would change.
+fn passenger_steppers(adults: u8, root: &str, candidates: &mut Vec<Candidate>) {
+    let path = [root, "group \"Passengers\""];
+    candidates.push(node("Passengers", "button", &["Click"], &path, 250.0));
+    for (verb, y) in [("Decrease", 260.0), ("Increase", 270.0)] {
+        candidates.push(node(
+            &format!("{verb} number of Adult passengers. You have selected {adults} Adult"),
+            "button",
+            &["Click"],
+            &path,
+            y,
+        ));
+    }
+}
+
+/// Trip-type tabs, `selected` marked as the page marks it.
+fn trip_tabs(selected: &str, root: &str, candidates: &mut Vec<Candidate>) {
+    for (index, tab) in ["Return", "One way", "Multi-city"].into_iter().enumerate() {
+        let mut tab_node = node(
+            tab,
+            "tab",
+            &["Click"],
+            &[root, "tablist \"Trip\""],
+            280.0 + f64::from(u8::try_from(index).unwrap()),
+        );
+        if tab == selected {
+            tab_node.states = vec!["selected".to_owned()];
+        }
+        candidates.push(tab_node);
     }
 }
 
@@ -430,6 +476,12 @@ impl App {
         if let Some(booking) = &sim.booking {
             booking_widget(&sim, booking, &root, &mut candidates);
         }
+        if let Some(adults) = sim.adults {
+            passenger_steppers(adults, &root, &mut candidates);
+        }
+        if let Some((selected, _)) = sim.trip {
+            trip_tabs(selected, &root, &mut candidates);
+        }
         if sim.has(Quirk::CityRows) {
             city_rows(&root, &mut candidates);
         }
@@ -535,6 +587,25 @@ impl AgentBackend for App {
                     "Send" => sim.sent = true,
                     "Keep Editing" => sim.obstacle = false,
                     "Archive" => sim.compose_open = false,
+                    "Return" | "One way" | "Multi-city" => {
+                        if let Some((selected, ignored)) = sim.trip.as_mut() {
+                            if *ignored > 0 {
+                                *ignored -= 1;
+                            } else {
+                                *selected = match name.as_str() {
+                                    "Return" => "Return",
+                                    "One way" => "One way",
+                                    _ => "Multi-city",
+                                };
+                            }
+                        }
+                    }
+                    _ if name.starts_with("Increase number of Adult") => {
+                        sim.adults = sim.adults.map(|adults| adults + 1);
+                    }
+                    _ if name.starts_with("Decrease number of Adult") => {
+                        sim.adults = sim.adults.map(|adults| adults.saturating_sub(1));
+                    }
                     _ if sim.booking.is_some() => press_booking(&mut sim, &name),
                     _ => {}
                 }
@@ -823,7 +894,8 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
         "move" => pick(question, "shortcut", 0.9),
         "shortcut" => pick(question, "new_item", 0.9),
         // Every action helps and no field shows an error, unless a test says.
-        "confirm" | "helped" | "dismiss_known" => noul(0.9),
+        // A press left what the step asked for, unless a test says.
+        "confirm" | "helped" | "dismiss_known" | "reflects" => noul(0.9),
         _ if id.starts_with("known_") => noul(0.9),
         // A survey finds the step in "Region 1" and nothing distracting.
         _ if id.starts_with("relevance_") => {
@@ -834,7 +906,7 @@ fn default_answer(id: &str, question: &Question, sim: &Sim) -> Answer {
             })
         }
         _ if id.starts_with("distraction_") => noul(0.05),
-        _ if id.starts_with("error_") => noul(0.05),
+        _ if id.starts_with("error_") || id == "strays" => noul(0.05),
         _ if id.starts_with("asks_") => noul(0.9),
         "dismiss" => pick(question, "Keep Editing", 0.9),
         "region" => pick(question, "Region 1", 0.9),
@@ -3762,6 +3834,53 @@ fn a_fare_card_is_one_option_and_a_checked_one_is_already_chosen() {
     assert!(already_chosen(&screen, "Saver").is_none());
 }
 
+#[test]
+fn a_field_already_showing_the_option_holds_it_unless_the_flow_typed_it() {
+    // Emirates' passengers box reads "1 Adult"; the stepper beside it names
+    // "1 Adult" too, and pressing it makes two.
+    let mut passengers = node(
+        "Passengers",
+        "textbox",
+        &["Click", "SetValue"],
+        &["main"],
+        1.0,
+    );
+    passengers.value = Some(json!("1 Adult"));
+    let stepper = node(
+        "Increase number of Adult passengers. You have selected 1 Adult. Ages 12+",
+        "button",
+        &["Click"],
+        &["main"],
+        2.0,
+    );
+    let screen = Screen {
+        app: "browser".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: vec![stepper, passengers.clone()],
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    let none = BTreeSet::new();
+    assert_eq!(
+        already_holds(&screen, "1 Adult", &none).and_then(|held| held.name),
+        Some("Passengers".to_owned()),
+        "the stepper only mentions the option; the box holds it"
+    );
+    assert!(already_holds(&screen, "2 Adults", &none).is_none());
+    assert!(
+        already_holds(&screen, "Adult", &none).is_none(),
+        "whole value only"
+    );
+    assert!(already_holds(&screen, "", &none).is_none());
+    let typed = BTreeSet::from([super::view::element_kind(&passengers)]);
+    assert!(
+        already_holds(&screen, "1 Adult", &typed).is_none(),
+        "text the flow typed to search is not a choice"
+    );
+}
+
 #[tokio::test]
 async fn a_reveal_that_fails_leaves_the_other_ways_to_try() {
     let run = run_with(
@@ -4884,4 +5003,233 @@ async fn a_row_that_refused_the_text_is_never_pressed_while_revealing_a_field() 
         step.note,
         "no field that takes text was found for: destination search; 1 element(s) the page offered as fields refused the text"
     );
+}
+
+// -------------------------------------------------------------- reflection
+
+/// A reflection hook: `reflects` and `strays` answer by whether the
+/// simulator holds exactly one adult.
+fn one_adult(id: &str, sim: &Sim) -> Option<Answer> {
+    let right = sim.adults == Some(1);
+    match id {
+        "reflects" => Some(noul(if right { 0.9 } else { 0.1 })),
+        "strays" => Some(noul(if right { 0.05 } else { 0.9 })),
+        _ => None,
+    }
+}
+
+#[tokio::test]
+async fn a_choice_that_left_the_wrong_count_is_reflected_on_and_repaired() {
+    let run = run_with(
+        App::with(|sim| sim.adults = Some(1)),
+        json!({"app": "browser", "steps": [
+            {"choose": {"what": "the passengers box", "option": "1 Adult"}}
+        ]}),
+        |_| {},
+        |id, question, sim| {
+            one_adult(id, sim).or_else(|| match id {
+                // Both steppers name "1 Adult"; the wrong one wins first.
+                "target" if sim.adults == Some(1) => Some(pick(question, "Increase", 0.9)),
+                "target" => Some(pick(question, "Decrease", 0.9)),
+                "move" => Some(pick(question, "activate", 0.9)),
+                "done" => Some(noul(if sim.adults == Some(1) { 0.95 } else { 0.05 })),
+                _ => None,
+            })
+        },
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    assert_eq!(
+        run.app.sim().adults,
+        Some(1),
+        "the repair undid the extra adult"
+    );
+    let clicks = run.app.sim().clicks.clone();
+    assert!(clicks[0].starts_with("Increase"), "{clicks:?}");
+    assert!(
+        clicks.iter().any(|click| click.starts_with("Decrease")),
+        "{clicks:?}"
+    );
+    let step = &run.result.steps[0];
+    assert_eq!(step.outcome, StepOutcome::Done);
+    assert!(step.loops.contains(&FlowLoop::Reflection));
+}
+
+#[tokio::test]
+async fn a_choice_that_left_the_right_option_is_reflected_on_once() {
+    let run = run_with(
+        App::with(|sim| sim.extra_buttons = 9),
+        json!({"app": "Mail", "steps": [{"choose": {"what": "the message list", "option": "Message 7"}}]}),
+        |_| {},
+        |_, _, _| None,
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(
+        run.app.sim().clicks,
+        ["Message 7"],
+        "no repair pressed anything"
+    );
+    assert!(run.result.steps[0].loops.contains(&FlowLoop::Reflection));
+    let reflections = run
+        .requests
+        .iter()
+        .filter(|request| request.questions.contains_key("reflects"))
+        .count();
+    assert_eq!(reflections, 1);
+}
+
+#[tokio::test]
+async fn a_repair_that_changes_nothing_fails_the_step_with_the_reflection() {
+    let run = run_with(
+        App::with(|sim| sim.adults = Some(1)),
+        json!({"app": "browser", "steps": [
+            {"choose": {"what": "the passengers box", "option": "1 Adult"}}
+        ]}),
+        |_| {},
+        |id, question, sim| {
+            one_adult(id, sim).or_else(|| match id {
+                // Every press adds an adult: the repair only makes it worse.
+                "target" => Some(pick(question, "Increase", 0.9)),
+                "move" => Some(pick(question, "activate", 0.9)),
+                "done" => Some(noul(0.05)),
+                _ => None,
+            })
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::StepFailed);
+    let note = &run.result.steps[0].note;
+    assert!(note.starts_with("reflection:"), "{note}");
+    assert!(note.contains("1 Adult"), "{note}");
+}
+
+#[test]
+fn a_selected_sibling_plainly_contradicts_the_option() {
+    // Emirates puts each tab in its own list item.
+    let tab = |name: &str, selected: bool| {
+        let item = format!("listitem #{}", name.len());
+        let mut tab = node(name, "tab", &["Click"], &["main", "tablist 2", &item], 1.0);
+        if selected {
+            tab.states = vec!["selected".to_owned()];
+        }
+        tab
+    };
+    let screen = |tabs: Vec<Candidate>| Screen {
+        app: "browser".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: tabs,
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    assert_eq!(
+        steps::left_unchosen(
+            &screen(vec![tab("Return", true), tab("One way", false)]),
+            "One way",
+            false
+        )
+        .as_deref(),
+        Some("tab \"One way\" is not selected; tab \"Return\" is")
+    );
+    assert!(
+        steps::left_unchosen(
+            &screen(vec![tab("Return", false), tab("One way", true)]),
+            "One way",
+            false
+        )
+        .is_none()
+    );
+    assert!(
+        steps::left_unchosen(
+            &screen(vec![tab("Return", false), tab("One way", false)]),
+            "One way",
+            false
+        )
+        .is_none(),
+        "nothing selected settles nothing: Jev is asked"
+    );
+    assert!(
+        steps::left_unchosen(&screen(vec![tab("Return", true)]), "Srinagar", false).is_none(),
+        "an option no tab names is not settled here"
+    );
+}
+
+#[tokio::test]
+async fn a_tab_click_the_page_ignored_is_caught_even_when_jev_says_it_took() {
+    let run = run_with(
+        App::with(|sim| sim.trip = Some(("Return", 1))),
+        json!({"app": "browser", "steps": [
+            {"choose": {"what": "the trip type", "option": "One way"}}
+        ]}),
+        |_| {},
+        |id, question, sim| match id {
+            // A lenient Jev: it believes the choice took either way.
+            "reflects" => Some(noul(0.9)),
+            "strays" => Some(noul(0.05)),
+            "target" => Some(pick(question, "One way", 0.9)),
+            "move" => Some(pick(question, "activate", 0.9)),
+            "done" => Some(noul(if sim.trip.is_some_and(|(tab, _)| tab == "One way") {
+                0.95
+            } else {
+                0.05
+            })),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(
+        run.result.stop,
+        FlowStopReason::Completed,
+        "{:?}",
+        run.result.steps
+    );
+    assert_eq!(run.app.sim().trip.map(|(tab, _)| tab), Some("One way"));
+    assert_eq!(
+        run.app.sim().clicks,
+        ["One way", "One way"],
+        "pressed again by the repair"
+    );
+}
+
+#[test]
+fn an_option_still_offered_after_filtering_was_not_taken() {
+    let option = node(
+        "Dubai, United Arab Emirates Dubai International Airport DXB",
+        "option",
+        &["Click"],
+        &["main", "listbox"],
+        1.0,
+    );
+    let screen = Screen {
+        app: "browser".to_owned(),
+        window: None,
+        surface: "window".to_owned(),
+        candidates: vec![option.clone()],
+        context: Vec::new(),
+        unexplored: Vec::new(),
+        text_nodes: Vec::new(),
+    };
+    let asked = "Dubai, United Arab Emirates Dubai International Airport DXB";
+    assert!(
+        steps::left_unchosen(&screen, asked, true)
+            .is_some_and(|why| why.ends_with("is still offered, unselected"))
+    );
+    assert!(
+        steps::left_unchosen(&screen, asked, false).is_none(),
+        "a list the step did not filter keeps its options on screen"
+    );
+    let mut chosen = option;
+    chosen.states = vec!["selected".to_owned()];
+    let screen = Screen {
+        candidates: vec![chosen],
+        ..screen
+    };
+    assert!(steps::left_unchosen(&screen, asked, true).is_none());
 }

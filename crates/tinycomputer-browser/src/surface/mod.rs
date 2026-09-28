@@ -61,6 +61,27 @@ const NETWORK_IDLE_MS: u64 = 2_000;
 /// on top sits inside the target's own card (`li`, `listitem`, `row`,
 /// `article`) and inside no dialog; a banner or dialog in front still
 /// blocks it.
+/// Presses `element` through the DOM when it is not selected yet; `true`
+/// when it pressed.
+const SELECT_JS: &str = r"(element => {
+  if (!element) return false;
+  const on = element.getAttribute('aria-selected') === 'true'
+    || element.getAttribute('aria-checked') === 'true' || element.checked === true;
+  if (on) return false;
+  element.click();
+  return true;
+})";
+
+/// Roles a click selects rather than toggles, and that a page marks as
+/// selected once it took — or, for a list's option, closes the list over.
+fn selects_on_click(node: &Candidate) -> bool {
+    ["tab", "radio", "option"].contains(&node.role.as_str())
+        && !node
+            .states
+            .iter()
+            .any(|state| state == "selected" || state == "checked")
+}
+
 const SAME_CARD_JS: &str = r#"((x, y, name, exact) => {
   if (!name && !exact) return false;
   const stack = document.elementsFromPoint(x, y);
@@ -207,6 +228,25 @@ impl BrowserSurface {
     /// Clicks the middle of `reference` even though something covers it,
     /// but only when the cover is part of the same result card, so a banner
     /// or dialog in front still blocks the click. `None` when it is not.
+    /// Presses a tab, radio, or option again through the DOM when the click
+    /// left it on screen unselected: a page can ignore a trusted click it has not yet wired up
+    /// (Emirates' trip tabs, freshly loaded) while its own `click()` works.
+    /// Selecting is idempotent, so pressing an already selected one is
+    /// harmless; a checkbox, which toggles, is never pressed twice.
+    fn select_if_ignored(&self, reference: &str) {
+        let Ok(id) = self.ensure_session() else {
+            return;
+        };
+        let Ok(selector) = serde_json::to_string(&sight::selector(reference)) else {
+            return;
+        };
+        let script = format!("{SELECT_JS}(document.querySelector({selector}))");
+        let _pressed = self.block(
+            self.browser
+                .command(&id, json!({"action": "evaluate", "script": script})),
+        );
+    }
+
     fn click_through_own_card(&self, reference: &str, name: &str) -> Option<DesktopResponse> {
         let id = self.ensure_session().ok()?;
         let selector = sight::selector(reference);
@@ -429,7 +469,7 @@ impl Surface for BrowserSurface {
                     new_tab: false,
                 });
                 let name = target.as_ref().and_then(|node| node.name.as_deref());
-                match (&reference, name) {
+                let reply = match (&reference, name) {
                     (Some(reference), name)
                         if covered(&reply) && (name.is_some() || sight::is_seen(reference)) =>
                     {
@@ -437,7 +477,15 @@ impl Surface for BrowserSurface {
                             .unwrap_or(reply)
                     }
                     _ => reply,
+                };
+                if reply.ok
+                    && let (Some(reference), Some(node)) = (&reference, &target)
+                    && selects_on_click(node)
+                    && sight::is_seen(reference)
+                {
+                    self.select_if_ignored(reference);
                 }
+                reply
             }
             // Without a target the text goes where the focus is, as into an
             // autocomplete's unnamed input once it has been opened — but

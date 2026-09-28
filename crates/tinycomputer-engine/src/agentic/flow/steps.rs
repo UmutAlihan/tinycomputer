@@ -1,5 +1,7 @@
 //! One function per step kind; `run` dispatches between them.
 
+use std::collections::BTreeSet;
+
 use serde_json::{Value, json};
 use tinycomputer_bus::{
     ChooseStep, FlowAction, FlowLoop, FlowStopReason, IfStep, JevOperation, PickStep, ReadStep,
@@ -261,14 +263,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         };
         for attempt in 0..4 {
             let screen = self.look().await?;
-            if !private && let Some(chosen) = already_chosen(&screen, option) {
-                self.history
-                    .push(format!("{} is already chosen", label(&chosen)));
-                self.remember_choice(&format!("chose {option:?} in {what}"));
-                return Ok(Ended::new(
-                    StepOutcome::AlreadyDone,
-                    format!("{option:?} was already chosen"),
-                ));
+            if !private && let Some(ended) = self.made_already(&screen, what, option, attempt) {
+                return Ok(ended);
             }
             let pool = clickable(&screen.candidates)
                 .into_iter()
@@ -361,6 +357,32 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         } else {
             format!("{option:?} was not found in {what}")
         }))
+    }
+
+    /// `AlreadyDone` when `screen` shows `option` chosen already: a checked
+    /// option control, or — before this step acts, since what it types to
+    /// filter a list would read back as the choice — a field holding it.
+    fn made_already(
+        &mut self,
+        screen: &Screen,
+        what: &str,
+        option: &str,
+        attempt: usize,
+    ) -> Option<Ended> {
+        let shown = already_chosen(screen, option)
+            .map(|chosen| format!("{} is already chosen", label(&chosen)))
+            .or_else(|| {
+                (attempt == 0)
+                    .then(|| already_holds(screen, option, &self.typed))
+                    .flatten()
+                    .map(|holder| format!("{} already shows {option:?}", label(&holder)))
+            })?;
+        self.history.push(shown);
+        self.remember_choice(&format!("chose {option:?} in {what}"));
+        Some(Ended::new(
+            StepOutcome::AlreadyDone,
+            format!("{option:?} was already chosen"),
+        ))
     }
 
     /// The next way to make `option` show after attempt `attempt` found
@@ -474,6 +496,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             backend.execute(JevOperation::TypeText, None, Some(text))
         })
         .await?;
+        log.filtered = true;
         self.history
             .push("typed into the focused field to filter it".to_owned());
         Ok(())
@@ -511,6 +534,8 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     deliver_text(&backend, &app, &field, &text)
                 })
                 .await?;
+            self.typed.insert(element_kind(&target));
+            log.filtered = true;
             if reply.ok {
                 self.history
                     .push(format!("typed into {} to filter it", label(&target)));
@@ -1047,6 +1072,96 @@ pub(super) fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate>
                     .is_some_and(|name| plain(name).starts_with(&wanted))
         })
         .cloned()
+}
+
+/// The field on `screen` that already shows exactly `option` as its value,
+/// when the flow did not type it there (`typed`, by `element_kind`): a
+/// passengers box reading "1 Adult" has that choice made, and pressing the
+/// stepper beside it, whose label also mentions "1 Adult", would change it.
+pub(super) fn already_holds(
+    screen: &Screen,
+    option: &str,
+    typed: &BTreeSet<String>,
+) -> Option<Candidate> {
+    let wanted = plain(option);
+    if wanted.is_empty() {
+        return None;
+    }
+    screen
+        .candidates
+        .iter()
+        .find(|candidate| {
+            candidate
+                .value
+                .as_ref()
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|value| plain(value) == wanted)
+                && !typed.contains(&element_kind(candidate))
+        })
+        .cloned()
+}
+
+/// Roles a page marks as the one chosen among its siblings.
+const SELECTABLE_ROLES: &[&str] = &["tab", "radio", "radiobutton", "option", "menuitemradio"];
+
+/// Why `screen` plainly shows `option` not chosen: the tab or radio named
+/// exactly `option` is not selected while a sibling of its kind is; or, when
+/// the step typed to filter a list (`filtered`), the option it pressed is
+/// still offered there unselected — a press that took closes the list or
+/// marks the option. `None` when nothing on screen settles it, and Jev is
+/// asked instead.
+pub(super) fn left_unchosen(screen: &Screen, option: &str, filtered: bool) -> Option<String> {
+    let wanted = plain(option);
+    if wanted.is_empty() {
+        return None;
+    }
+    let selectable = |candidate: &&Candidate| {
+        SELECTABLE_ROLES
+            .iter()
+            .any(|role| candidate.role.eq_ignore_ascii_case(role))
+    };
+    let asked = screen
+        .candidates
+        .iter()
+        .filter(selectable)
+        .find(|candidate| {
+            candidate
+                .name
+                .as_deref()
+                .is_some_and(|name| plain(name) == wanted)
+        })?;
+    if is_checked(asked) {
+        return None;
+    }
+    if filtered && asked.role.eq_ignore_ascii_case("option") {
+        return Some(format!("{} is still offered, unselected", label(asked)));
+    }
+    let other = screen
+        .candidates
+        .iter()
+        .filter(selectable)
+        .find(|candidate| {
+            candidate.role == asked.role
+                && container(&candidate.path) == container(&asked.path)
+                && is_checked(candidate)
+        })?;
+    Some(format!(
+        "{} is not selected; {} is",
+        label(asked),
+        label(other)
+    ))
+}
+
+/// The ancestors siblings share: `path` without the numbered items it ends
+/// in, since each tab of a strip sits in its own `listitem #n`.
+fn container(path: &[String]) -> &[String] {
+    let numbered = |segment: &&String| {
+        segment
+            .rsplit_once(" #")
+            .is_some_and(|(_, number)| number.parse::<u32>().is_ok())
+    };
+    let kept = path.len() - path.iter().rev().take_while(numbered).count();
+    &path[..kept]
 }
 
 /// Whether a label says far more than the option: a control whose name

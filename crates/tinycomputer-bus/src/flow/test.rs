@@ -185,6 +185,7 @@ fn a_brief_pins_its_wire_form_and_defaults_empty() {
         (FlowLoop::Validation, "validation"),
         (FlowLoop::Survey, "survey"),
         (FlowLoop::Digest, "digest"),
+        (FlowLoop::Reflection, "reflection"),
     ] {
         assert_eq!(serde_json::to_value(flow_loop).unwrap(), json!(wire));
     }

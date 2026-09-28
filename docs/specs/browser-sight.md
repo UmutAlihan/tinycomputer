@@ -104,7 +104,10 @@ a caret.
    accessibility tree for that observation, as before.
 
 A covered click on a `seen:` ref finds its target by its mark, not by its
-name, so an unnamed card link is clicked through its own card too.
+name, so an unnamed card link is clicked through its own card too. A click
+on a `seen:` tab, radio, or option that leaves it on screen unselected is pressed once more by
+the element's own `click()`: a page can ignore a trusted click it has not yet
+wired up (Emirates' trip tabs, freshly loaded), and selecting is idempotent.
 
 ## Limits
 
