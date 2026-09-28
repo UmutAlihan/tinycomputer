@@ -210,7 +210,10 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
         let mut revealed = false;
         // Fields that refused the text this step: a `div` a page labels a
         // combobox, or a field that would not hold what was typed. Offered
-        // again, the same wrong field wins again.
+        // again, the same wrong field wins again. Keyed by `signature`, not
+        // `element_kind`: two distinct fields of the same kind — split date
+        // parts, a form with two same-role text fields — must not both be
+        // struck because one of them refused.
         let mut struck: BTreeSet<String> = BTreeSet::new();
         for _ in 0..3 {
             if pending.is_empty() {
@@ -222,7 +225,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
             }
             let fields = editable(&screen)
                 .into_iter()
-                .filter(|field| !struck.contains(&element_kind(field)))
+                .filter(|field| !struck.contains(&signature(field)))
                 .collect::<Vec<_>>();
             let assignments = if fields.is_empty() {
                 Vec::new()
