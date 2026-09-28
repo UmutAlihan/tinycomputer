@@ -97,7 +97,7 @@ Exactly one JSON object, one of three shapes:
 Both `retry` and `skip` carry `covers`: how many of the steps *right after*
 the failed one the guidance (or the current screen, for a skip) already
 takes care of, so they are dropped rather than run again. This exists
-because a rescue is often bigger than the one step it replaces, the
+because a rescue is often bigger than the one step it replaces: the
 protocol tells the model, for instance, to wrap a multi-field "enter
 everything" step that failed into several smaller ones, which can end up
 doing what the next couple of planned steps intended too.
