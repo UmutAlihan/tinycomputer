@@ -518,3 +518,40 @@ async fn a_region_cut_that_lost_the_target_is_caught_by_the_wider_choice() {
     assert!(asked(&run.requests, "wider") >= 1);
     assert!(loops(&run, 0).contains(&FlowLoop::Duel));
 }
+
+#[tokio::test]
+async fn views_never_pull_a_judgement_below_the_bar_lower() {
+    // Live on IndiGo: after "Next" the passenger form showed, the judge read
+    // 0.64 with Jev choosing "finished"; the screen alone read 0.27 and, as a
+    // veto, overruled the finish and pressed the form's own Next. Views guard
+    // a pass, so a judgement under the bar is left as the judge read it.
+    let run = run_with(
+        App::default(),
+        json!({"app": "Mail", "steps": ["start a new email message"]}),
+        |_| {},
+        |id, question, sim| match id {
+            "move" => Some(pick(
+                question,
+                if sim.clicks.is_empty() {
+                    "activate"
+                } else {
+                    "finished"
+                },
+                0.9,
+            )),
+            "done" if !text_of(question, "view").is_empty() => Some(noul(0.2)),
+            "done" => Some(noul(if sim.clicks.is_empty() { 0.05 } else { 0.64 })),
+            _ => None,
+        },
+    )
+    .await;
+    assert_eq!(run.result.stop, FlowStopReason::Completed);
+    assert_eq!(run.app.sim().clicks, ["New Message"]);
+    assert!(
+        !run.requests.iter().any(|request| request
+            .questions
+            .get("done")
+            .is_some_and(|question| !text_of(question, "view").is_empty())),
+        "no view is asked of a judgement that would not pass"
+    );
+}
