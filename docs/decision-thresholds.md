@@ -30,6 +30,7 @@ Change a constant and its row together.
 | `MAX_OBSTACLES` / `MAX_UNDOS` | 2 / 2 | `act.rs` | obstacles dismissed and undos run per step at most |
 | `FIELD_ERROR` | 0.70 | `enter.rs` | field-error probability that makes a slot be entered again |
 | `NOT_ASKED` | 0.35 | `enter.rs` | "the form asks for it" probability under which a slot with no field is taken as not asked for |
+| `BLIND_PICK_MISSES` | 1 | `enter.rs` | details no picker offered, on a screen with no editable field, after which the rest are not looked for one by one and the step fails |
 
 ## Deliberation
 
