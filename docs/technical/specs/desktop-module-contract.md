@@ -55,6 +55,11 @@ engine's argument types, the permission preflight, and the bus surface.
   session. The `ai.tinyhumans.tinycomputer.Browser` interface and its
   unprefixed names, never served by any release, are retired; the error
   names keep that prefix because they are published values, not members.
+- `TaskReport` takes a `TaskReportRequest` (2.7), `{"id", "trace"}` with
+  `trace` always serialized, rather than a `TaskRef`. A TinyBus client
+  refuses a confidential body holding an object whose only field is a string
+  `id` — the shape of a stream handle — so the 2.6 request could not be sent
+  at all. `trace: false` leaves the Jev exchanges out of a report.
 - Members are named in `PascalCase`, matching the engine's command names where
   Rust allows it. `Type` is renamed explicitly because `type` is a keyword.
 - `KeyDown`, `KeyUp`, `MouseDown`, and `MouseUp` are served, validate their
