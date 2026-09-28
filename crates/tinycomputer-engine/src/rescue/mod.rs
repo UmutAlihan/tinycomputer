@@ -172,7 +172,10 @@ fn judge(reply: &str, briefing: &Briefing) -> Result<Guidance, String> {
             if errors.is_empty() {
                 Ok(Guidance::Retry { reason, steps })
             } else {
-                Err(format!("Those steps are invalid:\n- {}", errors.join("\n- ")))
+                Err(format!(
+                    "Those steps are invalid:\n- {}",
+                    errors.join("\n- ")
+                ))
             }
         }
         _ => Err("Set `action` to \"retry\" or \"give_up\".".to_owned()),

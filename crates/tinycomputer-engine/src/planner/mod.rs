@@ -25,7 +25,9 @@ use tinycomputer_bus::{FLOW_GUIDE, Flow};
 use tinycomputer_core::is_sensitive_name;
 
 #[cfg(feature = "planner")]
-pub use openrouter::{PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer};
+pub use openrouter::{
+    PLANNER_MODEL, PlannerConfig, RESCUE_MODEL, open_router, open_router_rescuer,
+};
 
 /// Validation repairs a plan gets.
 pub const REPAIRS: usize = 2;

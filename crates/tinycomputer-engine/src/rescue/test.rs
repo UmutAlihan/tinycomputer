@@ -73,7 +73,11 @@ fn briefing() -> Briefing {
             note: "the class button is covered".to_owned(),
         }],
         earlier: Vec::new(),
-        screen: vec!["October 2026".to_owned(), "18".to_owned(), "Class".to_owned()],
+        screen: vec![
+            "October 2026".to_owned(),
+            "18".to_owned(),
+            "Class".to_owned(),
+        ],
         known: BTreeSet::from(["email".to_owned(), "card".to_owned()]),
         secrets: BTreeSet::from(["card".to_owned()]),
     }

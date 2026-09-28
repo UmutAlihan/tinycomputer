@@ -112,8 +112,15 @@ async fn a_failed_step_is_rescued_and_the_task_finishes() {
     assert_eq!(requests.len(), 2);
     let steps = &requests[1].flow.steps;
     assert_eq!(steps.len(), 4, "two guidance steps, then the rest");
-    assert_eq!(steps[0], FlowStep::Intent("close the offer popup".to_owned()));
-    assert_eq!(steps[2..], requests[0].flow.steps[2..], "the rest is unchanged");
+    assert_eq!(
+        steps[0],
+        FlowStep::Intent("close the offer popup".to_owned())
+    );
+    assert_eq!(
+        steps[2..],
+        requests[0].flow.steps[2..],
+        "the rest is unchanged"
+    );
     assert_eq!(
         requests[1].max_actions,
         120 - 3,
@@ -206,7 +213,10 @@ async fn guidance_whose_own_step_fails_is_recorded_as_failing_again() {
                 None,
             ),
         ],
-        &[Ok(ONE_STEP), Ok(r#"{"action": "give_up", "reason": "the page is blank"}"#)],
+        &[
+            Ok(ONE_STEP),
+            Ok(r#"{"action": "give_up", "reason": "the page is blank"}"#),
+        ],
     );
     let view = begin(&tasks, TaskBudget::default());
     let TaskStatus::Failed { reason, hint, .. } = settle(&tasks, &view.id).await.status else {
@@ -219,7 +229,10 @@ async fn guidance_whose_own_step_fails_is_recorded_as_failing_again() {
     );
     let rescues = tasks.report(&view.id).data.unwrap().rescues;
     assert_eq!(
-        rescues.iter().map(|rescue| rescue.outcome).collect::<Vec<_>>(),
+        rescues
+            .iter()
+            .map(|rescue| rescue.outcome)
+            .collect::<Vec<_>>(),
         [RescueOutcome::FailedAgain, RescueOutcome::GaveUp]
     );
 }
@@ -245,10 +258,14 @@ async fn walls_budgets_and_run_errors_are_never_rescued() {
         settle(&tasks, &view.id).await.status,
         TaskStatus::NeedsHuman { .. }
     ));
-    assert!(model.seen.lock().unwrap().is_empty(), "a person comes first");
+    assert!(
+        model.seen.lock().unwrap().is_empty(),
+        "a person comes first"
+    );
 
     for stop in [FlowStopReason::ActionBudget, FlowStopReason::ModelBudget] {
-        let (tasks, _, model) = rescued(vec![finished_run(stop, vec![], &[], None)], &[Ok(ONE_STEP)]);
+        let (tasks, _, model) =
+            rescued(vec![finished_run(stop, vec![], &[], None)], &[Ok(ONE_STEP)]);
         let view = begin(&tasks, TaskBudget::default());
         assert!(matches!(
             settle(&tasks, &view.id).await.status,
