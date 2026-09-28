@@ -424,6 +424,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 move |backend| deliver_text(&backend, &app, &target, &text),
             )
             .await?;
+        self.typed.insert(element_kind(field));
         let path = reply
             .data
             .as_ref()

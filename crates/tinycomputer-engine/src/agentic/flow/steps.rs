@@ -270,6 +270,20 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     format!("{option:?} was already chosen"),
                 ));
             }
+            // Only before this step acts: what it types to filter a list
+            // would otherwise read back as the choice.
+            if attempt == 0
+                && !private
+                && let Some(holder) = already_holds(&screen, option, &self.typed)
+            {
+                self.history
+                    .push(format!("{} already shows {option:?}", label(&holder)));
+                self.remember_choice(&format!("chose {option:?} in {what}"));
+                return Ok(Ended::new(
+                    StepOutcome::AlreadyDone,
+                    format!("{option:?} was already chosen"),
+                ));
+            }
             let pool = clickable(&screen.candidates)
                 .into_iter()
                 .filter(|candidate| !is_destructive(candidate, &screen, &self.stop_before))
@@ -511,6 +525,7 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                     deliver_text(&backend, &app, &field, &text)
                 })
                 .await?;
+            self.typed.insert(element_kind(&target));
             if reply.ok {
                 self.history
                     .push(format!("typed into {} to filter it", label(&target)));
@@ -1045,6 +1060,33 @@ pub(super) fn already_chosen(screen: &Screen, option: &str) -> Option<Candidate>
                     .name
                     .as_deref()
                     .is_some_and(|name| plain(name).starts_with(&wanted))
+        })
+        .cloned()
+}
+
+/// The field on `screen` that already shows exactly `option` as its value,
+/// when the flow did not type it there (`typed`, by `element_kind`): a
+/// passengers box reading "1 Adult" has that choice made, and pressing the
+/// stepper beside it, whose label also mentions "1 Adult", would change it.
+pub(super) fn already_holds(
+    screen: &Screen,
+    option: &str,
+    typed: &BTreeSet<String>,
+) -> Option<Candidate> {
+    let wanted = plain(option);
+    if wanted.is_empty() {
+        return None;
+    }
+    screen
+        .candidates
+        .iter()
+        .find(|candidate| {
+            candidate
+                .value
+                .as_ref()
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|value| plain(value) == wanted)
+                && !typed.contains(&element_kind(candidate))
         })
         .cloned()
 }

@@ -250,6 +250,10 @@ pub(super) struct FlowRun<'r, B> {
     /// step: options in a list, never pressed by a `do` move while the step
     /// looks for somewhere to type.
     pub(super) refused: BTreeSet<String>,
+    /// Kinds of element (`view::element_kind`) this run typed into: a
+    /// field holding text the flow typed shows no choice the page made
+    /// (`steps::already_holds`).
+    pub(super) typed: BTreeSet<String>,
 }
 
 /// Every `stop_before` phrase in `steps`, gathered from every branch of
@@ -352,6 +356,7 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
             rounds: 0,
             read: Vec::new(),
             refused: BTreeSet::new(),
+            typed: BTreeSet::new(),
         }
     }
 
