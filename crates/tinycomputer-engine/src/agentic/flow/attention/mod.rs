@@ -289,5 +289,28 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
     }
 }
 
+impl<B: AgentBackend + Sync> FlowRun<'_, B> {
+    /// Before a step that grounds an element — `choose`, `enter`, `pick`,
+    /// `read`, `extract`, `stop_before` — clears what is in the way of
+    /// `intent`, looking again after each distraction cleared. A `do` step
+    /// attends at the top of every turn instead.
+    pub(super) async fn clear_the_way(
+        &mut self,
+        log: &mut StepLog,
+        intent: &str,
+    ) -> Result<(), Halt> {
+        if !self.deliberates(FlowLoop::Attention) {
+            return Ok(());
+        }
+        let mut cleared = Cleared::default();
+        loop {
+            let screen = self.look().await?;
+            if !self.attend(log, &screen, intent, &mut cleared).await? {
+                return Ok(());
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test;

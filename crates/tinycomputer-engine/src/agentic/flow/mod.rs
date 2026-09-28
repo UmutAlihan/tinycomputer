@@ -432,7 +432,18 @@ impl<'r, B: AgentBackend + Sync> FlowRun<'r, B> {
         let mut log = StepLog::default();
         self.begin_step(&path);
         let started = Instant::now();
-        let result = steps::run(self, &mut log, &action, &text, &path).await;
+        let result = match &action {
+            FlowAction::Choose(_)
+            | FlowAction::Enter(_)
+            | FlowAction::Pick(_)
+            | FlowAction::Read(_)
+            | FlowAction::Extract(_)
+            | FlowAction::StopBefore(_) => match self.clear_the_way(&mut log, &text).await {
+                Ok(()) => steps::run(self, &mut log, &action, &text, &path).await,
+                Err(halt) => Err(halt),
+            },
+            _ => steps::run(self, &mut log, &action, &text, &path).await,
+        };
         let result = self.reflected(&mut log, &action, &text, result).await;
         let wall_ms = millis(started.elapsed());
         let (ended, halt) = match result {

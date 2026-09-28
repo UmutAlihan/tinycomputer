@@ -36,6 +36,7 @@ use super::{
     denoise,
     escalate::Belief,
     expect::{self, Effect, Outcome},
+    attention::Cleared,
     ground::{AGREED, Grounded, Opening},
     memory::{learn, remember},
     view::{
@@ -185,6 +186,8 @@ struct DoState {
     branches: u32,
     /// The candidate a backtrack tries next.
     branch: Option<Candidate>,
+    /// Distractions cleared this step (`attention.rs`).
+    cleared: Cleared,
 }
 
 /// What a move did.
@@ -347,6 +350,15 @@ impl<B: AgentBackend + Sync> FlowRun<'_, B> {
                 .and_then(|last| closed_the_overlay(last, &screen, intent))
             {
                 return Ok(ended);
+            }
+            // The root of the turn's tree: what needs attention first. A
+            // distraction cleared means a fresh look before judging.
+            if self
+                .attend(log, &screen, intent, &mut state.cleared)
+                .await?
+            {
+                state.last = None;
+                continue;
             }
             self.check_expectation(log, state, &screen);
             let judged = self.judge_turn(log, state, &screen, intent).await?;
