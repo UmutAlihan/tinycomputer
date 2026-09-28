@@ -372,15 +372,13 @@ and minimal features unless a new module capability requires more.
 - Payload types pin their serde representation in a unit test. That
   representation is the wire form: a host and a module that disagree about a
   field name fail at runtime with a decode error.
-- Use descriptive, behavioral test names: `rejects_a_stale_ref`, not
-  `test_click_2`.
+- Use behavioral test names: `rejects_a_stale_ref`, not `test_click_2`.
 - Every test must pass on a machine with no display server, no granted
   permission, and nothing running — CI is such a machine. Assert on the shape of
   a reply, not on a successful outcome that depends on how the box is set up.
 - Cover the failure paths, not just the happy path. Every new error variant
   needs a test that produces it.
-- For async behavior, standardize on one runtime (`tokio` as a dev-dependency
-  for tests) rather than mixing runtimes.
+- For async behavior, use one runtime: `tokio`, as a dev-dependency.
 - A test that needs files makes a uniquely named directory under
   `std::env::temp_dir()` and removes it; a test never sets or reads process
   environment variables, which parallel tests share.
@@ -393,6 +391,15 @@ and minimal features unless a new module capability requires more.
 
 Write the test first when fixing a bug: a failing test that reproduces the
 report, then the fix that turns it green.
+
+**Test through the bus.** A host only ever reaches the module over TinyBus,
+so that is where a feature is proven. Cover a member with an in-memory-bus
+test in `crates/tinycomputer/src/tinybus_module/test/`, and run live checks
+through the loaded module (`scripts/build-module`, then the lab, `task_live`,
+or `task_fixture` — all drive it over the bus via `tinycomputer_examples::host`),
+never by building the engine in-process. In-process runs hide what only the
+bus enforces: confidential delivery, attestation, frame limits, request
+shapes (a bare `{"id"}` in a confidential call is refused as a stream handle).
 
 ## Documentation
 
