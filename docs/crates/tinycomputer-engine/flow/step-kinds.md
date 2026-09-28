@@ -22,8 +22,8 @@ wall time by itself). See [Voting and briefing](voting-and-briefing.md).
 | `enter` | 1 for all slots at once, plus 1 to check for field errors | [Filling in forms](filling-forms.md) |
 | `choose` | 1 to 2 to ground the option; more if it has to be revealed first | [Grounding](grounding.md) |
 | `read` | 1 per 60 pieces of readable text | below |
-| `extract` | 0 | parsed locally, no Jev call |
-| `pick` | 0 when the criterion parses (price, time, duration, stops); 1 otherwise | below |
+| `extract` | 0, or 1 to choose which list, when more than one shows | below |
+| `pick` | 0 when the criterion parses (price, time, duration, stops); 1 to judge the item otherwise, plus 1 more to choose which list, when several show | below |
 | `verify`, `if` | 1 | below |
 | `wait_for` | 1 per check, up to 10 | below |
 | `repeat_until` | 1 per round, plus the body's own steps | below |
