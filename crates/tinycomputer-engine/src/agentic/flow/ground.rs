@@ -9,13 +9,13 @@
 //!    the chosen region's winners go on to the Choice.
 //! 3. **Choice** over at most `CAP` elements.
 //!
-//! The first round is built by [`FlowRun::opening`] without being asked, so
-//! a `do` turn can send it with its judge, and finished by
-//! [`FlowRun::resume`].
-//!
 //! 4. **Consistency and corroboration**: a low-confidence pick is re-asked
 //!    with relabelled options, and confirmed with a yes/no question, in one
 //!    request. It is used only if the evidence agrees.
+//!
+//! The first round is built by [`FlowRun::opening`] without being asked, so
+//! a `do` turn can send it with its judge, and finished by
+//! [`FlowRun::resume`].
 
 use std::collections::BTreeMap;
 
