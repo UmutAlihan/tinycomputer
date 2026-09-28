@@ -179,11 +179,12 @@ impl BrowserSurface {
         let selector = format!("@{}", target.ref_id.trim_start_matches('@'));
         let bbox = self.block(self.browser.command(&id, json!({"action": "boundingbox", "selector": selector})));
         let value = self.block(self.browser.command(&id, json!({"action": "inputvalue", "selector": selector})));
-        let script = r#"(() => { const rows=[...document.querySelectorAll('.city-selection__list-item-wrapper')]; const groups=[...new Set(rows.map(r=>r.getAttribute('data-group')).filter(Boolean))]; const sx=rows.find(r=>r.innerText.includes('Srinagar')); const list=document.querySelector('.city-selection__list'); return JSON.stringify({rows: rows.length, groups, srinagar: sx? (sx.getAttribute('role')+' tab='+sx.getAttribute('tabindex')+' '+JSON.stringify(sx.innerText.slice(0,60))+' y='+Math.round(sx.getBoundingClientRect().y)) : null, listScroll: list? [list.scrollHeight, list.clientHeight]: null, pageHasSrinagar: document.body.innerText.includes('Srinagar')}); })()"#;
+        let script = r#"(() => { const rows=[...document.querySelectorAll('.city-selection__list-item-wrapper')].map(r=>r.innerText.split('\n')[0]); const sb=document.querySelector('input[role=searchbox]'); return JSON.stringify({rows: rows.slice(0,5), n: rows.length, search: sb && sb.value, active: document.activeElement && (document.activeElement.tagName+' '+String(document.activeElement.className).slice(0,30))}); })()"#;
         let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
         eprintln!("TCDBG {label} {} bbox={:?} value={:?} page={:?}", selector, bbox.map(|v| v.to_string()), value.map(|v| v.to_string()), page.map(|v| v.get("result").cloned()));
-        if label == "never" {
-            let typed = self.perform("type", Action::Type { target: None, text: "Srin".to_owned(), delay_ms: Some(80) });
+        if label == "paste-before" {
+            let mut typed = DesktopResponse::ok("x", json!({}));
+            for key in ["s", "r", "i", "n"] { typed = self.press("", key); std::thread::sleep(std::time::Duration::from_millis(150)); }
             std::thread::sleep(std::time::Duration::from_millis(800));
             let page = self.block(self.browser.command(&id, json!({"action": "evaluate", "script": script})));
             eprintln!("TCDBG after-type ok={} {:?} page={:?}", typed.ok, typed.error.map(|e| e.message), page.map(|v| v.get("result").cloned()));
