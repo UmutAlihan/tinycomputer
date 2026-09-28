@@ -73,7 +73,7 @@ Every method on `Surface` is handled, but not all the same way:
 | Method | Routing |
 |---|---|
 | `observe` | By the named application; whichever side answers becomes active and is remembered as `last_app`. |
-| `execute` | By the *active* side, it never takes an application name, since it acts on a candidate the active side's own observation produced. |
+| `execute` | By the *active* side: it never takes an application name, since it acts on a candidate the active side's own observation produced. |
 | `read_value` | Same as `execute`: whichever side is active. |
 | `paste`, `press` | By the named application, like `observe`. |
 | `launch` | By the named application; success makes that side active. |
@@ -84,7 +84,7 @@ Every method on `Surface` is handled, but not all the same way:
 ## Reading what is on screen without acting
 
 `Workspace::visible_text()` returns the visible text of whatever was last
-observed or opened, its context lines, every control's label, and what
+observed or opened: its context lines, every control's label, and what
 each field currently holds, rendered as `label = "value"` and cut to 80
 characters per field. This is what the task controller hands the rescuer
 (see [rescue.md](rescue.md)) when a step fails, and what `human_wall`
