@@ -186,8 +186,8 @@ early. `BrowserListDownloads` and `BrowserWaitDownload` track files a page
 downloads.
 
 The module holds one `Browser`, shared with the task runner, so a task's own
-browser session shows up in `BrowserListSessions` and a screenshot a task
-view names can be read back with `BrowserReadOutput`, without having to go
+browser session shows up in `BrowserListSessions` and a screenshot in its
+`TaskReport.artifacts` can be read back with `BrowserReadOutput`, without having to go
 through the task API to see it. See
 [docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md) for
 the full payload shapes and error codes, and

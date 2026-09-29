@@ -39,8 +39,8 @@ The thirteen `Browser…` members await the module's one `Browser` directly —
 its calls are async, and serialized per session inside it — except the two
 held-output calls, which base64-encode up to four mebibytes and so run on the
 blocking pool. The same `Browser` is handed to `WorkspaceRunner`, so a task's
-session appears in `BrowserListSessions` and a screenshot a task view names
-is readable with `BrowserReadOutput`. `browser_reply` wraps each result in
+session appears in `BrowserListSessions` and a screenshot in a task's
+`TaskReport.artifacts` is readable with `BrowserReadOutput`. `browser_reply` wraps each result in
 the `DesktopResponse` envelope, the error converted by
 `tinycomputer_browser::Error::envelope`. `BrowserOpenSession` takes the
 configured `browser` settings (`browser_defaults.rs`) wherever the request

@@ -112,8 +112,8 @@ snapshot and choose again.
   `{"session": "s-1", "action": "click", "target": {"kind": "ref", "value": "e3"}}`.
 - `BrowserScreenshot` returns an output id, not an image: read it with
   `BrowserReadOutput` from `offset` 0 until `eof`, then
-  `BrowserReleaseOutput`. The same call works for a screenshot a task view
-  names.
+  `BrowserReleaseOutput`. The same call works for a screenshot in a task's
+  `TaskReport.artifacts`; a task view never carries one.
 - `BrowserCloseSession` when done with a session you opened; leave a task's
   own session to the task.
 

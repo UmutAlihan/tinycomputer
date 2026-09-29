@@ -61,8 +61,8 @@ engine's argument types, the permission preflight, and the bus surface.
   unknown session or output, an unresolvable ref, a refused origin) is marked
   `not_delivered`; every other failure's delivery is `unknown`. The members share
   one `Browser` with the task runner, so `BrowserReadOutput` reads a
-  screenshot a task view names and `BrowserListSessions` shows a task's
-  session. The `ai.tinyhumans.tinycomputer.Browser` interface and its
+  screenshot in a task's `TaskReport.artifacts` (never in a task view) and
+  `BrowserListSessions` shows a task's session. The `ai.tinyhumans.tinycomputer.Browser` interface and its
   unprefixed names, never served by any release, are retired; the error
   names keep that prefix because they are published values, not members.
 - `TaskReport` takes a `TaskReportRequest` (2.7), `{"id", "trace"}` with
