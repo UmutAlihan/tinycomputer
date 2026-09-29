@@ -25,7 +25,7 @@ a host is supposed to see and do about it.
 | `NoSuchSession` | `NoSuchSession` | Open a new session; this one is gone. |
 | `NoSuchElement` | `NoSuchElement` | Take a fresh snapshot and choose again. |
 | `StaleRef` | `StaleRef` | Same remedy as above, spelled out explicitly: the ref belonged to an earlier reading of this page. |
-| `NotActionable` | `NotActionable` | The element exists but could not be acted on right now: covered, disabled, or off-document. The message names the obstruction where the browser could identify it. |
+| `NotActionable` | `NotActionable` | The element exists but could not be acted on right now: covered, disabled, off-document, or behind a JavaScript dialog that has to be answered first. The message names the obstruction where the browser could identify it. |
 | `Timeout` | `Timeout` | The operation ran out of time. A click or a submission may already have landed, so look at the page (take a fresh snapshot) before retrying, perhaps with a longer deadline; never repeat it blind. |
 | `BlockedByPolicy` | `BlockedByPolicy` | Never retry. The session's `allowed_origins` refused this destination, and the answer will not change. |
 | `BrowserUnavailable` | `BrowserUnavailable` | Not something a caller can fix by choosing differently: this is a host or deployment problem (no browser could be launched or reached). |
