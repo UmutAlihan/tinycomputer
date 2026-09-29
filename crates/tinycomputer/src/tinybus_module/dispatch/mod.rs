@@ -18,7 +18,7 @@
 mod browser;
 mod service;
 
-use browser::browser_reply;
+use browser::{browser_reply, opening_reply};
 
 pub(super) use service::desktop_availability;
 #[cfg(test)]
@@ -482,8 +482,7 @@ impl DesktopService {
         &self,
         options: SessionOptions,
     ) -> TinyBusResult<DesktopResponse> {
-        Ok(browser_reply(
-            "browser-open-session",
+        Ok(opening_reply(
             self.browser
                 .open_session(self.browser_defaults.apply(options))
                 .await,

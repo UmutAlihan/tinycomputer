@@ -39,3 +39,22 @@ pub(super) fn browser_reply<T: serde::Serialize>(
         Err(error) => DesktopResponse::err(command, error.envelope()),
     }
 }
+
+/// `BrowserOpenSession`'s reply. A timeout there comes before the session
+/// exists, so there is nothing to snapshot or inspect: its hint is a plain
+/// retry, and the half-launched browser was never handed out.
+pub(super) fn opening_reply(
+    result: tinycomputer_browser::Result<tinycomputer_browser::SessionInfo>,
+) -> DesktopResponse {
+    let timed_out = matches!(result, Err(tinycomputer_browser::Error::Timeout { .. }));
+    let mut reply = browser_reply("browser-open-session", result);
+    if timed_out && let Some(error) = reply.error.as_mut() {
+        error.recovery = Some(tinycomputer_bus::RecoveryHint {
+            strategy: "retry_original".to_owned(),
+            retryable: true,
+            requires_fresh_snapshot: false,
+            retry_after_ms: None,
+        });
+    }
+    reply
+}
