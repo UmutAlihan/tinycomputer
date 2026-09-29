@@ -77,13 +77,18 @@ desktop member. The table is the logical split, and `Describe` serves it as
 - `status` is one of:
   - `running`;
   - `needs_input{fields}`;
-  - `needs_approval{action, target, screenshot}`;
-  - `checkpoint{reason, url, screenshot, summary}`;
+  - `needs_approval{action, target}`;
+  - `checkpoint{reason, url, summary}`;
   - `needs_human{reason}`;
   - `needs_plan{guide}`;
   - `done{answer, records}`;
   - `failed{step, reason, hint}`;
   - `cancelled`.
+- A status never carries a screenshot, although the wire form has an
+  optional `screenshot` field on approvals, checkpoints, and human turns. A
+  view also travels through `AwaitTask` and `ListTasks`, which are not
+  confidential, and an output id is all `BrowserReadOutput` needs. The
+  screenshot a stopped run takes lives in `TaskReport.artifacts` only.
 - Calls return quickly. A task runs on the module's runtime, and `AwaitTask`
   long-polls it.
 - No refs or selectors at this level. `Describe` serves JSON Schemas and worked

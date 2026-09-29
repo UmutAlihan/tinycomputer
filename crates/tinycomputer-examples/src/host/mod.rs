@@ -48,6 +48,23 @@ impl std::fmt::Debug for Host {
     }
 }
 
+/// Why a held output could not be read.
+enum Unread {
+    /// The bus call itself failed; trying again may work.
+    Transport(LabError),
+    /// The module answered with an error or with bytes that do not add up;
+    /// trying again would get the same.
+    Invalid(LabError),
+}
+
+impl Unread {
+    fn into_error(self) -> LabError {
+        match self {
+            Self::Transport(error) | Self::Invalid(error) => error,
+        }
+    }
+}
+
 /// Aborts the broker's task if dropped while still armed: a load that fails
 /// part-way must not leave the broker, and the module it loaded, running.
 struct AbortOnDrop {
@@ -358,8 +375,10 @@ impl Host {
     }
 
     /// A held output's bytes — a screenshot this host took, or one a task
-    /// view or report names: `BrowserReadOutput` chunk by chunk until the
-    /// end, then `BrowserReleaseOutput`, the handle protocol a host follows.
+    /// report names: `BrowserReadOutput` chunk by chunk until the end, then
+    /// `BrowserReleaseOutput`, the handle protocol a host follows. After a
+    /// transport failure the output is kept, so a retry can still read it
+    /// before it expires; after any other failure it is released.
     ///
     /// # Errors
     ///
@@ -368,8 +387,13 @@ impl Host {
     /// length disagrees with its handle.
     pub async fn read_output(&self, output: &OutputRef) -> Result<Vec<u8>, LabError> {
         let read = self.read_chunks(output).await;
-        // Released whether or not the read worked, so a failed read never
-        // leaves the output held in the module until it expires.
+        // A transport failure may pass, and a task's last screenshot cannot
+        // be taken again once its session is gone, so the output is kept for
+        // a retry until it expires. Anything else — read in full, or data
+        // that is wrong and will stay wrong — is released now.
+        if matches!(read, Err(Unread::Transport(_))) {
+            return read.map_err(Unread::into_error);
+        }
         let request = OutputRequest {
             output: output.id.clone(),
         };
@@ -380,12 +404,12 @@ impl Host {
                 (request,),
             )
             .await;
-        let bytes = read?;
+        let bytes = read.map_err(Unread::into_error)?;
         let _released: Value = data(released?)?;
         Ok(bytes)
     }
 
-    async fn read_chunks(&self, output: &OutputRef) -> Result<Vec<u8>, LabError> {
+    async fn read_chunks(&self, output: &OutputRef) -> Result<Vec<u8>, Unread> {
         use tinycomputer_bus::browser::names::methods;
         let mut bytes = Vec::new();
         loop {
@@ -393,15 +417,24 @@ impl Host {
                 offset: bytes.len() as u64,
                 ..ReadOutputRequest::new(output.id.clone())
             };
-            let chunk: OutputChunk =
-                data(self.proxy.call(methods::READ_OUTPUT, (request,)).await?)?;
-            bytes.extend(base64::engine::general_purpose::STANDARD.decode(&chunk.data)?);
+            let reply = self
+                .proxy
+                .call(methods::READ_OUTPUT, (request,))
+                .await
+                .map_err(|error| Unread::Transport(error.into()))?;
+            let chunk: OutputChunk = data(reply).map_err(Unread::Invalid)?;
+            let decoded = base64::engine::general_purpose::STANDARD
+                .decode(&chunk.data)
+                .map_err(|error| Unread::Invalid(error.into()))?;
+            bytes.extend(decoded);
             if chunk.eof {
                 break;
             }
         }
         if bytes.len() as u64 != output.total_bytes {
-            return Err(io::Error::other("the screenshot came back short").into());
+            return Err(Unread::Invalid(
+                io::Error::other("the screenshot came back short").into(),
+            ));
         }
         Ok(bytes)
     }
