@@ -100,5 +100,8 @@ fn a_logged_url_keeps_only_its_scheme_and_host() {
         "https://example.com"
     );
     assert_eq!(loggable("https://u:p@example.com"), "https://example.com");
-    assert_eq!(loggable("about:blank"), "about:blank");
+    // An opaque URL keeps only its scheme; its payload can hold anything.
+    assert_eq!(loggable("about:blank"), "about:");
+    assert_eq!(loggable("data:text/html,<p>token=abc</p>"), "data:");
+    assert_eq!(loggable("not a url"), "");
 }

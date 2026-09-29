@@ -126,7 +126,7 @@ async fn a_capture_that_never_answers_does_not_hold_the_task_back() {
     assert!(tasks.report(&view.id).data.unwrap().artifacts.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(start_paused = true)]
 async fn a_task_cut_off_by_its_time_budget_keeps_its_last_screen() {
     let (tasks, script) = with_shot(Vec::new());
     let reply = tasks.start(&StartTaskRequest {

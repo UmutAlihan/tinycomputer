@@ -106,7 +106,11 @@ pub fn loggable(url: &str) -> String {
                 .map_or(authority, |(_, host)| host);
             format!("{scheme}://{host}")
         }
-        None => url.split(['?', '#']).next().unwrap_or_default().to_owned(),
+        // An opaque URL (`data:`, `about:`, a custom scheme) carries its
+        // payload right after the colon, so only the scheme is kept.
+        None => url
+            .split_once(':')
+            .map_or_else(String::new, |(scheme, _)| format!("{scheme}:")),
     }
 }
 
@@ -168,14 +172,17 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
     let mut captured = false;
     if let Some(last) = report.artifacts.last() {
         match host.read_output(last).await {
-            Ok(image) => {
-                captured = true;
-                std::fs::write(out.join("final.png"), image)?;
-                println!(
-                    "screenshot: {} (taken as the task stopped)",
-                    out.join("final.png").display()
-                );
-            }
+            Ok(image) => match std::fs::write(out.join("final.png"), image) {
+                // Written, not merely read: only then is the fallback skipped.
+                Ok(()) => {
+                    captured = true;
+                    println!(
+                        "screenshot: {} (taken as the task stopped)",
+                        out.join("final.png").display()
+                    );
+                }
+                Err(error) => println!("final.png could not be written: {error}"),
+            },
             Err(error) => println!("the task's screenshot could not be read: {error}"),
         }
     }
@@ -189,15 +196,17 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
             continue;
         }
         let name = format!("open-{index}.png");
+        // A screenshot that cannot be taken or written is reported, never
+        // allowed to skip closing the session below.
         match host.browser_screenshot(&session.id).await {
-            Ok(image) => {
-                std::fs::write(out.join(&name), image)?;
-                println!(
+            Ok(image) => match std::fs::write(out.join(&name), image) {
+                Ok(()) => println!(
                     "screenshot: {} ({})",
                     out.join(&name).display(),
                     loggable(&session.url)
-                );
-            }
+                ),
+                Err(error) => println!("{name} could not be written: {error}"),
+            },
             Err(error) => println!("screenshot of {} failed: {error}", session.id),
         }
         host.close_browser_session(&session.id).await?;

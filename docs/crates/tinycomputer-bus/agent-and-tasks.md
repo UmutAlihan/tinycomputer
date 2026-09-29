@@ -229,7 +229,7 @@ pub struct TaskReport {
     pub flow: Option<Flow>,
     pub steps: Vec<StepReport>,           // see Writing flows
     pub records: BTreeMap<String, Vec<BTreeMap<String, String>>>,
-    pub artifacts: Vec<OutputRef>,        // a screenshot each time a run stopped; read with BrowserReadOutput
+    pub artifacts: Vec<OutputRef>,        // best-effort screenshots from stopped runs; read with BrowserReadOutput
     pub learned: Vec<GroundingHint>,      // pass back as StartTask.memory next time
     pub trace: Vec<JevExchange>,          // only when StartTask.trace was set
     pub rescues: Vec<Rescue>,
