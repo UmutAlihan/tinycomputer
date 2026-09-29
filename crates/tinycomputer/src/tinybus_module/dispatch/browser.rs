@@ -43,7 +43,7 @@ pub(super) fn browser_reply<T: serde::Serialize>(
 /// `BrowserOpenSession`'s reply. A timeout there comes before the session
 /// exists, so there is nothing to snapshot or inspect: its hint is a plain
 /// retry, and the half-launched browser was never handed out.
-pub(super) fn opening_reply(
+pub(in crate::tinybus_module) fn opening_reply(
     result: tinycomputer_browser::Result<tinycomputer_browser::SessionInfo>,
 ) -> DesktopResponse {
     let timed_out = matches!(result, Err(tinycomputer_browser::Error::Timeout { .. }));

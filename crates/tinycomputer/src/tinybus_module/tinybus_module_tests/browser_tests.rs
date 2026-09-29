@@ -342,6 +342,8 @@ fn an_open_session_timeout_retries_without_a_snapshot() {
     assert_eq!(hint.strategy, "retry_original");
     assert!(hint.retryable && !hint.requires_fresh_snapshot);
     // Any other failure keeps its own hint.
-    let other = opening_reply(Err(tinycomputer_browser::Error::browser_unavailable("no chrome")));
+    let other = opening_reply(Err(tinycomputer_browser::Error::browser_unavailable(
+        "no chrome",
+    )));
     assert!(other.error.expect("fails").recovery.is_none());
 }

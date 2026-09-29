@@ -18,7 +18,8 @@
 mod browser;
 mod service;
 
-use browser::{browser_reply, opening_reply};
+use browser::browser_reply;
+pub(super) use browser::opening_reply;
 
 pub(super) use service::desktop_availability;
 #[cfg(test)]
