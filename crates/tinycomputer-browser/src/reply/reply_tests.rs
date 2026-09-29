@@ -91,7 +91,7 @@ fn engine_messages_map_to_what_the_caller_should_do() {
         }),
         (
             "A JavaScript confirm dialog is blocking the page: \"Leave?\"",
-            |e| matches!(e, Error::PageError { .. }),
+            |e| matches!(e, Error::NotActionable { .. }),
         ),
         ("something unexpected", |e| {
             matches!(e, Error::ModuleFailed { .. })

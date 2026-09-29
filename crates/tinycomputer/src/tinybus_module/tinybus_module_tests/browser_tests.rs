@@ -332,18 +332,25 @@ async fn the_output_sweep_runs_until_the_browser_is_gone() {
 }
 
 #[test]
-fn an_open_session_timeout_retries_without_a_snapshot() {
-    use crate::tinybus_module::dispatch::opening_reply;
-    // No session exists yet, so there is nothing to snapshot first.
-    let reply = opening_reply(Err(tinycomputer_browser::Error::timeout("launch", 30_000)));
-    let error = reply.error.expect("a timeout fails the open");
+fn a_timed_out_observation_retries_without_a_snapshot() {
+    use crate::tinybus_module::dispatch::observing_reply;
+    // Opening a session or reading the page changed nothing, and a snapshot
+    // first is no help, so the hint is a plain retry.
+    let reply = observing_reply::<()>(
+        "browser-open-session",
+        Err(tinycomputer_browser::Error::timeout("launch", 30_000)),
+    );
+    let error = reply.error.expect("a timeout fails the call");
     assert_eq!(error.code, "TIMEOUT");
     let hint = error.recovery.expect("a timeout has a way out");
     assert_eq!(hint.strategy, "retry_original");
     assert!(hint.retryable && !hint.requires_fresh_snapshot);
     // Any other failure keeps its own hint.
-    let other = opening_reply(Err(tinycomputer_browser::Error::browser_unavailable(
-        "no chrome",
-    )));
+    let other = observing_reply::<()>(
+        "browser-snapshot",
+        Err(tinycomputer_browser::Error::browser_unavailable(
+            "no chrome",
+        )),
+    );
     assert!(other.error.expect("fails").recovery.is_none());
 }
