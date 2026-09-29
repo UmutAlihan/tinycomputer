@@ -20,7 +20,8 @@ pub(super) const CAPTURE_TIMEOUT: Duration = Duration::from_secs(10);
 /// `status`, unchanged, after keeping a screenshot of the task's surface for
 /// `TaskReport.artifacts` — when the status is one a caller acts on (a
 /// checkpoint, an approval, a person's turn, or the end) and the runner can
-/// take one.
+/// take one. `needs_input` and `needs_plan` take none: both are decided
+/// before a run starts, so nothing on screen is the task's doing yet.
 pub(super) async fn captured(
     cell: &Cell,
     runner: &dyn FlowRunner,

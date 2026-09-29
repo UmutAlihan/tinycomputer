@@ -11,6 +11,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use tinycomputer_bus::agent::{ContinueTaskRequest, InputField, TaskStatus, TaskView};
+use tinycomputer_bus::browser::SessionInfo;
 
 use crate::host::{Host, LabError};
 
@@ -140,13 +141,22 @@ pub fn passed(status: &TaskStatus) -> bool {
 /// `final.png` (`BrowserReadOutput` on the report's last artifact, which
 /// `read_output` releases); otherwise an `open-<n>.png` of each browser
 /// session still open; every open session is then closed; and, for a
-/// finished task, its records and any shaped result. Every screenshot is
+/// finished task, its records and any shaped result.
+///
+/// Only the task's own sessions are touched: those not in `before`, the
+/// sessions [`browser_sessions`](Host::browser_sessions) listed before
+/// `StartTask`. Every screenshot is
 /// best effort: a task can stop without one.
 ///
 /// # Errors
 ///
 /// Fails when a call to the module fails or a file cannot be written.
-pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), LabError> {
+pub async fn conclude(
+    host: &Host,
+    view: &TaskView,
+    before: &[SessionInfo],
+    out: &Path,
+) -> Result<(), LabError> {
     std::fs::create_dir_all(out)?;
     let report = host.task_report(&view.id).await?;
     for step in &report.steps {
@@ -186,11 +196,17 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
             Err(error) => println!("the task's screenshot could not be read: {error}"),
         }
     }
-    // Sessions still open — a task paused at a checkpoint keeps its own — are
-    // captured as they stand now, unless the task's own screenshot already
-    // shows that state, then closed. Every session belongs to this run:
-    // `Host::load` gives each run a private bus and its own module.
-    for (index, session) in host.browser_sessions().await?.iter().enumerate() {
+    // The task's sessions still open — a task paused at a checkpoint keeps
+    // its own — are captured as they stand now, unless the task's own
+    // screenshot already shows that state, then closed. A session that was
+    // open before the task started is not the task's, and is left alone.
+    let owned = host
+        .browser_sessions()
+        .await?
+        .into_iter()
+        .filter(|session| before.iter().all(|earlier| earlier.id != session.id))
+        .collect::<Vec<_>>();
+    for (index, session) in owned.iter().enumerate() {
         if captured {
             host.close_browser_session(&session.id).await?;
             continue;

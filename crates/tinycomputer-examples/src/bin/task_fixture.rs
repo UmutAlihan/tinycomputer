@@ -40,10 +40,11 @@ async fn main() -> Result<(), LabError> {
     });
     let host = Host::load(&module_path(), config).await?;
 
+    let before = host.browser_sessions().await?;
     let view = host.start_task(&request(&base)?).await?;
     let answers = BTreeMap::from([("phone".to_owned(), "+91 98765 43210".to_owned())]);
     let view = follow(&host, view, &answers, Duration::from_secs(20 * 60)).await?;
-    conclude(&host, &view, &PathBuf::from("target/task-fixture")).await?;
+    conclude(&host, &view, &before, &PathBuf::from("target/task-fixture")).await?;
     host.shutdown();
     if matches!(view.status, TaskStatus::Checkpoint { ref reason, .. } if reason.contains("payment"))
     {

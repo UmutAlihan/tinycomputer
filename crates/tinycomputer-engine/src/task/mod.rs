@@ -91,9 +91,12 @@ pub trait FlowRunner: Send + Sync + 'static {
     }
 
     /// A screenshot of the task's surface as it stands, held for the caller
-    /// to read. Taken whenever a run stops on its own — paused, finished,
-    /// failed, or cut off by its time budget — before the task's surfaces
-    /// are released, so a finished or failed task still leaves one.
+    /// to read. Taken whenever a run stops on its own — at a checkpoint,
+    /// before an approval, at a person's turn, finished, failed, or cut off
+    /// by its time budget — before the task's surfaces are released, so a
+    /// finished or failed task still leaves one. Not for `needs_input` or
+    /// `needs_plan`: those are decided before a run starts, with nothing on
+    /// screen yet that the task did.
     /// `CancelTask` releases at once without one: the caller chose to stop,
     /// and can take its own with `BrowserScreenshot` first. `None` by
     /// default, and whenever the surface cannot take one.
