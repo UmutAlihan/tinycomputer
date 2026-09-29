@@ -4,10 +4,14 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use tinycomputer_browser::{Browser, BrowserSurface, ScreenCursor, SessionOptions};
+use tinycomputer_browser::{
+    Browser, BrowserSurface, ScreenCursor, ScreenshotRequest, SessionOptions,
+};
 use tinycomputer_bus::DesktopResponse;
 use tinycomputer_bus::agent::{SurfaceKind, TaskConstraints, TaskId};
-use tinycomputer_engine::{FlowFuture, FlowRunner, JevRuntime, TextFuture, Workspace};
+use tinycomputer_engine::{
+    CaptureFuture, FlowFuture, FlowRunner, JevRuntime, TextFuture, Workspace,
+};
 
 use super::config::BrowserDefaults;
 use crate::Desktop;
@@ -109,6 +113,29 @@ impl FlowRunner for WorkspaceRunner {
             tokio::task::spawn_blocking(move || workspace.visible_text())
                 .await
                 .unwrap_or_default()
+        })
+    }
+
+    fn capture(&self, task: &TaskId) -> CaptureFuture {
+        let session = self
+            .workspaces
+            .lock()
+            .ok()
+            // Only when the browser is the side the task is on: after a
+            // move to a desktop application its page is stale evidence.
+            .and_then(|workspaces| {
+                workspaces
+                    .get(task)
+                    .filter(|(workspace, _)| workspace.browser_active())
+                    .and_then(|(_, browser)| browser.clone())
+            })
+            .and_then(|browser| browser.session());
+        let browser = self.browser.clone();
+        Box::pin(async move {
+            browser
+                .screenshot(&session?, ScreenshotRequest::default())
+                .await
+                .ok()
         })
     }
 

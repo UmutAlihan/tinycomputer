@@ -19,8 +19,11 @@ mod browser;
 mod service;
 
 use browser::browser_reply;
+pub(super) use browser::observing_reply;
 
 pub(super) use service::desktop_availability;
+#[cfg(test)]
+pub(super) use service::sweep_every;
 
 use tinybus::Result as TinyBusResult;
 use tinycomputer_bus::{
@@ -480,7 +483,7 @@ impl DesktopService {
         &self,
         options: SessionOptions,
     ) -> TinyBusResult<DesktopResponse> {
-        Ok(browser_reply(
+        Ok(observing_reply(
             "browser-open-session",
             self.browser
                 .open_session(self.browser_defaults.apply(options))
@@ -525,7 +528,7 @@ impl DesktopService {
         &self,
         request: SessionRequest<BrowserSnapshotRequest>,
     ) -> TinyBusResult<DesktopResponse> {
-        Ok(browser_reply(
+        Ok(observing_reply(
             "browser-snapshot",
             self.browser
                 .snapshot(&request.session, request.request)
@@ -551,7 +554,7 @@ impl DesktopService {
         &self,
         request: SessionRequest<ReadRequest>,
     ) -> TinyBusResult<DesktopResponse> {
-        Ok(browser_reply(
+        Ok(observing_reply(
             "browser-read-page",
             self.browser
                 .read_page(&request.session, request.request)
@@ -577,7 +580,7 @@ impl DesktopService {
         &self,
         request: SessionRequest<BrowserScreenshotRequest>,
     ) -> TinyBusResult<DesktopResponse> {
-        Ok(browser_reply(
+        Ok(observing_reply(
             "browser-screenshot",
             self.browser
                 .screenshot(&request.session, request.request)
@@ -628,7 +631,7 @@ impl DesktopService {
         &self,
         request: SessionRequest<DownloadWaitRequest>,
     ) -> TinyBusResult<DesktopResponse> {
-        Ok(browser_reply(
+        Ok(observing_reply(
             "browser-wait-download",
             self.browser
                 .wait_download(&request.session, request.request)

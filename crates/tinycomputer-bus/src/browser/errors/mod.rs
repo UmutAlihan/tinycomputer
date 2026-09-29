@@ -157,6 +157,13 @@ pub fn code(name: &str) -> &'static str {
 /// (`refresh_snapshot_then_retry_original`), so an agent recovering from a
 /// stale ref does not care which surface it was on.
 ///
+/// A timeout, which may have come after the action reached the page, is
+/// `inspect_state_then_retry_original`, never a blind retry: a click or a
+/// form submission may already have happened, and repeating it could
+/// duplicate the effect. A page error — a thrown script, a rejected command —
+/// is `inspect_state_then_revise_request` and not retryable: the same request
+/// fails the same way again.
+///
 /// # Examples
 ///
 /// ```
@@ -176,8 +183,10 @@ pub fn recovery(name: &str) -> Option<crate::RecoveryHint> {
     match name {
         STALE_REF => Some(hint("refresh_snapshot_then_retry_original", true, true)),
         NO_SUCH_ELEMENT => Some(hint("refresh_snapshot_then_choose_again", true, true)),
-        NOT_ACTIONABLE => Some(hint("inspect_state_then_retry_original", true, true)),
-        TIMEOUT => Some(hint("retry_original", true, false)),
+        NOT_ACTIONABLE | TIMEOUT => Some(hint("inspect_state_then_retry_original", true, true)),
+        // A thrown script or a rejected command fails the same way again:
+        // look at the page and change the request rather than repeat it.
+        PAGE_ERROR => Some(hint("inspect_state_then_revise_request", false, true)),
         INVALID_INPUT => Some(hint("fix_request_then_retry", false, false)),
         NO_SUCH_SESSION => Some(hint("open_session_then_retry_original", false, false)),
         NO_SUCH_OUTPUT => Some(hint("capture_again_then_read", false, false)),

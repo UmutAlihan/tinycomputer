@@ -160,9 +160,12 @@ impl Error {
     /// The code is [`errors::code`] of the wire name — the desktop's spelling
     /// where the meaning is shared — the recovery hint is
     /// [`errors::recovery`]'s, and the full wire name rides in
-    /// `details.name` for a host that matches on it. A failure refused before
-    /// the browser was asked anything is marked not delivered, so a caller
-    /// knows retrying it cannot repeat an effect.
+    /// `details.name` for a host that matches on it. Only a failure decided
+    /// before anything reaches the page is marked not delivered, so a caller
+    /// knows retrying it cannot repeat an effect: an unknown session or
+    /// output (local lookups), an unresolvable ref, or a refused origin
+    /// (rejected inside agent-browser before any input is sent). Every other
+    /// failure's delivery stays unknown.
     ///
     /// # Examples
     ///
@@ -218,17 +221,21 @@ impl Error {
         }
     }
 
-    /// Whether this failure was decided before any command reached the
-    /// browser.
+    /// Whether this failure is always decided before anything reaches the
+    /// page, so repeating the call cannot repeat an effect: a session or an
+    /// output looked up locally and not found, a ref agent-browser could not
+    /// resolve, and a destination its domain filter refused — both of those
+    /// are rejected inside agent-browser before any input is sent to the page.
+    ///
+    /// Invalid input and a limit can also come back after work was done — a
+    /// capture that turned out too large — so their delivery stays unknown.
     fn refused_before_delivery(&self) -> bool {
         matches!(
             self,
-            Self::InvalidInput { .. }
-                | Self::NoSuchSession { .. }
+            Self::NoSuchSession { .. }
+                | Self::NoSuchOutput { .. }
                 | Self::StaleRef { .. }
                 | Self::BlockedByPolicy { .. }
-                | Self::NoSuchOutput { .. }
-                | Self::LimitExceeded { .. }
         )
     }
 

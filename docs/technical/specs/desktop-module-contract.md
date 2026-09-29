@@ -46,17 +46,23 @@ engine's argument types, the permission preflight, and the bus surface.
   share this interface because a TinyBus module exports one interface.
 - The thirteen browser members (2.6) close the list, each prefixed `Browser`
   (`tinycomputer_bus::browser::names`): sessions, navigate, snapshot,
-  perform, read, evaluate, screenshot, held outputs, and downloads. Each takes
-  one object — `{"session": …}` beside the member's own fields — and returns a
+  perform, read, evaluate, screenshot, held outputs, and downloads. A member
+  that acts on an open session takes one object, `{"session": …}` beside the
+  member's own fields; `BrowserOpenSession` takes `SessionOptions` (it makes
+  the session), `BrowserListSessions` takes nothing, and `BrowserReadOutput`
+  and `BrowserReleaseOutput` take `{"output": …}`. Every one returns a
   `DesktopResponse`. A failure's `code` is `browser::errors::code` of its
   wire name, which reuses the desktop's code where the meaning is the same
   (`STALE_REF`, `ELEMENT_NOT_FOUND`, `TIMEOUT`, `POLICY_DENIED`,
   `INVALID_ARGS`, `INTERNAL`); the full name is in `details.name`, the
-  recovery hint is `browser::errors::recovery`'s, and a call refused before
-  anything reached the browser is marked `not_delivered`. The members share
+  recovery hint is `browser::errors::recovery`'s — a timeout or page error,
+  which may follow a click that landed, says to inspect the page before
+  retrying — and only a failure decided before anything reaches the page (an
+  unknown session or output, an unresolvable ref, a refused origin) is marked
+  `not_delivered`; every other failure's delivery is `unknown`. The members share
   one `Browser` with the task runner, so `BrowserReadOutput` reads a
-  screenshot a task view names and `BrowserListSessions` shows a task's
-  session. The `ai.tinyhumans.tinycomputer.Browser` interface and its
+  screenshot in a task's `TaskReport.artifacts` (never in a task view) and
+  `BrowserListSessions` shows a task's session. The `ai.tinyhumans.tinycomputer.Browser` interface and its
   unprefixed names, never served by any release, are retired; the error
   names keep that prefix because they are published values, not members.
 - `TaskReport` takes a `TaskReportRequest` (2.7), `{"id", "trace"}` with

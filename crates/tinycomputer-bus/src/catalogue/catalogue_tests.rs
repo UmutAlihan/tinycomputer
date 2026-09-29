@@ -37,6 +37,49 @@ fn every_browser_member_is_in_the_browser_family_and_nothing_else_is() {
 }
 
 #[test]
+fn every_task_and_browser_name_has_a_catalogue_entry() {
+    for name in crate::agent::names::METHODS {
+        assert_eq!(
+            member(name).map(|entry| entry.family),
+            Some(Family::Task),
+            "{name}"
+        );
+    }
+    for name in crate::browser::names::METHODS {
+        assert_eq!(
+            member(name).map(|entry| entry.family),
+            Some(Family::Browser),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn the_flow_family_is_exactly_the_flow_members() {
+    use crate::names::methods;
+    let flow = [
+        methods::RESOLVE_INTENT,
+        methods::RUN_GOAL,
+        methods::RUN_FLOW,
+        methods::VALIDATE_FLOW,
+        methods::FLOW_GUIDE,
+    ];
+    for name in flow {
+        assert_eq!(
+            member(name).map(|entry| entry.family),
+            Some(Family::Flow),
+            "{name}"
+        );
+    }
+    let catalogued = MEMBERS
+        .iter()
+        .filter(|entry| entry.family == Family::Flow)
+        .map(|entry| entry.name)
+        .collect::<Vec<_>>();
+    assert_eq!(catalogued, flow);
+}
+
+#[test]
 fn task_confidentiality_agrees_with_the_task_names() {
     for entry in MEMBERS.iter().filter(|entry| entry.family == Family::Task) {
         assert_eq!(
@@ -53,6 +96,12 @@ fn every_summary_is_one_sentence() {
     for entry in MEMBERS {
         assert!(entry.summary.ends_with('.'), "{} summary", entry.name);
         assert!(entry.summary.len() < 120, "{} summary is long", entry.name);
+        let body = &entry.summary[..entry.summary.len() - 1];
+        assert!(
+            !body.contains(". ") && !body.contains("? ") && !body.contains("! "),
+            "{} summary is more than one sentence",
+            entry.name
+        );
     }
 }
 

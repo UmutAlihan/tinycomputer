@@ -149,6 +149,8 @@ fn a_stale_ref_envelope_matches_the_desktop_recovery() {
             .suggestion
             .is_some_and(|s| s.contains("BrowserSnapshot"))
     );
+    // agent-browser could not resolve the ref, so nothing reached the page:
+    // retrying with a fresh ref cannot repeat an effect.
     assert_eq!(envelope.disposition.retry, RetryDisposition::Safe);
 }
 
@@ -158,6 +160,10 @@ fn a_timeout_may_have_reached_the_page() {
     assert_eq!(envelope.code, "TIMEOUT");
     assert_eq!(envelope.disposition.delivery, DeliveryDisposition::Unknown);
     assert!(envelope.suggestion.is_none());
+    // A click may already have landed: inspect before repeating it.
+    let hint = envelope.recovery.expect("a timeout has a way out");
+    assert_eq!(hint.strategy, "inspect_state_then_retry_original");
+    assert!(hint.requires_fresh_snapshot);
 }
 
 #[test]
@@ -173,10 +179,34 @@ fn a_refused_navigation_says_not_to_retry() {
             .suggestion
             .is_some_and(|s| s.starts_with("do not retry"))
     );
+    // The domain filter refuses before any navigation reaches the page.
     assert_eq!(
         envelope.disposition.delivery,
         DeliveryDisposition::NotDelivered
     );
+}
+
+#[test]
+fn only_failures_decided_before_the_page_claim_nothing_was_delivered() {
+    let before_the_page = |error: &Error| {
+        matches!(
+            error,
+            Error::NoSuchSession { .. }
+                | Error::NoSuchOutput { .. }
+                | Error::StaleRef { .. }
+                | Error::BlockedByPolicy { .. }
+        )
+    };
+    for error in every_variant() {
+        let expected = before_the_page(&error);
+        let name = error.to_string();
+        let delivery = error.envelope().disposition.delivery;
+        assert_eq!(
+            delivery == DeliveryDisposition::NotDelivered,
+            expected,
+            "{name}"
+        );
+    }
 }
 
 #[test]

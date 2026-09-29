@@ -163,12 +163,15 @@ fn unnamed_calls_follow_the_side_last_observed_or_opened() {
     let node = Candidate::default();
     workspace.execute(JevOperation::Click, None, None);
     assert_eq!(workspace.read_value(&node).as_deref(), Some("desktop"));
+    assert!(!workspace.browser_active());
     workspace.settle();
     workspace.navigate("https://flights.test");
+    assert!(workspace.browser_active());
     workspace.execute(JevOperation::Click, Some(node.clone()), None);
     assert_eq!(workspace.read_value(&node).as_deref(), Some("browser"));
     workspace.settle();
     workspace.launch("Mail");
+    assert!(!workspace.browser_active(), "the task moved to the desktop");
     workspace.execute(JevOperation::Click, None, None);
     assert_eq!(
         drain(&calls),

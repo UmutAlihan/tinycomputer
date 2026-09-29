@@ -33,8 +33,10 @@
 //! `store`; the background run in `drive`, capped by `budget` and briefed by
 //! `brief`; answering a paused task in `resume`; rescuing a failed step in
 //! `recovery`; spotting a wall only a person can pass in `human`; and what
-//! the caller sees in `publish`.
+//! the caller sees in `publish`; the screenshots a stopped run leaves in
+//! `artifact`.
 
+mod artifact;
 mod brief;
 mod budget;
 mod controller;
@@ -53,6 +55,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use tinycomputer_bus::agent::{TaskConstraints, TaskId};
+use tinycomputer_bus::browser::OutputRef;
 use tinycomputer_bus::{DesktopResponse, RunFlowRequest};
 
 pub use controller::Tasks;
@@ -64,6 +67,10 @@ pub type FlowFuture = Pin<Box<dyn Future<Output = DesktopResponse> + Send>>;
 
 /// The future [`FlowRunner::visible_text`] returns.
 pub type TextFuture = Pin<Box<dyn Future<Output = Vec<String>> + Send>>;
+
+/// The future [`FlowRunner::capture`] returns: a held screenshot, if the
+/// task's surface could take one.
+pub type CaptureFuture = Pin<Box<dyn Future<Output = Option<OutputRef>> + Send>>;
 
 /// Runs a task's flows, on surfaces that live as long as the task.
 pub trait FlowRunner: Send + Sync + 'static {
@@ -81,6 +88,20 @@ pub trait FlowRunner: Send + Sync + 'static {
     /// person can pass. Empty by default.
     fn visible_text(&self, _task: &TaskId) -> TextFuture {
         Box::pin(async { Vec::new() })
+    }
+
+    /// A screenshot of the task's surface as it stands, held for the caller
+    /// to read. Taken whenever a run stops on its own — at a checkpoint,
+    /// before an approval, at a person's turn, finished, failed, or cut off
+    /// by its time budget — before the task's surfaces are released, so a
+    /// finished or failed task still leaves one. Not for `needs_input` or
+    /// `needs_plan`: those are decided before a run starts, with nothing on
+    /// screen yet that the task did.
+    /// `CancelTask` releases at once without one: the caller chose to stop,
+    /// and can take its own with `BrowserScreenshot` first. `None` by
+    /// default, and whenever the surface cannot take one.
+    fn capture(&self, _task: &TaskId) -> CaptureFuture {
+        Box::pin(async { None })
     }
 
     /// Lets go of whatever the task held, once it has ended.

@@ -10,8 +10,10 @@ use super::{INTERFACE, METHODS, OBJECT_PATH, methods};
 
 #[test]
 fn browser_members_share_the_module_interface() {
-    assert_eq!(INTERFACE, crate::names::INTERFACE);
-    assert_eq!(OBJECT_PATH, crate::names::OBJECT_PATH);
+    // Literals, not the aliases they are defined from: a change to the
+    // published identity must be made here on purpose.
+    assert_eq!(INTERFACE, "ai.tinyhumans.tinycomputer.Desktop");
+    assert_eq!(OBJECT_PATH, "/ai/tinyhumans/tinycomputer/Desktop");
 }
 
 #[test]

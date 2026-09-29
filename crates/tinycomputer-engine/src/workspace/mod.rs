@@ -141,6 +141,13 @@ impl<D: Surface, W: Surface> Workspace<D, W> {
         self.active.lock().map_or(Side::Desktop, |active| *active)
     }
 
+    /// Whether the browser is the side in use now: the surface a screenshot
+    /// of the task's current screen should come from.
+    #[must_use]
+    pub fn browser_active(&self) -> bool {
+        self.active_browser().is_some()
+    }
+
     /// The browser, when it is the side in use. The browser only becomes
     /// active after a call on it succeeds, so it is never active when absent.
     fn active_browser(&self) -> Option<&W> {

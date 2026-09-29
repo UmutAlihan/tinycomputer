@@ -306,3 +306,51 @@ async fn a_malformed_request_is_a_bus_error_not_a_panic() -> tinybus::Result<()>
     assert!(reply.is_err(), "a request with no session does not decode");
     Ok(())
 }
+
+#[tokio::test]
+async fn the_output_sweep_runs_until_the_browser_is_gone() {
+    use crate::tinybus_module::dispatch::sweep_every;
+
+    let scratch = Scratch::new("sweep");
+    let browser = Arc::new(Browser::with_scratch(
+        Arc::new(ScriptedLauncher::default()),
+        scratch.0.clone(),
+    ));
+    let sweep = tokio::spawn(sweep_every(
+        Arc::downgrade(&browser),
+        std::time::Duration::from_millis(1),
+    ));
+    // It sweeps while the browser lives…
+    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+    assert!(!sweep.is_finished());
+    // …and ends on its own once the browser is dropped.
+    drop(browser);
+    tokio::time::timeout(std::time::Duration::from_secs(1), sweep)
+        .await
+        .expect("the sweep ends once the browser is gone")
+        .expect("the sweep does not panic");
+}
+
+#[test]
+fn a_timed_out_observation_retries_without_a_snapshot() {
+    use crate::tinybus_module::dispatch::observing_reply;
+    // Opening a session or reading the page changed nothing, and a snapshot
+    // first is no help, so the hint is a plain retry.
+    let reply = observing_reply::<()>(
+        "browser-open-session",
+        Err(tinycomputer_browser::Error::timeout("launch", 30_000)),
+    );
+    let error = reply.error.expect("a timeout fails the call");
+    assert_eq!(error.code, "TIMEOUT");
+    let hint = error.recovery.expect("a timeout has a way out");
+    assert_eq!(hint.strategy, "retry_original");
+    assert!(hint.retryable && !hint.requires_fresh_snapshot);
+    // Any other failure keeps its own hint.
+    let other = observing_reply::<()>(
+        "browser-snapshot",
+        Err(tinycomputer_browser::Error::browser_unavailable(
+            "no chrome",
+        )),
+    );
+    assert!(other.error.expect("fails").recovery.is_none());
+}

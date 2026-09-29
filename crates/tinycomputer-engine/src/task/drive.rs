@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 
 use tinycomputer_bus::agent::TaskStatus;
 
+use super::artifact::{capture, captured};
 use super::budget::{elapsed_budget_failed, run_request, stop_task};
 use super::human::human_wall;
 use super::interpret::{Next, finished, run_outcome};
@@ -96,7 +97,7 @@ pub(super) async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Ve
             return;
         };
         if time_left == Some(0) {
-            stop_task(&cell, runner.as_ref(), elapsed_budget_failed());
+            stop_task(&cell, runner.as_ref(), elapsed_budget_failed()).await;
             return;
         }
         let id = cell.view.borrow().id.clone();
@@ -104,7 +105,7 @@ pub(super) async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Ve
         let run_call = runner.run(&id, &constraints, request);
         let reply = if let Some(ms) = time_left {
             let Ok(reply) = tokio::time::timeout(Duration::from_millis(ms), run_call).await else {
-                stop_task(&cell, runner.as_ref(), elapsed_budget_failed());
+                stop_task(&cell, runner.as_ref(), elapsed_budget_failed()).await;
                 return;
             };
             reply
@@ -152,6 +153,7 @@ pub(super) async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Ve
                     continue;
                 }
             };
+            let status = captured(&cell, runner.as_ref(), status).await;
             let summary = redacted.redact(&stopped_summary(&status));
             let ended = matches!(
                 status,
@@ -170,6 +172,8 @@ pub(super) async fn drive(cell: Arc<Cell>, runner: Arc<dyn FlowRunner>, runs: Ve
 /// Every run finished: the task is done, with what it read, shaped as its
 /// `output` asks when it asks.
 pub(super) async fn finish(cell: &Cell, runner: &dyn FlowRunner) {
+    // The last look at the surface, before shaping and before release.
+    let _ = capture(cell, runner).await;
     let (answer, records, harvest) = {
         let Ok(state) = cell.state.lock() else {
             return;

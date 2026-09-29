@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
@@ -32,6 +32,20 @@ pub struct Browser {
     outputs: Mutex<OutputStore>,
     scratch: PathBuf,
     counter: AtomicU64,
+    /// Sessions being launched: they count against [`MAX_SESSIONS`] from
+    /// the moment the limit is checked, so two concurrent opens cannot both
+    /// see room for the last slot.
+    opening: AtomicUsize,
+}
+
+/// One reserved launch slot, given back when the launch ends — inserted,
+/// failed, or dropped mid-launch by a cancelled caller.
+struct Reservation<'a>(&'a AtomicUsize);
+
+impl Drop for Reservation<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
 }
 
 struct Session {
@@ -102,6 +116,7 @@ impl Browser {
             outputs: Mutex::new(OutputStore::default()),
             scratch,
             counter: AtomicU64::new(0),
+            opening: AtomicUsize::new(0),
         }
     }
 
@@ -112,11 +127,18 @@ impl Browser {
     /// [`Error::LimitExceeded`] when [`MAX_SESSIONS`] are open, and whatever
     /// the engine reports when the browser cannot be launched or reached.
     pub async fn open_session(&self, options: SessionOptions) -> Result<SessionInfo> {
-        if self.lock_sessions()?.len() >= MAX_SESSIONS {
-            return Err(Error::LimitExceeded {
-                message: format!("at most {MAX_SESSIONS} browser sessions may be open"),
-            });
-        }
+        // Checked and reserved under the table's lock, so the check and the
+        // claim are one step for every concurrent caller.
+        let reservation = {
+            let sessions = self.lock_sessions()?;
+            if sessions.len() + self.opening.load(Ordering::SeqCst) >= MAX_SESSIONS {
+                return Err(Error::LimitExceeded {
+                    message: format!("at most {MAX_SESSIONS} browser sessions may be open"),
+                });
+            }
+            self.opening.fetch_add(1, Ordering::SeqCst);
+            Reservation(&self.opening)
+        };
         let id = SessionId::new(format!("s-{}", self.next()));
         let mut session = Session {
             engine: self.launcher.open(id.as_str()),
@@ -140,8 +162,12 @@ impl Browser {
         session.info.url = page.url;
         session.info.title = page.title;
         let info = session.info.clone();
-        self.lock_sessions()?
-            .insert(id, Arc::new(tokio::sync::Mutex::new(session)));
+        // The slot moves from the reservation to the table in one step under
+        // the lock, so no concurrent check ever counts this launch twice.
+        let mut sessions = self.lock_sessions()?;
+        sessions.insert(id, Arc::new(tokio::sync::Mutex::new(session)));
+        drop(reservation);
+        drop(sessions);
         Ok(info)
     }
 

@@ -129,3 +129,29 @@ fn a_refused_navigation_offers_no_way_out() {
     }
     assert!(recovery(NO_SUCH_SESSION).is_some_and(|hint| !hint.retryable));
 }
+
+#[test]
+fn a_timeout_says_inspect_before_retrying() {
+    let hint = recovery(TIMEOUT).expect("a timeout has a way out");
+    assert_eq!(hint.strategy, "inspect_state_then_retry_original");
+    assert!(hint.retryable && hint.requires_fresh_snapshot);
+}
+
+#[test]
+fn a_page_error_says_change_the_request_not_repeat_it() {
+    let hint = recovery(PAGE_ERROR).expect("a page error has a way out");
+    assert_eq!(hint.strategy, "inspect_state_then_revise_request");
+    assert!(!hint.retryable && hint.requires_fresh_snapshot);
+}
+
+#[test]
+fn every_recoverable_name_has_a_recovery_hint() {
+    for name in NAMES {
+        if is_agent_recoverable(name) {
+            assert!(
+                recovery(name).is_some(),
+                "{name} is recoverable without a hint"
+            );
+        }
+    }
+}

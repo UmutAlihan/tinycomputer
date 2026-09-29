@@ -39,3 +39,26 @@ pub(super) fn browser_reply<T: serde::Serialize>(
         Err(error) => DesktopResponse::err(command, error.envelope()),
     }
 }
+
+/// The reply of a member that changes nothing on the page — opening a
+/// session, a snapshot, a read, a screenshot, waiting for a download. A
+/// timeout there did nothing a retry could repeat, and a snapshot first is
+/// no help (for `BrowserSnapshot` it is the call that just failed; for
+/// `BrowserOpenSession` there is no session yet), so its hint is a plain
+/// retry. Members that act on the page keep the inspect-first hint.
+pub(in crate::tinybus_module) fn observing_reply<T: serde::Serialize>(
+    command: &str,
+    result: tinycomputer_browser::Result<T>,
+) -> DesktopResponse {
+    let timed_out = matches!(result, Err(tinycomputer_browser::Error::Timeout { .. }));
+    let mut reply = browser_reply(command, result);
+    if timed_out && let Some(error) = reply.error.as_mut() {
+        error.recovery = Some(tinycomputer_bus::RecoveryHint {
+            strategy: "retry_original".to_owned(),
+            retryable: true,
+            requires_fresh_snapshot: false,
+            retry_after_ms: None,
+        });
+    }
+    reply
+}

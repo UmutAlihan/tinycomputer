@@ -62,6 +62,9 @@ and, expected from a host, on a fixed timer via `Browser::sweep_outputs`
 every `SWEEP_INTERVAL`. Without the timer, an output taken and then never
 collected again would sit in memory, in somebody else's process, until the
 next unrelated call happened to trigger a cleanup, which might never come.
+The `tinycomputer` module starts that timer when it is set up
+(`DesktopService::sweep_outputs`), so its held outputs expire on schedule
+whether or not a caller comes back.
 
 ## Reading a held output
 

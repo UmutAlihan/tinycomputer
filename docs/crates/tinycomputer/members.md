@@ -11,8 +11,9 @@ so this list cannot silently drift from the code.
 Every member here except the eight task members (their own section below)
 takes at most one request payload and always answers with a `DesktopResponse`
 whose `ok` flag picks between `data` and a structured `error`. That includes
-the 13 browser members: they take one object, the session beside the member's
-own fields, and answer in the same envelope, reusing a desktop error code
+the 13 browser members: those acting on an open session take one object, the
+session beside the member's own fields (`BrowserListSessions` takes nothing),
+and all answer in the same envelope, reusing a desktop error code
 wherever the meaning is shared. The module never answers with a bare
 `TinyBus` transport error for something the caller did; that is reserved for
 the module failing to even start the command, which is rare enough that you
@@ -185,8 +186,8 @@ early. `BrowserListDownloads` and `BrowserWaitDownload` track files a page
 downloads.
 
 The module holds one `Browser`, shared with the task runner, so a task's own
-browser session shows up in `BrowserListSessions` and a screenshot a task
-view names can be read back with `BrowserReadOutput`, without having to go
+browser session shows up in `BrowserListSessions` and a screenshot in its
+`TaskReport.artifacts` can be read back with `BrowserReadOutput`, without having to go
 through the task API to see it. See
 [docs/crates/tinycomputer-bus/browser.md](../tinycomputer-bus/browser.md) for
 the full payload shapes and error codes, and

@@ -25,15 +25,22 @@ a host is supposed to see and do about it.
 | `NoSuchSession` | `NoSuchSession` | Open a new session; this one is gone. |
 | `NoSuchElement` | `NoSuchElement` | Take a fresh snapshot and choose again. |
 | `StaleRef` | `StaleRef` | Same remedy as above, spelled out explicitly: the ref belonged to an earlier reading of this page. |
-| `NotActionable` | `NotActionable` | The element exists but could not be acted on right now: covered, disabled, or off-document. The message names the obstruction where the browser could identify it. |
-| `Timeout` | `Timeout` | The operation ran out of time; retrying with a longer deadline is reasonable. |
+| `NotActionable` | `NotActionable` | The element exists but could not be acted on right now: covered, disabled, off-document, or behind a JavaScript dialog that has to be answered first. The message names the obstruction where the browser could identify it. |
+| `Timeout` | `Timeout` | The operation ran out of time. A click or a submission may already have landed, so look at the page (take a fresh snapshot) before retrying, perhaps with a longer deadline; never repeat it blind. A timeout on a member that only looks — open a session, snapshot, read, screenshot, wait for a download — changed nothing, so over the bus its hint is a plain retry. |
 | `BlockedByPolicy` | `BlockedByPolicy` | Never retry. The session's `allowed_origins` refused this destination, and the answer will not change. |
 | `BrowserUnavailable` | `BrowserUnavailable` | Not something a caller can fix by choosing differently: this is a host or deployment problem (no browser could be launched or reached). |
-| `PageError` | `PageError` | The page itself raised a JavaScript exception, or the browser rejected a command. |
+| `PageError` | `PageError` | The page itself raised a JavaScript exception, or the browser rejected a command. The same request fails the same way again: inspect the page and revise the request (its hint is `inspect_state_then_revise_request`, not retryable). |
 | `NoSuchOutput` | `NoSuchOutput` | The held screenshot or PDF being asked for is unknown or has expired. |
 | `LimitExceeded` | `LimitExceeded` | A bound was hit: too many sessions, too many held outputs, or an output larger than the module will hold. |
 | `ConnectionLost` | `NoSuchSession` (same wire name as `NoSuchSession`) | Open a new session. Kept as its own Rust variant, rather than folded into `NoSuchSession` at construction time, because it says something more specific ("the transport died") that is useful for the crate's own diagnostics. A caller across the bus is told exactly the same thing either way: don't retry into a socket that will never answer, open a fresh session instead. |
 | `ModuleFailed` | `ModuleFailed` | Anything that does not fit the categories above. |
+
+`Error::envelope` marks a failure `not_delivered` (so retrying is safe) only
+when it is decided before anything reaches the page: `NoSuchSession` and
+`NoSuchOutput`, looked up locally, and `StaleRef` and `BlockedByPolicy`,
+refused inside agent-browser by its ref lookup and domain filter before any
+input is sent. Every other variant can follow work already done, so its
+delivery is left `unknown` rather than claimed.
 
 `errors::is_agent_recoverable` (in the bus crate) is the one further
 decision that gets made on top of this table: whether a model can plausibly
@@ -78,10 +85,11 @@ through one of the 13 `Browser…` members. `crates/tinycomputer`'s dispatch
 wraps each result with `Error::envelope` (`error/mod.rs`), which builds a
 `DesktopError` the same way: `code` is `errors::code` of the wire name (the
 desktop's own spelling wherever the meaning is shared), the full wire name
-rides in `details.name`, and `recovery` comes from `errors::recovery`. A
-failure the browser was never asked to attempt, a request `classify` rejects
-before it reaches agent-browser, is marked not delivered, so a caller knows
-retrying it cannot repeat an effect. This is a separate code path from
+rides in `details.name`, and `recovery` comes from `errors::recovery`. Only a
+failure decided before anything reaches the page is marked not delivered (see
+above for the four), so a caller knows retrying it cannot repeat an effect;
+`reply::classify` names failures from the engine's replies, and marks none of
+them delivered or not on its own. This is a separate code path from
 `BrowserSurface`'s (a flow or task drives the page through the engine's
 `Surface` trait; a direct `Browser…` call goes straight through the module's
 dispatch), but both end up at the same `DesktopResponse` shape and the same

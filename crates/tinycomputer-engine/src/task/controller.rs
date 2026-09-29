@@ -315,7 +315,7 @@ impl Tasks {
             flow: Some(state.flow.clone()),
             steps: state.steps.clone(),
             records: records(&state.reads),
-            artifacts: Vec::new(),
+            artifacts: state.artifacts.clone(),
             learned: state.learned.clone(),
             trace: state.exchanges.clone(),
             rescues: state.rescues.clone(),

@@ -87,6 +87,9 @@ async fn main() -> Result<(), LabError> {
         Err(_) => plan(&host, &task, &facts, &secret_facts, kind, &out).await?,
     };
     // The task travels with the flow, so every Jev question is briefed on it.
+    // Sessions open before the task are not its own, and `conclude` leaves
+    // them alone.
+    let before = host.browser_sessions().await?;
     let view = host
         .start_task(&StartTaskRequest {
             task: Some(task.clone()),
@@ -120,7 +123,7 @@ async fn main() -> Result<(), LabError> {
             .unwrap_or(20),
     );
     let view = follow(&host, view, &BTreeMap::new(), limit).await?;
-    conclude(&host, &view, &out).await?;
+    conclude(&host, &view, &before, &out).await?;
     host.shutdown();
     if passed(&view.status) {
         println!(

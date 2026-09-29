@@ -8,6 +8,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod approval_tests;
+mod artifact_tests;
 mod describe_tests;
 mod errors_tests;
 mod human_tests;
@@ -45,6 +46,12 @@ struct Script {
     screen: Mutex<Vec<String>>,
     /// Tasks let go of, in order.
     released: Mutex<Vec<TaskId>>,
+    /// The screenshot `capture` hands back, if any.
+    shot: Mutex<Option<tinycomputer_bus::browser::OutputRef>>,
+    /// A capture that never answers, like a hung surface.
+    stuck: std::sync::atomic::AtomicBool,
+    /// `capture` and `release` calls, in the order they arrived.
+    events: Mutex<Vec<&'static str>>,
 }
 
 impl FlowRunner for Script {
@@ -69,7 +76,17 @@ impl FlowRunner for Script {
         Box::pin(async move { texts })
     }
 
+    fn capture(&self, _task: &TaskId) -> super::CaptureFuture {
+        self.events.lock().unwrap().push("capture");
+        let shot = self.shot.lock().unwrap().clone();
+        if self.stuck.load(std::sync::atomic::Ordering::SeqCst) {
+            return Box::pin(std::future::pending());
+        }
+        Box::pin(async move { shot })
+    }
+
     fn release(&self, task: &TaskId) {
+        self.events.lock().unwrap().push("release");
         self.released.lock().unwrap().push(task.clone());
     }
 }

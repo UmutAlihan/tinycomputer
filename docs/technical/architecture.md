@@ -189,8 +189,10 @@ its family, and one sentence on what it is for.
 The browser primitives are defined in `tinycomputer-bus/src/browser/`,
 implemented by `tinycomputer_browser::Browser`, and served with a `Browser`
 prefix, because several (`Snapshot`, `Screenshot`) would otherwise collide
-with a desktop member of a different shape. Each takes one object with the
-session beside the member's own fields, and replies in the same
+with a desktop member of a different shape. A member that acts on an open
+session takes one object with the session beside the member's own fields
+(`BrowserOpenSession` takes the session's options, `BrowserListSessions`
+nothing, the output members an `output`), and each replies in the same
 `DesktopResponse` envelope as a desktop member; a failure reuses the desktop's
 code where the meaning is shared, so `STALE_REF` means "snapshot again" on
 either surface. The module holds one `Browser`: the task runner opens each

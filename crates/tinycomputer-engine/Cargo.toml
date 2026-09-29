@@ -40,7 +40,9 @@ default = []
 planner = ["dep:tinyinference-llm"]
 
 [dev-dependencies]
-tokio = { workspace = true }
+# `test-util` for paused time: task tests step past the controller's
+# capture and await timeouts without waiting for them in real time.
+tokio = { workspace = true, features = ["test-util"] }
 
 [lints]
 workspace = true

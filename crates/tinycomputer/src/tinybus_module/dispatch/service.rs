@@ -126,6 +126,39 @@ impl DesktopService {
 
 /// Whether the desktop surface is usable, from a `Permissions` reply: the
 /// accessibility permission must be granted (or not needed on this platform).
+impl DesktopService {
+    /// Starts dropping expired held outputs every [`SWEEP_INTERVAL`], so a
+    /// screenshot a caller never reads or releases is freed after its time
+    /// to live even when no further output call arrives to expire it. The
+    /// sweep ends once the service's browser is gone. Needs a Tokio runtime,
+    /// which `setup` runs on.
+    ///
+    /// [`SWEEP_INTERVAL`]: tinycomputer_browser::SWEEP_INTERVAL
+    pub(crate) fn sweep_outputs(&self) {
+        tokio::spawn(sweep_every(
+            Arc::downgrade(&self.browser),
+            tinycomputer_browser::SWEEP_INTERVAL,
+        ));
+    }
+}
+
+/// Sweeps `browser`'s held outputs every `every`, until it is dropped.
+pub(in crate::tinybus_module) async fn sweep_every(
+    browser: std::sync::Weak<Browser>,
+    every: std::time::Duration,
+) {
+    let mut ticks = tokio::time::interval(every);
+    loop {
+        ticks.tick().await;
+        let Some(browser) = browser.upgrade() else {
+            return;
+        };
+        // A poisoned output store is reported on the next output call;
+        // the sweep has no caller to report it to.
+        let _swept = browser.sweep_outputs();
+    }
+}
+
 pub(in crate::tinybus_module) fn desktop_availability(
     permissions: &DesktopResponse,
 ) -> SurfaceAvailability {

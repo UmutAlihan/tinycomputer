@@ -27,7 +27,7 @@ case "$(uname -s)" in
   *) echo "build-module runs on macOS or Linux" >&2; exit 1 ;;
 esac
 
-cargo build --release -p tinycomputer --lib >&2
+cargo build --locked --release -p tinycomputer --lib >&2
 mkdir -p "$dir"
 # The TinyBus loader refuses a module whose directory or file another user
 # could write, so an inherited group- or world-writable mode (the Docker
@@ -37,7 +37,7 @@ install -m 644 "$target/release/${library}" "$dir/${library}"
 if [[ "$(uname -s)" == "Darwin" ]]; then
   # The engine's clipboard (and so the paste fallback for rich-text
   # fields) runs through a helper it only trusts beside the module.
-  cargo build --release -p agent-desktop-macos --bin agent-desktop-macos-helper >&2
+  cargo build --locked --release -p agent-desktop-macos --bin agent-desktop-macos-helper >&2
   install -m 755 "$target/release/agent-desktop-macos-helper" "$dir/agent-desktop-macos-helper"
 fi
 if command -v sha256sum >/dev/null 2>&1; then
@@ -47,4 +47,26 @@ else
 fi
 printf '"%s" = "%s"\n' "$library" "$hash" > "$dir/modules.toml"
 chmod 644 "$dir/modules.toml"
+# The loader checks every directory above the module too, so refuse here —
+# naming the culprit — rather than print a path it will not load from.
+ancestor="$(cd "$dir" && pwd -P)"
+while :; do
+  # GNU `%a` and BSD `%p` both end in the permission bits, sticky included.
+  raw="$(stat -c '%a' "$ancestor" 2>/dev/null || stat -f '%p' "$ancestor")"
+  mode=$(( 8#$raw & 8#7777 ))
+  owner="$(stat -c '%u' "$ancestor" 2>/dev/null || stat -f '%u' "$ancestor")"
+  if (( (mode & 8#022) != 0 && (mode & 8#1000) == 0 )); then
+    echo "build-module: $ancestor is writable by other users, so the loader will refuse" >&2
+    echo "  a module under it; set TINYCOMPUTER_MODULE_DIR to a directory whose every" >&2
+    echo "  parent is writable only by you (for example \$HOME/.local/lib/tinycomputer)" >&2
+    exit 1
+  fi
+  if [[ "$owner" != "$(id -u)" && "$owner" != 0 ]]; then
+    echo "build-module: $ancestor is owned by another user, so the loader will refuse" >&2
+    echo "  a module under it; set TINYCOMPUTER_MODULE_DIR elsewhere" >&2
+    exit 1
+  fi
+  [[ "$ancestor" == / ]] && break
+  ancestor="$(dirname "$ancestor")"
+done
 echo "$dir/${library}"

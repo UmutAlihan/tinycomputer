@@ -92,7 +92,8 @@ pub mod methods {
     pub const SCREENSHOT: &str = "BrowserScreenshot";
 
     /// Reads one chunk of a held output: a screenshot this interface took,
-    /// or one a task view or report names.
+    /// or one a task's `TaskReport.artifacts` names (task views never carry
+    /// one).
     ///
     /// Takes a [`crate::browser::ReadOutputRequest`]; its `data` is an
     /// [`crate::browser::OutputChunk`].

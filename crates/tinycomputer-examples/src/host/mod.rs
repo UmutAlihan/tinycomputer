@@ -48,6 +48,49 @@ impl std::fmt::Debug for Host {
     }
 }
 
+/// Why a held output could not be read.
+enum Unread {
+    /// The bus call itself failed; trying again may work.
+    Transport(LabError),
+    /// The module answered with an error or with bytes that do not add up;
+    /// trying again would get the same.
+    Invalid(LabError),
+}
+
+impl Unread {
+    fn into_error(self) -> LabError {
+        match self {
+            Self::Transport(error) | Self::Invalid(error) => error,
+        }
+    }
+}
+
+/// Aborts the broker's task if dropped while still armed: a load that fails
+/// part-way must not leave the broker, and the module it loaded, running.
+struct AbortOnDrop {
+    task: tokio::task::AbortHandle,
+    armed: bool,
+}
+
+impl AbortOnDrop {
+    fn new(task: tokio::task::AbortHandle) -> Self {
+        Self { task, armed: true }
+    }
+
+    /// Stops guarding, once the host has loaded and owns the task.
+    fn disarm(mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for AbortOnDrop {
+    fn drop(&mut self) {
+        if self.armed {
+            self.task.abort();
+        }
+    }
+}
+
 /// The private `jev` configuration for `key` on `OpenRouter`: the module's
 /// default endpoint and model unless `model` names one, in which case the
 /// decisions endpoint that serves the aliases is used too.
@@ -90,6 +133,7 @@ impl Host {
         let bus = MemoryBus::new();
         let broker = Broker::new();
         let broker_task = broker.spawn(bus.clone());
+        let guard = AbortOnDrop::new(broker_task.abort_handle());
         let module_host = ModuleHost::new(broker);
         let info = module_host.load_file(module)?;
         if info.name != "tinycomputer" {
@@ -111,6 +155,7 @@ impl Host {
             )
             .into());
         }
+        guard.disarm();
         Ok(Self {
             proxy,
             broker: broker_task,
@@ -317,36 +362,79 @@ impl Host {
     }
 
     /// A screenshot of `session`'s page as image bytes: `BrowserScreenshot`,
-    /// then `BrowserReadOutput` chunk by chunk until the end, then
-    /// `BrowserReleaseOutput` — the handle protocol a host follows.
+    /// then [`Host::read_output`].
     ///
     /// # Errors
     ///
-    /// Fails on a transport error, an error envelope, a chunk that is not
-    /// base64, or an image whose length disagrees with its handle.
+    /// Fails on a transport error, an error envelope, or a bad chunk.
     pub async fn browser_screenshot(&self, session: &SessionId) -> Result<Vec<u8>, LabError> {
         use tinycomputer_bus::browser::names::methods;
         let request = SessionRequest::new(session.clone(), ScreenshotRequest::default());
         let output: OutputRef = data(self.proxy.call(methods::SCREENSHOT, (request,)).await?)?;
+        self.read_output(&output).await
+    }
+
+    /// A held output's bytes — a screenshot this host took, or one a task
+    /// report names: `BrowserReadOutput` chunk by chunk until the end, then
+    /// `BrowserReleaseOutput`, the handle protocol a host follows. After a
+    /// transport failure the output is kept, so a retry can still read it
+    /// before it expires; after any other failure it is released.
+    ///
+    /// # Errors
+    ///
+    /// Fails on a transport error, an error envelope (an expired output is
+    /// `OUTPUT_NOT_FOUND`), a chunk that is not base64, or an image whose
+    /// length disagrees with its handle.
+    pub async fn read_output(&self, output: &OutputRef) -> Result<Vec<u8>, LabError> {
+        let read = self.read_chunks(output).await;
+        // A transport failure may pass, and a task's last screenshot cannot
+        // be taken again once its session is gone, so the output is kept for
+        // a retry until it expires. Anything else — read in full, or data
+        // that is wrong and will stay wrong — is released now.
+        if matches!(read, Err(Unread::Transport(_))) {
+            return read.map_err(Unread::into_error);
+        }
+        let request = OutputRequest {
+            output: output.id.clone(),
+        };
+        let released = self
+            .proxy
+            .call::<DesktopResponse>(
+                tinycomputer_bus::browser::names::methods::RELEASE_OUTPUT,
+                (request,),
+            )
+            .await;
+        let bytes = read.map_err(Unread::into_error)?;
+        let _released: Value = data(released?)?;
+        Ok(bytes)
+    }
+
+    async fn read_chunks(&self, output: &OutputRef) -> Result<Vec<u8>, Unread> {
+        use tinycomputer_bus::browser::names::methods;
         let mut bytes = Vec::new();
         loop {
             let request = ReadOutputRequest {
                 offset: bytes.len() as u64,
                 ..ReadOutputRequest::new(output.id.clone())
             };
-            let chunk: OutputChunk =
-                data(self.proxy.call(methods::READ_OUTPUT, (request,)).await?)?;
-            bytes.extend(base64::engine::general_purpose::STANDARD.decode(&chunk.data)?);
+            let reply = self
+                .proxy
+                .call(methods::READ_OUTPUT, (request,))
+                .await
+                .map_err(|error| Unread::Transport(error.into()))?;
+            let chunk: OutputChunk = data(reply).map_err(Unread::Invalid)?;
+            let decoded = base64::engine::general_purpose::STANDARD
+                .decode(&chunk.data)
+                .map_err(|error| Unread::Invalid(error.into()))?;
+            bytes.extend(decoded);
             if chunk.eof {
                 break;
             }
         }
-        let request = OutputRequest {
-            output: output.id.clone(),
-        };
-        let _released: Value = data(self.proxy.call(methods::RELEASE_OUTPUT, (request,)).await?)?;
         if bytes.len() as u64 != output.total_bytes {
-            return Err(io::Error::other("the screenshot came back short").into());
+            return Err(Unread::Invalid(
+                io::Error::other("the screenshot came back short").into(),
+            ));
         }
         Ok(bytes)
     }

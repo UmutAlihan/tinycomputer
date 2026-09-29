@@ -10,7 +10,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use tinycomputer_bus::agent::{ContinueTaskRequest, TaskStatus, TaskView};
+use tinycomputer_bus::agent::{ContinueTaskRequest, InputField, TaskStatus, TaskView};
+use tinycomputer_bus::browser::SessionInfo;
 
 use crate::host::{Host, LabError};
 
@@ -19,7 +20,8 @@ pub const AWAIT_SLICE: Duration = Duration::from_secs(30);
 
 /// Follows the task until it stops: prints each new state, answers a
 /// `needs_input` from `answers` when every field it asks for is there, and
-/// cancels the task once `limit` has passed.
+/// cancels the task once `limit` has passed — checked on every state it
+/// reports, so an answerable pause past the limit is cancelled, not answered.
 ///
 /// # Errors
 ///
@@ -39,25 +41,20 @@ pub async fn follow(
             println!("{line}");
             last = line;
         }
+        if view.status.is_final() {
+            return Ok(view);
+        }
+        let Some(wait) = next_wait(started.elapsed(), limit) else {
+            println!("time limit reached; cancelling");
+            return host.cancel_task(&id).await;
+        };
         view = match &view.status {
             TaskStatus::Running => {
-                let Some(wait) = next_wait(started.elapsed(), limit) else {
-                    println!("time limit reached; cancelling");
-                    return host.cancel_task(&id).await;
-                };
                 let timeout_ms = u64::try_from(wait.as_millis()).unwrap_or(u64::MAX);
                 host.await_task(&id, timeout_ms).await?
             }
             TaskStatus::NeedsInput { fields } => {
-                let Some(inputs) = fields
-                    .iter()
-                    .map(|field| {
-                        answers
-                            .get(&field.name)
-                            .map(|value| (field.name.clone(), value.clone()))
-                    })
-                    .collect::<Option<BTreeMap<_, _>>>()
-                else {
+                let Some(inputs) = inputs_for(fields, answers) else {
                     return Ok(view);
                 };
                 println!(
@@ -73,6 +70,48 @@ pub async fn follow(
             }
             _ => return Ok(view),
         };
+    }
+}
+
+/// The answers to a `needs_input` pause: one per field it asks for, or
+/// `None` when any is missing — or when it asks for nothing, which no answer
+/// can move past, so the pause is handed back rather than continued empty.
+#[must_use]
+pub fn inputs_for(
+    fields: &[InputField],
+    answers: &BTreeMap<String, String>,
+) -> Option<BTreeMap<String, String>> {
+    if fields.is_empty() {
+        return None;
+    }
+    fields
+        .iter()
+        .map(|field| {
+            answers
+                .get(&field.name)
+                .map(|value| (field.name.clone(), value.clone()))
+        })
+        .collect()
+}
+
+/// `url` reduced to its scheme and host, for a log line: credentials,
+/// paths (password-reset and magic-link tokens ride there), queries, and
+/// fragments are all dropped.
+#[must_use]
+pub fn loggable(url: &str) -> String {
+    match url.split_once("://") {
+        Some((scheme, rest)) => {
+            let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+            let host = authority
+                .rsplit_once('@')
+                .map_or(authority, |(_, host)| host);
+            format!("{scheme}://{host}")
+        }
+        // An opaque URL (`data:`, `about:`, a custom scheme) carries its
+        // payload right after the colon, so only the scheme is kept.
+        None => url
+            .split_once(':')
+            .map_or_else(String::new, |(scheme, _)| format!("{scheme}:")),
     }
 }
 
@@ -98,14 +137,26 @@ pub fn passed(status: &TaskStatus) -> bool {
 }
 
 /// Collects what a stopped task did into `out`, all over the bus: the
-/// report (`TaskReport`), a screenshot of each browser session still open
-/// (`BrowserScreenshot` and `BrowserReadOutput`) — then closes it — and, for
-/// a finished task, its records and any shaped result.
+/// report (`TaskReport`); when the task managed to take one as it stopped,
+/// `final.png` (`BrowserReadOutput` on the report's last artifact, which
+/// `read_output` releases); otherwise an `open-<n>.png` of each browser
+/// session still open; every open session is then closed; and, for a
+/// finished task, its records and any shaped result.
+///
+/// Only the task's own sessions are touched: those not in `before`, the
+/// sessions [`browser_sessions`](Host::browser_sessions) listed before
+/// `StartTask`. Every screenshot is
+/// best effort: a task can stop without one.
 ///
 /// # Errors
 ///
 /// Fails when a call to the module fails or a file cannot be written.
-pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), LabError> {
+pub async fn conclude(
+    host: &Host,
+    view: &TaskView,
+    before: &[SessionInfo],
+    out: &Path,
+) -> Result<(), LabError> {
     std::fs::create_dir_all(out)?;
     let report = host.task_report(&view.id).await?;
     for step in &report.steps {
@@ -124,24 +175,60 @@ pub async fn conclude(host: &Host, view: &TaskView, out: &Path) -> Result<(), La
         out.join("report.json"),
         serde_json::to_string_pretty(&report)?,
     )?;
-    for (index, session) in host.browser_sessions().await?.iter().enumerate() {
-        let name = if index == 0 {
-            "final.png".to_owned()
-        } else {
-            format!("final-{index}.png")
-        };
+    // The screenshot the task took when it stopped, before its session was
+    // released — the only one left for a task that finished or failed. It
+    // may have expired (held outputs live five minutes), so whether it was
+    // actually written decides whether open sessions are captured instead.
+    let mut captured = false;
+    if let Some(last) = report.artifacts.last() {
+        match host.read_output(last).await {
+            Ok(image) => match std::fs::write(out.join("final.png"), image) {
+                // Written, not merely read: only then is the fallback skipped.
+                Ok(()) => {
+                    captured = true;
+                    println!(
+                        "screenshot: {} (taken as the task stopped)",
+                        out.join("final.png").display()
+                    );
+                }
+                Err(error) => println!("final.png could not be written: {error}"),
+            },
+            Err(error) => println!("the task's screenshot could not be read: {error}"),
+        }
+    }
+    // The task's sessions still open — a task paused at a checkpoint keeps
+    // its own — are captured as they stand now, unless the task's own
+    // screenshot already shows that state, then closed. A session that was
+    // open before the task started is not the task's, and is left alone.
+    let owned = host
+        .browser_sessions()
+        .await?
+        .into_iter()
+        .filter(|session| before.iter().all(|earlier| earlier.id != session.id))
+        .collect::<Vec<_>>();
+    for (index, session) in owned.iter().enumerate() {
+        if captured {
+            host.close_browser_session(&session.id).await?;
+            continue;
+        }
+        let name = format!("open-{index}.png");
+        // A screenshot that cannot be taken or written is reported, never
+        // allowed to skip closing the session below.
         match host.browser_screenshot(&session.id).await {
-            Ok(image) => {
-                std::fs::write(out.join(&name), image)?;
-                println!(
+            Ok(image) => match std::fs::write(out.join(&name), image) {
+                Ok(()) => println!(
                     "screenshot: {} ({})",
                     out.join(&name).display(),
-                    session.url
-                );
-            }
+                    loggable(&session.url)
+                ),
+                Err(error) => println!("{name} could not be written: {error}"),
+            },
             Err(error) => println!("screenshot of {} failed: {error}", session.id),
         }
         host.close_browser_session(&session.id).await?;
+    }
+    if !captured && !out.join("open-0.png").exists() {
+        println!("no screenshot: the task's surface could not take one");
     }
     if let TaskStatus::Done {
         records, result, ..

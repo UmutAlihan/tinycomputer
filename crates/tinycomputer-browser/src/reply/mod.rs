@@ -82,7 +82,12 @@ pub(crate) fn classify(message: &str) -> Error {
     {
         return Error::invalid_input(message);
     }
-    if lower.starts_with("evaluation error") || lower.contains("dialog is blocking the page") {
+    // A dialog in front of the page passes once someone answers it, so the
+    // command is not wrong — the page is not ready for it yet.
+    if lower.contains("dialog is blocking the page") {
+        return Error::not_actionable(message);
+    }
+    if lower.starts_with("evaluation error") {
         return Error::page(message);
     }
     Error::failed(message)

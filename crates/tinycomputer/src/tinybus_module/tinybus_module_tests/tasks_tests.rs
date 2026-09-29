@@ -104,6 +104,10 @@ async fn the_runner_keeps_one_workspace_per_task_until_released() {
     // Nothing observed yet, so there is nothing to read.
     assert!(runner.visible_text(&task).await.is_empty());
     assert_eq!(runner.workspaces.lock().unwrap().len(), 1);
+    // No browser session was ever opened, so there is nothing to capture,
+    // and a task the runner never saw has nothing either.
+    assert!(runner.capture(&task).await.is_none());
+    assert!(runner.capture(&TaskId::new("t-unknown")).await.is_none());
     runner.release(&task);
     assert!(runner.workspaces.lock().unwrap().is_empty());
 }
@@ -133,13 +137,20 @@ async fn a_task_report_request_is_one_a_confidential_call_can_carry() -> tinybus
     assert!(bare.to_string().contains("stream handle"), "{bare}");
 
     // The report's own request always carries `trace`, so it gets past the
-    // client; this unattested test module then fails attestation instead.
+    // client and reaches the broker, which refuses it for exactly one
+    // reason: this in-memory module was never attested.
     let request = TaskReportRequest::new(TaskId::new("t-1"));
-    if let Err(error) = proxy
+    let refused = proxy
         .call_confidential::<serde_json::Value>(names::methods::TASK_REPORT, (request,))
         .await
-    {
-        assert!(!error.to_string().contains("stream handle"), "{error}");
-    }
+        .expect_err("an unattested module cannot take a confidential call");
+    assert!(
+        matches!(
+            &refused,
+            tinybus::Error::MethodFailed { name, .. }
+                if name.as_str() == "ai.tinyhumans.tinybus.Error.NotAttested"
+        ),
+        "{refused:?}"
+    );
     Ok(())
 }
