@@ -121,9 +121,12 @@ impl FlowRunner for WorkspaceRunner {
             .workspaces
             .lock()
             .ok()
+            // Only when the browser is the side the task is on: after a
+            // move to a desktop application its page is stale evidence.
             .and_then(|workspaces| {
                 workspaces
                     .get(task)
+                    .filter(|(workspace, _)| workspace.browser_active())
                     .and_then(|(_, browser)| browser.clone())
             })
             .and_then(|browser| browser.session());
