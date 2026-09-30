@@ -5,7 +5,7 @@
 
 #[cfg(target_os = "macos")]
 use super::Error;
-use super::{PermissionState, Result as AccessibilityResult, detect_permissions};
+use super::{PermissionState, Result as AccessibilityResult};
 #[cfg(any(target_os = "macos", test))]
 use std::collections::VecDeque;
 
@@ -23,6 +23,17 @@ use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
 #[cfg(target_os = "macos")]
 use std::sync::{Arc, Mutex as StdMutex};
+
+fn input_monitoring_permission() -> PermissionState {
+    #[cfg(target_os = "macos")]
+    {
+        super::detect_input_monitoring_permission()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        PermissionState::Unsupported
+    }
+}
 
 #[cfg(target_os = "macos")]
 const LOG_PREFIX: &str = "[globe_hotkey]";
@@ -123,7 +134,7 @@ fn current_error(error_store: &Arc<StdMutex<Option<String>>>) -> Option<String> 
 fn ensure_running_locked(
     state: &mut Option<GlobeListenerProcess>,
 ) -> Result<GlobeHotkeyStatus, String> {
-    let input_monitoring_permission = detect_permissions().input_monitoring;
+    let input_monitoring_permission = input_monitoring_permission();
     if input_monitoring_permission != PermissionState::Granted {
         let message =
             "input monitoring permission is required for the macOS Globe/Fn listener".to_string();
@@ -437,7 +448,7 @@ pub fn globe_listener_poll() -> AccessibilityResult<GlobeHotkeyPollResult> {
         GlobeHotkeyStatus {
             supported: true,
             running: false,
-            input_monitoring_permission: detect_permissions().input_monitoring,
+            input_monitoring_permission: input_monitoring_permission(),
             last_error: None,
             events_pending: 0,
         }
@@ -479,7 +490,7 @@ pub fn globe_listener_stop() -> AccessibilityResult<GlobeHotkeyStatus> {
     Ok(GlobeHotkeyStatus {
         supported: true,
         running: false,
-        input_monitoring_permission: detect_permissions().input_monitoring,
+        input_monitoring_permission: input_monitoring_permission(),
         last_error: None,
         events_pending: 0,
     })
@@ -495,7 +506,7 @@ pub fn globe_listener_start() -> AccessibilityResult<GlobeHotkeyStatus> {
     Ok(GlobeHotkeyStatus {
         supported: false,
         running: false,
-        input_monitoring_permission: detect_permissions().input_monitoring,
+        input_monitoring_permission: input_monitoring_permission(),
         last_error: Some("Globe/Fn hotkey listener is only supported on macOS".to_string()),
         events_pending: 0,
     })
@@ -512,7 +523,7 @@ pub fn globe_listener_poll() -> AccessibilityResult<GlobeHotkeyPollResult> {
         status: GlobeHotkeyStatus {
             supported: false,
             running: false,
-            input_monitoring_permission: detect_permissions().input_monitoring,
+            input_monitoring_permission: input_monitoring_permission(),
             last_error: Some("Globe/Fn hotkey listener is only supported on macOS".to_string()),
             events_pending: 0,
         },
@@ -530,7 +541,7 @@ pub fn globe_listener_stop() -> AccessibilityResult<GlobeHotkeyStatus> {
     Ok(GlobeHotkeyStatus {
         supported: false,
         running: false,
-        input_monitoring_permission: detect_permissions().input_monitoring,
+        input_monitoring_permission: input_monitoring_permission(),
         last_error: Some("Globe/Fn hotkey listener is only supported on macOS".to_string()),
         events_pending: 0,
     })

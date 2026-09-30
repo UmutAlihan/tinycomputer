@@ -3,6 +3,8 @@
 //! compiling/caching the helper binary from its embedded Swift source.
 
 #[cfg(target_os = "macos")]
+use std::hash::{Hash, Hasher};
+#[cfg(target_os = "macos")]
 use std::io::{BufRead, BufReader, Write};
 #[cfg(target_os = "macos")]
 use std::sync::LazyLock;
@@ -326,9 +328,12 @@ fn ensure_helper_binary() -> Result<PathBuf, String> {
 
     let cache_dir = std::env::temp_dir().join("openhuman-accessibility-helper");
     fs::create_dir_all(&cache_dir).map_err(|e| format!("failed to create cache dir: {e}"))?;
-    let source_path = cache_dir.join("unified_helper.swift");
-    let binary_path = cache_dir.join("unified_helper_bin");
     let source = unified_swift_source();
+    let mut source_hasher = std::collections::hash_map::DefaultHasher::new();
+    source.hash(&mut source_hasher);
+    let source_id = format!("{:016x}", source_hasher.finish());
+    let source_path = cache_dir.join(format!("unified_helper_{source_id}.swift"));
+    let binary_path = cache_dir.join(format!("unified_helper_{source_id}"));
 
     let needs_write = match fs::read_to_string(&source_path) {
         Ok(existing) => existing != source,
@@ -341,6 +346,10 @@ fn ensure_helper_binary() -> Result<PathBuf, String> {
 
     let needs_compile = needs_write || !binary_path.exists();
     if needs_compile {
+        let temporary_binary = cache_dir.join(format!(
+            "unified_helper_{source_id}.tmp-{}",
+            std::process::id()
+        ));
         log::debug!("[accessibility] compiling unified Swift helper");
         let output = Command::new("xcrun")
             .args([
@@ -353,7 +362,7 @@ fn ensure_helper_binary() -> Result<PathBuf, String> {
             ])
             .arg(&source_path)
             .arg("-o")
-            .arg(&binary_path)
+            .arg(&temporary_binary)
             .output()
             .or_else(|_| {
                 Command::new("swiftc")
@@ -366,11 +375,12 @@ fn ensure_helper_binary() -> Result<PathBuf, String> {
                     ])
                     .arg(&source_path)
                     .arg("-o")
-                    .arg(&binary_path)
+                    .arg(&temporary_binary)
                     .output()
             })
             .map_err(|e| format!("failed to invoke swiftc: {e}"))?;
         if !output.status.success() {
+            let _ = fs::remove_file(&temporary_binary);
             let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
             return Err(format!(
                 "failed to compile unified helper: {}",
@@ -381,6 +391,8 @@ fn ensure_helper_binary() -> Result<PathBuf, String> {
                 }
             ));
         }
+        fs::rename(&temporary_binary, &binary_path)
+            .map_err(|e| format!("failed to install compiled unified helper: {e}"))?;
         log::debug!("[accessibility] unified helper compiled successfully");
     }
 

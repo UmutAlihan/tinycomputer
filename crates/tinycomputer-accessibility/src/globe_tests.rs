@@ -28,6 +28,10 @@ fn non_macos_listener_entry_points_report_unsupported() {
     let started = super::globe_listener_start().expect("fallback start returns status");
     assert!(!started.supported);
     assert!(!started.running);
+    assert_eq!(
+        started.input_monitoring_permission,
+        super::PermissionState::Unsupported
+    );
     assert_eq!(started.events_pending, 0);
 
     let polled = super::globe_listener_poll().expect("fallback poll returns status");
