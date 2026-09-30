@@ -174,19 +174,28 @@ pub fn detect_microphone_permission() -> PermissionState {
 pub fn detect_microphone_permission() -> PermissionState {
     // Standard Linux desktops (PulseAudio/PipeWire) don't enforce app-level mic permissions.
     // Detect Flatpak sandbox — input device presence cannot confirm capture access.
-    if std::env::var("FLATPAK_ID").is_ok() || std::path::Path::new("/run/flatpak").exists() {
+    let is_sandboxed =
+        std::env::var("FLATPAK_ID").is_ok() || std::path::Path::new("/run/flatpak").exists();
+    linux_microphone_permission(is_sandboxed, || {
         use cpal::traits::HostTrait;
-        let host = cpal::default_host();
-        if host.default_input_device().is_some() {
-            PermissionState::Unknown
-        } else {
-            log::debug!(
-                "[permissions] Linux (Flatpak): no default input device — possible sandbox restriction"
-            );
-            PermissionState::Denied
-        }
-    } else {
+        cpal::default_host().default_input_device().is_some()
+    })
+}
+
+#[cfg(all(feature = "microphone-probe", target_os = "linux"))]
+fn linux_microphone_permission(
+    is_sandboxed: bool,
+    has_default_input_device: impl FnOnce() -> bool,
+) -> PermissionState {
+    if !is_sandboxed {
         PermissionState::Granted
+    } else if has_default_input_device() {
+        PermissionState::Unknown
+    } else {
+        log::debug!(
+            "[permissions] Linux (Flatpak): no default input device — possible sandbox restriction"
+        );
+        PermissionState::Denied
     }
 }
 

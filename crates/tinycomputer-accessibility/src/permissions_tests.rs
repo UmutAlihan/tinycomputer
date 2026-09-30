@@ -113,6 +113,28 @@ fn detect_microphone_permission_linux_returns_valid_state() {
     );
 }
 
+#[cfg(all(feature = "microphone-probe", target_os = "linux"))]
+#[test]
+fn linux_microphone_permission_handles_sandbox_probe_results() {
+    let mut probe_called = false;
+    assert_eq!(
+        linux_microphone_permission(false, || {
+            probe_called = true;
+            false
+        }),
+        PermissionState::Granted
+    );
+    assert!(!probe_called);
+    assert_eq!(
+        linux_microphone_permission(true, || true),
+        PermissionState::Unknown
+    );
+    assert_eq!(
+        linux_microphone_permission(true, || false),
+        PermissionState::Denied
+    );
+}
+
 // ── PermissionState serde round-trip ─────────────────────────────────────
 
 #[test]

@@ -30,6 +30,10 @@ mod swift_overlay;
 mod swift_paste;
 mod swift_source;
 
+#[cfg(test)]
+#[path = "helper_tests.rs"]
+mod tests;
+
 #[cfg(target_os = "macos")]
 #[allow(unused_imports)]
 pub(crate) use process::helper_send_receive;
