@@ -72,6 +72,7 @@ crates/
 │       └── <family>/   # one directory per payload family
 ├── tinycomputer-core/   # shared domain: Surface trait, keys, safety, records
 ├── tinycomputer-cursor/ # the agent's on-screen cursor, and the overlay that draws it
+├── tinycomputer-accessibility/ # in-process focus, permission and Globe-key answers for a host (no bus)
 ├── tinycomputer-browser/ # the agent-browser adapter: sessions, outputs
 ├── tinycomputer-desktop/ # the agent-desktop adapter: no bus, no agent loop
 │   └── src/
