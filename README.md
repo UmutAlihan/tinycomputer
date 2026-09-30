@@ -178,6 +178,7 @@ scripts/docker-lab -- crates/tinycomputer-examples/fixtures/run task_fixture
 | `tinycomputer-desktop` | desktop apps, through agent-desktop |
 | `tinycomputer-browser` | web pages, through agent-browser |
 | `tinycomputer-cursor` | the cursor you can watch |
+| `tinycomputer-accessibility` | in-process focus, permission and Globe-key answers for a host |
 | `tinycomputer-skills` | the guide and schemas for calling agents |
 | `tinycomputer-examples` | examples, the lab, saved plans |
 

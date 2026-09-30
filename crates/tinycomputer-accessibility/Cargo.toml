@@ -1,0 +1,62 @@
+[package]
+name = "tinycomputer-accessibility"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "In-process desktop accessibility middleware for hosts: focused-text queries, paste validation, permission detection, the Globe key listener, and terminal heuristics, with the macOS FFI and Swift helper process behind it."
+documentation = "https://docs.rs/tinycomputer-accessibility"
+readme = "README.md"
+keywords = ["accessibility", "macos", "permissions", "focus"]
+categories = ["os"]
+publish = false
+
+[features]
+default = []
+# Probe the default input device with `cpal` to detect microphone permission.
+# Without it `detect_microphone_permission` reports `PermissionState::Unknown`,
+# so a host that never records audio does not compile the audio stack.
+microphone-probe = ["dep:cpal"]
+
+[dependencies]
+# Permission state and focus context cross into hosts as JSON.
+serde = { workspace = true }
+# The Swift helper speaks one JSON object per line over stdin/stdout.
+serde_json = { workspace = true }
+# Debug and warning logs for the helper process, focus queries, and probes.
+# Only the facade: the host installs the logger.
+log = { workspace = true }
+# Typed errors returned by fallible public accessibility APIs.
+thiserror = { workspace = true }
+# Default-input-device probe behind `microphone-probe`.
+cpal = { workspace = true, optional = true }
+
+# The workspace lint set, except that `unsafe_code` is `deny` rather than
+# `forbid`: the macOS permission checks call ApplicationServices, CoreFoundation
+# and IOKit directly (`src/permissions.rs`), so that module — and only it —
+# allows `unsafe`, each block with a `// SAFETY:` comment. Keep the rest
+# identical to the root `Cargo.toml`.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+doc_markdown = "warn"
+must_use_candidate = "warn"
+
+[lints.rustdoc]
+broken_intra_doc_links = "warn"
+private_intra_doc_links = "warn"

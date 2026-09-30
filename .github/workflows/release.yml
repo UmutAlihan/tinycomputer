@@ -50,6 +50,9 @@ jobs:
         with:
           tool: cargo-llvm-cov
 
+      - name: Install ALSA development files
+        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Check formatting

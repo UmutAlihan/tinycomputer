@@ -67,6 +67,7 @@ README once its own documentation pass lands:
 | [`tinycomputer-bus`](../crates/tinycomputer-bus/README.md) | the wire contract: every type that crosses the bus, and the member names, with no runtime dependencies |
 | [`tinycomputer-core`](../crates/tinycomputer-core/README.md) | shared, engine-free domain logic: the `Surface` trait, keys, safety rules, records and facts |
 | [`tinycomputer-cursor`](../crates/tinycomputer-cursor/README.md) | the agent's on-screen cursor and the overlay window that draws it |
+| [`tinycomputer-accessibility`](../crates/tinycomputer-accessibility/README.md) | in-process focus, permission and Globe-key answers for a host |
 | [`tinycomputer-desktop`](../crates/tinycomputer-desktop/README.md) | the `agent-desktop` adapter: one method per desktop member, conversion, and the permission preflight |
 | [`tinycomputer-browser`](../crates/tinycomputer-browser/README.md) | the `agent-browser` adapter: typed sessions over the linked engine |
 | [`tinycomputer-engine`](../crates/tinycomputer-engine/README.md) | the agent runtime: Jev decision loops, `RunGoal`, intent flows, and the task controller |
