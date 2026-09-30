@@ -20,6 +20,8 @@ mod error;
 mod focus;
 mod globe;
 mod helper;
+#[cfg(feature = "paste")]
+pub mod paste;
 mod permissions;
 mod terminal;
 mod text_util;
