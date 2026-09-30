@@ -528,10 +528,8 @@ fn validate_context(
             actual: actual.to_string(),
         });
     }
-    if expected_app.is_some() || expected_role.is_some() {
-        if expected_bounds.is_none() {
-            return Err(Error::FocusTargetChanged);
-        }
+    if (expected_app.is_some() || expected_role.is_some()) && expected_bounds.is_none() {
+        return Err(Error::FocusTargetChanged);
     }
     if let Some(expected) = expected_bounds
         && ctx.bounds.is_none_or(|actual| {
