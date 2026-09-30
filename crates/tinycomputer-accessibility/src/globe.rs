@@ -4,7 +4,6 @@
 //! events globally and reports `FN_DOWN` / `FN_UP` lines over stdout.
 
 use super::{PermissionState, detect_permissions};
-#[cfg(target_os = "macos")]
 use std::collections::VecDeque;
 
 #[cfg(target_os = "macos")]
@@ -68,8 +67,13 @@ fn push_event(queue: &Arc<StdMutex<VecDeque<String>>>, event: String) {
         return;
     };
     guard.push_back(event);
-    while guard.len() > MAX_PENDING_EVENTS {
-        let _ = guard.pop_front();
+    trim_event_queue(&mut guard);
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn trim_event_queue(queue: &mut VecDeque<String>) {
+    while queue.len() > MAX_PENDING_EVENTS {
+        let _ = queue.pop_front();
     }
 }
 
@@ -154,6 +158,8 @@ fn ensure_running_locked(
                 let message = format!("failed to inspect globe listener state: {err}");
                 log::warn!("{LOG_PREFIX} {message}");
                 set_last_error(&process.last_error, Some(message));
+                let _ = process.child.kill();
+                let _ = process.child.wait();
                 *state = None;
             }
         }
@@ -407,7 +413,17 @@ pub fn globe_listener_poll() -> Result<GlobeHotkeyPollResult, String> {
     let mut guard = GLOBE_LISTENER
         .lock()
         .map_err(|_| "globe listener lock poisoned".to_string())?;
-    let status = ensure_running_locked(&mut guard)?;
+    let status = if guard.is_some() {
+        ensure_running_locked(&mut guard)?
+    } else {
+        GlobeHotkeyStatus {
+            supported: true,
+            running: false,
+            input_monitoring_permission: detect_permissions().input_monitoring,
+            last_error: None,
+            events_pending: 0,
+        }
+    };
     let events = guard
         .as_ref()
         .map(|process| drain_events(&process.event_queue))

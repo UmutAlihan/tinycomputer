@@ -12,7 +12,8 @@ use super::types::ElementBounds;
 use super::types::FocusedTextContext;
 #[cfg(any(target_os = "macos", all(test, unix)))]
 use std::{
-    process::{Command, Output, Stdio},
+    io::Read,
+    process::{Command, ExitStatus, Output, Stdio},
     time::{Duration, Instant},
 };
 
@@ -31,14 +32,16 @@ fn command_output_with_timeout(
     let mut child = command
         .spawn()
         .map_err(|e| format!("failed to run {command_name}: {e}"))?;
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let stdout_reader = std::thread::spawn(move || read_pipe(stdout));
+    let stderr_reader = std::thread::spawn(move || read_pipe(stderr));
     let started_at = Instant::now();
 
     loop {
         match child.try_wait() {
-            Ok(Some(_)) => {
-                return child
-                    .wait_with_output()
-                    .map_err(|e| format!("failed to collect {command_name} output: {e}"));
+            Ok(Some(status)) => {
+                return collect_command_output(command_name, status, stdout_reader, stderr_reader);
             }
             Ok(None) if started_at.elapsed() >= timeout => {
                 let _ = child.kill();
@@ -56,6 +59,35 @@ fn command_output_with_timeout(
             }
         }
     }
+}
+
+#[cfg(any(target_os = "macos", all(test, unix)))]
+fn read_pipe(pipe: Option<impl Read>) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    if let Some(mut pipe) = pipe {
+        let _ = pipe.read_to_end(&mut bytes);
+    }
+    bytes
+}
+
+#[cfg(any(target_os = "macos", all(test, unix)))]
+fn collect_command_output(
+    command_name: &str,
+    status: ExitStatus,
+    stdout_reader: std::thread::JoinHandle<Vec<u8>>,
+    stderr_reader: std::thread::JoinHandle<Vec<u8>>,
+) -> Result<Output, String> {
+    let stdout = stdout_reader
+        .join()
+        .map_err(|_| format!("failed to collect {command_name} stdout"))?;
+    let stderr = stderr_reader
+        .join()
+        .map_err(|_| format!("failed to collect {command_name} stderr"))?;
+    Ok(Output {
+        status,
+        stdout,
+        stderr,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +124,15 @@ pub fn focused_text_context_verbose() -> Result<FocusedTextContext, String> {
                 "[accessibility] helper returned raw_error={:?}, falling back to osascript",
                 ctx.raw_error
             );
-            focused_text_via_osascript()
+            match focused_text_via_osascript() {
+                Ok(fallback) => Ok(fallback),
+                Err(fallback_err) => {
+                    log::debug!(
+                        "[accessibility] osascript fallback failed ({fallback_err}); keeping helper context"
+                    );
+                    Ok(ctx)
+                }
+            }
         }
         Ok(ctx) => Ok(ctx),
         Err(helper_err) => {

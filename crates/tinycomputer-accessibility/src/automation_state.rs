@@ -16,32 +16,29 @@
 //! error code that's already produced by the existing fallback path —
 //! capturing it costs nothing extra and avoids the FFI entirely.
 //!
-//! The flag is cleared at the top of `autocomplete::start_if_enabled`
-//! so a user-initiated re-engagement (toggle autocomplete off+on after
-//! granting via System Settings) re-probes naturally on the next tick.
+//! The host can clear the flag after a user changes the Automation grant in
+//! System Settings. Clearing only resets the remembered denial; it does not
+//! request or grant permission.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static SYSTEM_EVENTS_DENIED: AtomicBool = AtomicBool::new(false);
 
 /// Mark that osascript has returned -1743 for `tell application "System
-/// Events"` in this process. Called from the host's autocomplete refresh-loop
-/// error branch when the sentinel substring is observed.
+/// Events"` in this process.
 pub fn mark_system_events_denied() {
     SYSTEM_EVENTS_DENIED.store(true, Ordering::Relaxed);
 }
 
 /// True iff a -1743 has been observed in this process since the last
-/// `clear()`. Gated osascript call sites in `focus.rs` / `paste.rs`
-/// check this and short-circuit before spawning osascript.
+/// `clear_automation_denial`. The focus fallback checks this and short-circuits
+/// before spawning osascript.
 pub fn system_events_denied() -> bool {
     SYSTEM_EVENTS_DENIED.load(Ordering::Relaxed)
 }
 
-/// Reset the denial flag. Called from `autocomplete::start_if_enabled`
-/// so an explicit re-engagement (user toggled autocomplete off+on, or
-/// the engine was started fresh) re-probes via the next osascript tick
-/// instead of inheriting a stale denial from a previous session.
+/// Reset the denial flag after a user changes the Automation grant, allowing
+/// the next focus query to probe again.
 pub fn clear() {
     SYSTEM_EVENTS_DENIED.store(false, Ordering::Relaxed);
 }

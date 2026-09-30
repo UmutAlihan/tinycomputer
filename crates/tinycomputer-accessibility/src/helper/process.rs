@@ -107,6 +107,7 @@ pub(crate) fn helper_send_receive(
     loop {
         let remaining = deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
+            reset_helper_process();
             return Err(format!(
                 "helper response timed out waiting for id {id_str} (stale lines may follow)"
             ));
@@ -152,6 +153,19 @@ pub(crate) fn helper_send_receive(
         log::debug!(
             "[accessibility] discarding helper response with mismatched or missing id (want id={id_str})"
         );
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn reset_helper_process() {
+    if let Ok(mut guard) = UNIFIED_HELPER.lock() {
+        if let Some(mut helper) = guard.take() {
+            let _ = helper.child.kill();
+            let _ = helper.child.wait();
+        }
+    }
+    if let Ok(mut rx_guard) = RESPONSE_RX.lock() {
+        rx_guard.take();
     }
 }
 

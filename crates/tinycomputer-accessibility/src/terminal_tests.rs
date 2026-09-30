@@ -1,3 +1,5 @@
+//! Tests for terminal detection and prompt extraction heuristics.
+
 use super::*;
 
 #[test]

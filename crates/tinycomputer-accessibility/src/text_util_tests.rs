@@ -1,3 +1,5 @@
+//! Tests for truncating and normalizing accessibility text and parsing AX numbers.
+
 use super::*;
 
 // --- truncate_tail ---

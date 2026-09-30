@@ -1,3 +1,5 @@
+//! Unit tests for the focus module's bounded command runner.
+
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(unix)]
 use super::*;
@@ -14,6 +16,23 @@ fn command_output_with_timeout_returns_output_for_fast_command() {
 
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout), "ready");
+}
+
+#[cfg(unix)]
+#[test]
+fn command_output_with_timeout_drains_large_output_while_waiting() {
+    let mut command = Command::new("sh");
+    command.arg("-c").arg("head -c 200000 /dev/zero");
+
+    let output = command_output_with_timeout(
+        "test large output command",
+        &mut command,
+        Duration::from_secs(2),
+    )
+    .expect("large output should not fill the pipe and block the child");
+
+    assert!(output.status.success());
+    assert_eq!(output.stdout.len(), 200_000);
 }
 
 #[cfg(unix)]

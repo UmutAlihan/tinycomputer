@@ -36,6 +36,9 @@ jobs:
         with:
           tool: cargo-llvm-cov
 
+      - name: Install ALSA development files
+        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Check formatting
@@ -106,6 +109,9 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install ALSA development files
+        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev
+
       - name: Build documentation
         env:
           RUSTDOCFLAGS: -D warnings
@@ -138,6 +144,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ steps.msrv.outputs.version }}
+
+      - name: Install ALSA development files
+        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev
 
       - uses: Swatinem/rust-cache@v2
 

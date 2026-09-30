@@ -1,3 +1,5 @@
+//! Tests for marking, clearing, and concurrently reading the System Events denial flag.
+
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::*;
 
