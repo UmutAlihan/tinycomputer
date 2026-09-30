@@ -28,6 +28,9 @@ pub enum Error {
         /// Role of the currently focused element.
         actual: String,
     },
+    /// The focused element moved from its captured bounds.
+    #[error("focused element bounds changed, aborting insertion")]
+    FocusTargetChanged,
     /// The Globe listener could not be started, inspected, or stopped.
     #[error("Globe listener operation failed: {0}")]
     GlobeListener(String),

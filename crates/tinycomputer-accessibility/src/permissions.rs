@@ -174,8 +174,11 @@ pub fn detect_microphone_permission() -> PermissionState {
 pub fn detect_microphone_permission() -> PermissionState {
     // Standard Linux desktops (PulseAudio/PipeWire) don't enforce app-level mic permissions.
     // Detect Flatpak sandbox — input device presence cannot confirm capture access.
-    let is_sandboxed =
-        std::env::var("FLATPAK_ID").is_ok() || std::path::Path::new("/run/flatpak").exists();
+    let is_sandboxed = std::env::var("FLATPAK_ID").is_ok()
+        || std::path::Path::new("/run/flatpak").exists()
+        || std::env::var("SNAP").is_ok()
+        || std::env::var("SNAP_NAME").is_ok()
+        || std::env::var("SNAP_INSTANCE_NAME").is_ok();
     linux_microphone_permission(is_sandboxed, || {
         use cpal::traits::HostTrait;
         cpal::default_host().default_input_device().is_some()

@@ -55,7 +55,7 @@ func getAXSize(_ element: AXUIElement) -> (w: Int, h: Int)? {
     return (Int(size.width), Int(size.height))
 }
 
-func scanChildrenForText(_ parent: AXUIElement, depth: Int = 0) -> (role: String, text: String, pos: (Int, Int)?, size: (Int, Int)?)? {
+func scanChildrenForText(_ parent: AXUIElement, depth: Int = 0, allowStaticFallback: Bool = false) -> (role: String, text: String, pos: (Int, Int)?, size: (Int, Int)?)? {
     if depth > 5 { return nil }
     var childrenRef: AnyObject?
     let err = AXUIElementCopyAttributeValue(parent, kAXChildrenAttribute as String as CFString, &childrenRef)
@@ -79,7 +79,7 @@ func scanChildrenForText(_ parent: AXUIElement, depth: Int = 0) -> (role: String
     var staticFallback: (role: String, text: String, pos: (Int, Int)?, size: (Int, Int)?)?
     for child in children.prefix(200) {
         let role = getAXStringAttr(child, kAXRoleAttribute as String) ?? ""
-        if role == "AXStaticText" {
+        if allowStaticFallback && role == "AXStaticText" {
             let text = getAXStringAttr(child, kAXValueAttribute as String) ?? ""
             if !text.isEmpty {
                 let isPrompt = text.contains("$ ") || text.contains("# ") || text.contains("> ")
@@ -87,8 +87,6 @@ func scanChildrenForText(_ parent: AXUIElement, depth: Int = 0) -> (role: String
                 if isPrompt {
                     staticFallback = candidate
                     break
-                } else if staticFallback == nil {
-                    staticFallback = candidate
                 }
             }
         }
@@ -96,7 +94,7 @@ func scanChildrenForText(_ parent: AXUIElement, depth: Int = 0) -> (role: String
 
     // Recurse into children
     for child in children.prefix(50) {
-        if let result = scanChildrenForText(child, depth: depth + 1) {
+        if let result = scanChildrenForText(child, depth: depth + 1, allowStaticFallback: allowStaticFallback) {
             return result
         }
     }
@@ -186,7 +184,7 @@ func queryFocusedElement(id: String?) -> [String: Any] {
             var windowRef: AnyObject?
             let winErr = AXUIElementCopyAttributeValue(appElement as! AXUIElement, kAXFocusedWindowAttribute as String as CFString, &windowRef)
             if winErr == .success, let window = windowRef {
-                if let found = scanChildrenForText(window as! AXUIElement) {
+                if let found = scanChildrenForText(window as! AXUIElement, allowStaticFallback: isTerminal) {
                     result["role"] = found.role
                     result["text"] = found.text
                     if let pos = found.pos { result["x"] = pos.0; result["y"] = pos.1 }
@@ -208,7 +206,7 @@ func queryFocusedElement(id: String?) -> [String: Any] {
         var windowRef: AnyObject?
         let winErr = AXUIElementCopyAttributeValue(appElement as! AXUIElement, kAXFocusedWindowAttribute as String as CFString, &windowRef)
         if winErr == .success, let window = windowRef {
-            if let found = scanChildrenForText(window as! AXUIElement) {
+            if let found = scanChildrenForText(window as! AXUIElement, allowStaticFallback: isTerminal) {
                 result["role"] = found.role
                 result["text"] = found.text
                 if let pos = found.pos { result["x"] = pos.0; result["y"] = pos.1 }

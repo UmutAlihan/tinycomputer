@@ -495,7 +495,7 @@ fn is_text_editable_role(role: &str) -> bool {
 
 #[cfg(target_os = "macos")]
 /// Validate that the currently focused element still matches the target the
-/// caller captured (`expected_app`, and `expected_role` when given).
+/// caller captured (`expected_app`, `expected_role`, and `expected_bounds` when given).
 ///
 /// Inconclusive checks pass: no expected app, a failed focus query, or an
 /// unsupported platform.
@@ -507,8 +507,9 @@ fn is_text_editable_role(role: &str) -> bool {
 pub fn validate_focused_target(
     expected_app: Option<&str>,
     expected_role: Option<&str>,
+    expected_bounds: Option<super::types::ElementBounds>,
 ) -> AccessibilityResult<()> {
-    if expected_app.is_none() {
+    if expected_app.is_none() && expected_role.is_none() && expected_bounds.is_none() {
         return Ok(());
     }
     let current = focused_text_context_verbose();
@@ -536,6 +537,16 @@ pub fn validate_focused_target(
                     });
                 }
             }
+            if let (Some(expected), Some(actual)) = (expected_bounds, ctx.bounds)
+                && expected.x == actual.x
+                && expected.y == actual.y
+                && expected.width == actual.width
+                && expected.height == actual.height
+            {
+                // The captured and current element occupy the same bounds.
+            } else if expected_bounds.is_some() {
+                return Err(Error::FocusTargetChanged);
+            }
             Ok(())
         }
         Err(_) => Ok(()),
@@ -556,6 +567,7 @@ pub fn validate_focused_target(
 pub fn validate_focused_target(
     _expected_app: Option<&str>,
     _expected_role: Option<&str>,
+    _expected_bounds: Option<super::types::ElementBounds>,
 ) -> AccessibilityResult<()> {
     Ok(())
 }
