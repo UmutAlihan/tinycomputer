@@ -44,6 +44,10 @@ tinycomputer-engine = { path = "crates/tinycomputer-engine" }
 # The agent's on-screen cursor: aim points and human glide paths a surface
 # draws over its content. Cosmetic; it sends no input.
 tinycomputer-cursor = { path = "crates/tinycomputer-cursor" }
+# In-process desktop accessibility middleware for hosts: focused-text queries,
+# permission detection, the Globe key listener. A plain library with no bus, so
+# a host links it directly instead of calling the module.
+tinycomputer-accessibility = { path = "crates/tinycomputer-accessibility" }
 # Native typed Jev transport used by the desktop-control policy: the decisions
 # crate of the vendored `vendor/tinyinference` submodule, pinned by its gitlink
 # so provider validation and retry behavior are reproducible. Only this crate
@@ -85,6 +89,12 @@ thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 # Positional argument arrays and the module configuration blob.
 serde_json = "1"
+# Debug and warning logs from `tinycomputer-accessibility`: the facade only, the
+# host installs the logger.
+log = "0.4"
+# `tinycomputer-accessibility`'s `microphone-probe` feature asks the default
+# input device whether the app may record. Same major as the host's capture stack.
+cpal = "0.15"
 # Unpredictable one-use handles bind host confirmation to a module-held action.
 getrandom = "0.4"
 # Held browser outputs travel as base64 chunks with a SHA-256 digest. Same

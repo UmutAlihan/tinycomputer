@@ -43,6 +43,7 @@ One friendly guide per crate and per top-level folder. Start at
 | [`tinycomputer-desktop`](crates/tinycomputer-desktop/README.md) | desktop apps through the accessibility tree |
 | [`tinycomputer-browser`](crates/tinycomputer-browser/README.md) | web pages through Chrome, and sight |
 | [`tinycomputer-cursor`](crates/tinycomputer-cursor/README.md) | the cursor you can watch |
+| [`tinycomputer-accessibility`](crates/tinycomputer-accessibility/README.md) | in-process focus, permission and Globe-key answers for a host |
 | [`tinycomputer-skills`](crates/tinycomputer-skills/README.md) | the guide and schemas for agents that call tasks |
 | [`tinycomputer-examples`](crates/tinycomputer-examples/README.md) | examples, the lab, saved plans, the journal reader |
 
