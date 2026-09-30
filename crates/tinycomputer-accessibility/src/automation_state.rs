@@ -19,6 +19,11 @@
 //! The host can clear the flag after a user changes the Automation grant in
 //! System Settings. Clearing only resets the remembered denial; it does not
 //! request or grant permission.
+//!
+//! The host must observe `(-1743)` in an error returned by
+//! `focused_text_context` or `focused_text_context_verbose` and call
+//! `mark_system_events_denied` itself. This crate does not infer that denial
+//! from a query result.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -26,6 +31,9 @@ static SYSTEM_EVENTS_DENIED: AtomicBool = AtomicBool::new(false);
 
 /// Mark that osascript has returned -1743 for `tell application "System
 /// Events"` in this process.
+///
+/// Hosts should call this after detecting `(-1743)` in a focus-query error;
+/// this crate does not call the function automatically.
 pub fn mark_system_events_denied() {
     SYSTEM_EVENTS_DENIED.store(true, Ordering::Relaxed);
 }
@@ -38,7 +46,7 @@ pub fn system_events_denied() -> bool {
 }
 
 /// Reset the denial flag after a user changes the Automation grant, allowing
-/// the next focus query to probe again.
+/// the next focus query to probe again. The host calls this explicitly.
 pub fn clear() {
     SYSTEM_EVENTS_DENIED.store(false, Ordering::Relaxed);
 }
