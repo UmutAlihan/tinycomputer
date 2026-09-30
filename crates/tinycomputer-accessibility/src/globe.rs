@@ -279,8 +279,7 @@ fn ensure_running_locked(
 
 #[cfg(target_os = "macos")]
 fn ensure_globe_helper_binary() -> Result<PathBuf, String> {
-    let cache_dir = std::env::temp_dir().join("openhuman-globe-listener");
-    fs::create_dir_all(&cache_dir).map_err(|e| format!("failed to create globe cache dir: {e}"))?;
+    let cache_dir = super::helper::private_cache_dir("openhuman-globe-listener")?;
 
     let source = globe_swift_source();
     let mut source_hasher = std::collections::hash_map::DefaultHasher::new();

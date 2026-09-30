@@ -326,8 +326,7 @@ fn ensure_helper_binary() -> Result<PathBuf, String> {
         .lock()
         .map_err(|_| "helper compile lock poisoned".to_string())?;
 
-    let cache_dir = std::env::temp_dir().join("openhuman-accessibility-helper");
-    fs::create_dir_all(&cache_dir).map_err(|e| format!("failed to create cache dir: {e}"))?;
+    let cache_dir = super::private_cache_dir("openhuman-accessibility-helper")?;
     let source = unified_swift_source();
     let mut source_hasher = std::collections::hash_map::DefaultHasher::new();
     source.hash(&mut source_hasher);

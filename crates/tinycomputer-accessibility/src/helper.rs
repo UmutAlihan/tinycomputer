@@ -30,6 +30,42 @@ mod swift_overlay;
 mod swift_paste;
 mod swift_source;
 
+#[cfg(target_os = "macos")]
+pub(crate) fn private_cache_dir(name: &str) -> Result<std::path::PathBuf, String> {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+    let temp_dir = std::fs::canonicalize(std::env::temp_dir())
+        .map_err(|error| format!("failed to resolve temporary directory: {error}"))?;
+    let temp_metadata = std::fs::symlink_metadata(&temp_dir)
+        .map_err(|error| format!("failed to inspect temporary directory: {error}"))?;
+    if !temp_metadata.is_dir()
+        || temp_metadata.mode() & 0o077 != 0
+        || temp_metadata.mode() & 0o700 != 0o700
+    {
+        return Err("temporary directory is not private to its owner".to_string());
+    }
+
+    let cache_dir = temp_dir.join(name);
+    match std::fs::create_dir(&cache_dir) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(error) => return Err(format!("failed to create helper cache directory: {error}")),
+    }
+
+    let cache_metadata = std::fs::symlink_metadata(&cache_dir)
+        .map_err(|error| format!("failed to inspect helper cache directory: {error}"))?;
+    if cache_metadata.file_type().is_symlink()
+        || !cache_metadata.is_dir()
+        || cache_metadata.uid() != temp_metadata.uid()
+    {
+        return Err("helper cache directory has unexpected ownership or type".to_string());
+    }
+    std::fs::set_permissions(&cache_dir, std::fs::Permissions::from_mode(0o700))
+        .map_err(|error| format!("failed to secure helper cache directory: {error}"))?;
+
+    Ok(cache_dir)
+}
+
 #[cfg(test)]
 #[path = "helper_tests.rs"]
 mod tests;

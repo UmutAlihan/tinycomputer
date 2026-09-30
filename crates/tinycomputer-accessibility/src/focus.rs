@@ -120,7 +120,7 @@ pub fn focused_text_context() -> AccessibilityResult<FocusedTextContext> {
 #[cfg(target_os = "macos")]
 pub fn focused_text_context_verbose() -> AccessibilityResult<FocusedTextContext> {
     match focused_text_via_helper() {
-        Ok(ctx) if ctx.raw_error.is_some() => {
+        Ok(mut ctx) if ctx.raw_error.is_some() => {
             log::debug!(
                 "[accessibility] helper returned raw_error={:?}, falling back to osascript",
                 ctx.raw_error
@@ -131,6 +131,12 @@ pub fn focused_text_context_verbose() -> AccessibilityResult<FocusedTextContext>
                     log::debug!(
                         "[accessibility] osascript fallback failed ({fallback_err}); keeping helper context"
                     );
+                    if let Some(helper_error) = ctx.raw_error.as_mut() {
+                        helper_error
+                            .push_str(&format!("; osascript fallback failed: {fallback_err}"));
+                    } else {
+                        ctx.raw_error = Some(fallback_err);
+                    }
                     Ok(ctx)
                 }
             }
