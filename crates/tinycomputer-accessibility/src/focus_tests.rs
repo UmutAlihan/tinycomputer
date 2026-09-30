@@ -54,3 +54,90 @@ fn public_focus_query_returns_typed_unsupported_error() {
     let error = super::focused_text_context().expect_err("focus querying is macOS-only");
     assert!(matches!(error, super::Error::UnsupportedPlatform));
 }
+
+fn sample_context(bounds: Option<super::super::types::ElementBounds>) -> FocusedTextContext {
+    FocusedTextContext {
+        app_name: Some("Editor".to_string()),
+        role: Some("AXTextField".to_string()),
+        text: String::new(),
+        selected_text: None,
+        raw_error: None,
+        bounds,
+    }
+}
+
+#[test]
+fn validate_context_accepts_matching_element_bounds() {
+    let bounds = super::super::types::ElementBounds {
+        x: 1,
+        y: 2,
+        width: 3,
+        height: 4,
+    };
+    assert!(
+        validate_context(
+            Some("editor"),
+            Some("AXTextField"),
+            Some(bounds),
+            &sample_context(Some(bounds))
+        )
+        .is_ok()
+    );
+}
+
+#[test]
+fn validate_context_rejects_changed_or_unavailable_element_bounds() {
+    use super::super::types::ElementBounds;
+    let expected = ElementBounds {
+        x: 1,
+        y: 2,
+        width: 3,
+        height: 4,
+    };
+    let changed = ElementBounds {
+        x: 9,
+        y: 2,
+        width: 3,
+        height: 4,
+    };
+    assert!(matches!(
+        validate_context(
+            Some("Editor"),
+            Some("AXTextField"),
+            Some(expected),
+            &sample_context(Some(changed))
+        ),
+        Err(Error::FocusTargetChanged)
+    ));
+    assert!(matches!(
+        validate_context(
+            Some("Editor"),
+            Some("AXTextField"),
+            Some(expected),
+            &sample_context(None)
+        ),
+        Err(Error::FocusTargetChanged)
+    ));
+    assert!(matches!(
+        validate_context(
+            Some("Editor"),
+            Some("AXTextField"),
+            None,
+            &sample_context(None)
+        ),
+        Err(Error::FocusTargetChanged)
+    ));
+}
+
+#[test]
+fn validate_context_reports_application_and_role_changes() {
+    let context = sample_context(None);
+    assert!(matches!(
+        validate_context(Some("Other"), Some("AXTextField"), None, &context),
+        Err(Error::FocusChanged { .. })
+    ));
+    assert!(matches!(
+        validate_context(Some("Editor"), Some("AXButton"), None, &context),
+        Err(Error::FocusRoleChanged { .. })
+    ));
+}

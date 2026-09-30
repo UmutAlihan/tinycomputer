@@ -339,8 +339,14 @@ fn ensure_helper_binary() -> Result<PathBuf, String> {
         Err(_) => true,
     };
     if needs_write {
-        fs::write(&source_path, &source)
+        let temporary_source = cache_dir.join(format!(
+            "unified_helper_{source_id}.tmp-{}.swift",
+            std::process::id()
+        ));
+        fs::write(&temporary_source, &source)
             .map_err(|e| format!("failed to write helper source: {e}"))?;
+        fs::rename(&temporary_source, &source_path)
+            .map_err(|e| format!("failed to install helper source: {e}"))?;
     }
 
     let needs_compile = needs_write || !binary_path.exists();

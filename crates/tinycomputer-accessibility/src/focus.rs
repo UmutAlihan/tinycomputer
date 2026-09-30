@@ -493,12 +493,65 @@ fn is_text_editable_role(role: &str) -> bool {
     matches!(role, "AXTextArea" | "AXTextField")
 }
 
+#[cfg(any(target_os = "macos", test))]
+fn validate_context(
+    expected_app: Option<&str>,
+    expected_role: Option<&str>,
+    expected_bounds: Option<super::types::ElementBounds>,
+    ctx: &FocusedTextContext,
+) -> AccessibilityResult<()> {
+    if let (Some(expected), Some(actual)) = (expected_app, ctx.app_name.as_deref())
+        && expected.to_lowercase() != actual.to_lowercase()
+    {
+        return Err(Error::FocusChanged {
+            expected: expected.to_string(),
+            actual: actual.to_string(),
+        });
+    }
+    if let (Some(expected), Some(actual)) = (expected_role, ctx.role.as_deref())
+        && expected != actual
+    {
+        #[cfg(target_os = "macos")]
+        if is_text_editable_role(expected) && is_text_editable_role(actual) {
+            log::debug!(
+                "[accessibility] validate_focused_target: role changed '{expected}' -> '{actual}'; proceeding"
+            );
+        } else {
+            return Err(Error::FocusRoleChanged {
+                expected: expected.to_string(),
+                actual: actual.to_string(),
+            });
+        }
+        #[cfg(not(target_os = "macos"))]
+        return Err(Error::FocusRoleChanged {
+            expected: expected.to_string(),
+            actual: actual.to_string(),
+        });
+    }
+    if expected_app.is_some() || expected_role.is_some() {
+        if expected_bounds.is_none() {
+            return Err(Error::FocusTargetChanged);
+        }
+    }
+    if let Some(expected) = expected_bounds
+        && ctx.bounds.is_none_or(|actual| {
+            expected.x != actual.x
+                || expected.y != actual.y
+                || expected.width != actual.width
+                || expected.height != actual.height
+        })
+    {
+        return Err(Error::FocusTargetChanged);
+    }
+    Ok(())
+}
+
 #[cfg(target_os = "macos")]
 /// Validate that the currently focused element still matches the target the
 /// caller captured (`expected_app`, `expected_role`, and `expected_bounds` when given).
 ///
-/// Inconclusive checks pass: no expected app, a failed focus query, or an
-/// unsupported platform.
+/// Element-specific validation requires captured bounds alongside app or role
+/// identity. An unavailable query remains inconclusive and passes.
 ///
 /// # Errors
 ///
@@ -514,41 +567,7 @@ pub fn validate_focused_target(
     }
     let current = focused_text_context_verbose();
     match current {
-        Ok(ctx) => {
-            if let (Some(expected), Some(actual)) = (expected_app, ctx.app_name.as_deref())
-                && expected.to_lowercase() != actual.to_lowercase()
-            {
-                return Err(Error::FocusChanged {
-                    expected: expected.to_string(),
-                    actual: actual.to_string(),
-                });
-            }
-            if let (Some(expected), Some(actual)) = (expected_role, ctx.role.as_deref())
-                && expected != actual
-            {
-                if is_text_editable_role(expected) && is_text_editable_role(actual) {
-                    log::debug!(
-                        "[accessibility] validate_focused_target: role changed '{expected}' -> '{actual}'; proceeding"
-                    );
-                } else {
-                    return Err(Error::FocusRoleChanged {
-                        expected: expected.to_string(),
-                        actual: actual.to_string(),
-                    });
-                }
-            }
-            if let (Some(expected), Some(actual)) = (expected_bounds, ctx.bounds)
-                && expected.x == actual.x
-                && expected.y == actual.y
-                && expected.width == actual.width
-                && expected.height == actual.height
-            {
-                // The captured and current element occupy the same bounds.
-            } else if expected_bounds.is_some() {
-                return Err(Error::FocusTargetChanged);
-            }
-            Ok(())
-        }
+        Ok(ctx) => validate_context(expected_app, expected_role, expected_bounds, &ctx),
         Err(_) => Ok(()),
     }
 }
