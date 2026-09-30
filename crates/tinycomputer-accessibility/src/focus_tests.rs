@@ -47,3 +47,10 @@ fn command_output_with_timeout_kills_slow_command() {
 
     assert!(error.contains("timed out after"));
 }
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn public_focus_query_returns_typed_unsupported_error() {
+    let error = super::focused_text_context().expect_err("focus querying is macOS-only");
+    assert!(matches!(error, super::Error::UnsupportedPlatform));
+}

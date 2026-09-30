@@ -22,9 +22,12 @@ call that returns immediately.
 ## Platforms and features
 
 macOS does the real work (accessibility APIs and a small Swift helper compiled
-on first use). Other platforms answer with "unsupported" states so a host can
-call the same API everywhere. The `microphone-probe` feature adds a `cpal`-based
-microphone check; leave it off if the host never records.
+on first use). Other platforms answer with typed unsupported errors or states
+so a host can call the same API everywhere. Fallible operations use the crate's
+`Error` and `Result<T>` types. The `microphone-probe` feature uses `cpal` to
+check for an input device, but device enumeration cannot confirm recording
+authorization; macOS and Windows therefore report `Unknown` until a host opens
+a capture stream. Leave the feature off if the host never records.
 
 See the [crate README](../../../crates/tinycomputer-accessibility/README.md) for
 the module map.

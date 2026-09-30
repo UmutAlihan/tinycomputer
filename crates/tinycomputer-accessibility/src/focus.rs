@@ -10,6 +10,7 @@ use super::text_util::{normalize_ax_value, parse_ax_number};
 #[cfg(target_os = "macos")]
 use super::types::ElementBounds;
 use super::types::FocusedTextContext;
+use super::{Error, Result as AccessibilityResult};
 #[cfg(any(target_os = "macos", all(test, unix)))]
 use std::{
     io::Read,
@@ -100,12 +101,12 @@ fn collect_command_output(
 /// # Errors
 ///
 /// Returns a message when the focus query fails or is unsupported on this platform.
-pub fn focused_text_context() -> Result<FocusedTextContext, String> {
+pub fn focused_text_context() -> AccessibilityResult<FocusedTextContext> {
     let ctx = focused_text_context_verbose()?;
     if let Some(err) = ctx.raw_error.as_ref() {
-        return Err(format!(
+        return Err(Error::FocusQuery(format!(
             "focused text unavailable via accessibility api: {err}"
-        ));
+        )));
     }
     Ok(ctx)
 }
@@ -117,7 +118,7 @@ pub fn focused_text_context() -> Result<FocusedTextContext, String> {
 ///
 /// Returns a message when both the helper and the osascript fallback fail.
 #[cfg(target_os = "macos")]
-pub fn focused_text_context_verbose() -> Result<FocusedTextContext, String> {
+pub fn focused_text_context_verbose() -> AccessibilityResult<FocusedTextContext> {
     match focused_text_via_helper() {
         Ok(ctx) if ctx.raw_error.is_some() => {
             log::debug!(
@@ -139,8 +140,17 @@ pub fn focused_text_context_verbose() -> Result<FocusedTextContext, String> {
             log::debug!(
                 "[accessibility] helper focus query failed ({helper_err}), falling back to osascript"
             );
-            focused_text_via_osascript()
+            focused_text_via_osascript().map_err(classify_focus_error)
         }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn classify_focus_error(message: String) -> Error {
+    if message.contains("timed out") {
+        Error::HelperTimeout(message)
+    } else {
+        Error::FocusQuery(message)
     }
 }
 
@@ -454,8 +464,8 @@ fn focused_text_via_osascript() -> Result<FocusedTextContext, String> {
 /// # Errors
 ///
 /// Returns a message when the focus query fails or is unsupported on this platform.
-pub fn focused_text_context() -> Result<FocusedTextContext, String> {
-    Err("accessibility focus queries are only supported on macOS".to_string())
+pub fn focused_text_context() -> AccessibilityResult<FocusedTextContext> {
+    Err(Error::UnsupportedPlatform)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -464,8 +474,8 @@ pub fn focused_text_context() -> Result<FocusedTextContext, String> {
 /// # Errors
 ///
 /// Returns a message when the focus query fails or is unsupported on this platform.
-pub fn focused_text_context_verbose() -> Result<FocusedTextContext, String> {
-    Err("accessibility focus queries are only supported on macOS".to_string())
+pub fn focused_text_context_verbose() -> AccessibilityResult<FocusedTextContext> {
+    Err(Error::UnsupportedPlatform)
 }
 
 // ---------------------------------------------------------------------------
@@ -491,7 +501,7 @@ fn is_text_editable_role(role: &str) -> bool {
 pub fn validate_focused_target(
     expected_app: Option<&str>,
     expected_role: Option<&str>,
-) -> Result<(), String> {
+) -> AccessibilityResult<()> {
     if expected_app.is_none() {
         return Ok(());
     }
@@ -501,9 +511,10 @@ pub fn validate_focused_target(
             if let (Some(expected), Some(actual)) = (expected_app, ctx.app_name.as_deref())
                 && expected.to_lowercase() != actual.to_lowercase()
             {
-                return Err(format!(
-                    "focus shifted from '{expected}' to '{actual}', aborting insertion"
-                ));
+                return Err(Error::FocusChanged {
+                    expected: expected.to_string(),
+                    actual: actual.to_string(),
+                });
             }
             if let (Some(expected), Some(actual)) = (expected_role, ctx.role.as_deref())
                 && expected != actual
@@ -513,9 +524,10 @@ pub fn validate_focused_target(
                         "[accessibility] validate_focused_target: role changed '{expected}' -> '{actual}'; proceeding"
                     );
                 } else {
-                    return Err(format!(
-                        "focus role changed from '{expected}' to '{actual}', aborting insertion"
-                    ));
+                    return Err(Error::FocusRoleChanged {
+                        expected: expected.to_string(),
+                        actual: actual.to_string(),
+                    });
                 }
             }
             Ok(())
@@ -538,7 +550,7 @@ pub fn validate_focused_target(
 pub fn validate_focused_target(
     _expected_app: Option<&str>,
     _expected_role: Option<&str>,
-) -> Result<(), String> {
+) -> AccessibilityResult<()> {
     Ok(())
 }
 

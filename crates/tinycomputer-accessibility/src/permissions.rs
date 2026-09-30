@@ -131,9 +131,9 @@ pub fn detect_input_monitoring_permission() -> PermissionState {
 
 /// Detect whether the app has microphone permission.
 ///
-/// Uses CPAL device probing as a cross-platform permission proxy:
-/// - If `default_input_device()` returns a device, access is available.
-/// - If it returns `None`, either permission is denied or no mic is connected.
+/// Uses CPAL to detect whether an input device is present. Device enumeration
+/// does not prove recording authorization, so the result remains `Unknown`
+/// until the host opens an input stream and observes whether capture is allowed.
 ///
 /// On **macOS** under hardened runtime, CPAL will fail to enumerate input
 /// devices when the `com.apple.security.device.audio-input` entitlement is
@@ -154,8 +154,10 @@ pub fn detect_microphone_permission() -> PermissionState {
         Some(device) => {
             let name =
                 cpal::traits::DeviceTrait::name(&device).unwrap_or_else(|_| "<unknown>".into());
-            log::debug!("[permissions] microphone access available — device: {name}");
-            PermissionState::Granted
+            log::debug!(
+                "[permissions] input device detected; capture authorization is unverified — device: {name}"
+            );
+            PermissionState::Unknown
         }
         None => {
             log::debug!(
@@ -171,12 +173,12 @@ pub fn detect_microphone_permission() -> PermissionState {
 #[must_use]
 pub fn detect_microphone_permission() -> PermissionState {
     // Standard Linux desktops (PulseAudio/PipeWire) don't enforce app-level mic permissions.
-    // Detect Flatpak sandbox — if sandboxed, probe CPAL as a permission proxy.
+    // Detect Flatpak sandbox — input device presence cannot confirm capture access.
     if std::env::var("FLATPAK_ID").is_ok() || std::path::Path::new("/run/flatpak").exists() {
         use cpal::traits::HostTrait;
         let host = cpal::default_host();
         if host.default_input_device().is_some() {
-            PermissionState::Granted
+            PermissionState::Unknown
         } else {
             log::debug!(
                 "[permissions] Linux (Flatpak): no default input device — possible sandbox restriction"

@@ -10,12 +10,13 @@
 //! the agent-facing desktop members separately.
 //!
 //! Behaviour outside macOS is limited to what the platform can answer:
-//! focus queries fail with a message, permission states are `Unsupported`, and
+//! focus queries return a typed unsupported-platform error, permission states are `Unsupported`, and
 //! the microphone probe needs the `microphone-probe` feature.
 //!
 //! This crate reads no configuration and imports nothing from a host.
 
 mod automation_state;
+mod error;
 mod focus;
 mod globe;
 mod helper;
@@ -27,6 +28,7 @@ mod types;
 pub use automation_state::{
     clear as clear_automation_denial, mark_system_events_denied, system_events_denied,
 };
+pub use error::{Error, Result};
 pub use focus::{focused_text_context, focused_text_context_verbose, validate_focused_target};
 pub use globe::{
     GlobeHotkeyPollResult, GlobeHotkeyStatus, globe_listener_poll, globe_listener_start,

@@ -20,25 +20,26 @@ by the `tinycomputer` module.
 | `automation_state` | Session flag for a denied "System Events" Apple Events grant |
 | `terminal`, `text_util` | Terminal-window heuristics and AX string normalisation |
 | `types` | `FocusedTextContext`, `ElementBounds`, `PermissionKind`, `PermissionState`, `PermissionStatus` |
+| `error` | `Error` and the crate-wide `Result<T>` used by fallible public operations |
 
 ## Features
 
 | Feature | Effect |
 |---|---|
-| `microphone-probe` | Detect microphone permission by probing the default input device with `cpal`. Off by default; without it `detect_microphone_permission` is `Unknown` on desktop platforms. |
+| `microphone-probe` | Probe whether an input device is present with `cpal`. Device enumeration does not confirm recording authorization, so macOS and Windows return `Unknown` until the host opens a capture stream. Off by default. |
 
 ## Platforms
 
-Everything real happens on macOS. Elsewhere focus queries return an error
-message, `validate_focused_target` passes, the Globe listener reports
+Everything real happens on macOS. Elsewhere focus queries return
+`Error::UnsupportedPlatform`, `validate_focused_target` passes, the Globe listener reports
 `supported: false`, and Accessibility / Input Monitoring are `Unsupported`.
 
 ## Unsafe
 
 The workspace forbids `unsafe`; this crate lowers it to `deny` and only
 `src/permissions.rs` allows it, for the macOS permission FFI, each block with a
-`// SAFETY:` comment. Dependencies are `serde`, `serde_json` and `log` (plus
-`cpal` behind `microphone-probe`).
+`// SAFETY:` comment. Dependencies are `serde`, `serde_json`, `log`, and
+`thiserror` (plus `cpal` behind `microphone-probe`).
 
 The macOS paths (FFI, helper process) cannot run in Linux CI: tests cover the
 pure logic and the non-macOS fallbacks, and macOS code is checked with

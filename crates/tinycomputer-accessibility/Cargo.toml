@@ -27,6 +27,8 @@ serde_json = { workspace = true }
 # Debug and warning logs for the helper process, focus queries, and probes.
 # Only the facade: the host installs the logger.
 log = { workspace = true }
+# Typed errors returned by fallible public accessibility APIs.
+thiserror = { workspace = true }
 # Default-input-device probe behind `microphone-probe`.
 cpal = { workspace = true, optional = true }
 

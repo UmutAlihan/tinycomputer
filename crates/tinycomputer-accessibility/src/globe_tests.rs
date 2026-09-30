@@ -1,5 +1,7 @@
 //! Unit tests for the Globe listener's bounded event queue and platform fallbacks.
 
+#![allow(clippy::expect_used)]
+
 use super::{MAX_PENDING_EVENTS, trim_event_queue};
 use std::collections::VecDeque;
 

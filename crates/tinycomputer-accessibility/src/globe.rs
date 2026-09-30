@@ -3,11 +3,16 @@
 //! The listener runs as a tiny Swift process that monitors `flagsChanged`
 //! events globally and reports `FN_DOWN` / `FN_UP` lines over stdout.
 
-use super::{PermissionState, detect_permissions};
+#[cfg(target_os = "macos")]
+use super::Error;
+use super::{PermissionState, Result as AccessibilityResult, detect_permissions};
+#[cfg(any(target_os = "macos", test))]
 use std::collections::VecDeque;
 
 #[cfg(target_os = "macos")]
 use std::fs;
+#[cfg(target_os = "macos")]
+use std::hash::{Hash, Hasher};
 #[cfg(target_os = "macos")]
 use std::io::{BufRead, BufReader};
 #[cfg(target_os = "macos")]
@@ -263,9 +268,12 @@ fn ensure_globe_helper_binary() -> Result<PathBuf, String> {
     let cache_dir = std::env::temp_dir().join("openhuman-globe-listener");
     fs::create_dir_all(&cache_dir).map_err(|e| format!("failed to create globe cache dir: {e}"))?;
 
-    let source_path = cache_dir.join("globe_listener.swift");
-    let binary_path = cache_dir.join("globe_listener_bin");
     let source = globe_swift_source();
+    let mut source_hasher = std::collections::hash_map::DefaultHasher::new();
+    source.hash(&mut source_hasher);
+    let source_id = format!("{:016x}", source_hasher.finish());
+    let source_path = cache_dir.join(format!("globe_listener_{source_id}.swift"));
+    let binary_path = cache_dir.join(format!("globe_listener_{source_id}"));
 
     let needs_write = match fs::read_to_string(&source_path) {
         Ok(existing) => existing != source,
@@ -278,23 +286,28 @@ fn ensure_globe_helper_binary() -> Result<PathBuf, String> {
 
     let needs_compile = needs_write || !binary_path.exists();
     if needs_compile {
+        let temporary_binary = cache_dir.join(format!(
+            "globe_listener_{source_id}.tmp-{}",
+            std::process::id()
+        ));
         log::debug!("{LOG_PREFIX} compiling Swift helper");
         let output = Command::new("xcrun")
             .args(["swiftc", "-O", "-framework", "Cocoa"])
             .arg(&source_path)
             .arg("-o")
-            .arg(&binary_path)
+            .arg(&temporary_binary)
             .output()
             .or_else(|_| {
                 Command::new("swiftc")
                     .args(["-O", "-framework", "Cocoa"])
                     .arg(&source_path)
                     .arg("-o")
-                    .arg(&binary_path)
+                    .arg(&temporary_binary)
                     .output()
             })
             .map_err(|e| format!("failed to invoke swiftc for globe listener: {e}"))?;
         if !output.status.success() {
+            let _ = fs::remove_file(&temporary_binary);
             let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
             return Err(format!(
                 "failed to compile globe listener helper: {}",
@@ -305,6 +318,8 @@ fn ensure_globe_helper_binary() -> Result<PathBuf, String> {
                 }
             ));
         }
+        fs::rename(&temporary_binary, &binary_path)
+            .map_err(|e| format!("failed to install compiled globe listener helper: {e}"))?;
         log::debug!("{LOG_PREFIX} Swift helper compiled successfully");
     }
 
@@ -396,11 +411,11 @@ app.run()
 /// # Errors
 ///
 /// Returns a message when the listener helper cannot be built or started.
-pub fn globe_listener_start() -> Result<GlobeHotkeyStatus, String> {
+pub fn globe_listener_start() -> AccessibilityResult<GlobeHotkeyStatus> {
     let mut guard = GLOBE_LISTENER
         .lock()
-        .map_err(|_| "globe listener lock poisoned".to_string())?;
-    ensure_running_locked(&mut guard)
+        .map_err(|_| Error::GlobeListener("globe listener lock poisoned".to_string()))?;
+    ensure_running_locked(&mut guard).map_err(Error::GlobeListener)
 }
 
 #[cfg(target_os = "macos")]
@@ -409,12 +424,12 @@ pub fn globe_listener_start() -> Result<GlobeHotkeyStatus, String> {
 /// # Errors
 ///
 /// Returns a message when the listener state cannot be read.
-pub fn globe_listener_poll() -> Result<GlobeHotkeyPollResult, String> {
+pub fn globe_listener_poll() -> AccessibilityResult<GlobeHotkeyPollResult> {
     let mut guard = GLOBE_LISTENER
         .lock()
-        .map_err(|_| "globe listener lock poisoned".to_string())?;
+        .map_err(|_| Error::GlobeListener("globe listener lock poisoned".to_string()))?;
     let status = if guard.is_some() {
-        ensure_running_locked(&mut guard)?
+        ensure_running_locked(&mut guard).map_err(Error::GlobeListener)?
     } else {
         GlobeHotkeyStatus {
             supported: true,
@@ -443,10 +458,10 @@ pub fn globe_listener_poll() -> Result<GlobeHotkeyPollResult, String> {
 /// # Errors
 ///
 /// Returns a message when the listener state cannot be read.
-pub fn globe_listener_stop() -> Result<GlobeHotkeyStatus, String> {
+pub fn globe_listener_stop() -> AccessibilityResult<GlobeHotkeyStatus> {
     let mut guard = GLOBE_LISTENER
         .lock()
-        .map_err(|_| "globe listener lock poisoned".to_string())?;
+        .map_err(|_| Error::GlobeListener("globe listener lock poisoned".to_string()))?;
     if let Some(mut process) = guard.take() {
         log::info!("{LOG_PREFIX} stopping helper pid={}", process.child.id());
         let _ = process.child.kill();
@@ -473,7 +488,7 @@ pub fn globe_listener_stop() -> Result<GlobeHotkeyStatus, String> {
 /// # Errors
 ///
 /// Returns a message when the listener helper cannot be built or started.
-pub fn globe_listener_start() -> Result<GlobeHotkeyStatus, String> {
+pub fn globe_listener_start() -> AccessibilityResult<GlobeHotkeyStatus> {
     Ok(GlobeHotkeyStatus {
         supported: false,
         running: false,
@@ -489,7 +504,7 @@ pub fn globe_listener_start() -> Result<GlobeHotkeyStatus, String> {
 /// # Errors
 ///
 /// Returns a message when the listener state cannot be read.
-pub fn globe_listener_poll() -> Result<GlobeHotkeyPollResult, String> {
+pub fn globe_listener_poll() -> AccessibilityResult<GlobeHotkeyPollResult> {
     Ok(GlobeHotkeyPollResult {
         status: GlobeHotkeyStatus {
             supported: false,
@@ -508,7 +523,7 @@ pub fn globe_listener_poll() -> Result<GlobeHotkeyPollResult, String> {
 /// # Errors
 ///
 /// Returns a message when the listener state cannot be read.
-pub fn globe_listener_stop() -> Result<GlobeHotkeyStatus, String> {
+pub fn globe_listener_stop() -> AccessibilityResult<GlobeHotkeyStatus> {
     Ok(GlobeHotkeyStatus {
         supported: false,
         running: false,
