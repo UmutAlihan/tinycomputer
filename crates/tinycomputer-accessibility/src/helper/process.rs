@@ -163,9 +163,9 @@ fn reset_helper_process() {
             let _ = helper.child.kill();
             let _ = helper.child.wait();
         }
-    }
-    if let Ok(mut rx_guard) = RESPONSE_RX.lock() {
-        rx_guard.take();
+        if let Ok(mut rx_guard) = RESPONSE_RX.lock() {
+            rx_guard.take();
+        }
     }
 }
 

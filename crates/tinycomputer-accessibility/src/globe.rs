@@ -130,8 +130,11 @@ fn ensure_running_locked(
         log::warn!(
             "{LOG_PREFIX} start skipped: input_monitoring_permission={input_monitoring_permission:?}"
         );
-        if let Some(process) = state.as_ref() {
+        if let Some(mut process) = state.take() {
             set_last_error(&process.last_error, Some(message.clone()));
+            let _ = process.child.kill();
+            let _ = process.child.wait();
+            let _ = drain_events(&process.event_queue);
         }
         return Ok(GlobeHotkeyStatus {
             supported: true,

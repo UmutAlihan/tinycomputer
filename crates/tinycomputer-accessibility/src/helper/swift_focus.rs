@@ -82,16 +82,17 @@ func scanChildrenForText(_ parent: AXUIElement, depth: Int = 0) -> (role: String
         if role == "AXStaticText" {
             let text = getAXStringAttr(child, kAXValueAttribute as String) ?? ""
             if !text.isEmpty {
-                if text.contains("$ ") || text.contains("# ") || text.contains("> ") {
-                    return (role, text, getAXPosition(child), getAXSize(child))
-                }
-                if staticFallback == nil {
-                    staticFallback = (role, text, getAXPosition(child), getAXSize(child))
+                let isPrompt = text.contains("$ ") || text.contains("# ") || text.contains("> ")
+                let candidate = (role, text, getAXPosition(child), getAXSize(child))
+                if isPrompt {
+                    staticFallback = candidate
+                    break
+                } else if staticFallback == nil {
+                    staticFallback = candidate
                 }
             }
         }
     }
-    if let fb = staticFallback { return fb }
 
     // Recurse into children
     for child in children.prefix(50) {
@@ -99,7 +100,7 @@ func scanChildrenForText(_ parent: AXUIElement, depth: Int = 0) -> (role: String
             return result
         }
     }
-    return nil
+    return staticFallback
 }
 
 func queryFocusedElement(id: String?) -> [String: Any] {
