@@ -39,6 +39,15 @@ fn is_terminal_app_rejects_non_terminals() {
 }
 
 #[test]
+fn is_terminal_app_requires_a_normalized_exact_name() {
+    assert!(is_terminal_app(Some("iTerm 2")));
+    assert!(is_terminal_app(Some("foot")));
+    assert!(!is_terminal_app(Some("Curio")));
+    assert!(!is_terminal_app(Some("Footage")));
+    assert!(!is_terminal_app(Some("Terminal Emulator Preview")));
+}
+
+#[test]
 fn looks_like_terminal_buffer_detects_shell_prompts() {
     let buffer = "line1\nline2\nline3\nline4\n$ cargo build\nCompiling...\n";
     assert!(looks_like_terminal_buffer(buffer));

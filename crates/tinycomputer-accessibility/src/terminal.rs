@@ -1,10 +1,10 @@
 //! Terminal app detection and context extraction.
 
-/// Known terminal application name substrings (lowercase).
+/// Normalized terminal application names (lowercase, without punctuation).
 /// Extend this list to support additional terminal emulators.
 pub(crate) const TERMINAL_NAMES: &[&str] = &[
     "terminal",
-    "iterm",
+    "iterm2",
     "wezterm",
     "warp",
     "alacritty",
@@ -30,8 +30,13 @@ pub fn is_text_role(role: Option<&str>) -> bool {
 #[must_use]
 /// Whether an application name looks like a terminal emulator.
 pub fn is_terminal_app(app_name: Option<&str>) -> bool {
-    let app = app_name.unwrap_or_default().to_ascii_lowercase();
-    TERMINAL_NAMES.iter().any(|needle| app.contains(needle))
+    let app: String = app_name
+        .unwrap_or_default()
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .flat_map(char::to_lowercase)
+        .collect();
+    TERMINAL_NAMES.iter().any(|name| app == *name)
 }
 
 #[must_use]

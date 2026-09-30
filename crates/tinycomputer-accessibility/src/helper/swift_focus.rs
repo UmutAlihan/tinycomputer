@@ -170,9 +170,12 @@ func queryFocusedElement(id: String?) -> [String: Any] {
         }
 
         // If role is not a text role, still return text if it looks terminal-like
-        let terminalApps = ["terminal", "iterm", "wezterm", "warp", "alacritty", "kitty", "ghostty", "hyper", "rio"]
-        let isTerminal = terminalApps.contains(where: { appName.lowercased().contains($0) })
-        if isTerminal && !text.isEmpty {
+        let terminalApps = ["terminal", "iterm2", "wezterm", "warp", "alacritty", "kitty", "ghostty", "hyper", "rio", "tabby", "wave", "contour", "foot"]
+        let normalizedAppName = appName.lowercased().filter { $0.isLetter || $0.isNumber }
+        let isTerminal = terminalApps.contains(normalizedAppName)
+        let isTerminalPrompt = role == "AXStaticText" &&
+            (text.contains("$ ") || text.contains("# ") || text.contains("❯") || text.contains("➜") || text.contains("λ"))
+        if isTerminal && !text.isEmpty && (textRoles.contains(role) || isTerminalPrompt) {
             result["text"] = text
             return result
         }
@@ -195,8 +198,7 @@ func queryFocusedElement(id: String?) -> [String: Any] {
             if text.isEmpty {
                 result["error"] = "ERROR:no_text_candidate_found"
             } else {
-                // Got text but from non-text role and not terminal — still return it
-                result["text"] = text
+                result["error"] = "ERROR:no_text_candidate_found"
             }
         } else {
             result["text"] = text

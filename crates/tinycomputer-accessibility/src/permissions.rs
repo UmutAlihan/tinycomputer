@@ -222,15 +222,12 @@ pub fn detect_microphone_permission() -> PermissionState {
     PermissionState::Unsupported
 }
 
-/// Request microphone access from the operating system.
+/// Open the operating system's microphone privacy settings where available.
 ///
-/// - **macOS**: Triggers the system permission prompt if status is `NotDetermined`.
-///   Note: `AVCaptureDevice.requestAccess(for:)` is async in `ObjC` but we call the
-///   synchronous authorization check — the system prompt is triggered by the check itself
-///   when entitlements + usage description are present. Alternatively, opening the
-///   Privacy pane guides the user.
+/// - **macOS**: Opens System Settings > Privacy & Security > Microphone. It does not
+///   request authorization or trigger a system permission prompt.
 /// - **Windows**: Opens the Privacy > Microphone settings page.
-/// - **Linux**: No-op for standard installs; guidance for Flatpak in error messages.
+/// - **Linux**: No-op; sandbox guidance is included in error messages.
 #[cfg(target_os = "macos")]
 pub fn request_microphone_access() {
     log::debug!("[permissions] requesting macOS microphone access via Privacy pane");
