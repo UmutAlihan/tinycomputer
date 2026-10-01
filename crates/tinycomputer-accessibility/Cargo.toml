@@ -18,6 +18,10 @@ default = []
 # Without it `detect_microphone_permission` reports `PermissionState::Unknown`,
 # so a host that never records audio does not compile the audio stack.
 microphone-probe = ["dep:cpal"]
+# `paste::insert_text`: write text to the clipboard and send Cmd+V / Ctrl+V to
+# the focused field (`arboard` + `enigo`). Off by default so a host that never
+# inserts text does not compile the clipboard and synthetic-input stacks.
+paste = ["dep:arboard", "dep:enigo"]
 
 [dependencies]
 # Permission state and focus context cross into hosts as JSON.
@@ -31,6 +35,9 @@ log = { workspace = true }
 thiserror = { workspace = true }
 # Default-input-device probe behind `microphone-probe`.
 cpal = { workspace = true, optional = true }
+# Clipboard and synthetic keystrokes behind `paste`.
+arboard = { version = "3", optional = true }
+enigo = { version = "0.3", optional = true }
 
 # The workspace lint set, except that `unsafe_code` is `deny` rather than
 # `forbid`: the macOS permission checks call ApplicationServices, CoreFoundation

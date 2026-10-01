@@ -51,7 +51,7 @@ jobs:
           tool: cargo-llvm-cov
 
       - name: Install ALSA development files
-        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev
+        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev libxdo-dev
 
       - uses: Swatinem/rust-cache@v2
 
