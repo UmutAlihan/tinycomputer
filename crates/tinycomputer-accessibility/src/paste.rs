@@ -47,9 +47,78 @@ const FOCUS_RESTORE_DELAY: Duration = Duration::from_millis(100);
 /// reached, or when a keystroke cannot be sent. Empty or whitespace-only text
 /// is a successful no-op.
 pub fn insert_text(text: &str, expected_app: Option<&str>) -> Result<(), String> {
+    insert_with(
+        &System,
+        text,
+        expected_app,
+        PASTE_DELAY,
+        CLIPBOARD_RESTORE_DELAY,
+    )
+    .map(|_| ())
+}
+
+/// The clipboard operations the paste flow needs.
+trait Pasteboard {
+    fn read(&mut self) -> Option<String>;
+    fn write(&mut self, text: &str) -> Result<(), String>;
+}
+
+/// The synthetic keyboard the paste flow drives.
+trait KeyOps {
+    fn key(&mut self, key: Key, direction: Direction) -> Result<(), String>;
+}
+
+/// Where the clipboard and keyboard come from; faked in tests so the flow runs
+/// headless.
+trait Platform: Clone + Send + 'static {
+    fn pasteboard(&self) -> Result<Box<dyn Pasteboard>, String>;
+    fn keyboard(&self) -> Result<Box<dyn KeyOps>, String>;
+}
+
+/// The real system clipboard and keyboard.
+#[derive(Clone, Copy)]
+struct System;
+
+impl Pasteboard for Clipboard {
+    fn read(&mut self) -> Option<String> {
+        self.get_text().ok()
+    }
+    fn write(&mut self, text: &str) -> Result<(), String> {
+        self.set_text(text).map_err(|e| e.to_string())
+    }
+}
+
+impl KeyOps for Enigo {
+    fn key(&mut self, key: Key, direction: Direction) -> Result<(), String> {
+        Keyboard::key(self, key, direction).map_err(|e| e.to_string())
+    }
+}
+
+impl Platform for System {
+    fn pasteboard(&self) -> Result<Box<dyn Pasteboard>, String> {
+        Clipboard::new()
+            .map(|c| Box::new(c) as Box<dyn Pasteboard>)
+            .map_err(|e| e.to_string())
+    }
+    fn keyboard(&self) -> Result<Box<dyn KeyOps>, String> {
+        Enigo::new(&Settings::default())
+            .map(|e| Box::new(e) as Box<dyn KeyOps>)
+            .map_err(|e| e.to_string())
+    }
+}
+
+/// The paste flow over an injectable platform. Returns the clipboard-restore
+/// thread, when one was started, so tests can wait for it.
+fn insert_with<P: Platform>(
+    platform: &P,
+    text: &str,
+    expected_app: Option<&str>,
+    paste_delay: Duration,
+    restore_delay: Duration,
+) -> Result<Option<std::thread::JoinHandle<()>>, String> {
     if text.trim().is_empty() {
         warn!("{LOG_PREFIX} transcription was empty/whitespace, skipping insertion");
-        return Ok(());
+        return Ok(None);
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -61,8 +130,10 @@ pub fn insert_text(text: &str, expected_app: Option<&str>) -> Result<(), String>
     );
 
     // Step 1: Save current clipboard.
-    let mut clipboard = Clipboard::new().map_err(|e| format!("failed to access clipboard: {e}"))?;
-    let saved_clipboard = clipboard.get_text().ok();
+    let mut clipboard = platform
+        .pasteboard()
+        .map_err(|e| format!("failed to access clipboard: {e}"))?;
+    let saved_clipboard = clipboard.read();
     debug!(
         "{LOG_PREFIX} saved clipboard ({} chars)",
         saved_clipboard.as_ref().map_or(0, String::len)
@@ -70,12 +141,12 @@ pub fn insert_text(text: &str, expected_app: Option<&str>) -> Result<(), String>
 
     // Step 2: Write transcription to clipboard.
     clipboard
-        .set_text(text)
+        .write(text)
         .map_err(|e| format!("failed to write text to clipboard: {e}"))?;
     debug!("{LOG_PREFIX} transcription written to clipboard");
 
     // Step 3: Brief delay to let clipboard write settle, then simulate paste.
-    std::thread::sleep(PASTE_DELAY);
+    std::thread::sleep(paste_delay);
 
     #[cfg(target_os = "macos")]
     if let Some(app_name) = expected_app {
@@ -95,29 +166,28 @@ pub fn insert_text(text: &str, expected_app: Option<&str>) -> Result<(), String>
         }
     }
 
-    let mut enigo = Enigo::new(&Settings::default())
+    let mut keys = platform
+        .keyboard()
         .map_err(|e| format!("failed to create enigo instance: {e}"))?;
 
     let modifier = paste_modifier_key();
-    enigo
-        .key(modifier, Direction::Press)
+    keys.key(modifier, Direction::Press)
         .map_err(|e| format!("failed to press modifier: {e}"))?;
-    enigo
-        .key(Key::Unicode('v'), Direction::Click)
+    keys.key(Key::Unicode('v'), Direction::Click)
         .map_err(|e| format!("failed to press 'v': {e}"))?;
-    enigo
-        .key(modifier, Direction::Release)
+    keys.key(modifier, Direction::Release)
         .map_err(|e| format!("failed to release modifier: {e}"))?;
 
     debug!("{LOG_PREFIX} paste keystroke sent");
 
     // Step 4: Restore clipboard after a delay (non-blocking).
-    if let Some(original) = saved_clipboard {
+    let restore = saved_clipboard.map(|original| {
+        let platform = platform.clone();
         std::thread::spawn(move || {
-            std::thread::sleep(CLIPBOARD_RESTORE_DELAY);
-            match Clipboard::new() {
+            std::thread::sleep(restore_delay);
+            match platform.pasteboard() {
                 Ok(mut cb) => {
-                    if let Err(e) = cb.set_text(&original) {
+                    if let Err(e) = cb.write(&original) {
                         warn!("{LOG_PREFIX} failed to restore clipboard: {e}");
                     } else {
                         debug!("{LOG_PREFIX} clipboard restored");
@@ -125,11 +195,11 @@ pub fn insert_text(text: &str, expected_app: Option<&str>) -> Result<(), String>
                 }
                 Err(e) => warn!("{LOG_PREFIX} failed to re-open clipboard for restore: {e}"),
             }
-        });
-    }
+        })
+    });
 
     info!("{LOG_PREFIX} text inserted successfully via paste");
-    Ok(())
+    Ok(restore)
 }
 
 #[cfg(target_os = "macos")]
