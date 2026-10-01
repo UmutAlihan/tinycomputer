@@ -99,7 +99,7 @@ fn a_read_at_the_exact_end_is_an_empty_final_chunk() {
     let (mut store, id) = store_with(vec![7; 10]);
     let chunk = store.read(&id, 10, 1_000).expect("reads");
 
-    assert!(BASE64.decode(&chunk.data).expect("base64").is_empty());
+    assert_eq!(BASE64.decode(&chunk.data).expect("base64"), [] as [u8; 0]);
     assert!(chunk.eof);
 }
 

@@ -99,7 +99,7 @@ fn a_run_without_decisions_counts_call_latency_as_jev_time() {
     ]);
     assert_eq!(summary.jev_ms, 400);
     assert_eq!(summary.wall_ms, 500);
-    assert!(summary.steps.is_empty());
+    assert_eq!(summary.steps, Vec::new());
     assert_eq!(summary.slowest[0].step, "");
 }
 

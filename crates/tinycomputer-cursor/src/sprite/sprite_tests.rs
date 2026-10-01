@@ -84,7 +84,7 @@ fn bgra_is_premultiplied_and_swizzled() {
         sprite.premultiplied_bgra(0),
         vec![25, 50, 100, 128, 0, 0, 0, 0]
     );
-    assert!(sprite.premultiplied_bgra(3).is_empty());
+    assert_eq!(sprite.premultiplied_bgra(3), [] as [u8; 0]);
 }
 
 #[test]
@@ -98,7 +98,7 @@ fn png_output_is_a_valid_stream() {
     // The IEND chunk's CRC is a known constant.
     assert_eq!(&encoded[encoded.len() - 4..], &[0xAE, 0x42, 0x60, 0x82]);
     assert!(png(3, 1, &rgba).is_empty(), "wrong size is refused");
-    assert!(png(0, 1, &[]).is_empty());
+    assert_eq!(png(0, 1, &[]), [] as [u8; 0]);
     let big = vec![7_u8; 70_000 * 4];
     assert!(
         png(70_000, 1, &big).len() > big.len(),

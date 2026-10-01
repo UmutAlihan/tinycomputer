@@ -339,7 +339,7 @@ async fn an_option_already_chosen_is_not_clicked_again() {
     .await;
     assert_eq!(run.result.stop, FlowStopReason::Completed);
     assert_eq!(run.result.steps[0].outcome, StepOutcome::AlreadyDone);
-    assert!(run.app.sim().clicks.is_empty());
+    assert_eq!(run.app.sim().clicks, [] as [std::string::String; 0]);
     assert!(run.requests.is_empty(), "nothing needed asking");
 }
 

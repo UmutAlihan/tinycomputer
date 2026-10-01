@@ -129,10 +129,10 @@ fn finalists_are_the_strongest_real_options() {
         confidence: 0.4,
     });
     assert_eq!(finalists(&answer), vec!["3", "1", "4", "5"]);
-    assert!(
+    assert_eq!(
         finalists(&Answer::Noul(tinyinference_decisions::NoulAnswer {
             noul: 0.5
-        }))
-        .is_empty()
+        })),
+        [] as [std::string::String; 0]
     );
 }

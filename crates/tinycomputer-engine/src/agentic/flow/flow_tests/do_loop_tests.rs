@@ -242,7 +242,10 @@ async fn move_outcomes_cover_finished_stuck_wait_and_a_missing_shortcut() {
     )
     .await;
     assert_eq!(no_shortcut.result.stop, FlowStopReason::ModelBudget);
-    assert!(no_shortcut.app.sim().presses.is_empty());
+    assert_eq!(
+        no_shortcut.app.sim().presses,
+        [] as [std::string::String; 0]
+    );
 }
 
 #[tokio::test]

@@ -46,7 +46,10 @@ async fn every_question_is_briefed_on_the_goal_the_person_and_the_plan() {
         |_, _, _| None,
     )
     .await;
-    assert!(!run.requests.is_empty());
+    assert_ne!(
+        run.requests,
+        [] as [tinyinference_decisions::EvaluationRequest; 0]
+    );
     assert!(
         !run.requests.iter().any(judgements_are_briefed),
         "judging the screen is left to the screen"
@@ -66,7 +69,10 @@ async fn every_question_is_briefed_on_the_goal_the_person_and_the_plan() {
                 .any(|question| matches!(question, Question::Choice(_)))
         })
         .collect::<Vec<_>>();
-    assert!(!choosing.is_empty());
+    assert_ne!(
+        choosing,
+        [] as [&tinyinference_decisions::EvaluationRequest; 0]
+    );
     for request in choosing {
         let brief = brief_of(request);
         assert_eq!(brief["goal"], "move Thursday's sync with Sam to Friday");
