@@ -18,7 +18,7 @@ exclude = ["vendor", "worktrees"]
 # true`, so the version the release workflow bumps is written in exactly one
 # place and every crate moves together.
 [workspace.package]
-version = "0.9.0"
+version = "0.9.1"
 edition = "2024"
 rust-version = "1.89"
 license = "GPL-3.0-only"
@@ -94,7 +94,7 @@ serde_json = "1"
 log = "0.4"
 # `tinycomputer-accessibility`'s `microphone-probe` feature asks the default
 # input device whether the app may record. Same major as the host's capture stack.
-cpal = "0.15"
+cpal = "0.18"
 # Unpredictable one-use handles bind host confirmation to a module-held action.
 getrandom = "0.4"
 # Held browser outputs travel as base64 chunks with a SHA-256 digest. Same
