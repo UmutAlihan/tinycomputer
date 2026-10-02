@@ -152,8 +152,8 @@ pub fn detect_microphone_permission() -> PermissionState {
     let host = cpal::default_host();
     match host.default_input_device() {
         Some(device) => {
-            let name =
-                cpal::traits::DeviceTrait::name(&device).unwrap_or_else(|_| "<unknown>".into());
+            let name = cpal::traits::DeviceTrait::description(&device)
+                .map_or_else(|_| "<unknown>".into(), |d| d.name().to_string());
             log::debug!(
                 "[permissions] input device detected; capture authorization is unverified — device: {name}"
             );
