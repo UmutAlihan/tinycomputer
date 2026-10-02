@@ -362,7 +362,7 @@ async fn a_skip_resumes_at_the_next_step_with_the_guard_kept() {
         "only the guard is left"
     );
     let rescue = &tasks.report(&view.id).data.unwrap().rescues[0];
-    assert!(rescue.steps.is_empty());
+    assert_eq!(rescue.steps, [] as [tinycomputer_bus::FlowStep; 0]);
     assert_eq!(rescue.covers, 1);
     assert_eq!(rescue.outcome, RescueOutcome::Recovered);
 }

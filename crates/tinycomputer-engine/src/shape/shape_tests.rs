@@ -199,5 +199,8 @@ fn violations_name_every_broken_rule_by_where_it_is() {
     assert!(found.iter().any(|v| v.contains("at least 2 items")));
     assert!(found.iter().any(|v| v.contains("the result.tags[0]")));
     assert!(found.iter().any(|v| v.contains("not null")));
-    assert!(schema::violations(&json!({"tags": null, "count": 3}), &schema).is_empty());
+    assert_eq!(
+        schema::violations(&json!({"tags": null, "count": 3}), &schema),
+        [] as [std::string::String; 0]
+    );
 }

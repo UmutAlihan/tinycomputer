@@ -33,7 +33,7 @@ fn default_options_are_a_headless_desktop_browser() {
     assert_eq!(options.default_timeout_ms, 30_000);
     assert!(options.endpoint.is_none());
     assert!(options.download_dir.is_none());
-    assert!(options.allowed_origins.is_empty());
+    assert_eq!(options.allowed_origins.len(), 0);
 }
 
 #[test]

@@ -123,7 +123,10 @@ async fn a_capture_that_never_answers_does_not_hold_the_task_back() {
         *script.released.lock().unwrap(),
         std::slice::from_ref(&view.id)
     );
-    assert!(tasks.report(&view.id).data.unwrap().artifacts.is_empty());
+    assert_eq!(
+        tasks.report(&view.id).data.unwrap().artifacts,
+        [] as [tinycomputer_bus::browser::OutputRef; 0]
+    );
 }
 
 #[tokio::test(start_paused = true)]
@@ -182,7 +185,10 @@ async fn a_surface_that_cannot_capture_leaves_no_screenshot() {
         panic!("{:?}", stopped.status);
     };
     assert!(screenshot.is_none());
-    assert!(tasks.report(&view.id).data.unwrap().artifacts.is_empty());
+    assert_eq!(
+        tasks.report(&view.id).data.unwrap().artifacts,
+        [] as [tinycomputer_bus::browser::OutputRef; 0]
+    );
 }
 
 #[tokio::test]
@@ -198,5 +204,8 @@ async fn a_task_waiting_for_input_takes_no_screenshot() {
         "{:?}",
         view.status
     );
-    assert!(tasks.report(&view.id).data.unwrap().artifacts.is_empty());
+    assert_eq!(
+        tasks.report(&view.id).data.unwrap().artifacts,
+        [] as [tinycomputer_bus::browser::OutputRef; 0]
+    );
 }

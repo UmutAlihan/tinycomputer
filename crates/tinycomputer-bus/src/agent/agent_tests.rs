@@ -22,7 +22,7 @@ fn a_bare_task_takes_safe_defaults() {
     assert!(request.flow.is_none());
     assert!(!request.constraints.allow_destructive);
     assert!(!request.constraints.headed);
-    assert!(request.constraints.surfaces.is_empty());
+    assert_eq!(request.constraints.surfaces, []);
     assert_eq!(request.constraints.payment, PaymentMode::StopAtPayment);
     assert!(request.secret_facts.is_empty() && request.budget.votes.is_none());
     assert!(!request.trace);
@@ -291,7 +291,7 @@ fn rescues_pin_their_wire_form() {
         "steps": [], "records": {}, "artifacts": [], "learned": [], "trace": []
     }))
     .unwrap();
-    assert!(report.rescues.is_empty());
+    assert_eq!(report.rescues, []);
     assert!(
         !serde_json::to_value(&report)
             .unwrap()

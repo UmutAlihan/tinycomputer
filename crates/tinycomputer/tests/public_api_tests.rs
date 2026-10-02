@@ -70,7 +70,7 @@ fn a_reply_carries_data_or_an_error_but_never_both_and_never_neither() {
 
     for reply in replies {
         assert_eq!(reply.version, ENVELOPE_VERSION);
-        assert!(!reply.command.is_empty());
+        assert_ne!(reply.command, "");
         assert_eq!(reply.ok, reply.data.is_some());
         assert_eq!(!reply.ok, reply.error.is_some());
     }
@@ -83,14 +83,14 @@ fn a_failed_reply_carries_a_machine_readable_code() {
     let reply = Desktop::new().get(GetRequest::new("", ElementProperty::Role));
 
     let error = reply.error.expect("an empty ref cannot succeed");
-    assert!(!error.code.is_empty());
+    assert_ne!(error.code, "");
     assert!(
         error
             .code
             .chars()
             .all(|c| c.is_ascii_uppercase() || c == '_')
     );
-    assert!(!error.message.is_empty());
+    assert_ne!(error.message, "");
 }
 
 #[test]

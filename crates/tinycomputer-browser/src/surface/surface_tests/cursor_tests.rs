@@ -117,7 +117,7 @@ fn a_headless_session_or_an_off_cursor_draws_nothing() {
             .execute(JevOperation::Click, Some(node("e5", &["Click"])), None)
             .ok
     );
-    assert!(drawn.glides().is_empty());
+    assert_eq!(drawn.glides(), [] as [std::vec::Vec<[f64; 3]>; 0]);
     assert!(!fake.actions().iter().any(|action| action == "boundingbox"));
 
     let Harness { fake, surface, .. } = harness("cursor-default", boxed_fake(false));
@@ -160,7 +160,7 @@ fn operations_without_a_pointer_or_a_box_draw_nothing() {
         shown_harness("cursor-scroll", boxed_fake(false), headed(), &drawn);
     surface.execute(JevOperation::Scroll, Some(node("e5", &["Scroll"])), None);
     surface.execute(JevOperation::TypeText, None, Some("x".to_owned()));
-    assert!(drawn.glides().is_empty());
+    assert_eq!(drawn.glides(), [] as [std::vec::Vec<[f64; 3]>; 0]);
 }
 
 #[test]
@@ -174,5 +174,5 @@ fn a_page_that_will_not_say_where_its_window_is_still_gets_its_action() {
             .ok
     );
     assert_eq!(fake.last("click")["selector"], "@e5");
-    assert!(drawn.glides().is_empty());
+    assert_eq!(drawn.glides(), [] as [std::vec::Vec<[f64; 3]>; 0]);
 }

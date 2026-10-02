@@ -52,7 +52,10 @@ async fn a_screenshot_the_engine_never_wrote_is_a_failure() {
 async fn downloads_are_recorded_as_they_finish() {
     let fake = Fake::new();
     let (browser, id) = open(&fake, "download").await;
-    assert!(browser.list_downloads(&id).await.unwrap().is_empty());
+    assert_eq!(
+        browser.list_downloads(&id).await.unwrap(),
+        [] as [tinycomputer_bus::browser::DownloadInfo; 0]
+    );
     let finished = browser
         .wait_download(
             &id,

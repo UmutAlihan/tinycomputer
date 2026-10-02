@@ -113,12 +113,12 @@ fn pick_validates_its_fields_and_defines_its_variable() {
         )
         .errors
     };
-    assert!(
+    assert_eq!(
         check(json!({"app": "Mail", "steps": [
             {"pick": {"from": "results", "by": "cheapest", "into": "flight"}},
             {"do": "book ${flight}"}
-        ]}))
-        .is_empty()
+        ]})),
+        [] as [std::string::String; 0]
     );
     let errors = check(json!({"app": "Mail", "steps": [
         {"pick": {"from": "", "by": " ", "into": "not a name"}}

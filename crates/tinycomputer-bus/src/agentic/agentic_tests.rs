@@ -171,7 +171,7 @@ fn scoped_goal_additions_are_backward_compatible_and_have_stable_wire_names() {
     let old: RunGoalRequest =
         serde_json::from_value(json!({"app":"TextEdit","goal":"type"})).unwrap();
     assert!(old.require_confirmations);
-    assert!(old.success.is_empty());
+    assert_eq!(old.success, []);
     assert_eq!(old.max_elapsed_ms, 120_000);
     let scoped: RunGoalRequest = serde_json::from_value(json!({
         "app":"TextEdit", "goal":"type", "window":"Untitled",

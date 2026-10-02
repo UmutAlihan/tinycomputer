@@ -367,7 +367,7 @@ async fn a_target_answered_none_is_not_asked_again_the_same_turn() {
     )
     .await;
     assert_eq!(asked(&run.requests, "target"), 0, "no narrow re-ask");
-    assert!(run.app.sim().clicks.is_empty());
+    assert_eq!(run.app.sim().clicks, [] as [std::string::String; 0]);
     assert_eq!(run.result.steps[0].outcome, StepOutcome::Failed);
 }
 

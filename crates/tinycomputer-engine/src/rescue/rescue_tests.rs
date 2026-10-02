@@ -369,7 +369,7 @@ async fn a_screen_already_past_the_failed_step_skips_to_what_is_left() {
     let Guidance::Retry { steps, covers, .. } = rescuer.guide(&briefing).await.unwrap() else {
         panic!("a skip resumes the flow");
     };
-    assert!(steps.is_empty());
+    assert_eq!(steps, [] as [tinycomputer_bus::FlowStep; 0]);
     let flow = resumed(&briefing, steps, covers);
     assert_eq!(
         flow.steps,
