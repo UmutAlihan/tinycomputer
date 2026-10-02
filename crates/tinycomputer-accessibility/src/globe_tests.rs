@@ -37,7 +37,7 @@ fn non_macos_listener_entry_points_report_unsupported() {
     let polled = super::globe_listener_poll().expect("fallback poll returns status");
     assert!(!polled.status.supported);
     assert!(!polled.status.running);
-    assert_eq!(polled.events, [] as [String; 0]);
+    assert_eq!(polled.events.len(), 0);
 
     let stopped = super::globe_listener_stop().expect("fallback stop returns status");
     assert!(!stopped.supported);

@@ -28,6 +28,7 @@ impl Desktop {
                 press::PressArgs {
                     combo: request.combo,
                     app: request.app,
+                    window_id: None,
                     force: request.force,
                 },
                 adapter,

@@ -15,7 +15,7 @@ fn a_launch_request_leaves_attach_if_running_unset_rather_than_guessing() {
     let request = LaunchRequest::new("Safari");
 
     assert!(request.attach_if_running.is_none());
-    assert_eq!(request.args, [] as [String; 0]);
+    assert_eq!(request.args.len(), 0);
     assert!(request.env.is_empty());
     assert!(!request.activate);
 }
