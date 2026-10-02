@@ -94,7 +94,7 @@ serde_json = "1"
 log = "0.4"
 # `tinycomputer-accessibility`'s `microphone-probe` feature asks the default
 # input device whether the app may record. Same major as the host's capture stack.
-cpal = "0.15"
+cpal = "0.18"
 # Unpredictable one-use handles bind host confirmation to a module-held action.
 getrandom = "0.4"
 # Held browser outputs travel as base64 chunks with a SHA-256 digest. Same
