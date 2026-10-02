@@ -79,7 +79,9 @@ route; it is not a way to point a decision model at an arbitrary host.
 `self_hosted` is the exception that proves the rule: it has no route of its
 own, so `endpoint_url` (and `model`) name the operator's own decision model
 — a self-hosted open model serving the decisions protocol — and the API key
-is sent only to that declared endpoint. OpenJEV and Sage have no Tiny Humans
+is sent only to that declared endpoint. Authentication belongs in `api_key`
+alone: keep tokens out of the URL's path or query, since `Describe` echoes
+the configured `endpoint_url` in its capabilities. OpenJEV and Sage have no Tiny Humans
 proxy route, so a host that wants its
 decisions to go through Tiny Humans uses `tiny_humans_open_router`.
 `sdk_name` is sent only to the Tiny Humans proxy.

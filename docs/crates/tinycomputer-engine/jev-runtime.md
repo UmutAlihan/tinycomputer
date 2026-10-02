@@ -70,7 +70,9 @@ the operator's declared `endpoint_url` *is* the route, so a non-empty value is
 trusted, `Client::new` still enforces the URL's shape (absolute HTTP(S), no
 embedded credentials, no query or fragment, plain HTTP only on a literal
 loopback address), and both `endpoint_url` and `model` are required — there
-is no default model to fall back on. `tinyinference-decisions` has no Tiny Humans proxy route
+is no default model to fall back on. Authentication belongs in `api_key`,
+not the URL: keep tokens out of the path or query, since `Describe` echoes
+the configured `endpoint_url` in its capabilities. `tinyinference-decisions` has no Tiny Humans proxy route
 for OpenJEV or Sage, so none is approved. In tests, endpoints on
 `http://127.0.0.1:*` are also accepted, so a scripted Jev server can stand in
 for the real one.
