@@ -498,3 +498,16 @@ For automated contributors specifically:
    credentials, and never paste them into a pull request or issue.
 7. **Ask only when blocked.** Make routine judgment calls yourself; escalate
    only irreversible decisions or genuine forks with no clear default.
+
+## Tests live in `*_tests.rs` files
+
+- Unit tests are never inline. Do not write a `#[cfg(test)] mod tests { ... }`
+  block in a source file; a module's tests live in `<module>_tests.rs` beside
+  its root, wired as described under the module layout rules above. The test
+  file carries no `#[cfg(test)]` of its own.
+- Name test files `<module>_tests.rs`; a second group for the same module is
+  `<module>_<topic>_tests.rs`. Never `test.rs`, `tests.rs` or `<module>_test.rs`.
+- Integration tests stay in `crates/<crate>/tests/`.
+- OpenHuman's `scripts/externalize-inline-tests.mjs <repo-root> --write` (add
+  `--rename-legacy` for `test.rs` / `*_test.rs`) converts a repo mechanically;
+  without `--write` it only reports.
