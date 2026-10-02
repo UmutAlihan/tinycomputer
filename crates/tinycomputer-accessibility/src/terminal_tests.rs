@@ -81,18 +81,18 @@ fn extract_terminal_input_context_skips_noise() {
 
 #[test]
 fn extract_terminal_input_context_empty_returns_empty() {
-    assert!(extract_terminal_input_context("").is_empty());
+    assert_eq!(extract_terminal_input_context(""), "");
 }
 
 #[test]
 fn extract_terminal_input_context_all_noise_returns_empty() {
     let text = "\n\n\n";
-    assert!(extract_terminal_input_context(text).is_empty());
+    assert_eq!(extract_terminal_input_context(text), "");
 }
 
 #[test]
 fn terminal_names_is_nonempty() {
-    assert!(!TERMINAL_NAMES.is_empty());
+    assert_ne!(TERMINAL_NAMES.len(), 0);
 }
 
 #[test]

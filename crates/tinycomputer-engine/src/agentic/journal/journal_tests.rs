@@ -162,7 +162,7 @@ fn a_begun_run_writes_a_run_event_then_each_exchange() {
     assert_eq!(failed["step"], Value::Null);
     assert_eq!(failed["attempts"], 3);
     assert_eq!(failed["latency_ms"], 9000);
-    assert!(!failed["error"].as_str().unwrap().is_empty());
+    assert_ne!(failed["error"].as_str().unwrap(), "");
 }
 
 #[test]

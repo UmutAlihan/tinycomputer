@@ -90,7 +90,7 @@ async fn a_finished_flow_is_done_with_its_reads_and_no_fact_values() {
         ..full
     };
     let lean = tasks.report_for(&lean).data.unwrap();
-    assert!(lean.trace.is_empty());
+    assert_eq!(lean.trace, [] as [tinycomputer_bus::JevExchange; 0]);
     assert_eq!(lean.steps, report.steps);
 }
 
@@ -241,7 +241,7 @@ async fn requests_that_cannot_start_are_refused_with_a_hint() {
         ..StartTaskRequest::default()
     });
     assert_eq!(code(&invalid), "INVALID_FLOW");
-    assert!(!invalid.error.unwrap().hint.is_empty());
+    assert_ne!(invalid.error.unwrap().hint, "");
 
     let fact_leak = tasks.start(&StartTaskRequest {
         flow: Some(flow(json!({"app": "Mail", "steps": [

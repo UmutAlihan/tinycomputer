@@ -31,7 +31,7 @@ fn a_text_clipboard_write_leaves_the_other_two_carriers_empty() {
 
     assert_eq!(request.text.as_deref(), Some("hello"));
     assert!(request.image.is_none());
-    assert!(request.file_urls.is_empty());
+    assert_eq!(request.file_urls.len(), 0);
 }
 
 #[test]

@@ -146,7 +146,7 @@ fn desktop_execution_dispatches_every_closed_operation_without_panicking() {
             Some(&candidate),
             Some("text".to_owned()),
         );
-        assert!(!reply.command.is_empty());
+        assert_ne!(reply.command, "");
     }
 }
 
@@ -281,7 +281,7 @@ fn response_helpers_classify_provider_failures_and_policy_reasons() {
         JevDecisionKind::Done,
         JevDecisionKind::Blocked,
     ] {
-        assert!(!reason(decision, 0.5, 0.6).is_empty());
+        assert_ne!(reason(decision, 0.5, 0.6), "");
     }
     let target = target_payload(&Candidate {
         ref_id: "@s:e1".to_owned(),

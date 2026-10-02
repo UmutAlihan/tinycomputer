@@ -22,7 +22,10 @@ async fn opening_launches_explicitly_then_sets_the_viewport() {
 
     browser.close_session(&id).await.unwrap();
     assert_eq!(fake.last("close")["action"], "close");
-    assert!(browser.list_sessions().await.unwrap().is_empty());
+    assert_eq!(
+        browser.list_sessions().await.unwrap(),
+        [] as [tinycomputer_bus::browser::SessionInfo; 0]
+    );
     browser
         .close_session(&id)
         .await
@@ -43,7 +46,10 @@ async fn a_failed_launch_opens_nothing() {
         matches!(error, Error::BrowserUnavailable { .. }),
         "{error:?}"
     );
-    assert!(browser.list_sessions().await.unwrap().is_empty());
+    assert_eq!(
+        browser.list_sessions().await.unwrap(),
+        [] as [tinycomputer_bus::browser::SessionInfo; 0]
+    );
 }
 
 #[tokio::test]

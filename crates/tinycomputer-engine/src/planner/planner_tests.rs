@@ -134,7 +134,7 @@ async fn an_invalid_answer_is_repaired_with_the_errors() {
     ]);
     let plan = planner.plan("write an email", &[], &[], &[]).await.unwrap();
     assert_eq!(plan.flow.app, "Mail");
-    assert!(plan.notes.is_empty());
+    assert_eq!(plan.notes, [] as [std::string::String; 0]);
     let seen = model.seen.lock().unwrap();
     assert_eq!(seen.len(), 3);
     assert!(seen[0][1].text.contains("Shared facts you may use: none."));

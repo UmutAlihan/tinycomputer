@@ -74,7 +74,7 @@ fn a_page_becomes_candidates_and_context() {
     assert_eq!(from.available_actions, ["Click", "SetValue"]);
     assert_eq!(from.path, ["main"]);
     assert_eq!(parsed.candidates[2].available_actions, ["Click", "Check"]);
-    assert!(parsed.candidates[2].states.is_empty());
+    assert_eq!(parsed.candidates[2].states, [] as [std::string::String; 0]);
     assert_eq!(parsed.candidates[3].states, ["checked"]);
     assert_eq!(parsed.candidates[4].available_actions, ["Click"]);
     assert_eq!(parsed.candidates[5].states, ["expanded"]);

@@ -175,12 +175,7 @@ fn framings_relabel_label_keys_and_keep_word_keys() {
         target.criteria.keys().collect::<Vec<_>>(),
         ["A", "B", "C", "none"]
     );
-    assert!(
-        !target.instructions["perspective"]
-            .as_str()
-            .unwrap()
-            .is_empty()
-    );
+    assert_ne!(target.instructions["perspective"].as_str().unwrap(), "");
     let Question::Choice(moves) = &framings[1].request.questions["move"] else {
         panic!()
     };

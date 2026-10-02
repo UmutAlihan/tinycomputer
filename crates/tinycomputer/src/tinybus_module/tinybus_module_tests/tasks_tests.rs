@@ -102,7 +102,10 @@ async fn the_runner_keeps_one_workspace_per_task_until_released() {
         crate::tinybus_module::runner::WorkspaceRunner::new(crate::Desktop::new(), None, browser);
     let task = TaskId::new("t-1");
     // Nothing observed yet, so there is nothing to read.
-    assert!(runner.visible_text(&task).await.is_empty());
+    assert_eq!(
+        runner.visible_text(&task).await,
+        [] as [std::string::String; 0]
+    );
     assert_eq!(runner.workspaces.lock().unwrap().len(), 1);
     // No browser session was ever opened, so there is nothing to capture,
     // and a task the runner never saw has nothing either.

@@ -84,5 +84,5 @@ fn repeated_history_lines_read_once_with_a_count() {
         compact(&history),
         ["pressed x (x3)", "waited", "pressed x"].map(str::to_owned)
     );
-    assert!(compact(&[]).is_empty());
+    assert_eq!(compact(&[]), [] as [std::string::String; 0]);
 }

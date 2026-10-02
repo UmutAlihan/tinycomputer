@@ -79,7 +79,7 @@ fn a_mouse_click_request_defaults_to_the_left_button_and_no_modifiers() {
 
     assert_eq!(request.button, MouseButton::Left);
     assert_eq!(request.count, 0);
-    assert!(request.modifiers.is_empty());
+    assert_eq!(request.modifiers, []);
 }
 
 #[test]

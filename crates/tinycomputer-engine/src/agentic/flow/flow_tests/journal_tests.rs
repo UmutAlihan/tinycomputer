@@ -90,7 +90,7 @@ async fn a_journaled_run_records_every_exchange_and_what_each_part_took() {
             && turn["rounds"].is_u64()
             && turn["wall_ms"].is_u64()
     }));
-    assert!(!of("observe").is_empty());
+    assert_ne!(of("observe"), [] as [&serde_json::Value; 0]);
     let steps = of("step");
     assert_eq!(
         steps

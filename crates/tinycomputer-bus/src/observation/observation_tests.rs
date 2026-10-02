@@ -56,7 +56,7 @@ fn a_partial_find_request_fills_the_rest_in_from_defaults() {
 
     assert_eq!(request.role.as_deref(), Some("button"));
     assert!(!request.exact);
-    assert!(request.states.is_empty());
+    assert_eq!(request.states, []);
     assert!(request.limit.is_none());
 }
 
