@@ -210,7 +210,7 @@ fn the_sweep_covers_every_member_the_contract_names() {
 fn every_member_answers_in_the_envelope() {
     for reply in sweep() {
         assert_eq!(reply.version, bus::ENVELOPE_VERSION);
-        assert!(!reply.command.is_empty());
+        assert_ne!(reply.command, "");
         assert_eq!(reply.ok, reply.data.is_some());
         assert_eq!(!reply.ok, reply.error.is_some());
         if let Some(error) = reply.error {
@@ -219,7 +219,7 @@ fn every_member_answers_in_the_envelope() {
                 "{} gave an empty code",
                 reply.command
             );
-            assert!(!error.message.is_empty());
+            assert_ne!(error.message, "");
         }
     }
 }

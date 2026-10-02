@@ -69,7 +69,7 @@ fn every_closed_operation_dispatches_without_panicking() {
             Some(&candidate),
             Some("text".to_owned()),
         );
-        assert!(!reply.command.is_empty());
+        assert_ne!(reply.command, "");
     }
 }
 
